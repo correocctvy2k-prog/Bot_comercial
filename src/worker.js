@@ -171,6 +171,6 @@ supabase
 // Si Realtime falla (como ahora), esto revisa la BD cada 5 segundos.
 console.log("⏰ Iniciando Polling de Respaldo (Cada 5s)...");
 setInterval(() => {
-    console.log("🔍 Polling check..."); // Debug explícito
-    processPending(false); // 🚑 DEBUG: false para ver si hay error o 0 resultados
+    // console.log("🔍 Polling check..."); // Debug explícito desactivado
+    processPending(true); // 🚑 VERIFICADO: Worker conecta bien. Volvemos a silencio.
 }, 5000);
