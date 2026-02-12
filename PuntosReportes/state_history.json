@@ -291,10 +291,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.12.11": {
     "alias": "OFICINA PRINCIPAL AMAIME",
@@ -324,10 +324,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 4,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-04T11:48:49.780689",
     "last_state_change": "2026-02-04T11:48:49.780689",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.159": {
     "alias": "CORRESPONSAL DALIAS",
@@ -335,10 +335,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.12.71": {
     "alias": "TIENDA GAVIOTA",
@@ -379,10 +379,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.29": {
     "alias": "OFICINA 20 JULIO V.GORg",
@@ -390,21 +390,21 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.107": {
     "alias": "EL SAMAN GORGONA V.GORG",
     "segment": "CANDELARIA",
     "first_seen": "2026-01-29T09:54:00.121702",
-    "state_changes": 3,
-    "last_state": false,
-    "last_seen_active": "2026-02-04T17:33:58.438336",
-    "active_since": null,
-    "last_state_change": "2026-02-11T17:21:48.892587",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "state_changes": 4,
+    "last_state": true,
+    "last_seen_active": "2026-02-12T09:49:44.890285",
+    "active_since": "2026-02-12T09:49:44.890285",
+    "last_state_change": "2026-02-12T09:49:44.890285",
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.105": {
     "alias": "VARIEDADES ALDEA CAMPEST",
@@ -412,10 +412,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 4,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-04T11:48:49.780689",
     "last_state_change": "2026-02-04T11:48:49.780689",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.12.35": {
     "alias": "TIENDA JOEL",
@@ -456,10 +456,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-02T10:15:56.146385",
     "last_state_change": "2026-02-02T10:15:56.146385",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.22.35": {
     "alias": "LA PAMPA",
@@ -500,10 +500,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.99": {
     "alias": "AVENIDA LA VICTORIA V.GORG",
@@ -511,10 +511,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.27": {
     "alias": "LOS ANGELES V.GORGONA",
@@ -522,10 +522,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-04T11:48:49.780689",
     "last_state_change": "2026-02-04T11:48:49.780689",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.12.41": {
     "alias": "AMAIME I",
@@ -542,12 +542,12 @@
     "alias": "TAT ANTARES V.GORGONA",
     "segment": "CANDELARIA",
     "first_seen": "2026-01-29T09:54:00.121702",
-    "state_changes": 5,
-    "last_state": false,
-    "last_seen_active": "2026-02-11T17:26:50.743603",
-    "active_since": null,
-    "last_state_change": "2026-02-11T17:34:58.902795",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "state_changes": 6,
+    "last_state": true,
+    "last_seen_active": "2026-02-12T09:49:44.890285",
+    "active_since": "2026-02-12T09:49:44.890285",
+    "last_state_change": "2026-02-12T09:49:44.890285",
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.12.25": {
     "alias": "CALLE COMERCIO",
@@ -566,10 +566,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-04T08:13:40.018179",
     "last_state_change": "2026-02-04T08:13:40.018179",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.147": {
     "alias": "T.A.T BELEN GORG",
@@ -577,10 +577,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-03T10:09:11.052906",
     "last_state_change": "2026-02-03T10:09:11.052906",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.12.73": {
     "alias": "TRIUNFO  II",
@@ -632,10 +632,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.12.27": {
     "alias": "MALL CENTER AMAIME",
@@ -654,10 +654,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.21": {
     "alias": "IGLESIA V.GORGONA",
@@ -665,10 +665,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.42.19": {
     "alias": "LA TORRE JUANCHITO",
@@ -676,10 +676,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-03T11:01:31.058267",
     "last_state_change": "2026-02-03T11:01:31.058267",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.42.15": {
     "alias": "TRANSITO JUANCHITO",
@@ -687,10 +687,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.42.29": {
     "alias": "INTERNET CCAMPO",
@@ -698,10 +698,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.42.17": {
     "alias": "CALLEJON PEREIRA JUANCHITO",
@@ -709,10 +709,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-02T14:50:36.905188",
     "last_state_change": "2026-02-02T14:50:36.905188",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.153": {
     "alias": "CORRESPONSAL CAMPESTRE",
@@ -720,10 +720,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.42.39": {
     "alias": "T.A.T LA CRUZ",
@@ -731,21 +731,21 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.10": {
     "alias": "CAJEROS CANDEL MICROSEGUROS",
     "segment": "CANDELARIA",
     "first_seen": "2026-01-29T09:54:00.121702",
-    "state_changes": 1,
-    "last_state": false,
-    "last_seen_active": "2026-02-04T17:33:58.438336",
-    "active_since": null,
-    "last_state_change": "2026-02-11T17:21:48.892587",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "state_changes": 2,
+    "last_state": true,
+    "last_seen_active": "2026-02-12T09:49:44.890285",
+    "active_since": "2026-02-12T09:49:44.890285",
+    "last_state_change": "2026-02-12T09:49:44.890285",
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.42.37": {
     "alias": "T.A.T CUDAD DEL CAMPO ESQUINA",
@@ -753,10 +753,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 4,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-04T11:48:49.780689",
     "last_state_change": "2026-02-04T11:48:49.780689",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.42.45": {
     "alias": "AVENIDA CCAMPO",
@@ -764,21 +764,21 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "10.100.1.16": {
     "alias": "PARQUE TIPLE (CAND)",
     "segment": "CANDELARIA",
     "first_seen": "2026-01-29T09:54:00.121702",
-    "state_changes": 7,
-    "last_state": false,
-    "last_seen_active": "2026-02-04T17:33:58.438336",
-    "active_since": null,
-    "last_state_change": "2026-02-11T17:21:48.892587",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "state_changes": 8,
+    "last_state": true,
+    "last_seen_active": "2026-02-12T09:49:44.890285",
+    "active_since": "2026-02-12T09:49:44.890285",
+    "last_state_change": "2026-02-12T09:49:44.890285",
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.61": {
     "alias": "PANADERIA POBLADO",
@@ -786,21 +786,21 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.65": {
     "alias": "TAT CASA VERDE POBLADO",
     "segment": "CANDELARIA",
     "first_seen": "2026-01-29T09:54:00.121702",
-    "state_changes": 4,
-    "last_state": true,
+    "state_changes": 5,
+    "last_state": false,
     "last_seen_active": "2026-02-11T17:34:58.902795",
-    "active_since": "2026-02-04T17:33:58.438336",
-    "last_state_change": "2026-02-04T17:33:58.438336",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "active_since": null,
+    "last_state_change": "2026-02-12T09:49:44.890285",
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.63": {
     "alias": "CAMPI DELICIAS POBLADO",
@@ -808,10 +808,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.53": {
     "alias": "SAN JUAQUIN (CAND)",
@@ -819,10 +819,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.41": {
     "alias": "AGUILA ROJA CARMELO",
@@ -830,10 +830,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.97": {
     "alias": "MANZANARES I POBLADO",
@@ -841,10 +841,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-02T10:15:56.146385",
     "last_state_change": "2026-02-02T10:15:56.146385",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.119": {
     "alias": "T.A.T HAY CHAVELA TIENDA POBLA",
@@ -852,10 +852,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-03T15:01:43.995155",
     "last_state_change": "2026-02-03T15:01:43.995155",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.36.30": {
     "alias": "T.A.T CIUDAD DEL VALLE",
@@ -863,10 +863,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.39": {
     "alias": "TELECOM CARMELO",
@@ -874,10 +874,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.42.43": {
     "alias": "ALMENDROS CCAMPO",
@@ -885,10 +885,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.42.25": {
     "alias": "LA COLMENITA CCAMPO",
@@ -896,10 +896,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.129": {
     "alias": "TAT BATARA POBLADO",
@@ -907,10 +907,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.91": {
     "alias": "RENDIDOR POBLADO",
@@ -918,10 +918,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-02T14:12:58.386570",
     "last_state_change": "2026-02-02T14:12:58.386570",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.155": {
     "alias": "CORRESPONSAL CARMELO JARDIN",
@@ -929,10 +929,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-04T11:48:49.780689",
     "last_state_change": "2026-02-04T11:48:49.780689",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.139": {
     "alias": "LA ARBOLEDA POBLADO",
@@ -940,10 +940,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.137": {
     "alias": "LA ROSELA POBLADO",
@@ -951,10 +951,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-02T10:15:56.146385",
     "last_state_change": "2026-02-02T10:15:56.146385",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.26.104": {
     "alias": "LA TABERNA REGINA",
@@ -962,32 +962,32 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.75": {
     "alias": "EXPENDIDO PAPA CABUYAL",
     "segment": "CANDELARIA",
     "first_seen": "2026-01-29T09:54:00.121702",
-    "state_changes": 1,
-    "last_state": false,
-    "last_seen_active": "2026-02-04T11:48:49.780689",
-    "active_since": null,
-    "last_state_change": "2026-02-04T17:33:58.438336",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "state_changes": 2,
+    "last_state": true,
+    "last_seen_active": "2026-02-12T09:49:44.890285",
+    "active_since": "2026-02-12T09:49:44.890285",
+    "last_state_change": "2026-02-12T09:49:44.890285",
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.77": {
     "alias": "CALLE PRINCIPAL CABUYAL",
     "segment": "CANDELARIA",
     "first_seen": "2026-01-29T09:54:00.121702",
-    "state_changes": 7,
-    "last_state": false,
-    "last_seen_active": "2026-02-04T11:48:49.780689",
-    "active_since": null,
-    "last_state_change": "2026-02-04T17:33:58.438336",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "state_changes": 8,
+    "last_state": true,
+    "last_seen_active": "2026-02-12T09:49:44.890285",
+    "active_since": "2026-02-12T09:49:44.890285",
+    "last_state_change": "2026-02-12T09:49:44.890285",
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.27.74": {
     "alias": "TAT PROCURADURIA (CAND)",
@@ -995,10 +995,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-04T11:48:49.780689",
     "last_state_change": "2026-02-04T11:48:49.780689",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.27.29": {
     "alias": "TAT COLOMBIANA (CAND)",
@@ -1006,10 +1006,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-02T10:15:56.146385",
     "last_state_change": "2026-02-02T10:15:56.146385",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.27.71": {
     "alias": "TAT PANAMERICANO (CAND)",
@@ -1017,10 +1017,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 4,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-04T11:48:49.780689",
     "last_state_change": "2026-02-04T11:48:49.780689",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.27.62": {
     "alias": "SAN CRISTOBAL (CAND)",
@@ -1028,10 +1028,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.28.100": {
     "alias": "OFICINA PRINCIPAL (CAND)",
@@ -1039,10 +1039,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-02T14:50:36.905188",
     "last_state_change": "2026-02-02T14:50:36.905188",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.27.58": {
     "alias": "REGISTRADURIA (CAND)",
@@ -1050,10 +1050,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.83": {
     "alias": "EL ARENAL (CAND)",
@@ -1061,10 +1061,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-04T11:48:49.780689",
     "last_state_change": "2026-02-04T11:48:49.780689",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.27.63": {
     "alias": "GUARDERIA (CAND)",
@@ -1072,10 +1072,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-02T10:15:56.146385",
     "last_state_change": "2026-02-02T10:15:56.146385",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.27.50": {
     "alias": "PARQUE 1 (CAND)",
@@ -1086,7 +1086,7 @@
     "last_seen_active": "2026-02-04T17:33:58.438336",
     "active_since": null,
     "last_state_change": "2026-02-11T17:21:48.892587",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.27.66": {
     "alias": "ESTANCO (CAND)",
@@ -1094,10 +1094,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 4,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-04T17:33:58.438336",
     "last_state_change": "2026-02-04T17:33:58.438336",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.27.56": {
     "alias": "RUBIO (CAND)",
@@ -1105,10 +1105,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.27.59": {
     "alias": "BOMBEROS (CAND)",
@@ -1116,10 +1116,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.27.57": {
     "alias": "GALERIA (CAND)",
@@ -1127,10 +1127,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.40.121": {
     "alias": "BRISAS V.GORGONA",
@@ -1138,10 +1138,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.27.64": {
     "alias": "POLIDEPORTIVO (CAND)",
@@ -1149,10 +1149,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.27.69": {
     "alias": "ESTADIO (CAND)",
@@ -1160,10 +1160,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.27.54": {
     "alias": "PELUQUERIA ROSI (CAND)",
@@ -1171,10 +1171,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.32.49": {
     "alias": "SAN JORGE FLORIDA",
@@ -1908,10 +1908,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 6,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-03T15:53:04.718258",
     "last_state_change": "2026-02-03T15:53:04.718258",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.26": {
     "alias": "CASETA  RECREO",
@@ -2183,10 +2183,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-02T08:40:33.816432",
     "last_state_change": "2026-02-02T08:40:33.816432",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.174": {
     "alias": "TIENDA COSTA RICA",
@@ -2194,10 +2194,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.34.39": {
     "alias": "SAN PEDRO IV",
@@ -2205,10 +2205,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 6,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-11T16:29:15.356967",
     "last_state_change": "2026-02-11T16:29:15.356967",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.194": {
     "alias": "RIVERA ESCOBAR",
@@ -2216,10 +2216,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.201": {
     "alias": "TIENDA EL PRADO PAL",
@@ -2227,10 +2227,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-03T09:18:25.188437",
     "last_state_change": "2026-02-03T09:18:25.188437",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.213": {
     "alias": "LA CONCORDIA",
@@ -2238,10 +2238,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 4,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-03T16:27:12.173988",
     "last_state_change": "2026-02-03T16:27:12.173988",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.29": {
     "alias": "EL CONDOR",
@@ -2249,10 +2249,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.187": {
     "alias": "DROGUERIA PRADO II",
@@ -2260,10 +2260,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.211": {
     "alias": "PARQUEADERO PRADO",
@@ -2271,10 +2271,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.40": {
     "alias": "PRADO IGLESIA II",
@@ -2282,10 +2282,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.34.47": {
     "alias": "MUNICIPAL II",
@@ -2293,21 +2293,21 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 6,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-11T16:29:15.356967",
     "last_state_change": "2026-02-11T16:29:15.356967",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.34.77": {
     "alias": "TAT CLUB CAMPESTRE",
     "segment": "PALMIRA",
     "first_seen": "2026-01-29T09:54:00.121702",
-    "state_changes": 1,
-    "last_state": false,
-    "last_seen_active": "2026-02-11T18:01:57.624549",
-    "active_since": null,
-    "last_state_change": "2026-02-12T08:23:01.372920",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "state_changes": 2,
+    "last_state": true,
+    "last_seen_active": "2026-02-12T09:33:56.634520",
+    "active_since": "2026-02-12T09:33:56.634520",
+    "last_state_change": "2026-02-12T09:33:56.634520",
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.34.21": {
     "alias": "MARIACANO",
@@ -2315,10 +2315,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 4,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-11T16:29:15.356967",
     "last_state_change": "2026-02-11T16:29:15.356967",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.34.49": {
     "alias": "POPULAR MODELO II",
@@ -2326,10 +2326,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 4,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-11T16:29:15.356967",
     "last_state_change": "2026-02-11T16:29:15.356967",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.34.61": {
     "alias": "7 AGOSTO II",
@@ -2337,10 +2337,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 6,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-11T17:54:32.458558",
     "last_state_change": "2026-02-11T17:54:32.458558",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.34.113": {
     "alias": "PARAISO",
@@ -2348,10 +2348,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 4,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-11T17:25:49.366396",
     "last_state_change": "2026-02-11T17:25:49.366396",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.34.41": {
     "alias": "MUNICIPAL",
@@ -2370,10 +2370,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 4,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-11T16:29:15.356967",
     "last_state_change": "2026-02-11T16:29:15.356967",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.34.37": {
     "alias": "HACIENDA BUENOS AIRES",
@@ -2381,10 +2381,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-03T16:27:12.173988",
     "last_state_change": "2026-02-03T16:27:12.173988",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.189": {
     "alias": "LLANO GRANDE PLAZA",
@@ -2392,10 +2392,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 6,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-11T15:57:46.856094",
     "last_state_change": "2026-02-11T15:57:46.856094",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.109": {
     "alias": "GALERIA II",
@@ -2403,21 +2403,21 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 10,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-12T08:23:01.372920",
     "last_state_change": "2026-02-12T08:23:01.372920",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.67": {
     "alias": "TAT SENDEROS DE LA ITALIA",
     "segment": "PALMIRA",
     "first_seen": "2026-01-29T09:54:00.121702",
-    "state_changes": 3,
-    "last_state": false,
-    "last_seen_active": "2026-02-11T18:01:57.624549",
-    "active_since": null,
-    "last_state_change": "2026-02-12T08:23:01.372920",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "state_changes": 4,
+    "last_state": true,
+    "last_seen_active": "2026-02-12T09:33:56.634520",
+    "active_since": "2026-02-12T09:33:56.634520",
+    "last_state_change": "2026-02-12T09:33:56.634520",
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.22": {
     "alias": "TULIPANES DE LA ITALIA",
@@ -2425,10 +2425,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 8,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-11T16:29:15.356967",
     "last_state_change": "2026-02-11T16:29:15.356967",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.216": {
     "alias": "SENDEROS DE LA ITALIA",
@@ -2436,10 +2436,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 8,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-12T08:23:01.372920",
     "last_state_change": "2026-02-12T08:23:01.372920",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.40": {
     "alias": "TAT SIST RESERVAS DE LA ITALIA",
@@ -2447,10 +2447,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.59": {
     "alias": "PARQUE DE LA ITALIA PPAL",
@@ -2458,10 +2458,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.12.33": {
     "alias": "EL HOYO",
@@ -2480,10 +2480,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.228": {
     "alias": "PARQUE EL PRADO",
@@ -2491,10 +2491,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.220": {
     "alias": "EMILIA VII",
@@ -2502,10 +2502,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.170": {
     "alias": "PRADO LA ROCHELA",
@@ -2513,10 +2513,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-30T14:54:15.321352",
     "last_state_change": "2026-01-30T14:54:15.321352",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.215": {
     "alias": "PANADERIA FRAY LUIS AMIGO",
@@ -2524,10 +2524,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.217": {
     "alias": "INDEPENDENCIA",
@@ -2535,10 +2535,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.40.115": {
     "alias": "TAT INTERNET VICTORIA",
@@ -2549,7 +2549,7 @@
     "last_seen_active": null,
     "active_since": null,
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "10.100.1.18": {
     "alias": "OLIMPICO III",
@@ -2557,10 +2557,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.55": {
     "alias": "CEMENTERIO CENTRAL PALMIRA",
@@ -2568,10 +2568,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.40.25": {
     "alias": "COMERCIO V.GORGONA",
@@ -2579,10 +2579,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 1,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-01-29T11:15:47.146282",
     "last_state_change": "2026-01-29T11:15:47.146282",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.42.21": {
     "alias": "FINAL PEREIRA JUANCHITO",
@@ -2593,7 +2593,7 @@
     "last_seen_active": null,
     "active_since": null,
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.21.102": {
     "alias": "LAS MERCEDES II",
@@ -2601,10 +2601,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-30T14:54:15.321352",
     "last_state_change": "2026-01-30T14:54:15.321352",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.214": {
     "alias": "EMILIA IGLESIA",
@@ -2612,10 +2612,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 10,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-11T16:29:15.356967",
     "last_state_change": "2026-02-11T16:29:15.356967",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.196": {
     "alias": "SANTA BARBARA",
@@ -2623,10 +2623,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.40.35": {
     "alias": "CALLE CENTRAL EL CARMELO",
@@ -2637,7 +2637,7 @@
     "last_seen_active": null,
     "active_since": null,
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.15.46": {
     "alias": "ZAMORANO IV",
@@ -2645,10 +2645,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.25": {
     "alias": "LA COSECHA III",
@@ -2656,10 +2656,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 8,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-03T16:27:12.173988",
     "last_state_change": "2026-02-03T16:27:12.173988",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.28": {
     "alias": "ALAMEDA III",
@@ -2667,10 +2667,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-30T14:54:15.321352",
     "last_state_change": "2026-01-30T14:54:15.321352",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.40.49": {
     "alias": "SAN JOAQUIN PPAL",
@@ -2681,7 +2681,7 @@
     "last_seen_active": null,
     "active_since": null,
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.15.22": {
     "alias": "ZAMORANO X",
@@ -2689,10 +2689,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-02T14:12:58.386570",
     "last_state_change": "2026-02-02T14:12:58.386570",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.23": {
     "alias": "ZAMORANO ANTENA",
@@ -2700,10 +2700,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-03T12:45:47.422636",
     "last_state_change": "2026-02-03T12:45:47.422636",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.20": {
     "alias": "COOPERADORES",
@@ -2711,10 +2711,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 4,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-11T16:29:15.356967",
     "last_state_change": "2026-02-11T16:29:15.356967",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.83": {
     "alias": "ZAMORANO III",
@@ -2722,10 +2722,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.36.22": {
     "alias": "T.A.T CONJUNTO VIENTOS DE CIUD",
@@ -2736,7 +2736,7 @@
     "last_seen_active": null,
     "active_since": null,
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.15.13": {
     "alias": "ALAMEDA V",
@@ -2744,21 +2744,21 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.80": {
     "alias": "CASA ALAMEDA",
     "segment": "PALMIRA",
     "first_seen": "2026-01-29T09:54:00.121702",
-    "state_changes": 1,
-    "last_state": false,
-    "last_seen_active": "2026-02-11T18:01:57.624549",
-    "active_since": null,
-    "last_state_change": "2026-02-12T08:23:01.372920",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "state_changes": 2,
+    "last_state": true,
+    "last_seen_active": "2026-02-12T09:33:56.634520",
+    "active_since": "2026-02-12T09:33:56.634520",
+    "last_state_change": "2026-02-12T09:33:56.634520",
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.40.33": {
     "alias": "FANNY ROMERO POBLADO",
@@ -2769,7 +2769,7 @@
     "last_seen_active": null,
     "active_since": null,
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.15.76": {
     "alias": "VILLA PRAGA",
@@ -2777,10 +2777,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 8,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-11T16:29:15.356967",
     "last_state_change": "2026-02-11T16:29:15.356967",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.50": {
     "alias": "TAT RESERVAS DE ZAMORANO",
@@ -2788,10 +2788,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.88": {
     "alias": "ZAMORANO IGLESIA",
@@ -2799,10 +2799,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-04T11:48:49.780689",
     "last_state_change": "2026-02-04T11:48:49.780689",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.68": {
     "alias": "LA DISCORDIA",
@@ -2810,10 +2810,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.10": {
     "alias": "ZAMORANO II OFICINA",
@@ -2821,10 +2821,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.27.51": {
     "alias": "PARQUE 2 (CAND)",
@@ -2832,10 +2832,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 5,
     "last_state": true,
-    "last_seen_active": "2026-02-11T17:34:58.902795",
+    "last_seen_active": "2026-02-12T09:49:44.890285",
     "active_since": "2026-02-11T17:21:48.892587",
     "last_state_change": "2026-02-11T17:21:48.892587",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.27.65": {
     "alias": "SANTA ANA (CAND)",
@@ -2846,7 +2846,7 @@
     "last_seen_active": null,
     "active_since": null,
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.27.55": {
     "alias": "GRANERO (CAND)",
@@ -2857,7 +2857,7 @@
     "last_seen_active": null,
     "active_since": null,
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.15.44": {
     "alias": "20 DE JULIO",
@@ -2865,10 +2865,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.33": {
     "alias": "SUPER MARDEN LA 47",
@@ -2876,10 +2876,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 6,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-03T16:27:12.173988",
     "last_state_change": "2026-02-03T16:27:12.173988",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.77": {
     "alias": "PORTAL DE LAS PALMAS IV",
@@ -2887,10 +2887,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 8,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-11T17:18:54.393233",
     "last_state_change": "2026-02-11T17:18:54.393233",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.40.95": {
     "alias": "CALLEJON GUALANDAY  V.GORG",
@@ -2901,7 +2901,7 @@
     "last_seen_active": null,
     "active_since": null,
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.15.55": {
     "alias": "SANTA TERESITA",
@@ -2909,10 +2909,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 4,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-11T16:29:15.356967",
     "last_state_change": "2026-02-11T16:29:15.356967",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.42": {
     "alias": "POBLADO LOURDES II",
@@ -2920,10 +2920,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-03T15:53:04.718258",
     "last_state_change": "2026-02-03T15:53:04.718258",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.74": {
     "alias": "BENEDICTA II",
@@ -2931,10 +2931,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-03T15:53:04.718258",
     "last_state_change": "2026-02-03T15:53:04.718258",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.75": {
     "alias": "CAI CAIMITOS",
@@ -2942,10 +2942,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 8,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-11T16:29:15.356967",
     "last_state_change": "2026-02-11T16:29:15.356967",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.53": {
     "alias": "SANTA TERESITA II",
@@ -2953,10 +2953,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 4,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-03T15:53:04.718258",
     "last_state_change": "2026-02-03T15:53:04.718258",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.70": {
     "alias": "TAT SIST LLANOS DE LA RIVERA",
@@ -2964,32 +2964,32 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 6,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-03T15:53:04.718258",
     "last_state_change": "2026-02-03T15:53:04.718258",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.64": {
     "alias": "JUAN PABLO  II",
     "segment": "PALMIRA",
     "first_seen": "2026-01-29T09:54:00.121702",
-    "state_changes": 9,
-    "last_state": false,
-    "last_seen_active": "2026-02-11T18:01:57.624549",
-    "active_since": null,
-    "last_state_change": "2026-02-12T08:23:01.372920",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "state_changes": 10,
+    "last_state": true,
+    "last_seen_active": "2026-02-12T09:33:56.634520",
+    "active_since": "2026-02-12T09:33:56.634520",
+    "last_state_change": "2026-02-12T09:33:56.634520",
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.72": {
     "alias": "IGNACIO TORRES",
     "segment": "PALMIRA",
     "first_seen": "2026-01-29T09:54:00.121702",
-    "state_changes": 5,
-    "last_state": false,
-    "last_seen_active": "2026-02-11T18:01:57.624549",
-    "active_since": null,
-    "last_state_change": "2026-02-12T08:23:01.372920",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "state_changes": 6,
+    "last_state": true,
+    "last_seen_active": "2026-02-12T09:33:56.634520",
+    "active_since": "2026-02-12T09:33:56.634520",
+    "last_state_change": "2026-02-12T09:33:56.634520",
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.35": {
     "alias": "SIMON BOLIVAR",
@@ -2997,32 +2997,32 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-03T15:53:04.718258",
     "last_state_change": "2026-02-03T15:53:04.718258",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.39": {
     "alias": "VILLA DEL ROSARIO",
     "segment": "PALMIRA",
     "first_seen": "2026-01-29T09:54:00.121702",
-    "state_changes": 5,
-    "last_state": false,
-    "last_seen_active": "2026-02-11T18:01:57.624549",
-    "active_since": null,
-    "last_state_change": "2026-02-12T08:23:01.372920",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "state_changes": 6,
+    "last_state": true,
+    "last_seen_active": "2026-02-12T09:33:56.634520",
+    "active_since": "2026-02-12T09:33:56.634520",
+    "last_state_change": "2026-02-12T09:33:56.634520",
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.27.67": {
     "alias": "TAT LA ZAFRA",
     "segment": "CANDELARIA",
     "first_seen": "2026-01-29T09:54:00.121702",
-    "state_changes": 7,
-    "last_state": true,
+    "state_changes": 8,
+    "last_state": false,
     "last_seen_active": "2026-02-11T17:34:58.902795",
-    "active_since": "2026-02-04T17:33:58.438336",
-    "last_state_change": "2026-02-04T17:33:58.438336",
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "active_since": null,
+    "last_state_change": "2026-02-12T09:49:44.890285",
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.27.21": {
     "alias": "TAT EL MOLINO",
@@ -3033,7 +3033,7 @@
     "last_seen_active": null,
     "active_since": null,
     "last_state_change": null,
-    "last_scan": "2026-02-11T17:34:58.902795"
+    "last_scan": "2026-02-12T09:49:44.890285"
   },
   "192.168.45.100": {
     "alias": "BENEDICTA I",
@@ -3041,10 +3041,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-03T15:53:04.718258",
     "last_state_change": "2026-02-03T15:53:04.718258",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.15.60": {
     "alias": "CAIMITOS II",
@@ -3052,10 +3052,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 8,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-11T15:57:46.856094",
     "last_state_change": "2026-02-11T15:57:46.856094",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.36.15": {
     "alias": "PARQUEADERO EL GANADOR",
@@ -3063,10 +3063,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.34.189": {
     "alias": "LA BUITRERA",
@@ -3074,10 +3074,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.128": {
     "alias": "ESTACION COLOMBIA II",
@@ -3085,10 +3085,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.149": {
     "alias": "OBRERO I",
@@ -3096,10 +3096,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.32.119": {
     "alias": "EL MERCADO",
@@ -3116,12 +3116,12 @@
     "alias": "NIÑO POBRE II",
     "segment": "PALMIRA",
     "first_seen": "2026-01-29T09:54:00.121702",
-    "state_changes": 3,
-    "last_state": false,
-    "last_seen_active": "2026-02-11T18:01:57.624549",
-    "active_since": null,
-    "last_state_change": "2026-02-12T08:23:01.372920",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "state_changes": 4,
+    "last_state": true,
+    "last_seen_active": "2026-02-12T09:33:56.634520",
+    "active_since": "2026-02-12T09:33:56.634520",
+    "last_state_change": "2026-02-12T09:33:56.634520",
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.23": {
     "alias": "CAICELANDIA II",
@@ -3129,10 +3129,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.156": {
     "alias": "CASETA  VERSALLES",
@@ -3140,10 +3140,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.101": {
     "alias": "ALFONSO LOPEZ",
@@ -3151,10 +3151,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-04T11:48:49.780689",
     "last_state_change": "2026-02-04T11:48:49.780689",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.32.169": {
     "alias": "FLORIDA PARQUE DEL LEON",
@@ -3173,10 +3173,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.107": {
     "alias": "ESTONIA",
@@ -3184,10 +3184,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 6,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-03T15:53:04.718258",
     "last_state_change": "2026-02-03T15:53:04.718258",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.233": {
     "alias": "PIKOS II",
@@ -3195,10 +3195,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.176": {
     "alias": "BERLIN",
@@ -3206,10 +3206,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.180": {
     "alias": "COLOMBIA CABINAS",
@@ -3217,10 +3217,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-03T16:27:12.173988",
     "last_state_change": "2026-02-03T16:27:12.173988",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.106": {
     "alias": "ESTACION COLOMBIA  I",
@@ -3228,10 +3228,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.32.69": {
     "alias": "BUGUENA",
@@ -3261,10 +3261,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-11T17:18:54.393233",
     "last_state_change": "2026-02-11T17:18:54.393233",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.27": {
     "alias": "GUAYACANES DEL INGENIO",
@@ -3272,10 +3272,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.125": {
     "alias": "COLOMBINA II",
@@ -3283,10 +3283,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.43": {
     "alias": "LICORES I",
@@ -3294,10 +3294,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-03T16:27:12.173988",
     "last_state_change": "2026-02-03T16:27:12.173988",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.32.167": {
     "alias": "LA VICTORIA",
@@ -3327,10 +3327,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-02T14:50:36.905188",
     "last_state_change": "2026-02-02T14:50:36.905188",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.22.39": {
     "alias": "TAT POTRERILLO BETPLAY",
@@ -3360,10 +3360,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.21": {
     "alias": "FATIMA II",
@@ -3371,10 +3371,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 6,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-03T15:53:04.718258",
     "last_state_change": "2026-02-03T15:53:04.718258",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.22": {
     "alias": "MARANATHA",
@@ -3382,10 +3382,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.177": {
     "alias": "ANTIGUA PPAL II",
@@ -3393,10 +3393,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 6,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-03T15:53:04.718258",
     "last_state_change": "2026-02-03T15:53:04.718258",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.231": {
     "alias": "PARQUEADERO PARQUE BOLIVAR",
@@ -3404,10 +3404,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.36.12": {
     "alias": "LA CIGARRA II",
@@ -3415,10 +3415,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 4,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-12T08:23:01.372920",
     "last_state_change": "2026-02-12T08:23:01.372920",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.198": {
     "alias": "EDIF. CAJA AGRARIA",
@@ -3426,10 +3426,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.17": {
     "alias": "CENTRO COMERCIAL LA VIRGINIA",
@@ -3437,10 +3437,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-11T15:57:46.856094",
     "last_state_change": "2026-02-11T15:57:46.856094",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.36.3": {
     "alias": "OFICINA PRINCIPAL",
@@ -3448,10 +3448,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.108": {
     "alias": "EMPRESARIO UNIDOS II",
@@ -3459,21 +3459,21 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.45": {
     "alias": "CASETA GALERIA",
     "segment": "PALMIRA",
     "first_seen": "2026-01-29T09:54:00.121702",
-    "state_changes": 1,
-    "last_state": false,
-    "last_seen_active": "2026-02-11T18:01:57.624549",
-    "active_since": null,
-    "last_state_change": "2026-02-12T08:23:01.372920",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "state_changes": 2,
+    "last_state": true,
+    "last_seen_active": "2026-02-12T09:33:56.634520",
+    "active_since": "2026-02-12T09:33:56.634520",
+    "last_state_change": "2026-02-12T09:33:56.634520",
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.46.31": {
     "alias": "BOMBA LAURO",
@@ -3492,10 +3492,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.11.11": {
     "alias": "EL PROGRESO",
@@ -3514,10 +3514,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.141": {
     "alias": "COLOMBIA TAXIS",
@@ -3525,10 +3525,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.20.155": {
     "alias": "CARREFOUR METRO",
@@ -3536,10 +3536,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 2,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-04T11:48:49.780689",
     "last_state_change": "2026-02-04T11:48:49.780689",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.130": {
     "alias": "ALTAMIRA III",
@@ -3547,21 +3547,21 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.157": {
     "alias": "OLIMPICA VERSALLES II",
     "segment": "PALMIRA",
     "first_seen": "2026-01-29T09:54:00.121702",
-    "state_changes": 9,
-    "last_state": false,
-    "last_seen_active": "2026-02-11T18:01:57.624549",
-    "active_since": null,
-    "last_state_change": "2026-02-12T08:23:01.372920",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "state_changes": 10,
+    "last_state": true,
+    "last_seen_active": "2026-02-12T09:33:56.634520",
+    "active_since": "2026-02-12T09:33:56.634520",
+    "last_state_change": "2026-02-12T09:33:56.634520",
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.210": {
     "alias": "EXPRESO PALMIRA",
@@ -3569,10 +3569,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.147": {
     "alias": "TAT CC VILLA DE LAS PALMAS",
@@ -3580,10 +3580,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.35": {
     "alias": "PARQUEADERO CICLOMOTOS",
@@ -3591,10 +3591,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.34.67": {
     "alias": "CAFE PALMIRA",
@@ -3602,21 +3602,21 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 4,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-11T16:29:15.356967",
     "last_state_change": "2026-02-11T16:29:15.356967",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.45.28": {
     "alias": "SISTEMATIZADO LA MARDEN",
     "segment": "PALMIRA",
     "first_seen": "2026-01-29T09:54:00.121702",
-    "state_changes": 3,
-    "last_state": false,
-    "last_seen_active": "2026-02-11T18:01:57.624549",
-    "active_since": null,
-    "last_state_change": "2026-02-12T08:23:01.372920",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "state_changes": 4,
+    "last_state": true,
+    "last_seen_active": "2026-02-12T09:33:56.634520",
+    "active_since": "2026-02-12T09:33:56.634520",
+    "last_state_change": "2026-02-12T09:33:56.634520",
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.24.53": {
     "alias": "MANHATAN",
@@ -3646,10 +3646,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 0,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T09:54:00.121702",
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.24.41": {
     "alias": "PARQUE PRINCIPAL 2",
@@ -3858,7 +3858,7 @@
     "last_seen_active": null,
     "active_since": null,
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.24.49": {
     "alias": "TATA PRADERA",
@@ -4001,7 +4001,7 @@
     "last_seen_active": null,
     "active_since": null,
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.22.55": {
     "alias": "HACIENDA BUENOS AIRES II",
@@ -4023,7 +4023,7 @@
     "last_seen_active": "2026-02-04T17:28:16.988814",
     "active_since": null,
     "last_state_change": "2026-02-11T15:57:46.856094",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.22.49": {
     "alias": "OASIS DE LA ITALIA",
@@ -4034,7 +4034,7 @@
     "last_seen_active": null,
     "active_since": null,
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.20": {
     "alias": "RECREO ESQUINITA II",
@@ -4045,7 +4045,7 @@
     "last_seen_active": null,
     "active_since": null,
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.124": {
     "alias": "UNICENTRO",
@@ -4056,7 +4056,7 @@
     "last_seen_active": "2026-02-11T18:01:57.624549",
     "active_since": null,
     "last_state_change": "2026-02-12T08:23:01.372920",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.22.25": {
     "alias": "LAS MERCEDES",
@@ -4097,10 +4097,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 3,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-02-03T15:53:04.718258",
     "last_state_change": "2026-02-03T15:53:04.718258",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.36.34": {
     "alias": "TAT CAÑA REAL",
@@ -4111,7 +4111,7 @@
     "last_seen_active": null,
     "active_since": null,
     "last_state_change": null,
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.133": {
     "alias": "SAMANES II",
@@ -4119,10 +4119,10 @@
     "first_seen": "2026-01-29T09:54:00.121702",
     "state_changes": 1,
     "last_state": true,
-    "last_seen_active": "2026-02-12T08:23:01.372920",
+    "last_seen_active": "2026-02-12T09:33:56.634520",
     "active_since": "2026-01-29T11:15:47.146282",
     "last_state_change": "2026-01-29T11:15:47.146282",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.21.143": {
     "alias": "LAS FLORES",
@@ -4144,7 +4144,7 @@
     "last_seen_active": "2026-02-11T18:01:57.624549",
     "active_since": null,
     "last_state_change": "2026-02-12T08:23:01.372920",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.25.28": {
     "alias": "CAJEROS PRADERA MICROSEGUROS",
@@ -4183,12 +4183,12 @@
     "alias": "HELADERIA SEMBRADOR",
     "segment": "PALMIRA",
     "first_seen": "2026-01-29T09:54:00.121702",
-    "state_changes": 2,
-    "last_state": false,
-    "last_seen_active": "2026-02-11T18:01:57.624549",
-    "active_since": null,
-    "last_state_change": "2026-02-12T08:23:01.372920",
-    "last_scan": "2026-02-12T08:23:01.372920"
+    "state_changes": 3,
+    "last_state": true,
+    "last_seen_active": "2026-02-12T09:33:56.634520",
+    "active_since": "2026-02-12T09:33:56.634520",
+    "last_state_change": "2026-02-12T09:33:56.634520",
+    "last_scan": "2026-02-12T09:33:56.634520"
   },
   "192.168.24.103": {
     "alias": "LOMITAS 1 PRADERA",
