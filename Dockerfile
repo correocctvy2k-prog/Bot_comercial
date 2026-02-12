@@ -1,5 +1,5 @@
-# Usamos una imagen base de Node.js (Debian Bullseye es estable y fácil de configurar con Python)
-FROM node:18-bullseye
+# Usamos una imagen base de Node.js actual (Soportada por Supabase)
+FROM node:20-bullseye
 
 # 1. Instalar Python 3 y pip
 RUN apt-get update && apt-get install -y \
