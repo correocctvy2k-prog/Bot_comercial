@@ -1,9 +1,24 @@
 require("dotenv").config();
 const { createClient } = require("@supabase/supabase-js");
+// 🚑 FIX TIMEOUT: Forzar uso de IPv4 en Node 18/20 para evitar problemas de DNS/Red en Docker
+const dns = require('node:dns');
+dns.setDefaultResultOrder('ipv4first');
+
 const { processIncomingWhatsApp } = require("./services/bot.service");
 
-// Configurar cliente Supabase
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+// Configurar cliente Supabase con opciones robustas de conexión
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY, {
+    auth: {
+        persistSession: false // No necesitamos sesión de usuario en el worker
+    },
+    realtime: {
+        params: {
+            eventsPerSecond: 10,
+        },
+        timeout: 60000, // aumentar timeout a 60s
+        heartbeatIntervalMs: 5000 // latidos más frecuentes
+    }
+});
 
 // Función Reutilizable para procesar trabajos
 async function processJob(job) {
@@ -98,7 +113,7 @@ async function processJob(job) {
 }
 
 // 🚀 STARTUP: Recuperar pendientes
-async function processPending() {
+async function processPending(silent = false) {
     const { data, error } = await supabase
         .from("bot_queue")
         .select("*")
@@ -110,7 +125,7 @@ async function processPending() {
         for (const job of data) {
             await processJob(job);
         }
-    } else {
+    } else if (!silent) {
         console.log("✅ No hay trabajos pendientes acumulados.");
     }
 }
@@ -136,3 +151,10 @@ supabase
             processPending();
         }
     });
+
+// 2. 🛡️ SISTEMA DE RESPALDO (Polling):
+// Si Realtime falla (como ahora), esto revisa la BD cada 5 segundos.
+console.log("⏰ Iniciando Polling de Respaldo (Cada 5s)...");
+setInterval(() => {
+    processPending(true); // true = modo silencioso para no llenar el log
+}, 5000);
