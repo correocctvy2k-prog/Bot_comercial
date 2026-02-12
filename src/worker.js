@@ -76,8 +76,12 @@ async function processJob(job) {
             if (!value.contacts && raw_message.sender_name) {
                 value.contacts = [{ profile: { name: raw_message.sender_name } }];
             }
-            // Asegurar que message tenga lo mínimo
-            if (msg && !msg.from && wa_id) msg.from = wa_id;
+
+            // 🚑 FIX CRÍTICO: Asegurar que el ID que pasamos al bot tenga el prefijo "tg_"
+            // El `msg.from` original de Telegram es un Objeto o un Número sin prefijo.
+            // Sobrescribimos con nuestra variable `wa_id` que ya parcheamos arriba.
+            if (msg) msg.from = wa_id;
+
             // 🚑 FIX CRÍTICO: Generar ID falso si n8n no lo envía
             if (msg && !msg.id) msg.id = `no_id_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
