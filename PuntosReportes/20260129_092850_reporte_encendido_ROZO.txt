@@ -1,0 +1,27 @@
+📊 *REPORTE ZONA: ROZO*
+
+📅 29/01/2026 09:28
+🟠 Disponibilidad: 84.0%
+📍 Total: 25 | ✅ 21 | ❌ 4
+
+⏱ Escaneo: 4.2s
+
+❌ *PUNTOS SIN RESPUESTA:*
+
+• CALLEJON VERGARA II
+• EL PEAJE ROZO SIST
+• TELECOM LA TORRE
+• VIRGINIA II ROZO
+
+📈 *ANÁLISIS:*
+🟠 Estado ATENCIÓN - Revisar puntos listados
+
+---
+🏢 Gane Palmira
+
+🧠 *ANÁLISIS INTELIGENTE*
+
+🏆 Zona con *más equipos encendidos* (cantidad): *ROZO* (21/25)
+⭐ Zona con *mejor disponibilidad* (%): *ROZO* (84.0%)
+
+✅ *Acción sugerida:* prioriza los *apagados* primero, luego revisa los *inestables* (cambios altos).

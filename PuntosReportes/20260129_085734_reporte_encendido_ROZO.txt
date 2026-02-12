@@ -1,0 +1,38 @@
+📊 *REPORTE ZONA: ROZO*
+
+📅 29/01/2026 08:57
+🟠 Disponibilidad: 80.0%
+📍 Total: 25 | ✅ 20 | ❌ 5
+
+⏱ Escaneo: 0.0s
+
+❌ *PUNTOS SIN RESPUESTA:*
+
+• CALLEJON VERGARA II
+• CONTROL LA TORRE
+• EL PEAJE ROZO SIST
+• TELECOM LA TORRE
+• VIRGINIA II ROZO
+
+📈 *ANÁLISIS:*
+🟠 Estado ATENCIÓN - Revisar puntos listados
+
+---
+🏢 Gane Palmira
+
+🧠 *ANÁLISIS INTELIGENTE*
+
+🏆 Zona con *más equipos encendidos* (cantidad): *ROZO* (20/25)
+⭐ Zona con *mejor disponibilidad* (%): *ROZO* (80.0%)
+
+⚠️*Equipos Apagagos*: *ROZO* (❌ 5 Sin ping)
+
+🔎 *Puntos (apagados):*
+
+• [ROZO] CALLEJON VERGARA II → ❌ APAGADO
+• [ROZO] TELECOM LA TORRE → ❌ APAGADO
+• [ROZO] VIRGINIA II ROZO → ❌ APAGADO
+• [ROZO] CONTROL LA TORRE → ❌ APAGADO
+• [ROZO] EL PEAJE ROZO SIST → ❌ APAGADO
+
+✅ *Acción sugerida:* prioriza los *apagados* primero, luego revisa los *inestables* (cambios altos).

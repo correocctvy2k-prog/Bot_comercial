@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  comercial-bot:
+    build: .
+    container_name: comercial-bot
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      # Persistir logs si fuera necesario (opcional)
+      - ./logs:/app/logs
+      # Montar temp para debug (opcional)
+      - ./temp:/app/temp
+    # Sincronizar zona horaria con el host (importante para reportes)
+    environment:
+      - TZ=America/Bogota
