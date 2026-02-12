@@ -17,8 +17,8 @@ WORKDIR /app
 # Copiamos primero el requirements.txt para aprovechar el caché de Docker
 COPY requirements.txt .
 # Instalamos las dependencias globalmente en el contenedor (no hace falta venv aquí)
-# --break-system-packages es necesario en versiones recientes de pip en Debian/Ubuntu
-RUN pip3 install --no-cache-dir -r requirements.txt --break-system-packages
+# Nota: En Debian Bullseye (node:18-bullseye), pip es antiguo y no requiere ni soporta --break-system-packages
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 # 4. Instalar dependencias de Node.js
 COPY package*.json ./
