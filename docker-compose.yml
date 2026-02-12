@@ -1,17 +1,32 @@
 version: '3.8'
 
 services:
+  # Servicio 1: Webhook (API Express)
   comercial-bot:
     build: .
     container_name: comercial-bot
     restart: always
     env_file:
       - .env
+    ports:
+      - "3001:3001"
     volumes:
-      # Persistir logs si fuera necesario (opcional)
       - ./logs:/app/logs
-      # Montar temp para debug (opcional)
       - ./temp:/app/temp
-    # Sincronizar zona horaria con el host (importante para reportes)
     environment:
       - TZ=America/Bogota
+    command: npm start
+
+  # Servicio 2: Worker (Procesamiento de Cola Supabase)
+  comercial-worker:
+    build: .
+    container_name: comercial-worker
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+      - ./temp:/app/temp
+    environment:
+      - TZ=America/Bogota
+    command: node src/worker.js
