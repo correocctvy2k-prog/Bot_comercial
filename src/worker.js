@@ -56,6 +56,17 @@ async function processJob(job) {
             try { raw_message = JSON.parse(raw_message); } catch (e) { }
         }
 
+        // 🚑 FIX ROUTING: Telegram necesita prefijo "tg_"
+        // Si n8n manda el ID puro, el router lo envía a WhatsApp.
+        const isTelegramPayload = raw_message && (raw_message.update_id || raw_message.message?.chat || raw_message.message_id);
+        if (isTelegramPayload) {
+            console.log("🕵️‍♂️ Payload Telegram detectado.");
+            if (wa_id && !String(wa_id).startsWith("tg_")) {
+                wa_id = `tg_${wa_id}`;
+                console.log(`✅ Router ID Corregido: ${wa_id}`);
+            }
+        }
+
         if (type === 'incoming_message') {
             // MODO BOT
             let value = raw_message?.entry?.[0]?.changes?.[0]?.value || raw_message;
