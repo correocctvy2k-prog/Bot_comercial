@@ -1,6 +1,6 @@
 const wa = require("./whatsapp.service");
 const tg = require("./telegram.service");
-// const { logInteraction } = require("./logger.service"); // ✅ CRM Logger
+const { logInteraction } = require("./logger.service"); // ✅ CRM Logger
 
 function isTelegram(id) {
     return String(id).startsWith("tg_");
@@ -18,7 +18,6 @@ module.exports = {
         const result = isTelegram(to) ? await tg.sendText(normalizeId(to), text) : await wa.sendText(to, text);
 
         // CRM Log
-        /*
         logInteraction({
             wa_id: to,
             direction: 'OUTGOING',
@@ -26,7 +25,6 @@ module.exports = {
             content: text,
             raw: result
         });
-        */
         return result;
     },
 
@@ -35,7 +33,6 @@ module.exports = {
         const result = isTelegram(to) ? await tg.sendButtons(normalizeId(to), body, buttons) : await wa.sendButtons(to, body, buttons);
 
         // CRM Log
-        /*
         const btnLabels = buttons.map(b => b.reply?.title || b.title).join(", ");
         logInteraction({
             wa_id: to,
@@ -44,7 +41,6 @@ module.exports = {
             content: `${body} [${btnLabels}]`,
             raw: result
         });
-        */
         return result;
     },
 
@@ -52,7 +48,6 @@ module.exports = {
         const result = isTelegram(to) ? await tg.sendList(normalizeId(to), body, btn, sections) : await wa.sendList(to, body, btn, sections);
 
         // CRM Log
-        /*
         logInteraction({
             wa_id: to,
             direction: 'OUTGOING',
@@ -60,7 +55,6 @@ module.exports = {
             content: `${body} [List Menu]`,
             raw: result
         });
-        */
         return result;
     },
 

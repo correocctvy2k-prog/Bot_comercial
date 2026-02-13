@@ -5,7 +5,7 @@ const dns = require('node:dns');
 dns.setDefaultResultOrder('ipv4first');
 
 const { processIncomingWhatsApp } = require("./services/bot.service");
-// const { registerChannel } = require("./services/logger.service"); // ✅ CRM
+const { registerChannel } = require("./services/logger.service"); // ✅ CRM
 
 
 
@@ -24,7 +24,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 });
 
 // 🚀 Registrar canal en CRM al iniciar
-// registerChannel().then(() => console.log("🤖 Worker iniciado y registrado en CRM."));
+registerChannel().then(() => console.log("🤖 Worker iniciado y registrado en CRM."));
 
 
 // Función Reutilizable para procesar trabajos

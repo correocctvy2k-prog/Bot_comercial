@@ -3,10 +3,9 @@
 // ✅ NO se agregan botones nuevos. Se mantienen mismos IDs y títulos.
 
 const { sendText, sendButtons, sendList } = require("./messaging.service");
-const { sendText, sendButtons, sendList } = require("./messaging.service");
 const { getSession, setSession } = require("./session.service");
 const { appendConsentLog, hasAcceptedConsent } = require("./consent.service");
-// const { logInteraction, ensureContact } = require("./logger.service"); // ✅ CRM Logger & Identity
+const { logInteraction, ensureContact } = require("./logger.service"); // ✅ CRM Logger & Identity
 
 // ⛔️ Antes: const { runMonitor } = require("./monitor.service");
 // ✅ Ahora: el bot envía lo que devuelve Python (messages[])
@@ -307,11 +306,19 @@ async function processIncomingWhatsApp(value, msg) {
   const profileName = getProfileNameFromValue(value);
 
   // 📡 CRM: Identity & Log
-  //   direction: 'INCOMING',
-  //   type: incoming.kind || 'unknown',
-  //   content: incoming.text || incoming.buttonId || incoming.listId || 'media',
-  //   raw: msg
-  // });
+  // Fire and forget identity check (slows down 100-200ms only on first time)
+  ensureContact(waId, profileName).then((cid) => {
+    if (cid) console.log(`✅ CRM Contact ID: ${cid}`);
+  });
+
+  // 📡 CRM: Log Incoming
+  logInteraction({
+    wa_id: waId,
+    direction: 'INCOMING',
+    type: incoming.kind || 'unknown',
+    content: incoming.text || incoming.buttonId || incoming.listId || 'media',
+    raw: msg
+  });
 
   // Leer sesión SIEMPRE al inicio
   let session = getSession(waId);
