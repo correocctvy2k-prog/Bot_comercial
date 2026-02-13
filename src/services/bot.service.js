@@ -549,40 +549,7 @@ async function processIncomingWhatsApp(value, msg) {
     return;
   }
 
-  // ============================
-  // BROADCAST FLOW
-  // ============================
-  if (session.step === "BROADCAST_ASK_MESSAGE") {
-    if (incoming.kind === "text") {
-      const msgText = incoming.text;
-      setSession(waId, { step: "BROADCAST_CONFIRM", broadcast_msg: msgText, name: profileName });
 
-      await sendButtons(waId, `📢 *Confirmar Difusión*\n\nMensaje:\n_"${msgText}"_\n\n¿Enviar a TODOS los usuarios activos?`, [
-        { id: "BROADCAST_YES", title: "✅ Sí, Enviar" },
-        { id: "BROADCAST_NO", title: "❌ Cancelar" }
-      ]);
-      return;
-    }
-    await sendText(waId, "Por favor escribe el mensaje de texto para la difusión.");
-    return;
-  }
-
-  if (session.step === "BROADCAST_CONFIRM") {
-    if (incoming.kind === "button") {
-      if (incoming.buttonId === "BROADCAST_YES") {
-        setSession(waId, { step: "READY", name: profileName });
-        await handleBroadcast(waId, session.broadcast_msg);
-        return;
-      }
-      if (incoming.buttonId === "BROADCAST_NO") {
-        setSession(waId, { step: "READY", name: profileName });
-        await sendText(waId, "📢 Difusión cancelada.");
-        await showAdminMenu(waId);
-        return;
-      }
-    }
-    return; // Ignore other inputs
-  }
 
   // ============================
   // Fallback
