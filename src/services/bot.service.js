@@ -452,36 +452,43 @@ async function processIncomingWhatsApp(value, msg) {
   }
 
   // ============================
-  // ADMIN HELPERS
+  // Fallback
   // ============================
-  async function showAdminMenu(waId) {
+  setSession(waId, { step: "ASK_CONSENT", name: profileName });
+  await askForConsent(waId, profileName);
+}
+
+// ============================
+// ADMIN HELPERS
+// ============================
+async function showAdminMenu(waId) {
+  const buttons = [
+    { type: "reply", reply: { id: ADMIN_LIST_PENDING, title: "📋 Ver Pendientes" } },
+    { type: "reply", reply: { id: "ADM_CLOSE", title: "❌ Salir" } }
+  ];
+  await sendButtons(waId, "🛡️ *Panel de Administrador IT*\nSelecciona una acción:", buttons);
+}
+
+async function handleListPending(waId) {
+  const pendings = await getPendingUsers();
+  if (!pendings || pendings.length === 0) {
+    await sendText(waId, "✅ No hay usuarios pendientes de aprobación.");
+    return;
+  }
+
+  for (const u of pendings) {
+    // Por cada usuario, mandamos una "tarjeta" con acciones
+    const body = `👤 *Solicitud de Acceso*\n\n*Nombre:* ${u.name}\n*ID:* \`${u.wa_id}\`\n*Fecha:* ${new Date(u.created_at).toLocaleString()}`;
+
     const buttons = [
-      { type: "reply", reply: { id: ADMIN_LIST_PENDING, title: "📋 Ver Pendientes" } },
-      { type: "reply", reply: { id: "ADM_CLOSE", title: "❌ Salir" } }
+      { type: "reply", reply: { id: `ADM_ROLE_VIEWER_${u.wa_id}`, title: "✅ Aprobar (Viewer)" } },
+      { type: "reply", reply: { id: `ADM_ROLE_ADMIN_${u.wa_id}`, title: "👮‍♂️ Hacer Admin" } },
+      { type: "reply", reply: { id: `ADM_ROLE_BLOCKED_${u.wa_id}`, title: "🚫 Bloquear" } }
+      // Nota: WhatsApp permite max 3 botones. Si queremos SuperAdmin, habría que hacer otro menú o asumir flujo.
     ];
-    await sendButtons(waId, "🛡️ *Panel de Administrador IT*\nSelecciona una acción:", buttons);
+
+    await sendButtons(waId, body, buttons);
   }
+}
 
-  async function handleListPending(waId) {
-    const pendings = await getPendingUsers();
-    if (!pendings || pendings.length === 0) {
-      await sendText(waId, "✅ No hay usuarios pendientes de aprobación.");
-      return;
-    }
-
-    for (const u of pendings) {
-      // Por cada usuario, mandamos una "tarjeta" con acciones
-      const body = `👤 *Solicitud de Acceso*\n\n*Nombre:* ${u.name}\n*ID:* \`${u.wa_id}\`\n*Fecha:* ${new Date(u.created_at).toLocaleString()}`;
-
-      const buttons = [
-        { type: "reply", reply: { id: `ADM_ROLE_VIEWER_${u.wa_id}`, title: "✅ Aprobar (Viewer)" } },
-        { type: "reply", reply: { id: `ADM_ROLE_ADMIN_${u.wa_id}`, title: "👮‍♂️ Hacer Admin" } },
-        { type: "reply", reply: { id: `ADM_ROLE_BLOCKED_${u.wa_id}`, title: "🚫 Bloquear" } }
-        // Nota: WhatsApp permite max 3 botones. Si queremos SuperAdmin, habría que hacer otro menú o asumir flujo.
-      ];
-
-      await sendButtons(waId, body, buttons);
-    }
-  }
-
-  module.exports = { processIncomingWhatsApp };
+module.exports = { processIncomingWhatsApp };
