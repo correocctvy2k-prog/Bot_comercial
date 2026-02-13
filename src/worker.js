@@ -85,11 +85,36 @@ async function processJob(job) {
             // 🚑 FIX CRÍTICO: Generar ID falso si n8n no lo envía
             if (msg && !msg.id) msg.id = `no_id_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
-            // ✅ CORRECCIÓN CRÍTICA 1: Reconstruir estructura de Texto
+            // ✅ CORRECCIÓN CRÍTICA: Telegram Callback (Botones)
+            // Telegram envía "callback_query" con "data" = ID del botón
+            if (raw_message.callback_query) {
+                console.log("👆 Detectado Clic en Botón de Telegram");
+                const cb = raw_message.callback_query;
+
+                // Forzar ID de usuario desde el callback
+                const fromId = cb.from?.id || cb.message?.chat?.id;
+                if (fromId) wa_id = `tg_${fromId}`;
+
+                // Construir mensaje tipo "interactive" para que el bot lo entienda
+                msg = {
+                    from: wa_id,
+                    type: "interactive",
+                    interactive: {
+                        type: "button_reply",
+                        button_reply: {
+                            id: cb.data, // El ID del botón (ej: CONSENT_ACCEPT)
+                            title: "Click" // Título dummy
+                        }
+                    }
+                };
+            }
+
+            // ✅ CORRECCIÓN CRÍTICA 2: Reconstruir estructura de Texto
             if (msg && msg.type === 'text' && typeof msg.text === 'string') {
                 msg.text = { body: msg.text };
             }
-            // ✅ CORRECCIÓN CRÍTICA 2: Reconstruir estructura de Botones (Interactive)
+
+            // ✅ CORRECCIÓN CRÍTICA 3: Reconstruir estructura de Botones (Interactive) - WhatsApp Legacy
             if (msg && msg.type === 'button') {
                 console.log("🔄 Reconstruyendo payload de botón simplificado...");
                 const btnId = (msg.index === 0) ? "CONSENT_ACCEPT" : "CONSENT_DECLINE";
