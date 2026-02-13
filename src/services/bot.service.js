@@ -562,6 +562,19 @@ async function processIncomingWhatsApp(value, msg) {
 // BROADCAST FLOW
 // ============================
 async function handleBroadcastFlow(waId, incoming, session, profileName) {
+  // 🚨 ESCAPE HATCH: Permitir salir con botón 'ADM_CLOSE' o escribiendo 'cancelar'
+  if (incoming.kind === "button" && incoming.buttonId === "ADM_CLOSE") {
+    setSession(waId, { step: "READY", name: profileName });
+    await sendText(waId, "📢 Difusión cancelada via menú.");
+    return false; // Dejar que el handler principal procese el ADM_CLOSE (envía 'Panel cerrado')
+  }
+  if (incoming.kind === "text" && normText(incoming.text) === "cancelar") {
+    setSession(waId, { step: "READY", name: profileName });
+    await sendText(waId, "📢 Difusión cancelada.");
+    await showAdminMenu(waId);
+    return true;
+  }
+
   if (session.step === "BROADCAST_ASK_MESSAGE") {
     if (incoming.kind === "text") {
       const msgText = incoming.text;
@@ -573,7 +586,9 @@ async function handleBroadcastFlow(waId, incoming, session, profileName) {
       ]);
       return true;
     }
-    await sendText(waId, "Por favor escribe el mensaje de texto para la difusión.");
+
+    // Si mandó otra cosa (ej: botón de menu viejo)
+    await sendText(waId, "⚠️ Estoy esperando el texto del mensaje para la difusión.\nEscribe *cancelar* para salir.");
     return true;
   }
 
