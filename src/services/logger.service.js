@@ -7,6 +7,72 @@ const supabase = createClient(supabaseURL, supabaseKey);
 // Config
 const BOT_CHANNEL_ID = process.env.BOT_CHANNEL_ID || 'bot_comercial_main';
 
+function getChannelType(waId) {
+    return String(waId).startsWith('tg_') ? 'telegram' : 'whatsapp';
+}
+
+/**
+ * Asegura que el contacto exista en la tabla 'contacts' y 'contact_identities'.
+ * @param {string} waId - Provider ID
+ * @param {string} name - Profile Name
+ */
+async function ensureContact(waId, name) {
+    if (!waId) return;
+    const channelType = getChannelType(waId);
+
+    try {
+        // 1. Check Identity
+        const { data: identity } = await supabase
+            .from('contact_identities')
+            .select('contact_id')
+            .eq('provider_id', waId)
+            .eq('channel_type', channelType)
+            .single();
+
+        if (identity) {
+            // Ya existe, update last_seen (StartTransition/FireForget)
+            supabase.from('contact_identities')
+                .update({ last_seen: new Date() })
+                .eq('provider_id', waId)
+                .then();
+            return identity.contact_id;
+        }
+
+        // 2. Create New Contact (Si no existe identidad)
+        console.log(`👤 CRM: Creando nuevo contacto para ${name} (${waId})`);
+
+        // Crear Contacto Base
+        const { data: newContact, error: errContact } = await supabase
+            .from('contacts')
+            .insert({ display_name: name || 'Unknown' })
+            .select()
+            .single();
+
+        if (errContact || !newContact) {
+            console.error("❌ Error creando contacto:", errContact?.message);
+            return null;
+        }
+
+        // Crear Identidad
+        const { error: errIdentity } = await supabase
+            .from('contact_identities')
+            .insert({
+                contact_id: newContact.id,
+                provider_id: waId,
+                channel_type: channelType,
+                profile_data: { name }
+            });
+
+        if (errIdentity) console.error("❌ Error creando identidad:", errIdentity.message);
+        return newContact.id;
+
+    } catch (e) {
+        console.error("❌ CRM Identity Error:", e);
+        return null;
+    }
+}
+
+
 /**
  * Log an interaction to the CRM.
  * @param {Object} p
@@ -52,5 +118,6 @@ async function registerChannel() {
 
 module.exports = {
     logInteraction,
-    registerChannel
+    registerChannel,
+    ensureContact
 };
