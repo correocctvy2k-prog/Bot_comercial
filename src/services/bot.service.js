@@ -632,7 +632,6 @@ async function showAdminMenu(waId) {
   const buttons = [
     { type: "reply", reply: { id: ADMIN_LIST_PENDING, title: "📋 Ver Pendientes" } },
     { type: "reply", reply: { id: ADMIN_LIST_ALL, title: "👥 Ver Todos" } },
-    { type: "reply", reply: { id: ADMIN_LIST_ALL, title: "👥 Ver Todos" } },
     { type: "reply", reply: { id: ADMIN_BROADCAST, title: "📢 Difusión" } },
     { type: "reply", reply: { id: ADMIN_STATS, title: "📊 Estadísticas" } },
     { type: "reply", reply: { id: "ADM_CLOSE", title: "❌ Salir" } }

@@ -51,7 +51,7 @@ async function sendText(chatId, text) {
 }
 
 async function sendButtons(chatId, text, buttons) {
-    const inlineFn = (buttons || []).map(b => {
+    const rawButtons = (buttons || []).map(b => {
         // ✅ Soporte híbrido: estructura WhatsApp (b.reply.title) o simple (b.title)
         const title = b.reply?.title || b.title || "Button";
         const id = b.reply?.id || b.id || "NO_ID";
@@ -61,11 +61,17 @@ async function sendButtons(chatId, text, buttons) {
         };
     });
 
+    // Chunk into rows of 2
+    const keyboard = [];
+    for (let i = 0; i < rawButtons.length; i += 2) {
+        keyboard.push(rawButtons.slice(i, i + 2));
+    }
+
     return tgPost("sendMessage", {
         chat_id: chatId,
         text: text,
         reply_markup: {
-            inline_keyboard: [inlineFn]
+            inline_keyboard: keyboard
         }
     });
 }
