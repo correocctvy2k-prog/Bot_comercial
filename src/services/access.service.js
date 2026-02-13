@@ -72,8 +72,24 @@ async function setUserRole(waId, role) {
   return !error;
 }
 
+// Wrapper de compatibilidad para bot.service.js
+async function getUserAccess(waId) {
+  const role = await checkUserRole(waId);
+  return { role };
+}
+
+function canAccessZone(access, zone) {
+  // Por ahora, SUPERADMIN y ADMIN ven todo.
+  // VIEWER también ve todo (mientras implementamos asignación por zona específica).
+  const role = access?.role || "NONE";
+  if (role === "SUPERADMIN" || role === "ADMIN" || role === "VIEWER") return true;
+  return false;
+}
+
 module.exports = {
   checkUserRole,
   getPendingUsers,
-  setUserRole
+  setUserRole,
+  getUserAccess,   // ✅ Added
+  canAccessZone    // ✅ Added
 };

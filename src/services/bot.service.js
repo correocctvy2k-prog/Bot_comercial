@@ -107,10 +107,10 @@ function normText(x) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-function safeAccess(waId) {
+async function safeAccess(waId) {
   try {
-    const a = getUserAccess(waId) || {};
-    return { role: a.role || "NONE", ...a };
+    const a = await getUserAccess(waId); // ✅ ASYNC AWAIT
+    return { role: a?.role || "NONE", ...a };
   } catch (e) {
     console.error("❌ Error getUserAccess:", e?.message || e);
     return { role: "NONE" };
@@ -133,7 +133,8 @@ async function askForConsent(waId, name) {
 }
 
 async function showReportePuntosMenu(waId, name) {
-  const access = safeAccess(waId);
+  const access = await safeAccess(waId); // ✅ AWAIT
+
 
   if (access.role === "NONE") {
     await sendText(
@@ -215,7 +216,7 @@ function mapChoiceToZona(choiceId) {
 }
 
 async function handleReporteChoice(waId, name, choiceId) {
-  const access = safeAccess(waId);
+  const access = await safeAccess(waId); // ✅ AWAIT
 
   if (access.role === "NONE") {
     await sendText(waId, "🚫 No tienes permisos para ejecutar reportes.");
