@@ -16,6 +16,7 @@ const { getUserAccess, canAccessZone, checkUserRole, getPendingUsers, getAllUser
 // NUEVOS BOTONES ADMIN
 const ADMIN_LIST_PENDING = "ADMIN_LIST_PENDING";
 const ADMIN_LIST_ALL = "ADMIN_LIST_ALL";
+const ADMIN_BROADCAST = "ADMIN_BROADCAST";
 
 // =====================
 // Config
@@ -334,6 +335,19 @@ async function processIncomingWhatsApp(value, msg) {
       return;
     }
 
+    // A.2 Listar TODOS
+    if (btnId === ADMIN_LIST_ALL) {
+      await handleListAll(waId);
+      return;
+    }
+
+    // A.3 Broadcast Init
+    if (btnId === ADMIN_BROADCAST) {
+      setSession(waId, { step: "BROADCAST_ASK_MESSAGE", name: profileName });
+      await sendText(waId, "📢 *Modo Difusión*\n\nEscribe el mensaje que deseas enviar a todos los usuarios:");
+      return;
+    }
+
     // B. Acciones sobre Usuario
     if (btnId && btnId.startsWith("ADM_ROLE_")) {
       const parts = btnId.split("_");
@@ -523,6 +537,41 @@ async function processIncomingWhatsApp(value, msg) {
   }
 
   // ============================
+  // BROADCAST FLOW
+  // ============================
+  if (session.step === "BROADCAST_ASK_MESSAGE") {
+    if (incoming.kind === "text") {
+      const msgText = incoming.text;
+      setSession(waId, { step: "BROADCAST_CONFIRM", broadcast_msg: msgText, name: profileName });
+
+      await sendButtons(waId, `📢 *Confirmar Difusión*\n\nMensaje:\n_"${msgText}"_\n\n¿Enviar a TODOS los usuarios activos?`, [
+        { id: "BROADCAST_YES", title: "✅ Sí, Enviar" },
+        { id: "BROADCAST_NO", title: "❌ Cancelar" }
+      ]);
+      return;
+    }
+    await sendText(waId, "Por favor escribe el mensaje de texto para la difusión.");
+    return;
+  }
+
+  if (session.step === "BROADCAST_CONFIRM") {
+    if (incoming.kind === "button") {
+      if (incoming.buttonId === "BROADCAST_YES") {
+        setSession(waId, { step: "READY", name: profileName });
+        await handleBroadcast(waId, session.broadcast_msg);
+        return;
+      }
+      if (incoming.buttonId === "BROADCAST_NO") {
+        setSession(waId, { step: "READY", name: profileName });
+        await sendText(waId, "📢 Difusión cancelada.");
+        await showAdminMenu(waId);
+        return;
+      }
+    }
+    return; // Ignore other inputs
+  }
+
+  // ============================
   // Fallback
   // ============================
   setSession(waId, { step: "ASK_CONSENT", name: profileName });
@@ -536,6 +585,7 @@ async function showAdminMenu(waId) {
   const buttons = [
     { type: "reply", reply: { id: ADMIN_LIST_PENDING, title: "📋 Ver Pendientes" } },
     { type: "reply", reply: { id: ADMIN_LIST_ALL, title: "👥 Ver Todos" } },
+    { type: "reply", reply: { id: ADMIN_BROADCAST, title: "📢 Difusión" } },
     { type: "reply", reply: { id: "ADM_CLOSE", title: "❌ Salir" } }
   ];
   await sendButtons(waId, "🛡️ *Panel de Administrador IT*\nSelecciona una acción:", buttons);
