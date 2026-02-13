@@ -746,7 +746,6 @@ async function handleStats(waId) {
       `⏱️ *Uptime:* ${uptimeStr}\n` +
       `👥 *Usuarios Totales:* ${stats.users}\n` +
       `⏳ *Usuarios Pendientes:* ${stats.pending_users}\n` +
-      `📇 *Contactos CRM:* ${stats.crm_contacts}\n` +
       `📨 *Cola Mensajes:* ${stats.queue}\n` +
       `🤖 *Versión:* ${process.env.npm_package_version || "1.0.0"}`;
 
