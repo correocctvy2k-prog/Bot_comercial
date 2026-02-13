@@ -307,19 +307,11 @@ async function processIncomingWhatsApp(value, msg) {
   const profileName = getProfileNameFromValue(value);
 
   // 📡 CRM: Identity & Log
-  // Fire and forget identity check (slows down 100-200ms only on first time)
-  ensureContact(waId, profileName).then((cid) => {
-    if (cid) console.log(`✅ CRM Contact ID: ${cid}`);
-  });
-
-  // 📡 CRM: Log Incoming
-  logInteraction({
-    wa_id: waId,
-    direction: 'INCOMING',
-    type: incoming.kind || 'unknown',
-    content: incoming.text || incoming.buttonId || incoming.listId || 'media',
-    raw: msg
-  });
+  //   direction: 'INCOMING',
+  //   type: incoming.kind || 'unknown',
+  //   content: incoming.text || incoming.buttonId || incoming.listId || 'media',
+  //   raw: msg
+  // });
 
   // Leer sesión SIEMPRE al inicio
   let session = getSession(waId);
