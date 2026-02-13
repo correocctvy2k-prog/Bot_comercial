@@ -722,22 +722,29 @@ async function handleBroadcast(waId, message) {
 }
 
 async function handleStats(waId) {
-  const uptimeSeconds = Math.floor((Date.now() - UPTIME_START) / 1000);
-  const h = Math.floor(uptimeSeconds / 3600).toString().padStart(2, '0');
-  const m = Math.floor((uptimeSeconds % 3600) / 60).toString().padStart(2, '0');
-  const s = (uptimeSeconds % 60).toString().padStart(2, '0');
-  const uptimeStr = `${h}:${m}:${s}`;
+  try {
+    console.log(`📊 Stats requested by ${waId}`);
+    const uptimeSeconds = Math.floor((Date.now() - UPTIME_START) / 1000);
+    const h = Math.floor(uptimeSeconds / 3600).toString().padStart(2, '0');
+    const m = Math.floor((uptimeSeconds % 3600) / 60).toString().padStart(2, '0');
+    const s = (uptimeSeconds % 60).toString().padStart(2, '0');
+    const uptimeStr = `${h}:${m}:${s}`;
 
-  const stats = await getSystemStats();
+    const stats = await getSystemStats();
+    console.log("📊 System Stats retrieved:", stats);
 
-  const msg = `📊 *Estadísticas del Sistema*\n\n` +
-    `⏱️ *Uptime:* ${uptimeStr}\n` +
-    `👥 *Usuarios Totales:* ${stats.users}\n` +
-    `⏳ *Usuarios Pendientes:* ${stats.pending_users}\n` +
-    `📨 *Cola Mensajes:* ${stats.queue}\n` +
-    `🤖 *Versión:* ${process.env.npm_package_version || "1.0.0"}`;
+    const msg = `📊 *Estadísticas del Sistema*\n\n` +
+      `⏱️ *Uptime:* ${uptimeStr}\n` +
+      `👥 *Usuarios Totales:* ${stats.users}\n` +
+      `⏳ *Usuarios Pendientes:* ${stats.pending_users}\n` +
+      `📨 *Cola Mensajes:* ${stats.queue}\n` +
+      `🤖 *Versión:* ${process.env.npm_package_version || "1.0.0"}`;
 
-  await sendText(waId, msg);
+    await sendText(waId, msg);
+  } catch (e) {
+    console.error("❌ Error generating stats:", e);
+    await sendText(waId, "⚠️ Error obteniendo estadísticas.");
+  }
 }
 
 module.exports = { processIncomingWhatsApp };
