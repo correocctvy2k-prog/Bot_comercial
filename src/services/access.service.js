@@ -61,6 +61,19 @@ async function getPendingUsers() {
 }
 
 /**
+ * Obtiene TODOS los usuarios.
+ */
+async function getAllUsers() {
+  const { data, error } = await supabase
+    .from('access_control')
+    .select('*')
+    .order('role', { ascending: false }) // pending/SUPERADMIN arriba
+    .order('created_at', { ascending: false });
+
+  return data || [];
+}
+
+/**
  * Aprueba o bloquea un usuario.
  */
 async function setUserRole(waId, role) {
@@ -89,6 +102,7 @@ function canAccessZone(access, zone) {
 module.exports = {
   checkUserRole,
   getPendingUsers,
+  getAllUsers, // ✅ Added
   setUserRole,
   getUserAccess,   // ✅ Added
   canAccessZone    // ✅ Added

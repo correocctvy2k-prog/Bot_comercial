@@ -11,10 +11,11 @@ const { appendConsentLog, hasAcceptedConsent } = require("./consent.service");
 const { runMonitorAndSend } = require("./monitor.service");
 
 // ✅ IMPORTAR SERVICIO DE ACCESO (FULL)
-const { getUserAccess, canAccessZone, checkUserRole, getPendingUsers, setUserRole } = require("./access.service");
+const { getUserAccess, canAccessZone, checkUserRole, getPendingUsers, getAllUsers, setUserRole } = require("./access.service");
 
 // NUEVOS BOTONES ADMIN
 const ADMIN_LIST_PENDING = "ADMIN_LIST_PENDING";
+const ADMIN_LIST_ALL = "ADMIN_LIST_ALL";
 
 // =====================
 // Config
@@ -327,6 +328,12 @@ async function processIncomingWhatsApp(value, msg) {
       return;
     }
 
+    // A.2 Listar TODOS
+    if (btnId === ADMIN_LIST_ALL) {
+      await handleListAll(waId);
+      return;
+    }
+
     // B. Acciones sobre Usuario
     if (btnId && btnId.startsWith("ADM_ROLE_")) {
       const parts = btnId.split("_");
@@ -528,6 +535,7 @@ async function processIncomingWhatsApp(value, msg) {
 async function showAdminMenu(waId) {
   const buttons = [
     { type: "reply", reply: { id: ADMIN_LIST_PENDING, title: "📋 Ver Pendientes" } },
+    { type: "reply", reply: { id: ADMIN_LIST_ALL, title: "👥 Ver Todos" } },
     { type: "reply", reply: { id: "ADM_CLOSE", title: "❌ Salir" } }
   ];
   await sendButtons(waId, "🛡️ *Panel de Administrador IT*\nSelecciona una acción:", buttons);
@@ -552,6 +560,42 @@ async function handleListPending(waId) {
     ];
 
     await sendButtons(waId, body, buttons);
+  }
+}
+
+async function handleListAll(waId) {
+  const users = await getAllUsers();
+  if (!users || users.length === 0) {
+    await sendText(waId, "✅ No hay usuarios registrados.");
+    return;
+  }
+
+  // Si hay muchos, mostramos solo los primeros 10 por ahora (paginación simple)
+  // O un resumen de texto si es muy largo.
+  await sendText(waId, `👥 Encontrados ${users.length} usuarios.`);
+
+  for (const u of users) {
+    const isMe = u.wa_id === waId; // No auto-bloquearse
+    const body = `👤 *Usuario: ${u.name}*\nID: \`${u.wa_id}\`\nRol: *${u.role}*`;
+
+    if (isMe) {
+      await sendText(waId, body + "\n(Eres tú 👑)");
+      continue;
+    }
+
+    const buttons = [];
+    if (u.role !== "SUPERADMIN") buttons.push({ type: "reply", reply: { id: `ADM_ROLE_SUPERADMIN_${u.wa_id}`, title: "⬆️ Super" } });
+    if (u.role !== "ADMIN") buttons.push({ type: "reply", reply: { id: `ADM_ROLE_ADMIN_${u.wa_id}`, title: "👮‍♂️ Admin" } });
+    if (u.role !== "VIEWER") buttons.push({ type: "reply", reply: { id: `ADM_ROLE_VIEWER_${u.wa_id}`, title: "👁️ Viewer" } });
+    if (u.role !== "BLOCKED") buttons.push({ type: "reply", reply: { id: `ADM_ROLE_BLOCKED_${u.wa_id}`, title: "🚫 Block" } });
+
+    // Limit telegram buttons (max 3 usually best per row, but we send listed)
+    // Telegram service maps this to inline keyboard.
+    // Cortamos a 3 botones más relevantes si hay muchos, o enviamos.
+    // Para simplificar: Enviamos Admin/Viewer/Block
+    const actions = buttons.filter(b => b.reply.id.includes("ADMIN") || b.reply.id.includes("VIEWER") || b.reply.id.includes("BLOCKED")).slice(0, 3);
+
+    await sendButtons(waId, body, actions);
   }
 }
 
