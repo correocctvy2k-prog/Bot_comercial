@@ -99,11 +99,44 @@ function canAccessZone(access, zone) {
   return false;
 }
 
+
+
+/**
+ * Obtiene estadísticas básicas del sistema (Usuarios, Cola).
+ */
+async function getSystemStats() {
+  try {
+    const { count: usersCount, error: errUsers } = await supabase.from('access_control').select('*', { count: 'exact', head: true });
+    if (errUsers) console.error("❌ Stats Error (Users):", errUsers.message);
+
+    const { count: pendingUsers, error: errPending } = await supabase.from('access_control').select('*', { count: 'exact', head: true }).eq('role', 'pending');
+    if (errPending) console.error("❌ Stats Error (Pending):", errPending.message);
+
+    // Nota: bot_queue puede no ser accesible si las Policies son estrictas
+    const { count: queueCount, error: errQueue } = await supabase.from('bot_queue').select('*', { count: 'exact', head: true }).in('status', ['pending', 'processing']);
+    if (errQueue) {
+      console.error("❌ Stats Error (Queue):", errQueue.message);
+      // Si falla cola (ej: 403), retornamos 0 para no romper todo
+    }
+
+    return {
+      users: usersCount || 0,
+      pending_users: pendingUsers || 0,
+      queue: queueCount || 0
+    };
+  } catch (e) {
+    console.error("❌ Exception in getSystemStats:", e);
+    throw e; // Rethrow so bot.service.js catches it
+  }
+}
+
+
 module.exports = {
   checkUserRole,
   getPendingUsers,
-  getAllUsers, // ✅ Added
+  getAllUsers,
   setUserRole,
-  getUserAccess,   // ✅ Added
-  canAccessZone    // ✅ Added
+  getUserAccess,
+  canAccessZone,
+  getSystemStats // ✅ Added
 };
