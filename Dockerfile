@@ -8,7 +8,8 @@ RUN apt-get update && apt-get install -y \
     python3-venv \
     # Librerías necesarias para matplotlib y otras dependencias gráficas
     libgl1-mesa-glx \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -s /usr/bin/python3 /usr/bin/python
 
 # 2. Configurar directorio de trabajo
 WORKDIR /app
