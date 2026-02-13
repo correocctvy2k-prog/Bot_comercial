@@ -1,58 +1,79 @@
-// src/services/access.service.js
+const { createClient } = require('@supabase/supabase-js');
 
-function normWaId(x) {
-  const s = String(x || "").trim();
-  // Permitir IDs de Telegram explicitos
-  if (s.startsWith("tg_")) return s;
-  // Comportamiento normal para WA: solo numeros
-  return s.replace(/[^\d]/g, "");
-}
+// Usamos las credenciales del entorno (El Worker debe tener la SERVICE_ROLE_KEY idealmente, 
+// o la tabla debe permitir inserts públicos para 'pending')
+const supabaseURL = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
 
-function csvToSet(v) {
-  return new Set(
-    String(v || "")
-      .split(",")
-      .map((s) => normWaId(s))
-      .filter(Boolean)
-  );
-}
+const supabase = createClient(supabaseURL, supabaseKey);
 
-function envZoneMap() {
-  // Claves internas del bot => ENV KEY
-  return [
-    ["AMAIME Y EL PLACER", "WPP_ADMIN_AMAIME_Y_EL_PLACER"],
-    ["CANDELARIA", "WPP_ADMIN_CANDELARIA"],
-    ["FLORIDA", "WPP_ADMIN_FLORIDA"],
-    ["OCCIDENTE", "WPP_ADMIN_OCCIDENTE"],
-    ["PALMIRA", "WPP_ADMIN_PALMIRA"],
-    ["PRADERA", "WPP_ADMIN_PRADERA"],
-    ["ROZO", "WPP_ADMIN_ROZO"],
-  ];
-}
+/**
+ * Verifica el rol del usuario.
+ * Si no existe, lo crea automáticamente como 'pending'.
+ */
+async function checkUserRole(waId, name) {
+  try {
+    const { data, error } = await supabase
+      .from('access_control')
+      .select('role, name')
+      .eq('wa_id', waId)
+      .single();
 
-function getUserAccess(waId) {
-  const id = normWaId(waId); // ej: "tg_12345" o "57300..."
+    if (error && error.code !== 'PGRST116') { // PGRST116 es "Row not found"
+      console.error("❌ Error verificando rol:", error.message);
+      return 'pending'; // Fallback seguro
+    }
 
-  const superAdmins = csvToSet(process.env.WPP_SUPERADMINS);
-  if (superAdmins.has(id)) {
-    return { role: "SUPERADMIN", zones: new Set(["*"]) }; // '*' = todas
+    if (data) {
+      // Si tiene nombre desactualizado, podríamos actualizarlo "silenciosamente"
+      if (name && data.name !== name) {
+        // Fire and forget update
+        supabase.from('access_control').update({ name }).eq('wa_id', waId).then();
+      }
+      return data.role;
+    } else {
+      // ✨ AUTO-REGISTRO: Usuario nuevo -> 'pending'
+      console.log(`👤 Nuevo usuario detectado: ${name} (${waId}). Registrando como pending...`);
+      await supabase.from('access_control').insert({
+        wa_id: waId,
+        name: name || "Desconocido",
+        role: 'pending'
+      });
+      return 'pending';
+    }
+  } catch (e) {
+    console.error("❌ Exception en checkUserRole:", e);
+    return 'pending';
   }
-
-  const zones = new Set();
-  for (const [zoneName, envKey] of envZoneMap()) {
-    const set = csvToSet(process.env[envKey]);
-    if (set.has(id)) zones.add(zoneName);
-  }
-
-  if (zones.size > 0) return { role: "ADMIN", zones };
-
-  return { role: "NONE", zones: new Set() };
 }
 
-function canAccessZone(access, zoneName) {
-  if (!access) return false;
-  if (access.zones.has("*")) return true;
-  return access.zones.has(zoneName);
+/**
+ * Obtiene lista de usuarios pendientes para que el Admin apruebe.
+ */
+async function getPendingUsers() {
+  const { data, error } = await supabase
+    .from('access_control')
+    .select('*')
+    .eq('role', 'pending')
+    .order('created_at', { ascending: false });
+
+  return data || [];
 }
 
-module.exports = { getUserAccess, canAccessZone };
+/**
+ * Aprueba o bloquea un usuario.
+ */
+async function setUserRole(waId, role) {
+  const { error } = await supabase
+    .from('access_control')
+    .update({ role })
+    .eq('wa_id', waId);
+
+  return !error;
+}
+
+module.exports = {
+  checkUserRole,
+  getPendingUsers,
+  setUserRole
+};
