@@ -8,6 +8,8 @@ RUN apt-get update && apt-get install -y \
     python3-venv \
     # Librerías necesarias para matplotlib y otras dependencias gráficas
     libgl1-mesa-glx \
+    iputils-ping \
+    net-tools \
     && rm -rf /var/lib/apt/lists/* \
     && ln -s /usr/bin/python3 /usr/bin/python
 
