@@ -11,12 +11,16 @@ const { appendConsentLog, hasAcceptedConsent } = require("./consent.service");
 const { runMonitorAndSend } = require("./monitor.service");
 
 // ✅ IMPORTAR SERVICIO DE ACCESO (FULL)
-const { getUserAccess, canAccessZone, checkUserRole, getPendingUsers, getAllUsers, setUserRole } = require("./access.service");
+const { getUserAccess, canAccessZone, checkUserRole, getPendingUsers, getAllUsers, setUserRole, getSystemStats } = require("./access.service");
 
 // NUEVOS BOTONES ADMIN
 const ADMIN_LIST_PENDING = "ADMIN_LIST_PENDING";
 const ADMIN_LIST_ALL = "ADMIN_LIST_ALL";
+const ADMIN_LIST_ALL = "ADMIN_LIST_ALL";
 const ADMIN_BROADCAST = "ADMIN_BROADCAST";
+const ADMIN_STATS = "ADMIN_STATS";
+
+const UPTIME_START = Date.now();
 
 // =====================
 // Config
@@ -367,6 +371,13 @@ async function processIncomingWhatsApp(value, msg) {
     if (btnId === ADMIN_BROADCAST) {
       setSession(waId, { step: "BROADCAST_ASK_MESSAGE", name: profileName });
       await sendText(waId, "📢 *Modo Difusión*\n\nEscribe el mensaje que deseas enviar a todos los usuarios:");
+      await sendText(waId, "📢 *Modo Difusión*\n\nEscribe el mensaje que deseas enviar a todos los usuarios:");
+      return;
+    }
+
+    // A.4 Stats
+    if (btnId === ADMIN_STATS) {
+      await handleStats(waId);
       return;
     }
 
@@ -621,7 +632,9 @@ async function showAdminMenu(waId) {
   const buttons = [
     { type: "reply", reply: { id: ADMIN_LIST_PENDING, title: "📋 Ver Pendientes" } },
     { type: "reply", reply: { id: ADMIN_LIST_ALL, title: "👥 Ver Todos" } },
+    { type: "reply", reply: { id: ADMIN_LIST_ALL, title: "👥 Ver Todos" } },
     { type: "reply", reply: { id: ADMIN_BROADCAST, title: "📢 Difusión" } },
+    { type: "reply", reply: { id: ADMIN_STATS, title: "📊 Estadísticas" } },
     { type: "reply", reply: { id: "ADM_CLOSE", title: "❌ Salir" } }
   ];
   await sendButtons(waId, "🛡️ *Panel de Administrador IT*\nSelecciona una acción:", buttons);
@@ -707,6 +720,25 @@ async function handleBroadcast(waId, message) {
   }
 
   await sendText(waId, `✅ *Difusión Completada*\n\nExitosos: ${successCount}\nFallidos: ${failCount}`);
+}
+
+async function handleStats(waId) {
+  const uptimeSeconds = Math.floor((Date.now() - UPTIME_START) / 1000);
+  const h = Math.floor(uptimeSeconds / 3600).toString().padStart(2, '0');
+  const m = Math.floor((uptimeSeconds % 3600) / 60).toString().padStart(2, '0');
+  const s = (uptimeSeconds % 60).toString().padStart(2, '0');
+  const uptimeStr = `${h}:${m}:${s}`;
+
+  const stats = await getSystemStats();
+
+  const msg = `📊 *Estadísticas del Sistema*\n\n` +
+    `⏱️ *Uptime:* ${uptimeStr}\n` +
+    `👥 *Usuarios Totales:* ${stats.users}\n` +
+    `⏳ *Usuarios Pendientes:* ${stats.pending_users}\n` +
+    `📨 *Cola Mensajes:* ${stats.queue}\n` +
+    `🤖 *Versión:* ${process.env.npm_package_version || "1.0.0"}`;
+
+  await sendText(waId, msg);
 }
 
 module.exports = { processIncomingWhatsApp };
