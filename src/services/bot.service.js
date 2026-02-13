@@ -16,7 +16,7 @@ const { getUserAccess, canAccessZone, checkUserRole, getPendingUsers, getAllUser
 // NUEVOS BOTONES ADMIN
 const ADMIN_LIST_PENDING = "ADMIN_LIST_PENDING";
 const ADMIN_LIST_ALL = "ADMIN_LIST_ALL";
-const ADMIN_LIST_ALL = "ADMIN_LIST_ALL";
+
 const ADMIN_BROADCAST = "ADMIN_BROADCAST";
 const ADMIN_STATS = "ADMIN_STATS";
 
