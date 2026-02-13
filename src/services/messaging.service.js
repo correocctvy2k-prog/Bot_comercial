@@ -1,5 +1,6 @@
 const wa = require("./whatsapp.service");
 const tg = require("./telegram.service");
+const { logInteraction } = require("./logger.service"); // ✅ CRM Logger
 
 function isTelegram(id) {
     return String(id).startsWith("tg_");
@@ -12,18 +13,50 @@ function normalizeId(id) {
 
 // Fachada compatible con whatsapp.service.js
 module.exports = {
-    sendText: (to, text) => {
+    sendText: async (to, text) => {
         console.log(`📡 Router sendText: ${to}`);
-        return isTelegram(to) ? tg.sendText(normalizeId(to), text) : wa.sendText(to, text);
+        const result = isTelegram(to) ? await tg.sendText(normalizeId(to), text) : await wa.sendText(to, text);
+
+        // CRM Log
+        logInteraction({
+            wa_id: to,
+            direction: 'OUTGOING',
+            type: 'text',
+            content: text,
+            raw: result
+        });
+        return result;
     },
 
-    sendButtons: (to, body, buttons) => {
+    sendButtons: async (to, body, buttons) => {
         console.log(`📡 Router sendButtons: ${to}`);
-        return isTelegram(to) ? tg.sendButtons(normalizeId(to), body, buttons) : wa.sendButtons(to, body, buttons);
+        const result = isTelegram(to) ? await tg.sendButtons(normalizeId(to), body, buttons) : await wa.sendButtons(to, body, buttons);
+
+        // CRM Log
+        const btnLabels = buttons.map(b => b.reply?.title || b.title).join(", ");
+        logInteraction({
+            wa_id: to,
+            direction: 'OUTGOING',
+            type: 'button',
+            content: `${body} [${btnLabels}]`,
+            raw: result
+        });
+        return result;
     },
 
-    sendList: (to, body, btn, sections) =>
-        isTelegram(to) ? tg.sendList(normalizeId(to), body, btn, sections) : wa.sendList(to, body, btn, sections),
+    sendList: async (to, body, btn, sections) => {
+        const result = isTelegram(to) ? await tg.sendList(normalizeId(to), body, btn, sections) : await wa.sendList(to, body, btn, sections);
+
+        // CRM Log
+        logInteraction({
+            wa_id: to,
+            direction: 'OUTGOING',
+            type: 'list',
+            content: `${body} [List Menu]`,
+            raw: result
+        });
+        return result;
+    },
 
     sendTextChunked: (to, text, opts) =>
         isTelegram(to) ? tg.sendTextChunked(normalizeId(to), text, opts) : wa.sendTextChunked(to, text, opts),

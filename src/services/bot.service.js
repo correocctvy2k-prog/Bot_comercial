@@ -3,8 +3,10 @@
 // ✅ NO se agregan botones nuevos. Se mantienen mismos IDs y títulos.
 
 const { sendText, sendButtons, sendList } = require("./messaging.service");
+const { sendText, sendButtons, sendList } = require("./messaging.service");
 const { getSession, setSession } = require("./session.service");
 const { appendConsentLog, hasAcceptedConsent } = require("./consent.service");
+const { logInteraction } = require("./logger.service"); // ✅ CRM Logger
 
 // ⛔️ Antes: const { runMonitor } = require("./monitor.service");
 // ✅ Ahora: el bot envía lo que devuelve Python (messages[])
@@ -303,6 +305,15 @@ async function processIncomingWhatsApp(value, msg) {
 
   const incoming = parseIncoming(msg);
   const profileName = getProfileNameFromValue(value);
+
+  // 📡 CRM: Log Incoming
+  logInteraction({
+    wa_id: waId,
+    direction: 'INCOMING',
+    type: incoming.kind || 'unknown',
+    content: incoming.text || incoming.buttonId || incoming.listId || 'media',
+    raw: msg
+  });
 
   // Leer sesión SIEMPRE al inicio
   let session = getSession(waId);
