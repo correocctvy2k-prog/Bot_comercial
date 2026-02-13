@@ -10,7 +10,11 @@ const { appendConsentLog, hasAcceptedConsent } = require("./consent.service");
 // ✅ Ahora: el bot envía lo que devuelve Python (messages[])
 const { runMonitorAndSend } = require("./monitor.service");
 
-const { getUserAccess, canAccessZone } = require("./access.service");
+// ✅ IMPORTAR SERVICIO DE ACCESO (FULL)
+const { getUserAccess, canAccessZone, checkUserRole, getPendingUsers, setUserRole } = require("./access.service");
+
+// NUEVOS BOTONES ADMIN
+const ADMIN_LIST_PENDING = "ADMIN_LIST_PENDING";
 
 // =====================
 // Config
@@ -293,6 +297,65 @@ async function processIncomingWhatsApp(value, msg) {
 
   const incoming = parseIncoming(msg);
   const profileName = getProfileNameFromValue(value);
+
+  // 2. ✅ CHECK DE SEGURIDAD (RBAC)
+  // Verificamos rol en cada interacción.
+  const userRole = await checkUserRole(waId, profileName);
+  console.log(`🔒 RBAC Check: ${waId} (${profileName}) -> Role: ${userRole}`);
+
+  // ============================
+  // 👮‍♂️ COMANDO DE ADMIN (ADMTI)
+  // ============================
+  if (incoming.kind === "text" && normText(incoming.text) === "admti") {
+    if (userRole === 'SUPERADMIN' || userRole === 'ADMIN') {
+      await showAdminMenu(waId);
+      return;
+    } else {
+      // Fake 404 para despistar
+      await sendText(waId, "Comando no reconocido. Escribe *menu* para ver opciones.");
+      return;
+    }
+  }
+
+  // 👮‍♂️ FLOW DE ADMIN (Callbacks)
+  if (incoming.kind === "button" || incoming.kind === "list") {
+    const btnId = incoming.buttonId || incoming.listId;
+
+    // A. Listar Pendientes
+    if (btnId === ADMIN_LIST_PENDING) {
+      await handleListPending(waId);
+      return;
+    }
+
+    // B. Acciones sobre Usuario
+    if (btnId && btnId.startsWith("ADM_ROLE_")) {
+      const parts = btnId.split("_");
+      const targetRole = parts[2]; // ADMIN, VIEWER, SUPERADMIN, BLOCKED
+      const targetId = parts.slice(3).join("_"); // tg_123
+
+      await setUserRole(targetId, targetRole);
+      await sendText(waId, `✅ Usuario ${targetId} actualizado a rol: *${targetRole}*.`);
+      try {
+        await sendText(targetId, `👮‍♂️ Tu nivel de acceso ha sido actualizado a: *${targetRole}*.\nEscribe *menu* para ver tus opciones.`);
+      } catch (e) { /* ignore if user not reachable */ }
+      return;
+    }
+
+    // C. Close Admin
+    if (btnId === "ADM_CLOSE") {
+      await sendText(waId, "👋 Panel cerrado.");
+      return;
+    }
+  }
+
+  // ============================
+  // 🚫 BLOQUEO DE SEGURIDAD
+  // ============================
+  if (userRole === 'pending') {
+    await sendText(waId, "🔒 Tu usuario está *pendiente de aprobación* por un administrador.\nTe notificaremos apenas tengas acceso.");
+    return;
+  }
+  if (userRole === 'BLOCKED') return;
 
   // Leer sesión SIEMPRE después de normalizar waId
   let session = getSession(waId);
