@@ -305,6 +305,12 @@ async function processIncomingWhatsApp(value, msg) {
   const userRole = await checkUserRole(waId, profileName);
   console.log(`🔒 RBAC Check: ${waId} (${profileName}) -> Role: ${userRole}`);
 
+  // 2.1 BROADCAST SUB-FLOW (Intercept before regex commands)
+  if (session.step && session.step.startsWith("BROADCAST_")) {
+    const handled = await handleBroadcastFlow(waId, incoming, session, profileName);
+    if (handled) return;
+  }
+
   // ============================
   // 👮‍♂️ COMANDO DE ADMIN (ADMTI)
   // ============================
@@ -338,6 +344,13 @@ async function processIncomingWhatsApp(value, msg) {
     // A.2 Listar TODOS
     if (btnId === ADMIN_LIST_ALL) {
       await handleListAll(waId);
+      return;
+    }
+
+    // A.3 Broadcast Init
+    if (btnId === ADMIN_BROADCAST) {
+      setSession(waId, { step: "BROADCAST_ASK_MESSAGE", name: profileName });
+      await sendText(waId, "📢 *Modo Difusión*\n\nEscribe el mensaje que deseas enviar a todos los usuarios:");
       return;
     }
 
@@ -579,6 +592,44 @@ async function processIncomingWhatsApp(value, msg) {
 }
 
 // ============================
+// BROADCAST FLOW
+// ============================
+async function handleBroadcastFlow(waId, incoming, session, profileName) {
+  if (session.step === "BROADCAST_ASK_MESSAGE") {
+    if (incoming.kind === "text") {
+      const msgText = incoming.text;
+      setSession(waId, { step: "BROADCAST_CONFIRM", broadcast_msg: msgText, name: profileName });
+
+      await sendButtons(waId, `📢 *Confirmar Difusión*\n\nMensaje:\n_"${msgText}"_\n\n¿Enviar a TODOS los usuarios activos?`, [
+        { id: "BROADCAST_YES", title: "✅ Sí, Enviar" },
+        { id: "BROADCAST_NO", title: "❌ Cancelar" }
+      ]);
+      return true;
+    }
+    await sendText(waId, "Por favor escribe el mensaje de texto para la difusión.");
+    return true;
+  }
+
+  if (session.step === "BROADCAST_CONFIRM") {
+    if (incoming.kind === "button") {
+      if (incoming.buttonId === "BROADCAST_YES") {
+        setSession(waId, { step: "READY", name: profileName });
+        await handleBroadcast(waId, session.broadcast_msg);
+        return true;
+      }
+      if (incoming.buttonId === "BROADCAST_NO") {
+        setSession(waId, { step: "READY", name: profileName });
+        await sendText(waId, "📢 Difusión cancelada.");
+        await showAdminMenu(waId);
+        return true;
+      }
+    }
+    return true; // Ignore other inputs
+  }
+  return false; // Not in broadcast flow
+}
+
+// ============================
 // ADMIN HELPERS
 // ============================
 async function showAdminMenu(waId) {
@@ -647,6 +698,30 @@ async function handleListAll(waId) {
 
     await sendButtons(waId, body, actions);
   }
+}
+
+async function handleBroadcast(waId, message) {
+  if (!message) return;
+  await sendText(waId, "⏳ Iniciando difusión global...");
+
+  const users = await getAllUsers();
+  // Filtrar bloqueados
+  const targets = users.filter(u => u.role !== "BLOCKED");
+
+  let successCount = 0;
+  let failCount = 0;
+
+  for (const u of targets) {
+    try {
+      await sendText(u.wa_id, `📢 *Anuncio Importante:*\n\n${message}`);
+      successCount++;
+    } catch (e) {
+      console.error(`❌ Error broadcast to ${u.wa_id}:`, e.message);
+      failCount++;
+    }
+  }
+
+  await sendText(waId, `✅ *Difusión Completada*\n\nExitosos: ${successCount}\nFallidos: ${failCount}`);
 }
 
 module.exports = { processIncomingWhatsApp };
