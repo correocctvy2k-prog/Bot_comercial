@@ -5,6 +5,8 @@ const dns = require('node:dns');
 dns.setDefaultResultOrder('ipv4first');
 
 const { processIncomingWhatsApp } = require("./services/bot.service");
+const { registerChannel } = require("./services/logger.service"); // ✅ CRM
+
 
 // Configurar cliente Supabase con opciones robustas de conexión
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY, {
@@ -19,6 +21,10 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
         heartbeatIntervalMs: 5000 // latidos más frecuentes
     }
 });
+
+// 🚀 Registrar canal en CRM al iniciar
+registerChannel().then(() => console.log("🤖 Worker iniciado y registrado en CRM."));
+
 
 // Función Reutilizable para procesar trabajos
 async function processJob(job) {
