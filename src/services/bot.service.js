@@ -6,7 +6,7 @@ const { sendText, sendButtons, sendList } = require("./messaging.service");
 const { sendText, sendButtons, sendList } = require("./messaging.service");
 const { getSession, setSession } = require("./session.service");
 const { appendConsentLog, hasAcceptedConsent } = require("./consent.service");
-const { logInteraction } = require("./logger.service"); // ✅ CRM Logger
+const { logInteraction, ensureContact } = require("./logger.service"); // ✅ CRM Logger & Identity
 
 // ⛔️ Antes: const { runMonitor } = require("./monitor.service");
 // ✅ Ahora: el bot envía lo que devuelve Python (messages[])
@@ -305,6 +305,12 @@ async function processIncomingWhatsApp(value, msg) {
 
   const incoming = parseIncoming(msg);
   const profileName = getProfileNameFromValue(value);
+
+  // 📡 CRM: Identity & Log
+  // Fire and forget identity check (slows down 100-200ms only on first time)
+  ensureContact(waId, profileName).then((cid) => {
+    if (cid) console.log(`✅ CRM Contact ID: ${cid}`);
+  });
 
   // 📡 CRM: Log Incoming
   logInteraction({
