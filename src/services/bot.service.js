@@ -6,7 +6,7 @@ const { sendText, sendButtons, sendList } = require("./messaging.service");
 const { sendText, sendButtons, sendList } = require("./messaging.service");
 const { getSession, setSession } = require("./session.service");
 const { appendConsentLog, hasAcceptedConsent } = require("./consent.service");
-const { logInteraction, ensureContact } = require("./logger.service"); // ✅ CRM Logger & Identity
+// const { logInteraction, ensureContact } = require("./logger.service"); // ✅ CRM Logger & Identity
 
 // ⛔️ Antes: const { runMonitor } = require("./monitor.service");
 // ✅ Ahora: el bot envía lo que devuelve Python (messages[])

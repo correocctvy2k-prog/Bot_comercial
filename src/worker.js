@@ -5,7 +5,8 @@ const dns = require('node:dns');
 dns.setDefaultResultOrder('ipv4first');
 
 const { processIncomingWhatsApp } = require("./services/bot.service");
-const { registerChannel } = require("./services/logger.service"); // ✅ CRM
+// const { registerChannel } = require("./services/logger.service"); // ✅ CRM
+
 
 
 // Configurar cliente Supabase con opciones robustas de conexión

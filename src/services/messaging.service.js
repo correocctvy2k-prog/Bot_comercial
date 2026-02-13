@@ -1,6 +1,6 @@
 const wa = require("./whatsapp.service");
 const tg = require("./telegram.service");
-const { logInteraction } = require("./logger.service"); // ✅ CRM Logger
+// const { logInteraction } = require("./logger.service"); // ✅ CRM Logger
 
 function isTelegram(id) {
     return String(id).startsWith("tg_");
