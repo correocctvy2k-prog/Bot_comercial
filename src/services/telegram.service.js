@@ -51,10 +51,15 @@ async function sendText(chatId, text) {
 }
 
 async function sendButtons(chatId, text, buttons) {
-    const inlineFn = (buttons || []).map(b => ({
-        text: b.title,
-        callback_data: b.id
-    }));
+    const inlineFn = (buttons || []).map(b => {
+        // ✅ Soporte híbrido: estructura WhatsApp (b.reply.title) o simple (b.title)
+        const title = b.reply?.title || b.title || "Button";
+        const id = b.reply?.id || b.id || "NO_ID";
+        return {
+            text: title,
+            callback_data: id
+        };
+    });
 
     return tgPost("sendMessage", {
         chat_id: chatId,
