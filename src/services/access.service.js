@@ -119,10 +119,15 @@ async function getSystemStats() {
       // Si falla cola (ej: 403), retornamos 0 para no romper todo
     }
 
+    // CRM Contacts
+    const { count: crmContacts, error: errCrm } = await supabase.from('contacts').select('*', { count: 'exact', head: true });
+    if (errCrm) console.error("❌ Stats Error (CRM):", errCrm.message);
+
     return {
       users: usersCount || 0,
       pending_users: pendingUsers || 0,
-      queue: queueCount || 0
+      queue: queueCount || 0,
+      crm_contacts: crmContacts || 0
     };
   } catch (e) {
     console.error("❌ Exception in getSystemStats:", e);
