@@ -300,6 +300,15 @@ async function processIncomingWhatsApp(value, msg) {
   const incoming = parseIncoming(msg);
   const profileName = getProfileNameFromValue(value);
 
+  // Leer sesión SIEMPRE al inicio
+  let session = getSession(waId);
+
+  // Guardar nombre en sesión si no está
+  if (!session.name) {
+    setSession(waId, { name: profileName });
+    session = getSession(waId);
+  }
+
   // 2. ✅ CHECK DE SEGURIDAD (RBAC)
   // Verificamos rol en cada interacción.
   const userRole = await checkUserRole(waId, profileName);
@@ -391,14 +400,8 @@ async function processIncomingWhatsApp(value, msg) {
   }
   if (userRole === 'BLOCKED') return;
 
-  // Leer sesión SIEMPRE después de normalizar waId
-  let session = getSession(waId);
-
-  // Guardar nombre en sesión si no está
-  if (!session.name) {
-    setSession(waId, { name: profileName });
-    session = getSession(waId);
-  }
+  // Leer sesión (MOVIDO AL INICIO)
+  // let session = getSession(waId);
 
   // ✅ Si ya aceptó antes (guardado en log), no volver a pedir
   if (session.consent !== "ACCEPTED") {
