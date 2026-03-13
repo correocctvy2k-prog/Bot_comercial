@@ -6,7 +6,7 @@ services:
   # ==========================================
   comercial-bot:
     build:
-      context: ./Comercial
+      context: .
     container_name: comercial-bot
     restart: always
     env_file:
@@ -14,7 +14,7 @@ services:
     ports:
       - "3001:3001"
     volumes:
-      - ./Comercial:/app
+      - .:/app
       - /app/node_modules
     environment:
       - TZ=America/Bogota
@@ -22,13 +22,13 @@ services:
 
   comercial-worker:
     build:
-      context: ./Comercial
+      context: .
     container_name: comercial-worker
     restart: always
     env_file:
       - .env
     volumes:
-      - ./Comercial:/app
+      - .:/app
       - /app/node_modules
     environment:
       - TZ=America/Bogota
@@ -43,7 +43,7 @@ services:
     container_name: asamblea-bot
     restart: always
     env_file:
-      - .env
+      - ./Asamblea/.env
     ports:
       - "3002:3002"
     volumes:
@@ -59,7 +59,7 @@ services:
     container_name: asamblea-worker
     restart: always
     env_file:
-      - .env
+      - ./Asamblea/.env
     volumes:
       - ./Asamblea:/app
       - /app/node_modules
