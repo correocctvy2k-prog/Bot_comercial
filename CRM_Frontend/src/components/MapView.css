@@ -1,0 +1,75 @@
+.marker-cluster-small {
+    background-color: rgba(99, 102, 241, 0.6);
+}
+
+.marker-cluster-small div {
+    background-color: rgba(79, 70, 229, 0.8);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 10px rgba(79, 70, 229, 0.5);
+}
+
+.marker-cluster-medium {
+    background-color: rgba(234, 179, 8, 0.6);
+}
+
+.marker-cluster-medium div {
+    background-color: rgba(202, 138, 4, 0.8);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 10px rgba(202, 138, 4, 0.5);
+}
+
+.marker-cluster-large {
+    background-color: rgba(239, 68, 68, 0.6);
+}
+
+.marker-cluster-large div {
+    background-color: rgba(220, 38, 38, 0.8);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
+}
+
+.marker-cluster {
+    background-clip: padding-box;
+    border-radius: 20px;
+}
+
+.marker-cluster div {
+    width: 30px;
+    height: 30px;
+    margin-left: 5px;
+    margin-top: 5px;
+    text-align: center;
+    border-radius: 15px;
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.marker-cluster span {
+    line-height: 30px;
+}
+
+/* Tooltip Custom Oscuro y Transparente */
+.leaflet-tooltip.skylab-tooltip {
+    background-color: rgba(15, 23, 42, 0.85);
+    /* background dark transparent */
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #f8fafc;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    font-weight: 600;
+    font-size: 0.75rem;
+    border-radius: 0.5rem;
+    padding: 4px 8px;
+}
+
+/* Ajuste del color de la "flecha" del Tooltip al usar direction="top" */
+.leaflet-tooltip-top.skylab-tooltip::before {
+    border-top-color: rgba(15, 23, 42, 0.85);
+}

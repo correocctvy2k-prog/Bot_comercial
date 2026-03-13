@@ -1,0 +1,23 @@
+# Node modules
+node_modules/
+.venv/
+__pycache__/
+
+# Logs
+*.log
+whatsapp_diag_results.txt
+
+# Environment
+.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+.next/
+dist/
+build/
+.vscode/
+.agents/

@@ -1,0 +1,41 @@
+/* ── SkylabBot — animaciones CSS ─────────────────────────── */
+
+/* Wrapper: cabeceo lento del bot completo */
+.skylab-bot-wrap {
+    animation: bot-nod 7s ease-in-out infinite;
+    transform-origin: center bottom;
+    transition: transform 0.25s ease;
+}
+
+.skylab-bot-wrap.hovered {
+    animation: none;
+    transform: scale(1.08);
+}
+
+@keyframes bot-nod {
+
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    25% {
+        transform: rotate(-2deg);
+    }
+
+    75% {
+        transform: rotate(1.5deg);
+    }
+}
+
+/* Antena: rotación lenta alrededor de la base (12, 8) */
+.bot-antenna {
+    animation: antenna-spin 10s linear infinite;
+    transform-origin: 12px 8px;
+    /* pivote = unión con la cabeza */
+}
+
+/* Al hacer hover se detiene y se queda en su lugar */
+.skylab-bot-wrap.hovered .bot-antenna {
+    animation-play-state: paused;
+}
