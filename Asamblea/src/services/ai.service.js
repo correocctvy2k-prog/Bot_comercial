@@ -74,13 +74,13 @@ const Messaging = {
 };
 const { generateChart } = require('./charts.service');
 
-// ─── URLs de Imágenes Corporativas (GitHub Raw) ──────────────────────────────
-const GITHUB_ASSETS = "https://raw.githubusercontent.com/correocctvy2k-prog/Bot_comercial/main/Asamblea/assets";
+// ─── URLs de Imágenes Corporativas (v3.8: Locales para mayor confiabilidad) ───
+const path = require('path');
 const IMG = {
     /** Logo completo cuadrado — se envía en la bienvenida */
-    logo_completo: `${GITHUB_ASSETS}/logo_asamblea.png`,
+    logo_completo: path.join(__dirname, '../../assets/logo_asamblea.png'),
     /** Sticker circular del logo Gane — se envía tras registro exitoso */
-    logo_sticker: `${GITHUB_ASSETS}/logo_gane_sticker.png`,
+    logo_sticker: path.join(__dirname, '../../assets/logo_gane_sticker.png'),
 };
 
 const ASAM_ROLE_ASOCIADO = "ASAM_ROLE_ASOCIADO";
@@ -153,6 +153,37 @@ async function setAsamSession(waId, patch) {
 async function clearAsamSession(waId) {
     sessionCache.delete(waId);
     await supabase.from('bot_sessions').delete().eq('wa_id', waId);
+}
+
+// ─── Verificación de Seguridad ───────────────────────────────────────────────
+
+/**
+ * Verifica si el número de teléfono está en la lista blanca (padrón).
+ * @param {string} waId 
+ * @returns {Promise<{authorized: boolean, name?: string}>}
+ */
+async function checkAuthorization(waId) {
+    try {
+        const { data, error } = await supabase
+            .from('asamblea_padron')
+            .select('nombre')
+            .eq('wa_id', waId)
+            .maybeSingle();
+
+        if (error) {
+            console.error(`[Asamblea] Error verificando padrón para ${waId}:`, error.message);
+            return { authorized: false };
+        }
+
+        if (data) {
+            return { authorized: true, name: data.nombre };
+        }
+
+        return { authorized: false };
+    } catch (e) {
+        console.error(`[Asamblea] Excepción verificando padrón:`, e.message);
+        return { authorized: false };
+    }
 }
 
 // ─── Procesamiento principal ─────────────────────────────────────────────────
@@ -385,10 +416,21 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
         if (!session.step || session.step === 'NEW' || session.step === 'CLOSED'
             || normText(incomingText) === 'hola' || normText(incomingText) === 'hola!') {
 
-            await setAsamSession(waId, { step: 'ASAMBLEA_ASK_DOC' });
+            // 🛡️ Pre-Check de Seguridad (REQ: 2026-03-13)
+            const auth = await checkAuthorization(waId);
+
+            if (!auth.authorized) {
+                console.log(`[Asamblea] 🛑 Acceso DENEGADO para ${waId} (No está en padrón)`);
+                await Messaging.sendText(waId, "🌟 ¡Hola! Gracias por comunicarte con la línea oficial de la *Asamblea de accionistas 2026*.\n\nLamentablemente, este número no se encuentra registrado en nuestra base de datos de accionistas autorizados. Si crees que esto es un error, por favor acércate a nuestro punto de atención presencial para asistirte. ¡Que tengas un excelente día! 💛", opts);
+                return;
+            }
+
+            const firstName = auth.name.split(' ')[0];
+            await setAsamSession(waId, { step: 'ASAMBLEA_ASK_DOC', fullName: auth.name });
 
             // Enviar imagen corporativa como primer impacto visual
             try {
+                // v3.8: sendPhoto ahora detectará que es un path local y lo subirá a Meta
                 await Messaging.sendPhoto(waId, IMG.logo_completo, "🌟 *Asamblea de accionistas 2026*", opts);
                 await delay(800);
             } catch (e) {
@@ -396,7 +438,7 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
             }
 
             await sendSequential(waId, [
-                "🌟 ¡Hola! Es un verdadero gusto saludarte. Te damos la más cordial bienvenida a la *Asamblea de accionistas 2026* de *Gane Palmira*.",
+                `🌟 ¡Hola, *${firstName}*! Es un verdadero gusto saludarte. Te damos la más cordial bienvenida a la *Asamblea de accionistas 2026* de *Gane Palmira*.`,
                 "Para iniciar tu registro oficial, por favor indícame tu *Número de Documento o NIT* (escríbelo solo con números, sin puntos, espacios ni el dígito de verificación). ¡Estaré aquí para apoyarte en el proceso! 😊"
             ], opts, 1200);
             return;
