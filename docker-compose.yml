@@ -10,7 +10,7 @@ services:
     container_name: comercial-bot
     restart: always
     env_file:
-      - ./Comercial/.env
+      - .env
     ports:
       - "3001:3001"
     volumes:
@@ -26,7 +26,7 @@ services:
     container_name: comercial-worker
     restart: always
     env_file:
-      - ./Comercial/.env
+      - .env
     volumes:
       - ./Comercial:/app
       - /app/node_modules
@@ -43,7 +43,7 @@ services:
     container_name: asamblea-bot
     restart: always
     env_file:
-      - ./Asamblea/.env
+      - .env
     ports:
       - "3002:3002"
     volumes:
@@ -59,7 +59,7 @@ services:
     container_name: asamblea-worker
     restart: always
     env_file:
-      - ./Asamblea/.env
+      - .env
     volumes:
       - ./Asamblea:/app
       - /app/node_modules
