@@ -80,7 +80,7 @@ const IMG = {
     /** Logo completo cuadrado — se envía en la bienvenida */
     logo_completo: path.join(__dirname, '../../assets/logo_asamblea.png'),
     /** Sticker circular del logo Gane — se envía tras registro exitoso */
-    logo_sticker: path.join(__dirname, '../../assets/logo_gane_sticker.png'),
+    logo_sticker: path.join(__dirname, '../../assets/logo_gane_sticker.webp'),
 };
 
 const ASAM_ROLE_ASOCIADO = "ASAM_ROLE_ASOCIADO";
