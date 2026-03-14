@@ -9,7 +9,7 @@ console.log("-----------------------------------------");
 
 if (PHONE_NUMBER_ID === "768295286375013") {
     console.log("❌ ATENCIÓN: Sigues usando el ID del número VIEJO.");
-} else if (PHONE_NUMBER_ID === "1036261636236861" || PHONE_NUMBER_ID === "1073623179160908") {
+} else if (["1036261636236861", "1073623179160908", "1054895457705579"].includes(PHONE_NUMBER_ID)) {
     console.log("✅ El bot está configurado con el número NUEVO.");
     console.log(`ID Detectado: ${PHONE_NUMBER_ID}`);
     console.log("PASO REQUERIDO: Asegúrate de que este ID sea el que tiene el Webhook activo en Meta Dashboard.");
