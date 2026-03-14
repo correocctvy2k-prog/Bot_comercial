@@ -9,9 +9,10 @@ console.log("-----------------------------------------");
 
 if (PHONE_NUMBER_ID === "768295286375013") {
     console.log("❌ ATENCIÓN: Sigues usando el ID del número VIEJO.");
-} else if (PHONE_NUMBER_ID === "1073623179160908") {
+} else if (PHONE_NUMBER_ID === "1036261636236861" || PHONE_NUMBER_ID === "1073623179160908") {
     console.log("✅ El bot está configurado con el número NUEVO.");
-    console.log("Si el bot no responde al 'Hola' en este número, el problema está en los Webhooks de Meta Dashboard.");
+    console.log(`ID Detectado: ${PHONE_NUMBER_ID}`);
+    console.log("PASO REQUERIDO: Asegúrate de que este ID sea el que tiene el Webhook activo en Meta Dashboard.");
 } else {
     console.log("❓ Estás usando un ID que no reconozco.");
 }
