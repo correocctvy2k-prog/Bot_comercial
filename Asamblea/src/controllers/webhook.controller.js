@@ -47,6 +47,7 @@ async function handleWebhookPost(req, res) {
 
         try {
           const phoneNumberId = value.metadata?.phone_number_id || "";
+          console.log(`📡 Webhook recibido para ID: ${phoneNumberId}`);
 
           // Todo entra directo al canal asamblea, ya no importa si viene de la URL principal
           const channel = "bot_asamblea_main";
