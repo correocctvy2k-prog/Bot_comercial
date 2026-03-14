@@ -228,7 +228,7 @@ async function sendList(toWaId, bodyText, buttonText, sections, opts = {}) {
 /**
  * Upload media to WhatsApp and return media_id
  */
-async function uploadMedia(filePath, opts = {}) {
+async function uploadMedia(filePath, mimeType = "image/png", opts = {}) {
   let token = opts.token || WPP_TOKEN;
   let phoneNumberId = opts.phone_number_id || PHONE_NUMBER_ID;
   const version = WPP_VERSION;
@@ -245,12 +245,12 @@ async function uploadMedia(filePath, opts = {}) {
   }
 
   const fileBuffer = fs.readFileSync(filePath);
-  const fileBlob = new Blob([fileBuffer], { type: "image/png" });
+  const fileBlob = new Blob([fileBuffer], { type: mimeType });
 
   const form = new FormData();
   form.append("messaging_product", "whatsapp");
   form.append("file", fileBlob, path.basename(filePath));
-  form.append("type", "image/png");
+  form.append("type", mimeType);
 
   const url = `https://graph.facebook.com/${version}/${phoneNumberId}/media`;
 
@@ -293,7 +293,7 @@ async function sendPhoto(toWaId, imagePath, caption, opts = {}) {
     imagePayload = { link: imagePath };
   } else {
     // 📁 Archivo local: subir primero y usar media_id
-    const upload = await uploadMedia(imagePath, opts);
+    const upload = await uploadMedia(imagePath, "image/png", opts);
     if (!upload.ok) {
       console.error("❌ Failed to upload image:", upload);
       return { ok: false, status: 0, data: { error: "media_upload_failed", details: upload } };
@@ -322,6 +322,39 @@ async function sendPhoto(toWaId, imagePath, caption, opts = {}) {
 }
 
 /**
+ * Send sticker to WhatsApp using media_id
+ * WhatsApp stickers MUST be .webp format.
+ */
+async function sendSticker(toWaId, stickerPath, opts = {}) {
+  const isRemoteUrl = typeof stickerPath === 'string' &&
+    (stickerPath.startsWith('http://') || stickerPath.startsWith('https://'));
+
+  let stickerPayload;
+
+  if (isRemoteUrl) {
+    stickerPayload = { link: stickerPath };
+  } else {
+    // 📁 Archivo local: subir primero como image/webp
+    const upload = await uploadMedia(stickerPath, "image/webp", opts);
+    if (!upload.ok) {
+      console.error("❌ Failed to upload sticker:", upload);
+      return { ok: false, status: 0, data: { error: "sticker_upload_failed", details: upload } };
+    }
+    stickerPayload = { id: upload.media_id };
+  }
+
+  const payload = {
+    messaging_product: "whatsapp",
+    to: toWaId,
+    type: "sticker",
+    sticker: stickerPayload,
+  };
+
+  await new Promise(r => setTimeout(r, 800)); // Delay para stickers
+  return waPost(payload, opts);
+}
+
+/**
  * Send reaction to a message
  */
 async function sendReaction(toWaId, reactionEmoji, messageId, opts = {}) {
@@ -336,4 +369,4 @@ async function sendReaction(toWaId, reactionEmoji, messageId, opts = {}) {
   }, opts);
 }
 
-module.exports = { sendText, sendTextChunked, sendTextMany, sendButtons, sendList, sendPhoto, sendReaction, sendChatAction, chunkText };
+module.exports = { sendText, sendTextChunked, sendTextMany, sendButtons, sendList, sendPhoto, sendSticker, sendReaction, sendChatAction, chunkText };

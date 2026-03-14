@@ -665,7 +665,7 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
             // Enviar sticker de celebración al final
             try {
                 await delay(600);
-                await Messaging.sendPhoto(waId, IMG.logo_sticker, null, opts);
+                await Messaging.sendSticker(waId, IMG.logo_sticker, opts);
             } catch (e) {
                 console.warn('[Asamblea] No se pudo enviar sticker de cierre:', e.message);
             }
