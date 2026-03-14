@@ -228,7 +228,7 @@ async function sendList(toWaId, bodyText, buttonText, sections, opts = {}) {
 /**
  * Upload media to WhatsApp and return media_id
  */
-async function uploadMedia(filePath, mimeType = "image/png", opts = {}) {
+async function uploadMedia(filePath, mediaType = "image", mimeType = "image/png", opts = {}) {
   let token = opts.token || WPP_TOKEN;
   let phoneNumberId = opts.phone_number_id || PHONE_NUMBER_ID;
   const version = WPP_VERSION;
@@ -250,7 +250,7 @@ async function uploadMedia(filePath, mimeType = "image/png", opts = {}) {
   const form = new FormData();
   form.append("messaging_product", "whatsapp");
   form.append("file", fileBlob, path.basename(filePath));
-  form.append("type", mimeType);
+  form.append("type", mediaType);
 
   const url = `https://graph.facebook.com/${version}/${phoneNumberId}/media`;
 
@@ -292,8 +292,8 @@ async function sendPhoto(toWaId, imagePath, caption, opts = {}) {
     // ✅ URL remota: WhatsApp la descarga directamente usando link
     imagePayload = { link: imagePath };
   } else {
-    // 📁 Archivo local: subir primero y usar media_id
-    const upload = await uploadMedia(imagePath, "image/png", opts);
+    // 📁 Archivo local: subir primero y usar media_id (type: image)
+    const upload = await uploadMedia(imagePath, "image", "image/png", opts);
     if (!upload.ok) {
       console.error("❌ Failed to upload image:", upload);
       return { ok: false, status: 0, data: { error: "media_upload_failed", details: upload } };
@@ -334,8 +334,8 @@ async function sendSticker(toWaId, stickerPath, opts = {}) {
   if (isRemoteUrl) {
     stickerPayload = { link: stickerPath };
   } else {
-    // 📁 Archivo local: subir primero como image/webp
-    const upload = await uploadMedia(stickerPath, "image/webp", opts);
+    // 📁 Archivo local: subir primero como category 'sticker' y mime 'image/webp'
+    const upload = await uploadMedia(stickerPath, "sticker", "image/webp", opts);
     if (!upload.ok) {
       console.error("❌ Failed to upload sticker:", upload);
       return { ok: false, status: 0, data: { error: "sticker_upload_failed", details: upload } };
