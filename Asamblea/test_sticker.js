@@ -18,6 +18,7 @@ async function testSticker() {
         const res = await Messaging.sendSticker(waId, stickerPath);
         if (res.ok) {
             console.log("✅ ¡Sticker enviado con éxito por la API!");
+            console.log("🆔 Message ID:", res.data?.messages?.[0]?.id);
         } else {
             console.error("❌ Error al enviar sticker:", JSON.stringify(res.data, null, 2));
         }

@@ -307,6 +307,7 @@ async function sendPhoto(toWaId, imagePath, caption, opts = {}) {
 
   const payload = {
     messaging_product: "whatsapp",
+    recipient_type: "individual",
     to: toWaId,
     type: "image",
     image: imagePayload,
@@ -345,6 +346,7 @@ async function sendSticker(toWaId, stickerPath, opts = {}) {
 
   const payload = {
     messaging_product: "whatsapp",
+    recipient_type: "individual",
     to: toWaId,
     type: "sticker",
     sticker: stickerPayload,
