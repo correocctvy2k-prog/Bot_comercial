@@ -126,7 +126,12 @@ async function getAsamSession(waId) {
         .single();
 
     if (data) {
-        const session = { step: data.step, doc: data.doc, nombre: data.nombre };
+        const session = { 
+            step: data.step, 
+            doc: data.doc, 
+            nombre: data.nombre,
+            categoriaOficial: data.categoria_oficial 
+        };
         sessionCache.set(waId, session);
         return session;
     }
@@ -144,6 +149,7 @@ async function setAsamSession(waId, patch) {
         step: updated.step,
         doc: updated.doc || null,
         nombre: updated.nombre || null,
+        categoria_oficial: updated.categoriaOficial || null,
         updated_at: new Date().toISOString()
     }, { onConflict: 'wa_id' });
 
@@ -166,7 +172,7 @@ async function checkAuthorization(waId) {
     try {
         const { data, error } = await supabase
             .from('asamblea_padron')
-            .select('nombre')
+            .select('nombre, categoria')
             .eq('wa_id', waId)
             .maybeSingle();
 
@@ -176,7 +182,7 @@ async function checkAuthorization(waId) {
         }
 
         if (data) {
-            return { authorized: true, name: data.nombre };
+            return { authorized: true, name: data.nombre, categoria: data.categoria || 'ACCIONISTA' };
         }
 
         return { authorized: false };
@@ -426,7 +432,11 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
             }
 
             const firstName = auth.name.split(' ')[0];
-            await setAsamSession(waId, { step: 'ASAMBLEA_ASK_DOC', fullName: auth.name });
+            await setAsamSession(waId, { 
+                step: 'ASAMBLEA_ASK_DOC', 
+                fullName: auth.name, 
+                categoriaOficial: auth.categoria 
+            });
 
             // Enviar imagen corporativa como primer impacto visual
             try {
@@ -507,18 +517,49 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                     "Por favor escríbeme el *nombre completo del representante o apoderado* que asiste hoy a la asamblea:"
                 ], opts, 900);
             } else {
-                // Es persona natural: saludamos y pasamos directo al rol, ya que el nombre ya está en SIISS
-                await setAsamSession(waId, { step: 'ASAMBLEA_ASK_ROLE', doc, nombre: nombreOficial, esEmpresa });
+                // Es persona natural: saludamos y pasamos al siguiente paso según categoría
+                const cat = session.categoriaOficial || 'ACCIONISTA';
 
-                await sendSequential(waId, [
-                    `✅ ¡Excelente noticia! Hemos validado tus datos correctamente. Es un placer saludarte, *${accionista.accinomb}*. 😊`,
-                    `Para completar tu ingreso, por favor confírmame: ¿En qué calidad nos acompañas hoy en la Asamblea General?`
-                ], opts, 800);
+                if (cat === 'INVITADO') {
+                    await setAsamSession(waId, { step: 'ASAMBLEA_CONFIRM', doc, nombre: nombreOficial, rol: 'INVITADO' });
+                    await sendSequential(waId, [
+                        `✅ ¡Excelente! Los datos del documento *${doc}* son correctos.`,
+                        `Es un placer saludarte, *${nombreOficial}*. 😊 Te tenemos registrado como **Invitado Especial** a esta asamblea.`
+                    ], opts, 800);
+                    
+                    await delay(300);
+                    await Messaging.sendButtons(waId, "¿Deseas confirmar tu ingreso?", [
+                        { id: ASAM_CONFIRM_YES, title: "✅ Sí, confirmar" },
+                        { id: ASAM_CONFIRM_NO, title: "✏️ Corregir datos" }
+                    ], opts);
 
-                await Messaging.sendButtons(waId, "Selecciona una opción:", [
-                    { id: ASAM_ROLE_ASOCIADO, title: "👤 Soy Asociado" },
-                    { id: ASAM_ROLE_REPRESENT, title: "🤝 Representante" }
-                ], opts);
+                } else if (cat === 'REPRESENTANTE_LEGAL' || cat === 'APODERADO') {
+                    const rolFinal = cat === 'REPRESENTANTE_LEGAL' ? 'REPRESENTANTE LEGAL' : 'APODERADO';
+                    await setAsamSession(waId, { step: 'ASAMBLEA_CONFIRM', doc, nombre: nombreOficial, rol: rolFinal });
+                    await sendSequential(waId, [
+                        `✅ Datos validados correctamente. Bienvenido, *${nombreOficial}*.`,
+                        `Nos acompañas hoy en calidad de **${rolFinal}**.`
+                    ], opts, 800);
+                    
+                    await delay(300);
+                    await Messaging.sendButtons(waId, "¿Deseas confirmar tu ingreso?", [
+                        { id: ASAM_CONFIRM_YES, title: "✅ Sí, confirmar" },
+                        { id: ASAM_CONFIRM_NO, title: "✏️ Corregir datos" }
+                    ], opts);
+
+                } else {
+                    // Accionista: preguntamos si viene como Asociado o Representante (Poder)
+                    await setAsamSession(waId, { step: 'ASAMBLEA_ASK_ROLE', doc, nombre: nombreOficial, esEmpresa: false });
+                    await sendSequential(waId, [
+                        `✅ ¡Excelente noticia! Hemos validado tus datos correctamente. Es un placer saludarte, *${accionista.accinomb}*. 😊`,
+                        `Para completar tu ingreso, por favor confírmame: ¿En qué calidad nos acompañas hoy en la Asamblea General?`
+                    ], opts, 800);
+
+                    await Messaging.sendButtons(waId, "Selecciona una opción:", [
+                        { id: ASAM_ROLE_ASOCIADO, title: "👤 Soy Asociado" },
+                        { id: ASAM_ROLE_REPRESENT, title: "🤝 Representante" }
+                    ], opts);
+                }
             }
             return;
         }
@@ -635,6 +676,7 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                 documento: session.doc,
                 nombre: session.nombre,
                 rol: rolFinal,
+                categoria_oficial: session.categoriaOficial || 'ACCIONISTA',
                 status: siissOk ? 'SYNC_OK' : 'SYNC_FAILED'
             });
 
