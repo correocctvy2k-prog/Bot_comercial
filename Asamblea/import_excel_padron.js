@@ -85,9 +85,17 @@ async function runImport() {
     });
   });
 
-  console.log(`📊 Total registros detectados: ${allData.length}`);
+  // DE-DUPLICACIÓN: Si el mismo wa_id aparece varias veces, nos quedamos con el último
+  const uniqueDataMap = new Map();
+  allData.forEach(item => {
+    uniqueDataMap.set(item.wa_id, item);
+  });
+  const finalData = Array.from(uniqueDataMap.values());
 
-  if (allData.length === 0) {
+  console.log(`📊 Total registros detectados: ${allData.length}`);
+  console.log(`💎 Registros únicos por teléfono: ${finalData.length}`);
+
+  if (finalData.length === 0) {
     console.warn("⚠️ No se detectaron registros válidos con teléfono.");
     return;
   }
@@ -96,8 +104,8 @@ async function runImport() {
 
   // Procesar en bloques de 50 para no saturar
   const chunkSize = 50;
-  for (let i = 0; i < allData.length; i += chunkSize) {
-    const chunk = allData.slice(i, i + chunkSize);
+  for (let i = 0; i < finalData.length; i += chunkSize) {
+    const chunk = finalData.slice(i, i + chunkSize);
     const { error } = await supabase
       .from('asamblea_padron')
       .upsert(chunk, { onConflict: 'wa_id' });
