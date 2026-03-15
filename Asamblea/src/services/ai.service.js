@@ -432,25 +432,44 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
             }
 
             const firstName = auth.name.split(' ')[0];
+            const categoria = auth.categoria || 'ACCIONISTA';
+            
+            // Mapeo amigable sugerido por el usuario
+            const labels = {
+                'ACCIONISTA': 'Accionista',
+                'INVITADO': 'Invitado',
+                'REPRESENTANTE_LEGAL': 'Representante Legal',
+                'APODERADO': 'Apoderado'
+            };
+            const labelRol = labels[categoria] || 'Participante';
+
             await setAsamSession(waId, { 
                 step: 'ASAMBLEA_ASK_DOC', 
                 fullName: auth.name, 
-                categoriaOficial: auth.categoria 
+                categoriaOficial: categoria 
             });
 
             // Enviar imagen corporativa como primer impacto visual
             try {
-                // v3.8: sendPhoto ahora detectará que es un path local y lo subirá a Meta
                 await Messaging.sendPhoto(waId, IMG.logo_completo, "🌟 *Asamblea de accionistas 2026*", opts);
                 await delay(800);
             } catch (e) {
                 console.warn('[Asamblea] No se pudo enviar imagen de logo:', e.message);
             }
 
-            await sendSequential(waId, [
-                `🌟 ¡Hola, *${firstName}*! Es un verdadero gusto saludarte. Te damos la más cordial bienvenida a la *Asamblea de accionistas 2026* de *Gane Palmira*.`,
-                "Para iniciar tu registro oficial, por favor indícame tu *Número de Documento o NIT* (escríbelo solo con números, sin puntos, espacios ni el dígito de verificación). ¡Estaré aquí para apoyarte en el proceso! 😊"
-            ], opts, 1200);
+            const welcomeMsgs = [
+                `🌟 ¡Hola, *${firstName}*! Es un verdadero gusto saludarte. Te damos la más cordial bienvenida a la *Asamblea de accionistas 2026*.`,
+                `Te hemos identificado en nuestro sistema como: *${labelRol}*.`
+            ];
+
+            if (categoria === 'APODERADO') {
+                welcomeMsgs.push("📌 Por favor, **dirígete a la mesa principal de registro** para completar tu proceso de ingreso de forma presencial y reclamar tu obsequio. ¡Te esperamos! 🎁");
+            } else {
+                welcomeMsgs.push("Para iniciar tu registro oficial por este medio, por favor indícame tu *Número de Documento o NIT* (escríbelo solo con números, sin puntos ni espacios). ¡Estaré aquí para apoyarte! 😊");
+            }
+
+            await sendSequential(waId, welcomeMsgs, opts, 1200);
+            return;
             return;
         }
 
