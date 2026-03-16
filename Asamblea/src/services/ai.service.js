@@ -197,6 +197,62 @@ async function checkAuthorization(waId) {
     }
 }
 
+/**
+ * Procesa la sincronización con SIISS, guarda en Supabase y envía mensajes finales.
+ * Reemplaza al antiguo paso manual de 'Confirmación'.
+ */
+async function finalizeAsambleaRegistration(waId, session, opts) {
+    const rolFinal = session.rol || 'ACCIONISTA';
+
+    await delay(400);
+
+    let siissOk = true;
+    if (rolFinal !== 'INVITADO') {
+        await Messaging.sendText(waId, "¡Casi terminamos! ⏳ Estoy registrando tu asistencia oficialmente en el Sistema de Quórum...", opts);
+        siissOk = await registrarAsistenciaSIISS(session.doc, session.nombre);
+    } else {
+        await Messaging.sendText(waId, "¡Casi terminamos! ⏳ Estoy registrando tu ingreso de cortesía...", opts);
+    }
+
+    const { error: dbError } = await supabase.from('asamblea_registro').insert({
+        user_phone: waId,
+        documento: session.doc,
+        nombre: session.nombre,
+        rol: rolFinal,
+        categoria_oficial: session.categoriaOficial || 'ACCIONISTA',
+        status: siissOk ? 'SYNC_OK' : 'SYNC_FAILED'
+    });
+
+    if (dbError) {
+        console.error("[Asamblea] Error guardando registro:", dbError);
+        await Messaging.sendText(waId, "❌ Ocurrió un error técnico al guardar tu registro. Por favor infórmalo al personal en la mesa principal.", opts);
+        await clearAsamSession(waId);
+        return;
+    }
+
+    await delay(1200);
+    await sendSequential(waId, [
+        `🎉 ¡*Registro completado con éxito*!`,
+        `Es un gusto confirmar que ya haces parte oficial de la Asamblea. Aquí tienes el resumen de tu ingreso:\n\n` +
+        `🏢 Calidad: ${rolFinal}\n` +
+        `👤 Nombre: ${session.nombre}\n` +
+        `📄 Documento / NIT: ${session.doc}\n` +
+        `🕐 Hora: ${new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`,
+        `✅ ¡Bienvenido/a a la *Asamblea de accionistas 2026*! Gracias por acompañarnos y por tu participación. 💛`,
+        `🎁 **¡No olvides reclamar tu obsequio!** Por favor acércate a la mesa principal de registro para recibir nuestro detalle especial.`
+    ], opts, 1500);
+
+    // Enviar sticker de celebración
+    try {
+        await delay(600);
+        await Messaging.sendSticker(waId, IMG.logo_sticker, opts);
+    } catch (e) {
+        console.warn('[Asamblea] No se pudo enviar sticker:', e.message);
+    }
+
+    await clearAsamSession(waId);
+}
+
 // ─── Procesamiento principal ─────────────────────────────────────────────────
 
 async function processIncomingAsamblea(waId, value, msg, channelId) {
@@ -206,10 +262,10 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
         const session = await getAsamSession(waId);
         const opts = {
             channelId: channelId || 'bot_asamblea',
-            message_id: msg.id // Agregado para habilitar el estado "Escribiendo" vinculado al mensaje
+            message_id: msg.id
         };
 
-        // 1. Confirmación de lectura con retraso (Humanización)
+        // 1. Confirmación de lectura
         if (msg.id) {
             setTimeout(async () => {
                 try {
@@ -217,7 +273,7 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                 } catch (e) {
                     console.error("[Asamblea] Error en read confirmation:", e.message);
                 }
-            }, 800 + Math.random() * 1000); // 0.8s - 1.8s de delay
+            }, 800 + Math.random() * 1000);
         }
 
         // Aseguramos la creación/actualización del contacto
@@ -234,7 +290,7 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
             raw: msg
         });
 
-        console.log(`[Asamblea v3.7.3] waId=${waId} step=${session.step} msg="${incomingText}"`);
+        console.log(`[Asamblea v4.0] waId=${waId} step=${session.step} msg="${incomingText}"`);
 
         // ── COMANDO OCULTO: ADMIN BROADCAST ──────────────────────────────────
         if (normText(incomingText) === 'admgane') {
@@ -267,7 +323,6 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                     await Messaging.sendText(waId, `❌ Error: ${res.error}`, opts);
                 }
             } else if (incomingText === 'ADMIN_VIEW_POLL') {
-                // Obtenemos la última encuesta enviada
                 const { data: poll } = await supabase.from('asamblea_encuestas').select('*').order('created_at', { ascending: false }).limit(1).single();
                 if (!poll) {
                     await Messaging.sendText(waId, "❌ Aún no hay encuestas registradas.", opts);
@@ -291,7 +346,7 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                 return;
             }
             await setAsamSession(waId, { step: 'ASAM_ADMIN_ASK_OPTS', question });
-            await Messaging.sendText(waId, `Pregunta registrada:\n_"${question}"_\n\nAhora escribe las *Opciones de respuesta* separadas por comas (Máximo 3 opciones).\nEjemplo: Sí apruebo, No apruebo, Me abstengo`, opts);
+            await Messaging.sendText(waId, `Pregunta registrada:\n_"${question}"_\n\nAhora escribe las *Opciones de respuesta* separadas por comas (Máximo 3 opciones).`, opts);
             return;
         }
 
@@ -305,11 +360,7 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
             }
 
             await setAsamSession(waId, { step: 'ASAM_ADMIN_CONFIRM', options: optionArray });
-
-            // Build the preview buttons
-            const previewBtns = optionArray.map((opt, idx) => ({ id: `POLL_${idx}`, title: opt.substring(0, 20) }));
-
-            await Messaging.sendButtons(waId, `*Vista Previa de la Encuesta:*\n\n${session.question}\n\n¿Estás seguro de enviar esta difusión a TODOS los accionistas registrados?`, [
+            await Messaging.sendButtons(waId, `*Vista Previa de la Encuesta:*\n\n${session.question}\n\n¿Estás seguro de enviar esta difusión?`, [
                 { id: "ADMIN_CONFIRM_YES", title: "✅ Enviar Encuesta" },
                 { id: "ADMIN_CONFIRM_NO", title: "❌ Cancelar" }
             ], opts);
@@ -319,64 +370,35 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
         if (session.step === 'ASAM_ADMIN_CONFIRM') {
             if (incomingText === "ADMIN_CONFIRM_NO") {
                 await setAsamSession(waId, { step: 'ASAM_ADMIN_MENU' });
-                await Messaging.sendText(waId, "Encuesta cancelada. Sistema vuelto al menú principal.", opts);
+                await Messaging.sendText(waId, "Encuesta cancelada.", opts);
                 return;
             }
 
             if (incomingText === "ADMIN_CONFIRM_YES") {
                 const question = session.question;
                 const options = session.options;
-
-                // 1. Guardar encuesta en BD para histórico y votos
-                const { data: poll, error: pollErr } = await supabase
-                    .from('asamblea_encuestas')
-                    .insert({ pregunta: question, opciones: options })
-                    .select()
-                    .single();
-
+                const { data: poll, error: pollErr } = await supabase.from('asamblea_encuestas').insert({ pregunta: question, opciones: options }).select().single();
                 if (pollErr) {
                     await Messaging.sendText(waId, "❌ Error al guardar la encuesta en BD.", opts);
                     return;
                 }
-
-                // 2. Extraer base de datos de usuarios
-                const { data: users, error } = await supabase
-                    .from('asamblea_registro')
-                    .select('user_phone, nombre')
-                    .eq('status', 'SYNC_OK');
-
+                const { data: users, error } = await supabase.from('asamblea_registro').select('user_phone, nombre').eq('status', 'SYNC_OK');
                 if (error || !users || users.length === 0) {
                     await Messaging.sendText(waId, "❌ Error: No se encontraron accionistas registrados.", opts);
                     await setAsamSession(waId, { step: 'ASAM_ADMIN_MENU' });
                     return;
                 }
-
-                await Messaging.sendText(waId, `🚀 *Difusión iniciada*\nEnviando a ${users.length} accionistas en segundo plano. Te avisaré al terminar o puedes seguir usando el panel.`, opts);
+                await Messaging.sendText(waId, `🚀 *Difusión iniciada* enviando a ${users.length} accionistas.`, opts);
                 await setAsamSession(waId, { step: 'ASAM_ADMIN_MENU' });
-
-                // 3. DIFUSIÓN ASÍNCRONA (Fire & Forget)
                 (async () => {
-                    const pollButtons = options.map((opt, idx) => ({
-                        id: `VOTE_${poll.id}_${idx}`,
-                        title: opt.substring(0, 20)
-                    }));
-                    let successCount = 0;
-
+                    const pollButtons = options.map((opt, idx) => ({ id: `VOTE_${poll.id}_${idx}`, title: opt.substring(0, 20) }));
                     for (const user of users) {
                         try {
-                            // Si es un ID de Telegram (tg_...), marcamos canal
                             const userOpts = user.user_phone.startsWith("tg_") ? { channelId: "telegram_bot" } : {};
-                            await Messaging.sendButtons(user.user_phone, `📊 *Encuesta Oficial de Asamblea*\nHola ${user.nombre.split(' ')[0]},\n\n${question}`, pollButtons, userOpts);
-                            successCount++;
-                            await delay(150); // Delay suave para no saturar
-                        } catch (e) {
-                            console.error(`Error enviando encuesta a ${user.user_phone}:`, e.message);
-                        }
+                            await Messaging.sendButtons(user.user_phone, `📊 *Encuesta Oficial*\nHola ${user.nombre.split(' ')[0]},\n\n${question}`, pollButtons, userOpts);
+                        } catch (e) {}
                     }
-                    // Notificar al admin al finalizar (opcional, pero útil)
-                    await Messaging.sendText(waId, `🏁 *Difusión finalizada*\nSe entregó exitosamente a *${successCount}/${users.length}* personas.`, opts);
                 })();
-
                 return;
             }
             return;
@@ -387,298 +409,107 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
             const parts = incomingText.split('_');
             const pollId = parts[1];
             const voteIdx = parseInt(parts[2]);
-
             try {
-                // 1. Obtener la encuesta específica
-                const { data: poll } = await supabase
-                    .from('asamblea_encuestas')
-                    .select('*')
-                    .eq('id', pollId)
-                    .single();
-
+                const { data: poll } = await supabase.from('asamblea_encuestas').select('*').eq('id', pollId).single();
                 if (poll) {
                     const textoOpcion = poll.opciones[voteIdx] || "Opción desconocida";
-
-                    // 2. Registrar el voto (usando upsert para permitir cambiar de opinión)
-                    const { error: voteErr } = await supabase
-                        .from('asamblea_votos')
-                        .upsert({
-                            encuesta_id: pollId,
-                            user_phone: waId,
-                            opcion_index: voteIdx,
-                            opcion_texto: textoOpcion
-                        }, { onConflict: 'encuesta_id, user_phone' });
-
-                    if (voteErr) {
-                        console.error("[Asamblea] Error registrando voto:", voteErr);
-                    }
+                    await supabase.from('asamblea_votos').upsert({ encuesta_id: pollId, user_phone: waId, opcion_index: voteIdx, opcion_texto: textoOpcion }, { onConflict: 'encuesta_id, user_phone' });
                 }
-
-                await Messaging.sendText(waId, "✅ Tu respuesta ha sido registrada exitosamente. ¡Gracias por participar!", opts);
+                await Messaging.sendText(waId, "✅ Tu respuesta ha sido registrada exitosamente. ¡Gracias!", opts);
             } catch (e) {
-                console.error("[Asamblea] Error procesando voto:", e);
                 await Messaging.sendText(waId, "✅ Gracias por tu respuesta.", opts);
             }
             return;
         }
 
 
-        // ── BIENVENIDA / REINICIO ────────────────────────────────────────────
-        if (!session.step || session.step === 'NEW' || session.step === 'CLOSED'
-            || normText(incomingText) === 'hola' || normText(incomingText) === 'hola!') {
-
-            // 🛡️ Pre-Check de Seguridad (REQ: 2026-03-13)
+        // ── BIENVENIDA / REINICIO AUTOMÁTICO ──────────────────────────────────
+        if (!session.step || session.step === 'NEW' || session.step === 'CLOSED' || normText(incomingText) === 'hola') {
             const auth = await checkAuthorization(waId);
 
             if (!auth.authorized) {
-                console.log(`[Asamblea] 🛑 Acceso DENEGADO para ${waId} (No está en padrón)`);
-                await Messaging.sendText(waId, "🌟 ¡Hola! Gracias por comunicarte con la línea oficial de la *Asamblea de accionistas 2026*.\n\nLamentablemente, este número no se encuentra registrado en nuestra base de datos de accionistas autorizados. Si crees que esto es un error, por favor acércate a nuestro punto de atención presencial para asistirte. ¡Que tengas un excelente día! 💛", opts);
+                await Messaging.sendText(waId, "🌟 ¡Hola! Gracias por comunicarte con la línea oficial de la *Asamblea de accionistas 2026*.\n\nEste número no está en nuestra lista de autorizados. Por favor acércate al punto presencial.", opts);
                 return;
             }
 
             const firstName = auth.name.split(' ')[0];
             const categoria = auth.categoria || 'ACCIONISTA';
-            const documento = auth.documento || ''; // Extraer el documento del padrón
-            
-            // Mapeo amigable sugerido por el usuario
-            const labels = {
-                'ACCIONISTA': 'Accionista',
-                'INVITADO': 'Invitado',
-                'REPRESENTANTE_LEGAL': 'Representante Legal',
-                'APODERADO': 'Apoderado'
-            };
+            const documento = auth.documento || '';
+            const labels = { 'ACCIONISTA': 'Accionista', 'INVITADO': 'Invitado', 'REPRESENTANTE_LEGAL': 'Representante Legal', 'APODERADO': 'Apoderado' };
             const labelRol = labels[categoria] || 'Participante';
 
-            // Detectar si es empresa basándonos en el nombre del padrón o la longitud del documento
             const nombreOficial = (auth.name || '').toUpperCase();
-            const companyKeywords = [" S.A.", " SAS", " S.A.S", " LTDA", " LIMITADA", " INVERSIONES", " PRODUCCIONES", " COMERCIALIZADORA", " GRUPO", " FUNDACION", " CORPORACION"];
-            const esEmpresa = companyKeywords.some(kw => nombreOficial.includes(kw)) || (documento.length > 0 && documento.length <= 9);
+            const companyKeywords = [" S.A.", " SAS", " S.A.S", " LTDA", " LIMITADA", " INVERSIONES", " GRUPO", " FUNDACION"];
+            const esEmpresa = companyKeywords.some(kw => nombreOficial.includes(kw));
 
-            // Enviar imagen corporativa como primer impacto visual
             try {
                 await Messaging.sendPhoto(waId, IMG.logo_completo, "🌟 *Asamblea de accionistas 2026*", opts);
                 await delay(800);
-            } catch (e) {
-                console.warn('[Asamblea] No se pudo enviar imagen de logo:', e.message);
-            }
+            } catch (e) {}
 
             const welcomeMsgs = [
-                `🌟 ¡Hola, *${firstName}*! Es un verdadero gusto saludarte. Te damos la más cordial bienvenida a la *Asamblea de accionistas 2026*.`,
-                `Te hemos identificado en nuestro sistema como: *${labelRol}*.`
+                `🌟 ¡Hola, *${firstName}*! Te damos la bienvenida a la *Asamblea de accionistas 2026*.`,
+                `Te hemos identificado como: *${labelRol}*.`
             ];
 
-            if (categoria === 'APODERADO') {
-                welcomeMsgs.push("📌 Por favor, **dirígete a la mesa principal de registro** para completar tu proceso de ingreso de forma presencial y reclamar tu obsequio. ¡Te esperamos! 🎁");
-                // Como es apoderado, el flujo puede terminar aquí o ir directo a confirmación
-                await setAsamSession(waId, { 
-                    step: 'ASAMBLEA_CONFIRM', 
-                    fullName: auth.name, 
-                    nombre: auth.name,
-                    categoriaOficial: categoria,
-                    doc: documento,
-                    rol: 'APODERADO'
+            if (categoria === 'APODERADO' || categoria === 'INVITADO') {
+                welcomeMsgs.push("📌 Por favor, **dirígete a la mesa principal de registro** para completar tu ingreso presencial y reclamar tu obsequio. ¡Te esperamos! 🎁");
+                const currentSession = await setAsamSession(waId, { 
+                    step: 'COMPLETED', fullName: auth.name, nombre: auth.name, categoriaOficial: categoria, doc: documento, rol: categoria 
                 });
-                welcomeMsgs.push("¿Deseas confirmar tu asistencia virtual antes de pasar a la mesa?");
-                await sendSequential(waId, welcomeMsgs, opts, 1200);
-                await delay(300);
-                await Messaging.sendButtons(waId, "Confirma tu ingreso:", [
-                    { id: ASAM_CONFIRM_YES, title: "✅ Sí, confirmar" },
-                    { id: ASAM_CONFIRM_NO, title: "❌ Cancelar" }
-                ], opts);
-                return;
-
-            } else if (categoria === 'INVITADO') {
-                welcomeMsgs.push("📌 Por favor, **dirígete a la mesa principal de registro** para completar tu proceso de ingreso de forma presencial y reclamar tu obsequio. ¡Te esperamos! 🎁");
-                await setAsamSession(waId, { 
-                    step: 'ASAMBLEA_CONFIRM', 
-                    fullName: auth.name, 
-                    nombre: auth.name,
-                    categoriaOficial: categoria,
-                    doc: documento,
-                    rol: 'INVITADO'
-                });
-                welcomeMsgs.push("¿Deseas confirmar tu ingreso a la Asamblea?");
-                await sendSequential(waId, welcomeMsgs, opts, 1200);
-                await delay(300);
-                await Messaging.sendButtons(waId, "¿Confirma tu ingreso?", [
-                    { id: ASAM_CONFIRM_YES, title: "✅ Sí, confirmar" },
-                    { id: ASAM_CONFIRM_NO, title: "❌ Cancelar" }
-                ], opts);
+                await sendSequential(waId, welcomeMsgs, opts, 1000);
+                await finalizeAsambleaRegistration(waId, currentSession, opts);
                 return;
 
             } else if (categoria === 'REPRESENTANTE_LEGAL') {
-                 await setAsamSession(waId, { 
-                    step: 'ASAMBLEA_CONFIRM', 
-                    fullName: auth.name, 
-                    nombre: auth.name,
-                    categoriaOficial: categoria,
-                    doc: documento,
-                    rol: 'REPRESENTANTE LEGAL'
+                const currentSession = await setAsamSession(waId, { 
+                    step: 'COMPLETED', fullName: auth.name, nombre: auth.name, categoriaOficial: categoria, doc: documento, rol: 'REPRESENTANTE LEGAL' 
                 });
-                await sendSequential(waId, welcomeMsgs, opts, 1200);
-                await delay(300);
-                await Messaging.sendButtons(waId, "¿Deseas confirmar tu ingreso en calidad de Representante Legal?", [
-                    { id: ASAM_CONFIRM_YES, title: "✅ Sí, confirmar" },
-                    { id: ASAM_CONFIRM_NO, title: "❌ Cancelar" }
-                ], opts);
+                await sendSequential(waId, welcomeMsgs, opts, 1000);
+                await finalizeAsambleaRegistration(waId, currentSession, opts);
                 return;
 
             } else {
                 // Es ACCIONISTA
                 if (esEmpresa) {
                     await setAsamSession(waId, { 
-                        step: 'ASAMBLEA_ASK_NAME', 
-                        fullName: auth.name, 
-                        // No seteamos `nombre` aquí porque se lo pediremos al representante enseguida (ver paso 2)
-                        categoriaOficial: categoria,
-                        doc: documento,
-                        esEmpresa: true,
-                        nombreOficial: auth.name
+                        step: 'ASAMBLEA_ASK_NAME', fullName: auth.name, categoriaOficial: categoria, doc: documento, esEmpresa: true, nombreOficial: auth.name 
                     });
-                    welcomeMsgs.push("Por favor escríbeme el *nombre completo del representante o apoderado* que asiste hoy a la asamblea:");
+                    welcomeMsgs.push("Por favor escríbeme el *nombre completo del representante o apoderado* que asiste hoy:");
                     await sendSequential(waId, welcomeMsgs, opts, 1200);
                     return;
                 } else {
-                    await setAsamSession(waId, { 
-                        step: 'ASAMBLEA_CONFIRM', 
-                        fullName: auth.name, 
-                        nombre: auth.name, 
-                        categoriaOficial: categoria,
-                        doc: documento,
-                        rol: 'ACCIONISTA',
-                        esEmpresa: false,
-                        nombreOficial: auth.name
+                    const currentSession = await setAsamSession(waId, { 
+                        step: 'COMPLETED', fullName: auth.name, nombre: auth.name, categoriaOficial: categoria, doc: documento, rol: 'ACCIONISTA', esEmpresa: false, nombreOficial: auth.name 
                     });
                     await sendSequential(waId, welcomeMsgs, opts, 1200);
-                    await delay(300);
-                    await Messaging.sendButtons(waId, "¿Deseas confirmar tu ingreso en calidad de Accionista?", [
-                        { id: ASAM_CONFIRM_YES, title: "✅ Sí, confirmar" },
-                        { id: ASAM_CONFIRM_NO, title: "❌ Cancelar" }
-                    ], opts);
+                    await finalizeAsambleaRegistration(waId, currentSession, opts);
                     return;
                 }
             }
         }
 
-
-
-        // ── PASO 2: Capturar Nombre / Representante ──────────────────────────
+        // ── PASO 2: Capturar Nombre (Solo Empresas) ──────────────────────────
         if (session.step === 'ASAMBLEA_ASK_NAME') {
             const nombre = String(incomingText).trim();
-            const esEmpresa = session.esEmpresa || false;
-            const nombreOficial = session.nombreOficial || '';
-
             if (nombre.length < 5 || /^\d+$/.test(nombre)) {
-                const prompt = "Necesito el nombre *completo del representante o apoderado* (nombre y apellidos). Por favor no escribas números. 📝";
-                await Messaging.sendText(waId, prompt, opts);
+                await Messaging.sendText(waId, "Necesito el nombre *completo* del representante. Por favor no uses números. 📝", opts);
                 return;
             }
-
-            // Para empresas: el rol es siempre REPRESENTANTE y el nombre es del rep
-            await setAsamSession(waId, { step: 'ASAMBLEA_CONFIRM', nombre, rol: 'REPRESENTANTE' });
-            await delay(300);
-            await Messaging.sendButtons(waId,
-                `Perfecto. Por favor confirma los datos antes de finalizar:\n\n` +
-                `🏢 *Empresa:* ${nombreOficial}\n` +
-                `🤝 *Representante:* ${nombre}\n` +
-                `📄 *NIT:* ${session.doc}\n\n` +
-                `¿Todo está correcto?`,
-                [
-                    { id: ASAM_CONFIRM_YES, title: "✅ Sí, confirmar" },
-                    { id: ASAM_CONFIRM_NO, title: "❌ Cancelar" }
-                ], opts);
-            return;
-        }
-
-        // ── PASO 4: Confirmación y Registro Final ────────────────────────────
-        if (session.step === 'ASAMBLEA_CONFIRM') {
-            if (incomingText === ASAM_CONFIRM_NO) {
-                // Reiniciar al inicio (eliminamos paso documental manual)
-                await clearAsamSession(waId);
-                await Messaging.sendText(waId,
-                    "Entendido. He cancelado el proceso actual. Si deseas intentarlo o tienes alguna duda, simplemente escríbeme 'Hola' y con gusto reiniciamos. 😊",
-                    opts);
-                return;
-            }
-
-            if (incomingText !== ASAM_CONFIRM_YES) {
-                await Messaging.sendButtons(waId, "Por favor usa los botones para confirmar o cancelar tu registro:",
-                    [
-                        { id: ASAM_CONFIRM_YES, title: "✅ Sí, confirmar" },
-                        { id: ASAM_CONFIRM_NO, title: "❌ Cancelar" }
-                    ], opts);
-                return;
-            }
-
-            // Leer rol desde sesión
-            const { data: sesDb } = await supabase.from('bot_sessions').select('*').eq('wa_id', waId).single();
-            const rolFinal = sesDb?.rol || 'ACCIONISTA';
-
-            await delay(400);
-            
-            let siissOk = true;
-            if (rolFinal !== 'INVITADO') {
-                await Messaging.sendText(waId, "¡Casi terminamos! ⏳ Estoy registrando tu asistencia oficialmente en el Sistema de Quórum...", opts);
-                siissOk = await registrarAsistenciaSIISS(session.doc, session.nombre);
-            } else {
-                await Messaging.sendText(waId, "¡Casi terminamos! ⏳ Estoy registrando tu ingreso de cortesía...", opts);
-            }
-
-            const { error: dbError } = await supabase.from('asamblea_registro').insert({
-                user_phone: waId,
-                documento: session.doc,
-                nombre: session.nombre,
-                rol: rolFinal,
-                categoria_oficial: session.categoriaOficial || 'ACCIONISTA',
-                status: siissOk ? 'SYNC_OK' : 'SYNC_FAILED'
-            });
-
-            if (dbError) {
-                console.error("[Asamblea] Error guardando registro:", dbError);
-                await Messaging.sendText(waId,
-                    "❌ Ocurrió un error técnico al guardar tu registro. Por favor infórmalo al personal presente para que lo registren manualmente.",
-                    opts);
-                await clearAsamSession(waId);
-                return;
-            }
-
-            if (!siissOk) {
-                console.warn(`[Asamblea] ⚠️ Guardado local OK, pero falló envío a SIISS para doc ${session.doc}`);
-            }
-
-            await delay(1200);
-            await sendSequential(waId, [
-                `🎉 ¡*Registro completado con éxito*!`,
-                `Es un gusto confirmar que ya haces parte oficial de la Asamblea. Aquí tienes el resumen de tu ingreso:\n\n` +
-                `🏢 Calidad: ${rolFinal}\n` +
-                `👤 Nombre: ${session.nombre}\n` +
-                `📄 Documento / NIT: ${session.doc}\n` +
-                `🕐 Hora: ${new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`,
-                `✅ ¡Bienvenido/a a la *Asamblea de accionistas 2026*! Gracias por acompañarnos y por tu valiosa participación. 💛`,
-                `🎁 **¡No olvides reclamar tu obsequio!** Por favor acércate a la mesa principal de registro para recibir nuestro detalle especial de asistencia.`
-            ], opts, 1500);
-
-            // Enviar sticker de celebración al final
-            try {
-                await delay(600);
-                await Messaging.sendSticker(waId, IMG.logo_sticker, opts);
-            } catch (e) {
-                console.warn('[Asamblea] No se pudo enviar sticker de cierre:', e.message);
-            }
-
-            await clearAsamSession(waId);
+            // Para empresas: el rol es REPRESENTANTE
+            const currentSession = await setAsamSession(waId, { step: 'COMPLETED', nombre, rol: 'REPRESENTANTE' });
+            await Messaging.sendText(waId, `Perfecto, *${nombre}*. Procedo con el registro de la empresa...`, opts);
+            await finalizeAsambleaRegistration(waId, currentSession, opts);
             return;
         }
 
         // ── ESTADO DESCONOCIDO ───────────────────────────────────────────────
         await clearAsamSession(waId);
-        await Messaging.sendText(waId, "¡Hola! Escribe *Hola* para iniciar tu registro en la asamblea. 👋", opts);
+        await Messaging.sendText(waId, "¡Hola! Escribe *Hola* para iniciar tu registro. 👋", opts);
 
     } catch (error) {
-        console.error("[Asamblea] Error en processIncomingAsamblea:", error);
-        await Messaging.sendText(waId,
-            "Ocurrió un error inesperado. Por favor escribe *Hola* para reiniciar el proceso, o acércate al punto de atención presencial.",
-            { channelId });
+        console.error("[Asamblea] Error:", error);
+        await Messaging.sendText(waId, "Ocurrió un error. Escribe *Hola* para reiniciar.", { channelId });
     }
 }
 
