@@ -538,19 +538,20 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                     return;
                 } else {
                     await setAsamSession(waId, { 
-                        step: 'ASAMBLEA_ASK_ROLE', 
+                        step: 'ASAMBLEA_CONFIRM', 
                         fullName: auth.name, 
-                        nombre: auth.name, // Seteamos `nombre` para Accionista natural
+                        nombre: auth.name, 
                         categoriaOficial: categoria,
                         doc: documento,
+                        rol: 'ASOCIADO',
                         esEmpresa: false,
                         nombreOficial: auth.name
                     });
-                    welcomeMsgs.push("Para completar tu ingreso, por favor confírmame: ¿En qué calidad nos acompañas hoy en la Asamblea General?");
                     await sendSequential(waId, welcomeMsgs, opts, 1200);
-                    await Messaging.sendButtons(waId, "Selecciona una opción:", [
-                        { id: ASAM_ROLE_ASOCIADO, title: "👤 Soy Asociado" },
-                        { id: ASAM_ROLE_REPRESENT, title: "🤝 Representante" }
+                    await delay(300);
+                    await Messaging.sendButtons(waId, "¿Deseas confirmar tu ingreso en calidad de Asociado?", [
+                        { id: ASAM_CONFIRM_YES, title: "✅ Sí, confirmar" },
+                        { id: ASAM_CONFIRM_NO, title: "❌ Cancelar" }
                     ], opts);
                     return;
                 }
@@ -566,73 +567,23 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
             const nombreOficial = session.nombreOficial || '';
 
             if (nombre.length < 5 || /^\d+$/.test(nombre)) {
-                const prompt = esEmpresa
-                    ? "Necesito el nombre *completo del representante o apoderado* (nombre y apellidos). Por favor no escribas números. 📝"
-                    : "Necesito tu nombre *completo* (nombre y apellidos), por favor. Asegúrate de no escribir números. 📝";
+                const prompt = "Necesito el nombre *completo del representante o apoderado* (nombre y apellidos). Por favor no escribas números. 📝";
                 await Messaging.sendText(waId, prompt, opts);
                 return;
             }
 
-            if (esEmpresa) {
-                // Para empresas: el rol es siempre REPRESENTANTE y el nombre es del rep
-                await setAsamSession(waId, { step: 'ASAMBLEA_CONFIRM', nombre, rol: 'REPRESENTANTE' });
-                await delay(300);
-                await Messaging.sendButtons(waId,
-                    `Perfecto. Por favor confirma los datos antes de finalizar:\n\n` +
-                    `🏢 *Empresa:* ${nombreOficial}\n` +
-                    `🤝 *Representante:* ${nombre}\n` +
-                    `📄 *NIT:* ${session.doc}\n\n` +
-                    `¿Todo está correcto?`,
-                    [
-                        { id: ASAM_CONFIRM_YES, title: "✅ Sí, confirmar" },
-                        { id: ASAM_CONFIRM_NO, title: "✏️ Corregir datos" }
-                    ], opts);
-            } else {
-                // Para persona natural: preguntar si es asociado o representante
-                await setAsamSession(waId, { step: 'ASAMBLEA_ASK_ROLE', nombre });
-                await delay(500);
-                await Messaging.sendButtons(waId,
-                    `¡Gracias, *${nombre}*! 😊\n\nPor último, ¿en qué calidad asistes a la Asamblea General hoy?`,
-                    [
-                        { id: ASAM_ROLE_ASOCIADO, title: "👤 Soy Asociado" },
-                        { id: ASAM_ROLE_REPRESENT, title: "🤝 Representante / Poder" }
-                    ], opts);
-            }
-            return;
-        }
-
-        // ── PASO 3: Capturar Rol ─────────────────────────────────────────────
-        if (session.step === 'ASAMBLEA_ASK_ROLE') {
-            if (incomingText !== ASAM_ROLE_ASOCIADO && incomingText !== ASAM_ROLE_REPRESENT) {
-                await Messaging.sendText(waId,
-                    "Por favor usa los botones que te comparto para seleccionar tu calidad de asistencia. 👇",
-                    opts);
-                // Reenviar botones
-                await delay(400);
-                await Messaging.sendButtons(waId,
-                    `¿En qué calidad asistes a la Asamblea General hoy?`,
-                    [
-                        { id: ASAM_ROLE_ASOCIADO, title: "👤 Soy Asociado" },
-                        { id: ASAM_ROLE_REPRESENT, title: "🤝 Representante / Poder" }
-                    ], opts);
-                return;
-            }
-
-            const rolStr = incomingText === ASAM_ROLE_ASOCIADO ? "ASOCIADO" : "REPRESENTANTE";
-            await setAsamSession(waId, { step: 'ASAMBLEA_CONFIRM', rol: rolStr });
-
+            // Para empresas: el rol es siempre REPRESENTANTE y el nombre es del rep
+            await setAsamSession(waId, { step: 'ASAMBLEA_CONFIRM', nombre, rol: 'REPRESENTANTE' });
             await delay(300);
-
-            // Paso de confirmación — mostrar datos antes de registrar
             await Messaging.sendButtons(waId,
-                `Perfecto. Antes de finalizar, por favor confirma que tus datos son correctos:\n\n` +
-                `👤 *Nombre:* ${session.nombre}\n` +
-                `📄 *Documento:* ${session.doc}\n` +
-                `🏷️ *Calidad:* ${rolStr}\n\n` +
+                `Perfecto. Por favor confirma los datos antes de finalizar:\n\n` +
+                `🏢 *Empresa:* ${nombreOficial}\n` +
+                `🤝 *Representante:* ${nombre}\n` +
+                `📄 *NIT:* ${session.doc}\n\n` +
                 `¿Todo está correcto?`,
                 [
                     { id: ASAM_CONFIRM_YES, title: "✅ Sí, confirmar" },
-                    { id: ASAM_CONFIRM_NO, title: "✏️ Corregir datos" }
+                    { id: ASAM_CONFIRM_NO, title: "❌ Cancelar" }
                 ], opts);
             return;
         }
