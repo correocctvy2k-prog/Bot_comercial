@@ -172,7 +172,7 @@ async function checkAuthorization(waId) {
     try {
         const { data, error } = await supabase
             .from('asamblea_padron')
-            .select('nombre, categoria')
+            .select('nombre, categoria, documento')
             .eq('wa_id', waId)
             .maybeSingle();
 
@@ -182,7 +182,12 @@ async function checkAuthorization(waId) {
         }
 
         if (data) {
-            return { authorized: true, name: data.nombre, categoria: data.categoria || 'ACCIONISTA' };
+            return { 
+                authorized: true, 
+                name: data.nombre, 
+                categoria: data.categoria || 'ACCIONISTA',
+                documento: data.documento
+            };
         }
 
         return { authorized: false };
@@ -468,6 +473,7 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                 await setAsamSession(waId, { 
                     step: 'ASAMBLEA_CONFIRM', 
                     fullName: auth.name, 
+                    nombre: auth.name,
                     categoriaOficial: categoria,
                     doc: documento,
                     rol: 'APODERADO'
@@ -485,6 +491,7 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                 await setAsamSession(waId, { 
                     step: 'ASAMBLEA_CONFIRM', 
                     fullName: auth.name, 
+                    nombre: auth.name,
                     categoriaOficial: categoria,
                     doc: documento,
                     rol: 'INVITADO'
@@ -501,6 +508,7 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                  await setAsamSession(waId, { 
                     step: 'ASAMBLEA_CONFIRM', 
                     fullName: auth.name, 
+                    nombre: auth.name,
                     categoriaOficial: categoria,
                     doc: documento,
                     rol: 'REPRESENTANTE LEGAL'
@@ -519,6 +527,7 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                     await setAsamSession(waId, { 
                         step: 'ASAMBLEA_ASK_NAME', 
                         fullName: auth.name, 
+                        // No seteamos `nombre` aquí porque se lo pediremos al representante enseguida (ver paso 2)
                         categoriaOficial: categoria,
                         doc: documento,
                         esEmpresa: true,
@@ -531,6 +540,7 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                     await setAsamSession(waId, { 
                         step: 'ASAMBLEA_ASK_ROLE', 
                         fullName: auth.name, 
+                        nombre: auth.name, // Seteamos `nombre` para Accionista natural
                         categoriaOficial: categoria,
                         doc: documento,
                         esEmpresa: false,
