@@ -488,6 +488,7 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                 return;
 
             } else if (categoria === 'INVITADO') {
+                welcomeMsgs.push("📌 Por favor, **dirígete a la mesa principal de registro** para completar tu proceso de ingreso de forma presencial y reclamar tu obsequio. ¡Te esperamos! 🎁");
                 await setAsamSession(waId, { 
                     step: 'ASAMBLEA_CONFIRM', 
                     fullName: auth.name, 
@@ -496,9 +497,10 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                     doc: documento,
                     rol: 'INVITADO'
                 });
+                welcomeMsgs.push("¿Deseas confirmar tu ingreso a la Asamblea?");
                 await sendSequential(waId, welcomeMsgs, opts, 1200);
                 await delay(300);
-                await Messaging.sendButtons(waId, "¿Deseas confirmar tu ingreso a la Asamblea?", [
+                await Messaging.sendButtons(waId, "¿Confirma tu ingreso?", [
                     { id: ASAM_CONFIRM_YES, title: "✅ Sí, confirmar" },
                     { id: ASAM_CONFIRM_NO, title: "❌ Cancelar" }
                 ], opts);
@@ -613,9 +615,14 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
             const rolFinal = sesDb?.rol || 'ACCIONISTA';
 
             await delay(400);
-            await Messaging.sendText(waId, "¡Casi terminamos! ⏳ Estoy registrando tu asistencia oficialmente en el Sistema de Quórum...", opts);
-
-            const siissOk = await registrarAsistenciaSIISS(session.doc, session.nombre);
+            
+            let siissOk = true;
+            if (rolFinal !== 'INVITADO') {
+                await Messaging.sendText(waId, "¡Casi terminamos! ⏳ Estoy registrando tu asistencia oficialmente en el Sistema de Quórum...", opts);
+                siissOk = await registrarAsistenciaSIISS(session.doc, session.nombre);
+            } else {
+                await Messaging.sendText(waId, "¡Casi terminamos! ⏳ Estoy registrando tu ingreso de cortesía...", opts);
+            }
 
             const { error: dbError } = await supabase.from('asamblea_registro').insert({
                 user_phone: waId,
