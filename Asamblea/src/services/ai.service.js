@@ -203,15 +203,16 @@ async function checkAuthorization(waId) {
  */
 async function finalizeAsambleaRegistration(waId, session, opts) {
     const rolFinal = session.rol || 'ACCIONISTA';
+    const isGuestOrProxy = ['INVITADO', 'APODERADO'].includes(rolFinal);
 
     await delay(400);
 
     let siissOk = true;
     if (rolFinal !== 'INVITADO') {
-        await Messaging.sendText(waId, "¡Casi terminamos! ⏳ Estoy registrando tu asistencia oficialmente en el Sistema de Quórum...", opts);
+        await Messaging.sendText(waId, "¡Casi terminamos! ⏳ Registrando tu asistencia oficialmente...", opts);
         siissOk = await registrarAsistenciaSIISS(session.doc, session.nombre);
     } else {
-        await Messaging.sendText(waId, "¡Casi terminamos! ⏳ Estoy registrando tu ingreso de cortesía...", opts);
+        await Messaging.sendText(waId, "¡Casi terminamos! ⏳ Registrando tu ingreso de cortesía...", opts);
     }
 
     const { error: dbError } = await supabase.from('asamblea_registro').insert({
@@ -225,22 +226,28 @@ async function finalizeAsambleaRegistration(waId, session, opts) {
 
     if (dbError) {
         console.error("[Asamblea] Error guardando registro:", dbError);
-        await Messaging.sendText(waId, "❌ Ocurrió un error técnico al guardar tu registro. Por favor infórmalo al personal en la mesa principal.", opts);
+        await Messaging.sendText(waId, "❌ Error técnico al guardar registro. Por favor infórmalo en la mesa principal.", opts);
         await clearAsamSession(waId);
         return;
     }
 
-    await delay(1200);
-    await sendSequential(waId, [
-        `🎉 ¡*Registro completado con éxito*!`,
-        `Es un gusto confirmar que ya haces parte oficial de la Asamblea. Aquí tienes el resumen de tu ingreso:\n\n` +
-        `🏢 Calidad: ${rolFinal}\n` +
-        `👤 Nombre: ${session.nombre}\n` +
-        `📄 Documento / NIT: ${session.doc}\n` +
-        `🕐 Hora: ${new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`,
-        `✅ ¡Bienvenido/a a la *Asamblea de accionistas 2026*! Gracias por acompañarnos y por tu participación. 💛`,
-        `🎁 **¡No olvides reclamar tu obsequio!** Por favor acércate a la mesa principal de registro para recibir nuestro detalle especial.`
-    ], opts, 1500);
+    await delay(1000);
+
+    // UX Simplificado: Mensaje final consolidado
+    let finalMsg = `🎉 *¡Registro exitoso!* ✅\n\n` +
+                   `Es un gusto confirmar tu participación. Resumen de ingreso:\n` +
+                   `👤 *Nombre:* ${session.nombre}\n` +
+                   `📄 *Documento:* ${session.doc}\n` +
+                   `🕐 *Hora:* ${new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}\n\n`;
+
+    // Solo accionistas reciben el recordatorio del regalo aquí (Invitados/Apoderados ya lo vieron al inicio)
+    if (!isGuestOrProxy) {
+        finalMsg += `🎁 *¡No olvides reclamar tu obsequio!* Acércate a la mesa principal para recibir nuestro detalle.`;
+    } else {
+        finalMsg += `¡Gracias por acompañarnos! Te esperamos en el salón principal. 💛`;
+    }
+
+    await Messaging.sendText(waId, finalMsg, opts);
 
     // Enviar sticker de celebración
     try {
@@ -443,29 +450,28 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
             const esEmpresa = companyKeywords.some(kw => nombreOficial.includes(kw));
 
             try {
-                await Messaging.sendPhoto(waId, IMG.logo_completo, "🌟 *Asamblea de accionistas 2026*", opts);
+                // Bienvenida premium: Imagen + Texto consolidado
+                const welcomeText = `🌟 ¡Hola, *${firstName}*! Te damos la bienvenida a la *Asamblea de accionistas 2026*.\n\n` +
+                                   `Te hemos identificado como: *${labelRol}*.`;
+                
+                await Messaging.sendPhoto(waId, IMG.logo_completo, welcomeText, opts);
                 await delay(800);
             } catch (e) {}
 
-            const welcomeMsgs = [
-                `🌟 ¡Hola, *${firstName}*! Te damos la bienvenida a la *Asamblea de accionistas 2026*.`,
-                `Te hemos identificado como: *${labelRol}*.`
-            ];
-
             if (categoria === 'APODERADO' || categoria === 'INVITADO') {
-                welcomeMsgs.push("📌 Por favor, **dirígete a la mesa principal de registro** para completar tu ingreso presencial y reclamar tu obsequio. ¡Te esperamos! 🎁");
+                const instrMessage = `📌 Por favor, **dirígete a la mesa principal de registro** para completar tu ingreso presencial y reclamar tu obsequio. ¡Te esperamos! 🎁`;
+                await Messaging.sendText(waId, instrMessage, opts);
+                
                 const currentSession = await setAsamSession(waId, { 
-                    step: 'COMPLETED', fullName: auth.name, nombre: auth.name, categoriaOficial: categoria, doc: documento, rol: categoria 
+                    step: 'COMPLETED', fullName: auth.name, nombre: auth.name, categoriaOficial: categoria, doc: documento, rol: labelRol 
                 });
-                await sendSequential(waId, welcomeMsgs, opts, 1000);
                 await finalizeAsambleaRegistration(waId, currentSession, opts);
                 return;
 
             } else if (categoria === 'REPRESENTANTE_LEGAL') {
                 const currentSession = await setAsamSession(waId, { 
-                    step: 'COMPLETED', fullName: auth.name, nombre: auth.name, categoriaOficial: categoria, doc: documento, rol: 'REPRESENTANTE LEGAL' 
+                    step: 'COMPLETED', fullName: auth.name, nombre: auth.name, categoriaOficial: categoria, doc: documento, rol: 'Representante Legal' 
                 });
-                await sendSequential(waId, welcomeMsgs, opts, 1000);
                 await finalizeAsambleaRegistration(waId, currentSession, opts);
                 return;
 
@@ -475,14 +481,13 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                     await setAsamSession(waId, { 
                         step: 'ASAMBLEA_ASK_NAME', fullName: auth.name, categoriaOficial: categoria, doc: documento, esEmpresa: true, nombreOficial: auth.name 
                     });
-                    welcomeMsgs.push("Por favor escríbeme el *nombre completo del representante o apoderado* que asiste hoy:");
-                    await sendSequential(waId, welcomeMsgs, opts, 1200);
+                    const askName = `Por favor escríbeme el *nombre completo del representante o apoderado* que asiste hoy por *${firstName}*:`;
+                    await Messaging.sendText(waId, askName, opts);
                     return;
                 } else {
                     const currentSession = await setAsamSession(waId, { 
-                        step: 'COMPLETED', fullName: auth.name, nombre: auth.name, categoriaOficial: categoria, doc: documento, rol: 'ACCIONISTA', esEmpresa: false, nombreOficial: auth.name 
+                        step: 'COMPLETED', fullName: auth.name, nombre: auth.name, categoriaOficial: categoria, doc: documento, rol: 'Accionista', esEmpresa: false, nombreOficial: auth.name 
                     });
-                    await sendSequential(waId, welcomeMsgs, opts, 1200);
                     await finalizeAsambleaRegistration(waId, currentSession, opts);
                     return;
                 }
