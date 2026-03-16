@@ -543,13 +543,13 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                         nombre: auth.name, 
                         categoriaOficial: categoria,
                         doc: documento,
-                        rol: 'ASOCIADO',
+                        rol: 'ACCIONISTA',
                         esEmpresa: false,
                         nombreOficial: auth.name
                     });
                     await sendSequential(waId, welcomeMsgs, opts, 1200);
                     await delay(300);
-                    await Messaging.sendButtons(waId, "¿Deseas confirmar tu ingreso en calidad de Asociado?", [
+                    await Messaging.sendButtons(waId, "¿Deseas confirmar tu ingreso en calidad de Accionista?", [
                         { id: ASAM_CONFIRM_YES, title: "✅ Sí, confirmar" },
                         { id: ASAM_CONFIRM_NO, title: "❌ Cancelar" }
                     ], opts);
@@ -610,7 +610,7 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
 
             // Leer rol desde sesión
             const { data: sesDb } = await supabase.from('bot_sessions').select('*').eq('wa_id', waId).single();
-            const rolFinal = sesDb?.rol || 'ASOCIADO';
+            const rolFinal = sesDb?.rol || 'ACCIONISTA';
 
             await delay(400);
             await Messaging.sendText(waId, "¡Casi terminamos! ⏳ Estoy registrando tu asistencia oficialmente en el Sistema de Quórum...", opts);
@@ -647,7 +647,8 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                 `👤 Nombre: ${session.nombre}\n` +
                 `📄 Documento / NIT: ${session.doc}\n` +
                 `🕐 Hora: ${new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`,
-                `✅ ¡Bienvenido/a a la *Asamblea de accionistas 2026*! Gracias por acompañarnos y por tu valiosa participación. 💛`
+                `✅ ¡Bienvenido/a a la *Asamblea de accionistas 2026*! Gracias por acompañarnos y por tu valiosa participación. 💛`,
+                `🎁 **¡No olvides reclamar tu obsequio!** Por favor acércate a la mesa principal de registro para recibir nuestro detalle especial de asistencia.`
             ], opts, 1500);
 
             // Enviar sticker de celebración al final
