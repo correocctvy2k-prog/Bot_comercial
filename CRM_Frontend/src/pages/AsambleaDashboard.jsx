@@ -100,7 +100,17 @@ export default function AsambleaDashboard() {
 
     const [activityFeed, setActivityFeed] = useState([]);
     const [pollChartData, setPollChartData] = useState(null);
-    const [quizAudit, setQuizAudit] = useState({ polls: [], participants: [] });
+    const [quizAudit, setQuizAudit] = useState({ polls: [], participants: [], globalStats: { correct: 0, incorrect: 0, pending: 0 } });
+
+    // Helper para validar respuestas SARLAFT (1=C, 2=A, 3=C)
+    const isCorrectAnswer = (question, answer) => {
+        if (!answer) return null;
+        const q = question.toLowerCase();
+        if (q.includes("inusual") && answer.startsWith("C.")) return true;
+        if (q.includes("alerta") && answer.startsWith("A.")) return true;
+        if (q.includes("sarlaft") && answer.startsWith("C.")) return true;
+        return false;
+    };
 
     // Modal de Faltantes
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -175,15 +185,32 @@ export default function AsambleaDashboard() {
                 .select('user_phone, nombre, documento');
 
             if (allRegistered) {
+                let globalCorrect = 0;
+                let globalIncorrect = 0;
+                let globalPending = 0;
+
                 const auditData = allRegistered.map(user => {
                     const userVotes = {};
                     pollIds.forEach(pId => {
+                        const poll = recentPolls.find(p => p.id === pId);
                         const v = allVotes?.find(vote => vote.encuesta_id === pId && vote.user_phone === user.user_phone);
-                        userVotes[pId] = v ? v.opcion_texto : null;
+                        const ans = v ? v.opcion_texto : null;
+                        userVotes[pId] = ans;
+                        
+                        if (ans) {
+                            if (isCorrectAnswer(poll.pregunta, ans)) globalCorrect++;
+                            else globalIncorrect++;
+                        } else {
+                            globalPending++;
+                        }
                     });
                     return { ...user, votes: userVotes };
                 });
-                setQuizAudit({ polls: recentPolls, participants: auditData });
+                setQuizAudit({ 
+                    polls: recentPolls, 
+                    participants: auditData,
+                    globalStats: { correct: globalCorrect, incorrect: globalIncorrect, pending: globalPending }
+                });
             }
         }
 
@@ -523,20 +550,36 @@ export default function AsambleaDashboard() {
             {/* Fila del Monitor de Quiz SARLAFT */}
             <div className="grid grid-cols-1 gap-6">
                 <div className="bg-card/60 backdrop-blur-sm border border-border/70 rounded-xl p-6 overflow-hidden flex flex-col">
-                    <div className="flex items-center justify-between mb-6">
+                    <div className="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
                         <div>
                             <h3 className="text-lg font-bold flex items-center gap-2">
                                 <BadgeCheck className="w-5 h-5 text-emerald-400" /> Monitor de Capacitación SARLAFT (En Vivo)
                             </h3>
-                            <p className="text-xs text-muted-foreground">Seguimiento de respuestas de los 3 últimos bloques de preguntas enviados.</p>
+                            <p className="text-xs text-muted-foreground">Analítica de efectividad y seguimiento de respuestas en tiempo real.</p>
                         </div>
-                        <div className="flex items-center gap-4 text-xs font-medium">
-                            <span className="flex items-center gap-1.5 text-emerald-400">
-                                <div className="w-2 h-2 rounded-full bg-emerald-400"></div> Respondido
-                            </span>
-                            <span className="flex items-center gap-1.5 text-muted-foreground/60">
-                                <div className="w-2 h-2 rounded-full bg-white/20"></div> Pendiente
-                            </span>
+                        
+                        {/* Barra de Accuracy Global */}
+                        <div className="flex-1 max-w-md w-full bg-black/40 border border-white/5 p-3 rounded-2xl">
+                            <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider mb-2 px-1">
+                                <span className="text-emerald-400">Correctas ({quizAudit.globalStats.correct})</span>
+                                <span className="text-red-400">Incorrectas ({quizAudit.globalStats.incorrect})</span>
+                            </div>
+                            <div className="h-2.5 w-full bg-white/5 rounded-full overflow-hidden flex">
+                                {quizAudit.globalStats.correct + quizAudit.globalStats.incorrect > 0 ? (
+                                    <>
+                                        <div 
+                                            className="h-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] transition-all duration-1000" 
+                                            style={{ width: `${(quizAudit.globalStats.correct / (quizAudit.globalStats.correct + quizAudit.globalStats.incorrect)) * 100}%` }}
+                                        />
+                                        <div 
+                                            className="h-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)] transition-all duration-1000" 
+                                            style={{ width: `${(quizAudit.globalStats.incorrect / (quizAudit.globalStats.correct + quizAudit.globalStats.incorrect)) * 100}%` }}
+                                        />
+                                    </>
+                                ) : (
+                                    <div className="h-full w-full bg-white/10 animate-pulse" />
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -544,52 +587,80 @@ export default function AsambleaDashboard() {
                         <table className="w-full text-xs text-left">
                             <thead className="text-[10px] text-muted-foreground uppercase bg-black/40 border-b border-white/5 sticky top-0">
                                 <tr>
-                                    <th className="px-6 py-4 font-bold border-r border-white/5 min-w-[200px]">Participante / Accionista</th>
+                                    <th className="px-6 py-4 font-bold border-r border-white/5 min-w-[220px]">Participante / Accionista</th>
                                     {quizAudit.polls.map((poll, idx) => (
-                                        <th key={poll.id} className="px-6 py-4 font-bold text-center">
-                                            <div className="truncate max-w-[200px] mx-auto" title={poll.pregunta}>
+                                        <th key={poll.id} className="px-6 py-4 font-bold text-center border-r border-white/5">
+                                            <div className="truncate max-w-[180px] mx-auto opacity-80" title={poll.pregunta}>
                                                 P{quizAudit.polls.length - idx}: {poll.pregunta}
                                             </div>
                                         </th>
                                     ))}
+                                    <th className="px-4 py-4 font-bold text-center">Score</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
                                 {quizAudit.participants.length === 0 ? (
-                                    <tr><td colSpan={4} className="px-6 py-10 text-center text-muted-foreground italic">Esperando datos de participación...</td></tr>
+                                    <tr><td colSpan={quizAudit.polls.length + 2} className="px-6 py-10 text-center text-muted-foreground italic">Esperando datos de participación...</td></tr>
                                 ) : (
-                                    quizAudit.participants.map((u, i) => (
-                                        <tr key={u.user_phone} className="hover:bg-white/[0.04] transition-colors group">
-                                            <td className="px-6 py-3 border-r border-white/5">
-                                                <div className="font-semibold text-foreground truncate max-w-[190px]">{u.nombre}</div>
-                                                <div className="text-[10px] opacity-60">CC. {u.documento}</div>
-                                            </td>
-                                            {quizAudit.polls.map(poll => {
-                                                const answer = u.votes[poll.id];
-                                                return (
-                                                    <td key={poll.id} className="px-4 py-3 text-center">
-                                                        {answer ? (
-                                                            <div className="flex flex-col items-center gap-1">
-                                                                <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 mb-1">
-                                                                    <BadgeCheck size={14} />
+                                    quizAudit.participants.map((u, i) => {
+                                        let userCorrect = 0;
+                                        let userAnswered = 0;
+                                        return (
+                                            <tr key={u.user_phone} className="hover:bg-white/[0.04] transition-colors group">
+                                                <td className="px-6 py-3 border-r border-white/5">
+                                                    <div className="font-semibold text-foreground truncate max-w-[200px]">{u.nombre}</div>
+                                                    <div className="text-[10px] opacity-60 tabular-nums">CC. {u.documento}</div>
+                                                </td>
+                                                {quizAudit.polls.map(poll => {
+                                                    const answer = u.votes[poll.id];
+                                                    const isCorrect = isCorrectAnswer(poll.pregunta, answer);
+                                                    if (answer) {
+                                                        userAnswered++;
+                                                        if (isCorrect) userCorrect++;
+                                                    }
+                                                    return (
+                                                        <td key={poll.id} className="px-4 py-2 border-r border-white/5">
+                                                            {answer ? (
+                                                                <div className={`flex flex-col items-center p-1.5 rounded-lg border transition-all ${
+                                                                    isCorrect 
+                                                                    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" 
+                                                                    : "bg-red-500/10 border-red-500/20 text-red-400"
+                                                                }`}>
+                                                                    <div className="flex items-center gap-1.5 mb-0.5">
+                                                                        {isCorrect ? <UserCheck size={12} /> : <X size={12} />}
+                                                                        <span className="text-[9px] font-black uppercase tracking-tighter">
+                                                                            {isCorrect ? "Correcto" : "Incorrecto"}
+                                                                        </span>
+                                                                    </div>
+                                                                    <span className="text-[10px] font-medium leading-tight truncate max-w-[140px] opacity-90">
+                                                                        {answer}
+                                                                    </span>
                                                                 </div>
-                                                                <span className="text-[9px] font-bold text-emerald-400/90 leading-tight block truncate max-w-[120px]">
-                                                                    {answer}
-                                                                </span>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex flex-col items-center gap-1 opacity-20">
-                                                                <div className="w-5 h-5 rounded-full border border-dashed border-white/40 flex items-center justify-center text-white/40 mb-1">
-                                                                    <ActivityIcon size={10} />
+                                                            ) : (
+                                                                <div className="flex items-center justify-center gap-2 opacity-20 py-2">
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-white/40 animate-pulse" />
+                                                                    <span className="text-[9px] font-medium italic">Pendiente</span>
                                                                 </div>
-                                                                <span className="text-[9px] font-medium italic">Esperando...</span>
-                                                            </div>
-                                                        )}
-                                                    </td>
-                                                );
-                                            })}
-                                        </tr>
-                                    ))
+                                                            )}
+                                                        </td>
+                                                    );
+                                                })}
+                                                <td className="px-4 py-3 text-center">
+                                                    <div className="flex flex-col items-center">
+                                                        <div className={`text-sm font-black ${userAnswered === 0 ? "text-muted-foreground/40" : userCorrect === quizAudit.polls.length ? "text-emerald-400" : "text-orange-400"}`}>
+                                                            {userCorrect}/{quizAudit.polls.length}
+                                                        </div>
+                                                        <div className="w-12 h-1 bg-white/5 rounded-full mt-1 overflow-hidden">
+                                                            <div 
+                                                                className={`h-full transition-all duration-500 ${userCorrect === quizAudit.polls.length ? "bg-emerald-500" : "bg-orange-500"}`}
+                                                                style={{ width: `${(userCorrect / quizAudit.polls.length) * 100}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 )}
                             </tbody>
                         </table>
