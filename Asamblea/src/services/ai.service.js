@@ -198,6 +198,34 @@ async function checkAuthorization(waId) {
 }
 
 /**
+ * Verifica si el usuario ya está registrado en la tabla de asistencia.
+ * @param {string} waId 
+ * @param {string} documento 
+ * @returns {Promise<{registered: boolean, data?: object}>}
+ */
+async function checkExistingRegistration(waId, documento) {
+    try {
+        // Buscamos por teléfono o por documento para evitar duplicidad total
+        const { data, error } = await supabase
+            .from('asamblea_registro')
+            .select('*')
+            .or(`user_phone.eq.${waId},documento.eq.${documento}`)
+            .eq('status', 'SYNC_OK')
+            .maybeSingle();
+
+        if (error) {
+            console.error(`[Asamblea] Error verificando registro previo:`, error.message);
+            return { registered: false };
+        }
+
+        return { registered: !!data, data };
+    } catch (e) {
+        console.error(`[Asamblea] Excepción verificando registro previo:`, e.message);
+        return { registered: false };
+    }
+}
+
+/**
  * Procesa la sincronización con SIISS, guarda en Supabase y envía mensajes finales.
  * Reemplaza al antiguo paso manual de 'Confirmación'.
  */
@@ -438,6 +466,21 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                 await Messaging.sendText(waId, "🌟 ¡Hola! Gracias por comunicarte con la línea oficial de la *Asamblea de accionistas 2026*.\n\nEste número no está en nuestra lista de autorizados. Por favor acércate al punto presencial.", opts);
                 return;
             }
+
+            // --- VALIDACIÓN DE REGISTRO PREVIO ---
+            const registration = await checkExistingRegistration(waId, auth.documento);
+            if (registration.registered) {
+                const regData = registration.data;
+                const msgYaRegistrado = `✅ *¡Ya te encuentras registrado/a!*\n\n` +
+                                       `Hola *${regData.nombre.split(' ')[0]}*, nuestro sistema confirma que tu registro se completó exitosamente.\n\n` +
+                                       `📋 *Detalles:* \n` +
+                                       `• Calidad: ${regData.rol}\n` +
+                                       `• Documento: ${regData.documento}\n\n` +
+                                       `¡Gracias por tu participación! Ya puedes ingresar al salón principal. 💛`;
+                await Messaging.sendText(waId, msgYaRegistrado, opts);
+                return;
+            }
+            // ------------------------------------
 
             const firstName = auth.name.split(' ')[0];
             const categoria = auth.categoria || 'ACCIONISTA';
