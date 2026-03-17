@@ -345,31 +345,27 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
             return;
         }
 
-        if (session.step === 'ASAM_ADMIN_MENU') {
-            if (incomingText === 'ADMIN_GO_POLL') {
-                await setAsamSession(waId, { step: 'ASAM_ADMIN_ASK_Q' });
-                await Messaging.sendText(waId, "📝 Escribe la *Pregunta* que deseas enviar a todos los accionistas:", opts);
-            } else if (incomingText === 'ADMIN_VIEW_QUORUM') {
-                await Messaging.sendText(waId, "⏳ Generando reporte de quórum...", opts);
-                const res = await generateChart('quorum');
-                if (res.ok) {
-                    await Messaging.sendPhoto(waId, res.image, "📊 *Estado Actual del Quórum*", opts);
-                } else {
-                    await Messaging.sendText(waId, `❌ Error: ${res.error}`, opts);
-                }
-            } else if (incomingText === 'ADMIN_VIEW_POLL') {
-                const { data: poll } = await supabase.from('asamblea_encuestas').select('*').order('created_at', { ascending: false }).limit(1).single();
-                if (!poll) {
-                    await Messaging.sendText(waId, "❌ Aún no hay encuestas registradas.", opts);
-                    return;
-                }
-                await Messaging.sendText(waId, "⏳ Generando resultados de la última encuesta...", opts);
-                const res = await generateChart('poll', poll.id);
-                if (res.ok) {
-                    await Messaging.sendPhoto(waId, res.image, `📈 *Resultados:* ${poll.pregunta}`, opts);
-                } else {
-                    await Messaging.sendText(waId, `❌ Error: ${res.error}`, opts);
-                }
+            } else if (incomingText === 'ADMIN_START_SARLAFT') {
+                const quizQuestions = [
+                    { q: "1. ¿Qué debo hacer al momento de observar una operación inusual?", o: ["A. Reportar a la policía", "B. Reportar a la Gerencia", "C. Reportar al Oficial de cumplimiento"] },
+                    { q: "2. Esta es una señal de alerta:", o: ["A. Realizar retiros de Betplay sin la presencia del cliente", "B. Salir de vacaciones", "C. Un cliente que entrega toda la información solicitada"] },
+                    { q: "3. El cumplimiento del SARLAFT, es responsabilidad de:", o: ["A. El gerente", "B. Oficial de cumplimiento", "C. De todos los que hacemos parte de Gane Palmira"] }
+                ];
+                
+                const { count } = await supabase.from('asamblea_registro').select('*', { count: 'exact', head: true });
+                await setAsamSession(waId, { step: 'ASAM_ADMIN_QUIZ_PREVIEW', quizQuestions });
+                
+                let previewText = `🎓 *VISTA PREVIA: QUIZ SARLAFT*\n\n`;
+                quizQuestions.forEach(item => {
+                    previewText += `*${item.q}*\n${item.o.map(o => `· ${o}`).join('\n')}\n\n`;
+                });
+                previewText += `⚠️ Se enviará este quiz secuencialmente a *${count || 0}* personas registradas. ¿Deseas continuar?`;
+                
+                await Messaging.sendButtons(waId, previewText, [
+                    { id: "ADMIN_QUIZ_SEND_OK", title: "✅ Sí, Enviar Todo" },
+                    { id: "ADMIN_QUIZ_CANCEL", title: "❌ Cancelar" }
+                ], opts);
+                return;
             }
             return;
         }
@@ -439,74 +435,57 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
             return;
         }
 
-        // --- SUB-FLUJO: QUIZ SARLAFT AUTOMÁTICO ---
-        if (session.step === 'ASAM_ADMIN_MENU' && incomingText === 'ADMIN_START_SARLAFT') {
-            const quizQuestions = [
-                { 
-                    q: "1. ¿Qué debo hacer al momento de observar una operación inusual?", 
-                    o: ["A. Reportar a la policía", "B. Reportar a la Gerencia", "C. Reportar al Oficial de cumplimiento"] 
-                },
-                { 
-                    q: "2. Esta es una señal de alerta:", 
-                    o: ["A. Realizar retiros de Betplay sin la presencia del cliente", "B. Salir de vacaciones", "C. Un cliente que entrega toda la información solicitada"] 
-                },
-                { 
-                    q: "3. El cumplimiento del SARLAFT, es responsabilidad de:", 
-                    o: ["A. El gerente", "B. Oficial de cumplimiento", "C. De todos los que hacemos parte de Gane Palmira"] 
-                }
-            ];
-
-            // Consultar TODOS los registrados (sin limitar a SYNC_OK por si hubo fallos de red previos)
-            const { data: users, error: userErr } = await supabase.from('asamblea_registro').select('user_phone, nombre');
-            
-            if (userErr || !users || users.length === 0) {
-                console.error("[Quiz] Error obteniendo usuarios o lista vacía:", userErr);
-                await Messaging.sendText(waId, "❌ No se encontraron usuarios registrados para enviar el quiz.", opts);
+        // --- PASO: CONFIRMACIÓN Y ENVIO DE QUIZ SARLAFT ---
+        if (session.step === 'ASAM_ADMIN_QUIZ_PREVIEW') {
+            if (incomingText === "ADMIN_QUIZ_CANCEL") {
+                await setAsamSession(waId, { step: 'ASAM_ADMIN_MENU' });
+                await Messaging.sendText(waId, "Operación cancelada.", opts);
                 return;
             }
 
-            await Messaging.sendText(waId, `🚀 Iniciando Trimestre SARLAFT para ${users.length} personas. Enviando bloques secuencialmente...`, opts);
-            
-            (async () => {
-                for (const item of quizQuestions) {
-                    const { data: poll, error: pollErr } = await supabase.from('asamblea_encuestas').insert({ 
-                        pregunta: item.q, 
-                        opciones: item.o 
-                    }).select().single();
-
-                    if (pollErr || !poll) {
-                        console.error("[Quiz] Error creando encuesta en BD:", pollErr);
-                        continue;
-                    }
-
-                    // Botones cortos (A, B, C) para evitar truncado de WhatsApp (Límite 20 caracteres)
-                    const pollButtons = [
-                        { id: `VOTE_${poll.id}_0`, title: "Opción A" },
-                        { id: `VOTE_${poll.id}_1`, title: "Opción B" },
-                        { id: `VOTE_${poll.id}_2`, title: "Opción C" }
-                    ];
-                    
-                    for (const user of users) {
-                        try {
-                            const userOpts = user.user_phone.startsWith("tg_") ? { channelId: "telegram_bot" } : {};
-                            
-                            // Texto completo en el cuerpo del mensaje
-                            const fullQuestionBody = `🎓 *Capacitación SARLAFT*\n` +
-                                                   `Hola ${user.nombre.split(' ')[0]},\n\n` +
-                                                   `*Pregunta:* ${item.q}\n\n` +
-                                                   `${item.o.map(opt => `🔹 ${opt}`).join('\n')}`;
-
-                            await Messaging.sendButtons(user.user_phone, fullQuestionBody, pollButtons, userOpts);
-                        } catch (e) {
-                            console.error(`[Quiz] Error enviando a ${user.user_phone}:`, e.message);
-                        }
-                    }
-                    await delay(4000); // Pausa mayor entre preguntas para estabilidad
+            if (incomingText === "ADMIN_QUIZ_SEND_OK") {
+                const quizQuestions = session.quizQuestions;
+                const { data: users, error: userErr } = await supabase.from('asamblea_registro').select('user_phone, nombre');
+                
+                if (userErr || !users || users.length === 0) {
+                    await Messaging.sendText(waId, "❌ No hay usuarios registrados.", opts);
+                    await setAsamSession(waId, { step: 'ASAM_ADMIN_MENU' });
+                    return;
                 }
-                console.log("[Quiz] Difusión completada exitosamente.");
-            })();
 
-            await setAsamSession(waId, { step: 'ASAM_ADMIN_MENU' });
+                await Messaging.sendText(waId, `🚀 Difusión iniciada para ${users.length} personas.`, opts);
+                await setAsamSession(waId, { step: 'ASAM_ADMIN_MENU' });
+
+                (async () => {
+                    for (const item of quizQuestions) {
+                        const { data: poll, error: pollErr } = await supabase.from('asamblea_encuestas').insert({ 
+                            pregunta: item.q, 
+                            opciones: item.o 
+                        }).select().single();
+
+                        if (pollErr || !poll) continue;
+
+                        const pollButtons = [
+                            { id: `VOTE_${poll.id}_0`, title: "Opción A" },
+                            { id: `VOTE_${poll.id}_1`, title: "Opción B" },
+                            { id: `VOTE_${poll.id}_2`, title: "Opción C" }
+                        ];
+                        
+                        for (const user of users) {
+                            try {
+                                const userOpts = user.user_phone.startsWith("tg_") ? { channelId: "telegram_bot" } : {};
+                                const fullQuestionBody = `🎓 *Capacitación SARLAFT*\n` +
+                                                       `Hola ${user.nombre.split(' ')[0]},\n\n` +
+                                                       `*Pregunta:* ${item.q}\n\n` +
+                                                       `${item.o.map(opt => `🔹 ${opt}`).join('\n')}`;
+                                await Messaging.sendButtons(user.user_phone, fullQuestionBody, pollButtons, userOpts);
+                            } catch (e) {}
+                        }
+                        await delay(4000);
+                    }
+                })();
+                return;
+            }
             return;
         }
 
