@@ -414,34 +414,61 @@ export default function AsambleaDashboard() {
                                             data={pollChartData.data}
                                             cx="50%"
                                             cy="50%"
-                                            innerRadius={60}
+                                            innerRadius={65}
                                             outerRadius={90}
-                                            paddingAngle={5}
+                                            paddingAngle={8}
                                             dataKey="value"
                                             stroke="transparent"
+                                            animationBegin={0}
+                                            animationDuration={1500}
                                         >
                                             {pollChartData.data.map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                             ))}
                                         </Pie>
                                         <Tooltip
-                                            contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                                            contentStyle={{ backgroundColor: 'rgba(0,0,0,0.85)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', backdropFilter: 'blur(8px)' }}
                                             itemStyle={{ color: '#fff' }}
+                                            cursor={{ fill: 'transparent' }}
                                         />
-                                        <Legend verticalAlign="bottom" height={36} />
                                     </PieChart>
                                 </ResponsiveContainer>
+                                {/* Central label for total votes */}
+                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                    <span className="text-2xl font-bold text-foreground">
+                                        {pollChartData.data.reduce((acc, curr) => acc + curr.value, 0)}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">Votos Totales</span>
+                                </div>
                             </div>
-                            <div className="mt-4 w-full space-y-2">
-                                {pollChartData.data.map((entry, index) => (
-                                    <div key={index} className="flex justify-between items-center text-sm bg-black/20 p-2 rounded-lg border border-white/5">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
-                                            <span className="text-muted-foreground">{entry.name}</span>
-                                        </div>
-                                        <span className="font-bold">{entry.value} votos</span>
-                                    </div>
-                                ))}
+                            <div className="mt-6 w-full space-y-3">
+                                {(() => {
+                                    const total = pollChartData.data.reduce((acc, curr) => acc + curr.value, 0);
+                                    return pollChartData.data.map((entry, index) => {
+                                        const percent = total > 0 ? (entry.value / total) * 100 : 0;
+                                        const color = COLORS[index % COLORS.length];
+                                        return (
+                                            <div key={index} className="relative group">
+                                                <div className="flex justify-between items-center text-sm p-3 rounded-xl border border-white/5 bg-black/40 relative z-10 transition-all group-hover:border-white/10 overflow-hidden">
+                                                    {/* Background progress bar */}
+                                                    <div 
+                                                        className="absolute inset-0 opacity-[0.08] transition-all duration-1000" 
+                                                        style={{ backgroundColor: color, width: `${percent}%` }}
+                                                    />
+                                                    
+                                                    <div className="flex items-center gap-3 relative z-20">
+                                                        <div className="w-2.5 h-2.5 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.2)]" style={{ backgroundColor: color }}></div>
+                                                        <span className="text-foreground/90 font-medium truncate max-w-[180px]">{entry.name}</span>
+                                                    </div>
+                                                    <div className="flex flex-col items-end relative z-20">
+                                                        <span className="font-black text-white">{entry.value}</span>
+                                                        <span className="text-[10px] text-muted-foreground font-bold">{percent.toFixed(0)}%</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    });
+                                })()}
                             </div>
                         </div>
                     ) : (
