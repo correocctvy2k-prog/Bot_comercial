@@ -345,6 +345,10 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
             return;
         }
 
+        if (session.step === 'ASAM_ADMIN_MENU') {
+            if (incomingText === 'ADMIN_GO_POLL') {
+                await setAsamSession(waId, { step: 'ASAM_ADMIN_ASK_Q' });
+                await Messaging.sendText(waId, "📝 Escribe la *Pregunta* que deseas enviar a todos los accionistas:", opts);
             } else if (incomingText === 'ADMIN_START_SARLAFT') {
                 const quizQuestions = [
                     { q: "1. ¿Qué debo hacer al momento de observar una operación inusual?", o: ["A. Reportar a la policía", "B. Reportar a la Gerencia", "C. Reportar al Oficial de cumplimiento"] },
@@ -369,6 +373,7 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
             }
             return;
         }
+
 
         if (session.step === 'ASAM_ADMIN_ASK_Q') {
             const question = String(incomingText).trim();
