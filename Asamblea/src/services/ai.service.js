@@ -331,9 +331,9 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
         if (normText(incomingText) === 'admgane') {
             await setAsamSession(waId, { step: 'ASAM_ADMIN_MENU' });
             await Messaging.sendButtons(waId, "👑 *Panel de Administración*\nBienvenido al centro de control de la Asamblea. ¿Qué deseas hacer?", [
-                { id: "ADMIN_GO_POLL", title: "📣 Crear Encuesta" },
-                { id: "ADMIN_VIEW_POLL", title: "📈 Resultados" },
-                { id: "ADMIN_EXIT", title: "🛑 Salir del Panel" }
+                { id: "ADMIN_GO_POLL", title: "📣 Difusión Manual" },
+                { id: "ADMIN_START_SARLAFT", title: "🎓 Quiz SARLAFT" },
+                { id: "ADMIN_EXIT", title: "🛑 Salir" }
             ], opts);
             return;
         }
@@ -436,6 +436,56 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                 })();
                 return;
             }
+            return;
+        }
+
+        // --- SUB-FLUJO: QUIZ SARLAFT AUTOMÁTICO ---
+        if (session.step === 'ASAM_ADMIN_MENU' && incomingText === 'ADMIN_START_SARLAFT') {
+            const quizQuestions = [
+                { 
+                    q: "1. ¿Qué debo hacer al momento de observar una operación inusual?", 
+                    o: ["A. Reportar a la policía", "B. Reportar a la Gerencia", "C. Al Oficial de cumplimiento"] 
+                },
+                { 
+                    q: "2. Esta es una señal de alerta:", 
+                    o: ["A. Retiros sin el cliente", "B. Salir de vacaciones", "C. Cliente con info completa"] 
+                },
+                { 
+                    q: "3. El cumplimiento del SARLAFT, es responsabilidad de:", 
+                    o: ["A. El gerente", "B. Oficial de cumplimiento", "C. De todos en Gane Palmira"] 
+                }
+            ];
+
+            const { data: users } = await supabase.from('asamblea_registro').select('user_phone, nombre').eq('status', 'SYNC_OK');
+            if (!users || users.length === 0) {
+                await Messaging.sendText(waId, "❌ No hay usuarios registrados para el quiz.", opts);
+                return;
+            }
+
+            await Messaging.sendText(waId, `🚀 Iniciando Trimestre SARLAFT para ${users.length} personas. Las 3 preguntas se enviarán secuencialmente.`, opts);
+            
+            (async () => {
+                for (const item of quizQuestions) {
+                    const { data: poll } = await supabase.from('asamblea_encuestas').insert({ 
+                        pregunta: item.q, 
+                        opciones: item.o 
+                    }).select().single();
+
+                    if (!poll) continue;
+
+                    const pollButtons = item.o.map((opt, idx) => ({ id: `VOTE_${poll.id}_${idx}`, title: opt.substring(0, 20) }));
+                    
+                    for (const user of users) {
+                        try {
+                            const userOpts = user.user_phone.startsWith("tg_") ? { channelId: "telegram_bot" } : {};
+                            await Messaging.sendButtons(user.user_phone, `🎓 *Capacitación SARLAFT*\nHola ${user.nombre.split(' ')[0]},\n\n${item.q}`, pollButtons, userOpts);
+                        } catch (e) {}
+                    }
+                    await delay(3000); // Pequeña pausa entre envíos de bloques de preguntas
+                }
+            })();
+
+            await setAsamSession(waId, { step: 'ASAM_ADMIN_MENU' });
             return;
         }
 
