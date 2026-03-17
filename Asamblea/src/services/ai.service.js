@@ -444,45 +444,66 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
             const quizQuestions = [
                 { 
                     q: "1. ¿Qué debo hacer al momento de observar una operación inusual?", 
-                    o: ["A. Reportar a la policía", "B. Reportar a la Gerencia", "C. Al Oficial de cumplimiento"] 
+                    o: ["A. Reportar a la policía", "B. Reportar a la Gerencia", "C. Reportar al Oficial de cumplimiento"] 
                 },
                 { 
                     q: "2. Esta es una señal de alerta:", 
-                    o: ["A. Retiros sin el cliente", "B. Salir de vacaciones", "C. Cliente con info completa"] 
+                    o: ["A. Realizar retiros de Betplay sin la presencia del cliente", "B. Salir de vacaciones", "C. Un cliente que entrega toda la información solicitada"] 
                 },
                 { 
                     q: "3. El cumplimiento del SARLAFT, es responsabilidad de:", 
-                    o: ["A. El gerente", "B. Oficial de cumplimiento", "C. De todos en Gane Palmira"] 
+                    o: ["A. El gerente", "B. Oficial de cumplimiento", "C. De todos los que hacemos parte de Gane Palmira"] 
                 }
             ];
 
-            const { data: users } = await supabase.from('asamblea_registro').select('user_phone, nombre').eq('status', 'SYNC_OK');
-            if (!users || users.length === 0) {
-                await Messaging.sendText(waId, "❌ No hay usuarios registrados para el quiz.", opts);
+            // Consultar TODOS los registrados (sin limitar a SYNC_OK por si hubo fallos de red previos)
+            const { data: users, error: userErr } = await supabase.from('asamblea_registro').select('user_phone, nombre');
+            
+            if (userErr || !users || users.length === 0) {
+                console.error("[Quiz] Error obteniendo usuarios o lista vacía:", userErr);
+                await Messaging.sendText(waId, "❌ No se encontraron usuarios registrados para enviar el quiz.", opts);
                 return;
             }
 
-            await Messaging.sendText(waId, `🚀 Iniciando Trimestre SARLAFT para ${users.length} personas. Las 3 preguntas se enviarán secuencialmente.`, opts);
+            await Messaging.sendText(waId, `🚀 Iniciando Trimestre SARLAFT para ${users.length} personas. Enviando bloques secuencialmente...`, opts);
             
             (async () => {
                 for (const item of quizQuestions) {
-                    const { data: poll } = await supabase.from('asamblea_encuestas').insert({ 
+                    const { data: poll, error: pollErr } = await supabase.from('asamblea_encuestas').insert({ 
                         pregunta: item.q, 
                         opciones: item.o 
                     }).select().single();
 
-                    if (!poll) continue;
+                    if (pollErr || !poll) {
+                        console.error("[Quiz] Error creando encuesta en BD:", pollErr);
+                        continue;
+                    }
 
-                    const pollButtons = item.o.map((opt, idx) => ({ id: `VOTE_${poll.id}_${idx}`, title: opt.substring(0, 20) }));
+                    // Botones cortos (A, B, C) para evitar truncado de WhatsApp (Límite 20 caracteres)
+                    const pollButtons = [
+                        { id: `VOTE_${poll.id}_0`, title: "Opción A" },
+                        { id: `VOTE_${poll.id}_1`, title: "Opción B" },
+                        { id: `VOTE_${poll.id}_2`, title: "Opción C" }
+                    ];
                     
                     for (const user of users) {
                         try {
                             const userOpts = user.user_phone.startsWith("tg_") ? { channelId: "telegram_bot" } : {};
-                            await Messaging.sendButtons(user.user_phone, `🎓 *Capacitación SARLAFT*\nHola ${user.nombre.split(' ')[0]},\n\n${item.q}`, pollButtons, userOpts);
-                        } catch (e) {}
+                            
+                            // Texto completo en el cuerpo del mensaje
+                            const fullQuestionBody = `🎓 *Capacitación SARLAFT*\n` +
+                                                   `Hola ${user.nombre.split(' ')[0]},\n\n` +
+                                                   `*Pregunta:* ${item.q}\n\n` +
+                                                   `${item.o.map(opt => `🔹 ${opt}`).join('\n')}`;
+
+                            await Messaging.sendButtons(user.user_phone, fullQuestionBody, pollButtons, userOpts);
+                        } catch (e) {
+                            console.error(`[Quiz] Error enviando a ${user.user_phone}:`, e.message);
+                        }
                     }
-                    await delay(3000); // Pequeña pausa entre envíos de bloques de preguntas
+                    await delay(4000); // Pausa mayor entre preguntas para estabilidad
                 }
+                console.log("[Quiz] Difusión completada exitosamente.");
             })();
 
             await setAsamSession(waId, { step: 'ASAM_ADMIN_MENU' });
