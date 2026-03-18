@@ -240,15 +240,28 @@ def update_state_history(scan_results: List[Dict]) -> Dict:
 
 def scan_single_target(target: Dict, historical_data: Dict = None) -> Dict:
     ip, segment, alias = target["ip"], target.get("segment", "General"), target.get("alias", target["ip"])
-    if is_excluded(ip): return {"segment": segment, "ip": ip, "alias": alias, "active": False, "excluded": True}
+    
+    if is_excluded(ip): 
+        return {**target, "active": False, "excluded": True}
+        
     is_active, latency, reason = ping_host(ip)
     scan_time = datetime.now()
-    estimated_uptime = None
     state_change = False
+    
     if historical_data and ip in historical_data:
         ip_history = historical_data[ip]
-        if ip_history.get("last_state") is not None and ip_history.get("last_state") != is_active: state_change = True
-    return {"segment": segment, "ip": ip, "alias": alias, "active": bool(is_active), "excluded": False, "latency": latency, "scan_time": scan_time.isoformat(), "state_change": state_change, "ping_reason": reason}
+        if ip_history.get("last_state") is not None and ip_history.get("last_state") != is_active: 
+            state_change = True
+            
+    return {
+        **target, 
+        "active": bool(is_active), 
+        "excluded": False, 
+        "latency": latency, 
+        "scan_time": scan_time.isoformat(), 
+        "state_change": state_change, 
+        "ping_reason": reason
+    }
 
 # ============================================================================
 # ✅ NUEVO: CARGAS DESDE SUPABASE
@@ -261,8 +274,6 @@ def load_targets_from_supabase(zona: Optional[str] = None) -> pd.DataFrame:
     sb = create_client(SUPABASE_URL, SUPABASE_KEY)
 
     # ✅ FILTRO DE PUNTOS CERRADOS PERMANENTEMENTE
-    # Primero intentamos filtrar directamente en Supabase (más eficiente).
-    # Si la columna 'permanently_closed' no existe aún en la BD, usamos fallback de nombres.
     query_ok = False
     data = None
     try:
@@ -286,14 +297,7 @@ def load_targets_from_supabase(zona: Optional[str] = None) -> pd.DataFrame:
     df = pd.DataFrame(data)
     log(f"📊 Registros descargados de Supabase: {len(df)}")
 
-    # 🔒 FILTRO PYTHON DE SEGURIDAD: Excluir puntos cerrados permanentemente por nombre.
-    # Esta lista es el respaldo para cuando la columna aún no exista en la BD.
-    # IDs confirmados en Supabase:
-    #   5bcf78e7 = CALLEJON GUALANDAY  V.GORG
-    #   43885a98 = SAN JOAQUIN PPAL
-    #   02308515 = FINAL PEREIRA JUANCHITO
-    #   494942ff = SANTA ANA (CAND)
-    #   48d39676 = TAT EL MOLINO
+    # 🔒 FILTRO PYTHON DE SEGURIDAD (Cerrados permanentemente)
     PERMANENTLY_CLOSED_IDS = {
         "5bcf78e7-0339-47a5-b410-9783db449bc7",
         "43885a98-313f-40d9-b33f-14cade120916",
@@ -301,34 +305,53 @@ def load_targets_from_supabase(zona: Optional[str] = None) -> pd.DataFrame:
         "494942ff-2f47-4bc8-9f54-80131237b3e3",
         "48d39676-1ada-41f2-827f-2ba91ccad8d6",
     }
-
-    if not query_ok and "id" in df.columns:
-        # Solo aplicar filtro por nombre si la columna no existía en Supabase
+    if "id" in df.columns:
         antes = len(df)
         df = df[~df["id"].astype(str).isin(PERMANENTLY_CLOSED_IDS)].copy()
-        excluidos = antes - len(df)
-        if excluidos > 0:
-            log(f"🔒 Filtro Python: {excluidos} punto(s) cerrado(s) permanentemente excluido(s).")
+        if (antes - len(df)) > 0: log(f"🔒 Filtro Python: {antes - len(df)} punto(s) cerrado(s) excluido(s).")
 
-    # Filtrado por Zona (Lógica Python robusta)
+    # 🔗 ASIGNACIÓN DE GRUPOS (Unificación lógica)
+    df["group_id"] = None
+    df["group_display_name"] = None
+
+    # Mapeo hardcodeado de grupos confirmados
+    UNIFICATION_MAP = [
+        {"gid": "GRP_PALMIRA_LA_CIGARRA", "disp": "LA CIGARRA", "names": ["LA CIGARRA", "LA CIGARRA II"], "seg": "PALMIRA"},
+        {"gid": "GRP_PALMIRA_OFICINA_PRINCIPAL", "disp": "OFICINA PRINCIPAL", "names": ["OFICINA PRINCIPAL", "OFICINA PRINCIPAL II"], "seg": "PALMIRA"},
+        {"gid": "GRP_PALMIRA_UNICENTRO", "disp": "UNICENTRO", "ips": ["192.168.21.123", "192.168.21.124"], "seg": "PALMIRA"},
+        {"gid": "GRP_PRADERA_PARQUE_PRINCIPAL", "disp": "PARQUE PRINCIPAL", "names": ["PARQUE PRINCIPAL", "PARQUE PRINCIPAL 2"], "seg": "PRADERA"},
+    ]
+
+    for g in UNIFICATION_MAP:
+        mask = pd.Series(False, index=df.index)
+        if "ips" in g:
+            mask = df["ip"].isin(g["ips"])
+        elif "names" in g:
+            mask = df["name"].fillna(df["alias"]).isin(g["names"])
+        
+        if "seg" in g:
+            mask = mask & (df["segment"].astype(str).apply(lambda s: contains_word(norm_text(s), norm_text(g["seg"]))))
+        
+        df.loc[mask, "group_id"] = g["gid"]
+        df.loc[mask, "group_display_name"] = g["disp"]
+
+    # Filtrado por Zona
     if zona:
         zona_norm = norm_text(zona)
         log(f"🎯 Filtrando por zona: '{zona}'")
-
         mask = df["segment"].astype(str).apply(lambda s: contains_word(norm_text(s), zona_norm))
         df = df[mask].copy()
+        if df.empty: raise ValueError(f"❌ No se encontraron puntos para la zona {zona}")
 
-        if df.empty:
-            raise ValueError(f"❌ No se encontraron puntos para la zona {zona}")
-
-    # ✅ Preferir 'name' sobre 'alias' si existe
     if "name" in df.columns:
         df["alias"] = df["name"].fillna(df["alias"])
 
-    result_df = df[["ip", "segment", "alias"]].copy()
+    # Seleccionar columnas necesarias (incluyendo group_id)
+    cols = ["ip", "segment", "alias", "group_id", "group_display_name"]
+    result_df = df[cols].copy()
     result_df["ip"] = result_df["ip"].astype(str).str.strip()
-    result_df = result_df[result_df["ip"].apply(lambda x: len(x) > 6)]  # Mínimo IP válida
-
+    result_df = result_df[result_df["ip"].apply(lambda x: len(x) > 6)]
+    
     log(f"🎯 Puntos a escanear: {len(result_df)}")
     return result_df
 
@@ -484,9 +507,41 @@ def scan_from_df_parallel(df_targets: pd.DataFrame) -> pd.DataFrame:
 # FORMATO REPORTES (MEJORADO)
 # ============================================================================
 def build_report_text(results_df: pd.DataFrame, scan_duration: float, zona: Optional[str] = None) -> str:
-    valid_points  = results_df[~results_df["excluded"]].copy()
-    total = len(valid_points)
-    active = int(valid_points["active"].sum()) if total else 0
+    valid_points = results_df[~results_df["excluded"]].copy()
+    
+    # ─── UNIFICACIÓN LÓGICA ───
+    # Separar puntos con grupo y sin grupo
+    grouped = valid_points[valid_points["group_id"].notnull()].copy()
+    standalone = valid_points[valid_points["group_id"].isnull()].copy()
+    
+    unified_rows = []
+    
+    # Consolidar grupos: un punto es activo si al menos 1 IP del grupo es activa
+    if not grouped.empty:
+        for gid, g in grouped.groupby("group_id"):
+            is_active = bool(g["active"].any())
+            display_name = g["group_display_name"].iloc[0] or g["alias"].iloc[0]
+            # Usar el primer segmento del grupo
+            unified_rows.append({
+                "alias": display_name,
+                "active": is_active,
+                "segment": g["segment"].iloc[0],
+                "is_group": True
+            })
+    
+    # Los standalone se quedan igual
+    for _, r in standalone.iterrows():
+        unified_rows.append({
+            "alias": r["alias"],
+            "active": r["active"],
+            "segment": r["segment"],
+            "is_group": False
+        })
+        
+    unified_df = pd.DataFrame(unified_rows)
+    
+    total = len(unified_df)
+    active = int(unified_df["active"].sum()) if total else 0
     inactive = total - active
     avail = (active / total * 100) if total else 0
     emoji = _status_emoji_by_availability(avail)
@@ -509,14 +564,12 @@ def build_report_text(results_df: pd.DataFrame, scan_duration: float, zona: Opti
     
     if inactive > 0:
         lines.append("❌ *PUNTOS SIN APERTURA (OFFLINE):*\n")
-        off_df = valid_points[~valid_points["active"]].sort_values("alias")
+        off_df = unified_df[~unified_df["active"]].sort_values("alias")
         
-        # Agrupar por zona para reporte general, más ordenado
         if not zona:
              for seg, g in off_df.groupby("segment"):
                 lines.append(f"\n📂 *{seg}*")
                 for _, r in g.iterrows(): 
-                    # 🔒 Solo mostramos Alias, ocultamos IP por seguridad/estética
                     lines.append(f"   • {r['alias']}")
         else:
             for _, r in off_df.iterrows(): 
