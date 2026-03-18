@@ -319,6 +319,7 @@ def load_targets_from_supabase(zona: Optional[str] = None) -> pd.DataFrame:
         {"gid": "GRP_PALMIRA_LA_CIGARRA", "disp": "LA CIGARRA", "names": ["LA CIGARRA", "LA CIGARRA II"], "seg": "PALMIRA"},
         {"gid": "GRP_PALMIRA_OFICINA_PRINCIPAL", "disp": "OFICINA PRINCIPAL", "names": ["OFICINA PRINCIPAL", "OFICINA PRINCIPAL II"], "seg": "PALMIRA"},
         {"gid": "GRP_PALMIRA_UNICENTRO", "disp": "UNICENTRO", "ips": ["192.168.21.123", "192.168.21.124"], "seg": "PALMIRA"},
+        {"gid": "GRP_CAND_PARQUE_PRINCIPAL", "disp": "PARQUE PRINCIPAL", "names": ["PARQUE 1 (CAND)", "PARQUE 2 (CAND)"], "seg": "CANDELARIA"},
         {"gid": "GRP_PRADERA_PARQUE_PRINCIPAL", "disp": "PARQUE PRINCIPAL", "names": ["PARQUE PRINCIPAL", "PARQUE PRINCIPAL 2"], "seg": "PRADERA"},
     ]
 
