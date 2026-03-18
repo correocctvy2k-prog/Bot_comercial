@@ -111,6 +111,24 @@ async function sendSequential(waId, messages, opts, baseDelay = 900) {
     }
 }
 
+// ─── FIX #1: Per-User Message Queue (Mutex) ─────────────────────────────────
+// Garantiza que los mensajes de un mismo usuario se procesen de forma
+// secuencial aunque lleguen en paralelo, evitando race conditions en la sesión.
+const userQueues = new Map();
+
+function enqueueForUser(waId, taskFn) {
+    const current = userQueues.get(waId) || Promise.resolve();
+    const next = current.then(taskFn).catch(err => {
+        console.error(`[Queue] Error no capturado para ${waId}:`, err.message);
+    });
+    // Guardar la promesa en el mapa y liberar la referencia cuando termine
+    userQueues.set(waId, next);
+    next.finally(() => {
+        if (userQueues.get(waId) === next) userQueues.delete(waId);
+    });
+    return next;
+}
+
 // ─── Gestión de Sesión (independiente del bot comercial) ────────────────────
 
 const sessionCache = new Map();
@@ -243,14 +261,16 @@ async function finalizeAsambleaRegistration(waId, session, opts) {
         await Messaging.sendText(waId, "¡Casi terminamos! ⏳ Registrando tu ingreso de cortesía...", opts);
     }
 
-    const { error: dbError } = await supabase.from('asamblea_registro').insert({
+    // FIX #4: usar upsert idempotente para evitar duplicados si dos webhooks
+    // del mismo usuario llegan antes de que el primero termine (race condition).
+    const { error: dbError } = await supabase.from('asamblea_registro').upsert({
         user_phone: waId,
         documento: session.doc,
         nombre: session.nombre,
         rol: rolFinal,
         categoria_oficial: session.categoriaOficial || 'ACCIONISTA',
         status: siissOk ? 'SYNC_OK' : 'SYNC_FAILED'
-    });
+    }, { onConflict: 'user_phone' });
 
     if (dbError) {
         console.error("[Asamblea] Error guardando registro:", dbError);
@@ -478,14 +498,20 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                         
                         for (const user of users) {
                             try {
-                                const userOpts = user.user_phone.startsWith("tg_") ? { channelId: "telegram_bot" } : {};
+                                // FIX #2: simulateTyping: false en difusiones masivas.
+                                // Evita que el bot quede bloqueado durante el broadcast,
+                                // garantizando que otros usuarios sigan siendo atendidos.
+                                const userOpts = user.user_phone.startsWith("tg_")
+                                    ? { channelId: "telegram_bot", simulateTyping: false }
+                                    : { simulateTyping: false };
                                 const fullQuestionBody = `🎓 *Capacitación SARLAFT*\n` +
                                                        `Hola ${user.nombre.split(' ')[0]},\n\n` +
                                                        `*Pregunta:* ${item.q}\n\n` +
                                                        `${item.o.map(opt => `🔹 ${opt}`).join('\n')}`;
                                 await Messaging.sendButtons(user.user_phone, fullQuestionBody, pollButtons, userOpts);
-                            } catch (e) {}
+                            } catch (e) { console.error(`[Quiz] Error enviando a ${user.user_phone}:`, e.message); }
                         }
+
                         await delay(4000);
                     }
                 })();
@@ -617,5 +643,6 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
 }
 
 module.exports = {
-    processIncomingAsamblea
+    processIncomingAsamblea,
+    enqueueForUser
 };

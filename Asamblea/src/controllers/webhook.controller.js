@@ -104,8 +104,8 @@ async function handleTelegramAsambleaWebhook(req, res) {
       console.log(`♻️ [TG-Asamblea] Msg duplicado ignorado: ${msgId}`);
       return;
     }
-
-    seenBefore(msgId); // Registrar el message id
+    // msgId is now registered by seenBefore() above — no second call needed
+    
 
     // Mock WA object format to reuse the logic engine seamlessly
     const mockValue = {
