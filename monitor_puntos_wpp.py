@@ -259,44 +259,76 @@ def load_targets_from_supabase(zona: Optional[str] = None) -> pd.DataFrame:
 
     log("☁️  Conectando a Supabase (tabla: puntos_venta)...")
     sb = create_client(SUPABASE_URL, SUPABASE_KEY)
-    
-    # Query básica
-    # Query básica: Cargar TODOS para verificar reactivaciones
-    # Antes: query = sb.table("puntos_venta").select("*").eq("active", True)
-    # Query básica: Cargar TODOS
-    query = sb.table("puntos_venta").select("*")
-    
+
+    # ✅ FILTRO DE PUNTOS CERRADOS PERMANENTEMENTE
+    # Primero intentamos filtrar directamente en Supabase (más eficiente).
+    # Si la columna 'permanently_closed' no existe aún en la BD, usamos fallback de nombres.
+    query_ok = False
+    data = None
     try:
-        response = query.execute()
-        data = response.data 
-    except Exception as e:
-        raise ValueError(f"❌ Error consultando Supabase: {e}")
+        response = sb.table("puntos_venta").select("*").neq("permanently_closed", True).execute()
+        data = response.data
+        query_ok = True
+        log(f"✅ Filtro permanently_closed aplicado en query Supabase.")
+    except Exception:
+        log("⚠️  Columna 'permanently_closed' no disponible en query. Cargando todos los registros...")
+
+    if not query_ok:
+        try:
+            response = sb.table("puntos_venta").select("*").execute()
+            data = response.data
+        except Exception as e:
+            raise ValueError(f"❌ Error consultando Supabase: {e}")
 
     if not data:
         raise ValueError("❌ La tabla 'puntos_venta' está vacía o no retornó datos.")
 
     df = pd.DataFrame(data)
     log(f"📊 Registros descargados de Supabase: {len(df)}")
-    
+
+    # 🔒 FILTRO PYTHON DE SEGURIDAD: Excluir puntos cerrados permanentemente por nombre.
+    # Esta lista es el respaldo para cuando la columna aún no exista en la BD.
+    # IDs confirmados en Supabase:
+    #   5bcf78e7 = CALLEJON GUALANDAY  V.GORG
+    #   43885a98 = SAN JOAQUIN PPAL
+    #   02308515 = FINAL PEREIRA JUANCHITO
+    #   494942ff = SANTA ANA (CAND)
+    #   48d39676 = TAT EL MOLINO
+    PERMANENTLY_CLOSED_IDS = {
+        "5bcf78e7-0339-47a5-b410-9783db449bc7",
+        "43885a98-313f-40d9-b33f-14cade120916",
+        "02308515-6217-454e-a861-11d568253a39",
+        "494942ff-2f47-4bc8-9f54-80131237b3e3",
+        "48d39676-1ada-41f2-827f-2ba91ccad8d6",
+    }
+
+    if not query_ok and "id" in df.columns:
+        # Solo aplicar filtro por nombre si la columna no existía en Supabase
+        antes = len(df)
+        df = df[~df["id"].astype(str).isin(PERMANENTLY_CLOSED_IDS)].copy()
+        excluidos = antes - len(df)
+        if excluidos > 0:
+            log(f"🔒 Filtro Python: {excluidos} punto(s) cerrado(s) permanentemente excluido(s).")
+
     # Filtrado por Zona (Lógica Python robusta)
     if zona:
         zona_norm = norm_text(zona)
         log(f"🎯 Filtrando por zona: '{zona}'")
-        
+
         mask = df["segment"].astype(str).apply(lambda s: contains_word(norm_text(s), zona_norm))
         df = df[mask].copy()
-        
+
         if df.empty:
             raise ValueError(f"❌ No se encontraron puntos para la zona {zona}")
 
     # ✅ Preferir 'name' sobre 'alias' si existe
     if "name" in df.columns:
         df["alias"] = df["name"].fillna(df["alias"])
-        
+
     result_df = df[["ip", "segment", "alias"]].copy()
     result_df["ip"] = result_df["ip"].astype(str).str.strip()
-    result_df = result_df[result_df["ip"].apply(lambda x: len(x) > 6)] # Minimo IP
-    
+    result_df = result_df[result_df["ip"].apply(lambda x: len(x) > 6)]  # Mínimo IP válida
+
     log(f"🎯 Puntos a escanear: {len(result_df)}")
     return result_df
 
