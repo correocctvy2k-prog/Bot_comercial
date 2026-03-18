@@ -625,20 +625,34 @@ def main():
         chart_error = None
         if JSON_MODE:
             try:
-                # Calcular stats rápido desde el DF
-                valid = results_df[~results_df["excluded"]]
-                act = int(valid["active"].sum()) if len(valid) else 0
-                inact = len(valid) - act
-                chart_path = generate_pie_chart(act, inact, zona)
+                # ✅ Calcular stats unificados para el gráfico
+                valid = results_df[~results_df["excluded"]].copy()
+                grouped = valid[valid["group_id"].notnull()]
+                standalone = valid[valid["group_id"].isnull()]
+                
+                g_act = 0
+                if not grouped.empty:
+                    g_act = grouped.groupby("group_id")["active"].any().sum()
+                s_act = standalone["active"].sum()
+                
+                total_unified = (grouped["group_id"].nunique() if not grouped.empty else 0) + len(standalone)
+                active_unified = int(g_act + s_act)
+                inactive_unified = total_unified - active_unified
+                
+                chart_path = generate_pie_chart(active_unified, inactive_unified, zona)
             except Exception as e:
                 chart_error = str(e)
                 log(f"⚠️ Error generando gráfico: {e}")
 
         if JSON_MODE:
+            # Calcular total unificado para el summary
+            valid = results_df[~results_df["excluded"]]
+            total_unif = (valid[valid["group_id"].notnull()]["group_id"].nunique() if not valid[valid["group_id"].notnull()].empty else 0) + len(valid[valid["group_id"].isnull()])
+            
             payload = {
                 "ok": True,
                 "report": report_text,
-                "summary": f"Escaneados {len(results_df)} puntos.",
+                "summary": f"Escaneados {total_unif} puntos (unificados).",
                 "image": chart_path,
                 "image_error": chart_error, # DEBUG
                 "messages": [{"text": report_text}] 
