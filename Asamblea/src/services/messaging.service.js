@@ -45,6 +45,13 @@ async function sendDocument(to, docPath, filename, caption, opts = {}) {
     return WA.sendDocument(to, docPath, filename, caption, opts);
 }
 
+async function sendList(to, bodyText, buttonText, sections, opts = {}) {
+    if (isTelegram(to)) {
+        return TG.sendList(tgId(to), bodyText, buttonText, sections, opts);
+    }
+    return WA.sendList(to, bodyText, buttonText, sections, opts);
+}
+
 async function sendChatAction(to, action, opts = {}) {
     if (isTelegram(to)) {
         // Telegram soporta sendChatAction nativamente (typing, upload_photo, etc.)
