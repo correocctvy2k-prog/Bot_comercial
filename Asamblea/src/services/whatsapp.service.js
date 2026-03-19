@@ -357,6 +357,46 @@ async function sendSticker(toWaId, stickerPath, opts = {}) {
 }
 
 /**
+ * Send document to WhatsApp using media_id
+ */
+async function sendDocument(toWaId, docPath, filename, caption, opts = {}) {
+  const isRemoteUrl = typeof docPath === 'string' &&
+    (docPath.startsWith('http://') || docPath.startsWith('https://'));
+
+  let docPayload;
+
+  if (isRemoteUrl) {
+    docPayload = { link: docPath };
+  } else {
+    // 📁 Archivo local: subir primero como category 'document'
+    const path = require('path');
+    const ext = path.extname(docPath).toLowerCase();
+    const mimeType = ext === '.pdf' ? 'application/pdf' : 'application/octet-stream';
+    
+    const upload = await uploadMedia(docPath, "document", mimeType, opts);
+    if (!upload.ok) {
+      console.error("❌ Failed to upload document:", upload);
+      return { ok: false, status: 0, data: { error: "document_upload_failed", details: upload } };
+    }
+    docPayload = { id: upload.media_id };
+  }
+
+  if (filename) docPayload.filename = String(filename);
+  if (caption) docPayload.caption = String(caption);
+
+  const payload = {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: toWaId,
+    type: "document",
+    document: docPayload,
+  };
+
+  await new Promise(r => setTimeout(r, 1200)); // Delay para documentos
+  return waPost(payload, opts);
+}
+
+/**
  * Send reaction to a message
  */
 async function sendReaction(toWaId, reactionEmoji, messageId, opts = {}) {
@@ -371,4 +411,7 @@ async function sendReaction(toWaId, reactionEmoji, messageId, opts = {}) {
   }, opts);
 }
 
-module.exports = { sendText, sendTextChunked, sendTextMany, sendButtons, sendList, sendPhoto, sendSticker, sendReaction, sendChatAction, chunkText };
+module.exports = { 
+  sendText, sendTextChunked, sendTextMany, sendButtons, sendList, 
+  sendPhoto, sendDocument, sendSticker, sendReaction, sendChatAction, chunkText 
+};

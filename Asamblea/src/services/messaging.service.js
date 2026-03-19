@@ -38,11 +38,11 @@ async function sendPhoto(to, imagePath, caption, opts = {}) {
     return WA.sendPhoto(to, imagePath, caption, opts);
 }
 
-async function sendList(to, bodyText, buttonText, sections, opts = {}) {
+async function sendDocument(to, docPath, filename, caption, opts = {}) {
     if (isTelegram(to)) {
-        return TG.sendList(tgId(to), bodyText, buttonText, sections, opts);
+        return TG.sendDocument(tgId(to), docPath, filename, caption, opts);
     }
-    return WA.sendList(to, bodyText, buttonText, sections, opts);
+    return WA.sendDocument(to, docPath, filename, caption, opts);
 }
 
 async function sendChatAction(to, action, opts = {}) {
@@ -53,4 +53,4 @@ async function sendChatAction(to, action, opts = {}) {
     return WA.sendChatAction(to, action, opts);
 }
 
-module.exports = { sendText, sendButtons, sendPhoto, sendList, sendChatAction };
+module.exports = { sendText, sendButtons, sendPhoto, sendDocument, sendList, sendChatAction };

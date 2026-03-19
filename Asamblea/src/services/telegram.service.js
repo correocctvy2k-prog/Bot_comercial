@@ -200,6 +200,64 @@ async function sendPhoto(chatId, imagePath, caption, options = {}) {
 }
 
 
+async function sendDocument(chatId, docPath, filename, caption, options = {}) {
+    const url = getUrl("sendDocument", options);
+    const isRemoteUrl = typeof docPath === 'string' && (docPath.startsWith('http://') || docPath.startsWith('https://'));
+
+    try {
+        let resp;
+
+        if (isRemoteUrl) {
+            const body = {
+                chat_id: chatId,
+                document: docPath,
+                parse_mode: "Markdown"
+            };
+            if (caption) body.caption = caption;
+
+            resp = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
+        } else {
+            const fs = require('fs');
+            const path = require('path');
+
+            if (!fs.existsSync(docPath)) {
+                throw new Error(`File not found: ${docPath}`);
+            }
+
+            const formData = new FormData();
+            formData.append("chat_id", chatId);
+            if (caption) formData.append("caption", caption);
+            formData.append("parse_mode", "Markdown");
+
+            const fileBuffer = fs.readFileSync(docPath);
+            const blob = new Blob([fileBuffer]);
+            const actualFilename = filename || path.basename(docPath);
+            formData.append("document", blob, actualFilename);
+
+            resp = await fetch(url, { method: "POST", body: formData });
+        }
+
+        const text = await resp.text();
+        let data = {};
+        try { data = JSON.parse(text); } catch (e) { data = { raw: text }; }
+
+        if (!resp.ok || !data.ok) {
+            console.error(`❌ Telegram sendDocument Error:`, JSON.stringify(data));
+            return { ok: false, data };
+        }
+
+        return { ok: true, data };
+
+    } catch (err) {
+        console.error("❌ Telegram sendDocument error:", err.message);
+        return { ok: false, error: err.message };
+    }
+}
+
 module.exports = {
     sendText,
     sendButtons,
@@ -207,6 +265,7 @@ module.exports = {
     sendTextChunked,
     sendTextMany,
     sendPhoto,
+    sendDocument,
     sendReaction: () => ({ ok: true }), // Mock reaction for Telegram
     chunkText
 };

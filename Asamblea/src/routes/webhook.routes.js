@@ -49,26 +49,31 @@ router.get('/api/health', async (req, res) => {
   res.json({ timestamp: new Date().toISOString(), checks });
 });
 
+// ── Normalización de teléfono ───────────────────────────────────────────────
+function normalizePhone(phone) {
+  if (!phone) return null;
+  let clean = String(phone).replace(/\D/g, '');
+  if (clean.length === 10) return `57${clean}`;
+  if (clean.length === 12 && clean.startsWith('57')) return clean;
+  return clean;
+}
+
 // ── GET /api/asamblea/faltantes — Lista de asociados que NO han ingresado ──
 router.get('/api/asamblea/faltantes', async (req, res) => {
   try {
-    // 1. Array de objetos crudos de la API QUORUM
     const censo = await apiAsamblea.obtenerCensoAsamblea();
     if (!censo || censo.length === 0) {
       return res.status(500).json({ error: "No se pudo obtener el censo desde SIISS." });
     }
 
-    // 2. Traer todos los documentos ya registrados en Supabase
     const { data: registradosData, error } = await supabase
       .from('asamblea_registro')
       .select('documento');
 
     if (error) throw error;
 
-    // Convertir a un Set de strings para cruce ultra rápido
     const setRegistrados = new Set(registradosData.map(r => String(r.documento)));
 
-    // 3. Filtrar el censo original para quitar los que ya están en el Set
     const faltantes = censo
       .filter((acc) => !setRegistrados.has(String(acc.accicodi)))
       .map((acc) => ({
@@ -84,6 +89,70 @@ router.get('/api/asamblea/faltantes', async (req, res) => {
   } catch (error) {
     console.error("Error en /api/asamblea/faltantes:", error);
     res.status(500).json({ error: "Error calculando faltantes", msg: error.message });
+  }
+});
+
+// ── POST /api/asamblea/sync-padron — Sincroniza SIISS con Padrón Supabase ─────
+router.post('/api/asamblea/sync-padron', async (req, res) => {
+  console.log("🔄 [API] Solicitud de sincronización SIISS -> Padrón...");
+  try {
+    const censo = await apiAsamblea.obtenerCensoAsamblea();
+    if (!censo || censo.length === 0) {
+      return res.status(500).json({ error: "No se pudo obtener el censo de SIISS." });
+    }
+
+    const autorizados = censo
+      .filter(item => item.accitele && String(item.accitele).trim() !== "")
+      .map(item => ({
+        wa_id: normalizePhone(item.accitele),
+        nombre: item.accinomb,
+        documento: String(item.accicodi)
+      }));
+
+    if (autorizados.length === 0) {
+      return res.status(400).json({ error: "No se encontraron registros válidos para sincronizar." });
+    }
+
+    const { error } = await supabase
+      .from('asamblea_padron')
+      .upsert(autorizados, { onConflict: 'wa_id' });
+
+    if (error) throw error;
+
+    res.json({ success: true, count: autorizados.length });
+  } catch (error) {
+    console.error("Error en /api/asamblea/sync-padron:", error);
+    res.status(500).json({ error: "Error en sincronización", msg: error.message });
+  }
+});
+
+
+// NUEVO: Borrar resultados del quiz (votos y encuestas)
+router.delete('/api/asamblea/quiz/clear', async (req, res) => {
+  try {
+    console.log("🗑️ [Quiz] Solicitud de reinicio de quiz recibida.");
+
+    // 1. Borrar todos los votos
+    const { error: errorVotos } = await supabase
+      .from('asamblea_votos')
+      .delete()
+      .not('id', 'is', null);
+
+    if (errorVotos) throw errorVotos;
+
+    // 2. Borrar todas las encuestas
+    const { error: errorEncuestas } = await supabase
+      .from('asamblea_encuestas')
+      .delete()
+      .not('id', 'is', null);
+
+    if (errorEncuestas) throw errorEncuestas;
+
+    console.log("✅ [Quiz] Resultados eliminados correctamente.");
+    res.json({ success: true, message: "Resultados del quiz eliminados." });
+  } catch (error) {
+    console.error("❌ Error al reiniciar quiz:", error);
+    res.status(500).json({ error: "Error reiniciando quiz", msg: error.message });
   }
 });
 

@@ -81,6 +81,8 @@ const IMG = {
     logo_completo: path.join(__dirname, '../../assets/logo_asamblea.png'),
     /** Sticker circular del logo Gane — se envía tras registro exitoso */
     logo_sticker: path.join(__dirname, '../../assets/logo_gane_sticker.webp'),
+    /** Informe de la asamblea 2026 */
+    pdf_informe: path.join(__dirname, '../../assets/ASAMBLEA DE ACCIONISTAS 2026.pdf'),
 };
 
 const ASAM_ROLE_ASOCIADO = "ASAM_ROLE_ASOCIADO";
@@ -534,6 +536,24 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                 await Messaging.sendText(waId, "✅ Tu respuesta ha sido registrada exitosamente. ¡Gracias!", opts);
             } catch (e) {
                 await Messaging.sendText(waId, "✅ Gracias por tu respuesta.", opts);
+            }
+            return;
+        }
+
+        // ── ENTREGA DE INFORME (PDF) ────────────────────────────────────────
+        if (normText(incomingText).includes('informe')) {
+            await Messaging.sendButtons(waId, "📄 *Informe de Gestión 2026*\n\nHe encontrado el documento solicitado. ¿Deseas descargarlo ahora?", [
+                { id: 'ASAM_DOWNLOAD_INFORME', title: "Descargar Informe" },
+                { id: 'ASAMBLEA_CANCEL', title: "En otro momento" }
+            ], opts);
+            return;
+        }
+
+        if (incomingText === 'ASAM_DOWNLOAD_INFORME') {
+            await Messaging.sendText(waId, "⏳ Generando descarga... Te llegará en unos segundos.", opts);
+            const res = await Messaging.sendDocument(waId, IMG.pdf_informe, "ASAMBLEA_2026.pdf", "Informe de Gestión Asamblea 2026", opts);
+            if (!res.ok) {
+                await Messaging.sendText(waId, "❌ Lo siento, no pude enviar el archivo en este momento. Por favor inténtalo más tarde.", opts);
             }
             return;
         }

@@ -4,12 +4,12 @@
 -- Ejecución: Una sola vez en Supabase SQL Editor
 -- ========================================================
 
--- Paso 1: Eliminar duplicados actuales (mantener el más reciente por user_phone)
+-- Paso 1: Eliminar duplicados actuales (mantener el más reciente por created_at)
 DELETE FROM asamblea_registro
 WHERE id NOT IN (
-    SELECT MAX(id)
+    SELECT DISTINCT ON (user_phone) id
     FROM asamblea_registro
-    GROUP BY user_phone
+    ORDER BY user_phone, created_at DESC
 );
 
 -- Paso 2: Agregar la restricción UNIQUE
