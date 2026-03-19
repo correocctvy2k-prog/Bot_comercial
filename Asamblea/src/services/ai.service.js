@@ -11,6 +11,9 @@ const BaseMessaging = {
     get sendButtons() { return require("./messaging.service").sendButtons; },
     get sendPhoto() { return require("./messaging.service").sendPhoto; },
     get sendList() { return require("./messaging.service").sendList; },
+    get sendDocument() { return require("./messaging.service").sendDocument; },
+    get sendSticker() { return require("./whatsapp.service").sendSticker; },
+    get sendReaction() { return require("./whatsapp.service").sendReaction; },
     get sendChatAction() { return require("./messaging.service").sendChatAction; }
 };
 
@@ -67,6 +70,27 @@ const Messaging = {
             status: res.ok ? 'sent' : 'failed'
         });
         return res;
+    },
+    async sendDocument(waId, docPath, filename, caption, opts = {}) {
+        const mergedOpts = { simulateTyping: true, ...opts };
+        const res = await BaseMessaging.sendDocument(waId, docPath, filename, caption, mergedOpts);
+        await logInteraction({
+            wa_id: waId,
+            channel_id: opts.channelId || 'bot_asamblea',
+            direction: 'OUTGOING',
+            type: 'document',
+            content: caption || '📄 Documento enviado',
+            status: res.ok ? 'sent' : 'failed'
+        });
+        return res;
+    },
+    async sendSticker(waId, stickerPath, opts = {}) {
+        const mergedOpts = { simulateTyping: true, ...opts };
+        const res = await BaseMessaging.sendSticker(waId, stickerPath, mergedOpts);
+        return res;
+    },
+    async sendReaction(waId, emoji, messageId, opts = {}) {
+        return BaseMessaging.sendReaction(waId, emoji, messageId, opts);
     },
     async sendChatAction(waId, action, opts = {}) {
         return BaseMessaging.sendChatAction(waId, action, opts);
