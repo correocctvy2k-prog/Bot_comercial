@@ -533,7 +533,8 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                                 const fullQuestionBody = `🎓 *Capacitación SARLAFT*\n` +
                                                        `Hola ${user.nombre.split(' ')[0]},\n\n` +
                                                        `*Pregunta:* ${item.q}\n\n` +
-                                                       `${item.o.map(opt => `🔹 ${opt}`).join('\n')}`;
+                                                       `${item.o.map(opt => `🔹 ${opt}`).join('\n')}\n\n` +
+                                                       `⏳ _Tienes 15 minutos para responder._`;
                                 await Messaging.sendButtons(user.user_phone, fullQuestionBody, pollButtons, userOpts);
                             } catch (e) { console.error(`[Quiz] Error enviando a ${user.user_phone}:`, e.message); }
                         }
@@ -554,8 +555,23 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
             try {
                 const { data: poll } = await supabase.from('asamblea_encuestas').select('*').eq('id', pollId).single();
                 if (poll) {
+                    // --- VALIDACIÓN DE TIEMPO (Phase 21) ---
+                    const createdAt = new Date(poll.created_at);
+                    const now = new Date();
+                    const diffMin = (now - createdAt) / 1000 / 60;
+                    
+                    if (diffMin > 15) {
+                        await Messaging.sendText(waId, "⚠️ *Ventana de votación cerrada.*\n\nLo sentimos, el tiempo para responder a esta pregunta (15 min) ha expirado.", opts);
+                        return;
+                    }
+
                     const textoOpcion = poll.opciones[voteIdx] || "Opción desconocida";
-                    await supabase.from('asamblea_votos').upsert({ encuesta_id: pollId, user_phone: waId, opcion_index: voteIdx, opcion_texto: textoOpcion }, { onConflict: 'encuesta_id, user_phone' });
+                    await supabase.from('asamblea_votos').upsert({ 
+                        encuesta_id: pollId, 
+                        user_phone: waId, 
+                        opcion_index: voteIdx, 
+                        opcion_texto: textoOpcion 
+                    }, { onConflict: 'encuesta_id, user_phone' });
                 }
                 await Messaging.sendText(waId, "✅ Tu respuesta ha sido registrada exitosamente. ¡Gracias!", opts);
             } catch (e) {
