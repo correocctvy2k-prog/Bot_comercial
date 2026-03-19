@@ -565,20 +565,20 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
         }
 
         // ── ENTREGA DE INFORME (PDF) ────────────────────────────────────────
-        if (normText(incomingText).includes('informe')) {
-            await Messaging.sendButtons(waId, "📄 *Informe de Gestión 2026*\n\nHe encontrado el documento solicitado. ¿Deseas descargarlo ahora?", [
-                { id: 'ASAM_DOWNLOAD_INFORME', title: "Descargar Informe" },
-                { id: 'ASAMBLEA_CANCEL', title: "En otro momento" }
-            ], opts);
-            return;
-        }
-
         if (incomingText === 'ASAM_DOWNLOAD_INFORME') {
             await Messaging.sendText(waId, "⏳ Generando descarga... Te llegará en unos segundos.", opts);
             const res = await Messaging.sendDocument(waId, IMG.pdf_informe, "ASAMBLEA_2026.pdf", "Informe de Gestión Asamblea 2026", opts);
             if (!res.ok) {
                 await Messaging.sendText(waId, "❌ Lo siento, no pude enviar el archivo en este momento. Por favor inténtalo más tarde.", opts);
             }
+            return;
+        }
+
+        if (normText(incomingText).includes('informe')) {
+            await Messaging.sendButtons(waId, "📄 *Informe de Gestión 2026*\n\nHe encontrado el documento solicitado. ¿Deseas descargarlo ahora?", [
+                { id: 'ASAM_DOWNLOAD_INFORME', title: "Descargar Informe" },
+                { id: 'ASAMBLEA_CANCEL', title: "En otro momento" }
+            ], opts);
             return;
         }
 
