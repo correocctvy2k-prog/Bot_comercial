@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Users, UserCheck, PhoneMissed, BadgeCheck, Activity as ActivityIcon, BarChart3, Wifi, WifiOff, ListX, X, Search, Trash2, MessageSquare, PieChart as PieChartIcon } from 'lucide-react';
-import { getAsambleaStats, subscribeToAsamblea, getFaltantesAsamblea, deleteAsambleaRecord } from '../services/asamblea.service';
+import { Users, UserCheck, PhoneMissed, BadgeCheck, Activity as ActivityIcon, BarChart3, Wifi, WifiOff, ListX, X, Search, Trash2, MessageSquare, PieChart as PieChartIcon, RefreshCw } from 'lucide-react';
+import { getAsambleaStats, subscribeToAsamblea, getFaltantesAsamblea, deleteAsambleaRecord, syncAsambleaPadron, clearQuizResults } from '../services/asamblea.service';
 import { supabase } from '../services/supabase';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { formatDistanceToNow } from 'date-fns';
@@ -9,13 +9,10 @@ import { toast } from 'sonner';
 
 export default function AsambleaDashboard() {
     // ─── SVG Premium Quorum Donut ─────────────────────────────────────────────
-    function QuorumDonut({ enSala = 0, faltantes = 0 }) {
+    function QuorumDonut({ enSala = 0, faltantes = 0, size = 200, strokeW = 16, r = 70, fontSize = 42, showLabels = true }) {
         const total = enSala + faltantes;
-        const size = 200;
         const cx = size / 2;
         const cy = size / 2;
-        const r = 70;
-        const strokeW = 16;
 
         const pct = total === 0 ? 0 : enSala / total;
         const quorumPct = Math.round(pct * 100);
@@ -31,7 +28,7 @@ export default function AsambleaDashboard() {
         const dot = polarToXY(r, endAngle);
 
         return (
-            <div className="relative flex items-center justify-center" style={{ width: "100%", height: size }}>
+            <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
                 <svg width={size} height={size} style={{ overflow: "visible" }}>
                     <defs>
                         <filter id="glow-quorum" x="-50%" y="-50%" width="200%" height="200%">
@@ -72,12 +69,14 @@ export default function AsambleaDashboard() {
 
                     {total > 0 && (
                         <g>
-                            <text x={cx} y={cy + 8} textAnchor="middle" fill="white" style={{ fontSize: 42, fontWeight: 900, fontFamily: "inherit" }}>
+                            <text x={cx} y={cy + (fontSize / 4)} textAnchor="middle" fill="white" style={{ fontSize: fontSize, fontVariationSettings: '"wght" 900', fontWeight: 900, fontFamily: "inherit" }}>
                                 {quorumPct}%
                             </text>
-                            <text x={cx} y={cy + 30} textAnchor="middle" fill="#94a3b8" style={{ fontSize: 10, fontWeight: 600, fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                                Quórum
-                            </text>
+                            {showLabels && (
+                                <text x={cx} y={cy + (fontSize / 4) + 22} textAnchor="middle" fill="#94a3b8" style={{ fontSize: 10, fontWeight: 600, fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                                    Quórum
+                                </text>
+                            )}
                         </g>
                     )}
                 </svg>
@@ -85,21 +84,22 @@ export default function AsambleaDashboard() {
         );
     }
 
+    const [loading, setLoading] = useState(true);
+    const [isSyncing, setIsSyncing] = useState(false);
     const [stats, setStats] = useState({
         totalRegistrados: 0,
         asociados: 0,
         representantes: 0,
-        quorumPercentage: '0.0',
+        quorumPercentage: 0,
         syncOk: 0,
         syncFailed: 0,
         recentLogs: []
     });
-    const [loading, setLoading] = useState(true);
     const [isLive, setIsLive] = useState(false);
-    const [censoData, setCensoData] = useState({ totalCenso: 300, totalFaltantes: 0 });
+    const [censoData, setCensoData] = useState({ totalCenso: 0, totalFaltantes: 0 });
 
     const [activityFeed, setActivityFeed] = useState([]);
-    const [pollChartData, setPollChartData] = useState(null);
+    const [pollCharts, setPollCharts] = useState([]);
     const [quizAudit, setQuizAudit] = useState({ polls: [], participants: [], globalStats: { correct: 0, incorrect: 0, pending: 0 } });
 
     // Helper para validar respuestas SARLAFT (1=C, 2=A, 3=C)
@@ -118,25 +118,22 @@ export default function AsambleaDashboard() {
     const [loadingFaltantes, setLoadingFaltantes] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const loadData = async () => {
-        setLoading(true);
-
-        // 1. Cargar datos del censo de SIISS
-        getFaltantesAsamblea().then(res => {
+    // ─── Granular Fetchers ──────────────────────────────────────────────────
+    
+    const fetchCensoAndStats = async () => {
+        try {
+            const res = await getFaltantesAsamblea();
             if (res && res.totalCenso) {
                 setCensoData(res);
-                // Recalcular stats con el censo dinámico
-                getAsambleaStats(res.totalCenso).then(data => {
-                    if (data) setStats(data);
-                });
+                const data = await getAsambleaStats(res.totalCenso);
+                if (data) setStats(data);
             }
-        }).catch(err => console.error(err));
+        } catch (err) {
+            console.error("Error fetching censo/stats:", err);
+        }
+    };
 
-        // 2. Cargar stats iniciales
-        const data = await getAsambleaStats(censoData.totalCenso);
-        if (data) setStats(data);
-
-        // 3. Cargar actividad del bot asamblea
+    const fetchActivityFeed = async () => {
         const { data: feed } = await supabase
             .from('interactions_log')
             .select('*')
@@ -144,41 +141,87 @@ export default function AsambleaDashboard() {
             .order('created_at', { ascending: false })
             .limit(10);
         if (feed) setActivityFeed(feed);
+    };
 
-        // 4. Cargar gráficos de encuestas
-        const { data: poll } = await supabase
+    const fetchPolls = async () => {
+        // Obtenemos un historial más largo para poder agrupar (v3.9)
+        const { data: allRecent } = await supabase
             .from('asamblea_encuestas')
             .select('*')
             .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
+            .limit(50);
 
-        if (poll) {
-            const { data: votos } = await supabase.from('asamblea_votos').select('opcion_texto').eq('encuesta_id', poll.id);
-            if (votos) {
+        if (allRecent && allRecent.length > 0) {
+            // Agrupar por texto de pregunta para identificar las 3 preguntas distintas más recientes
+            const uniqueQuestionsMap = new Map();
+            allRecent.forEach(p => {
+                if (!uniqueQuestionsMap.has(p.pregunta)) {
+                    uniqueQuestionsMap.set(p.pregunta, {
+                        latestId: p.id,
+                        pregunta: p.pregunta,
+                        opciones: p.opciones,
+                        allIds: [p.id]
+                    });
+                } else {
+                    uniqueQuestionsMap.get(p.pregunta).allIds.push(p.id);
+                }
+            });
+
+            // Tomamos las 3 preguntas únicas más recientes
+            const top3Questions = Array.from(uniqueQuestionsMap.values()).slice(0, 3);
+
+            const chartDataArray = await Promise.all(top3Questions.map(async (qGroup) => {
+                // Consultamos votos para TODOS los IDs que tengan esta misma pregunta
+                const { data: votos } = await supabase
+                    .from('asamblea_votos')
+                    .select('opcion_texto')
+                    .in('encuesta_id', qGroup.allIds);
+
                 const counts = {};
-                poll.opciones.forEach(o => counts[o] = 0);
-                votos.forEach(v => {
-                    if (counts[v.opcion_texto] !== undefined) counts[v.opcion_texto]++;
-                });
+                qGroup.opciones.forEach(o => counts[o] = 0);
+                if (votos) {
+                    votos.forEach(v => {
+                        if (counts[v.opcion_texto] !== undefined) counts[v.opcion_texto]++;
+                    });
+                }
                 const chartData = Object.keys(counts).map(key => ({ name: key, value: counts[key] }));
-                setPollChartData({ pregunta: poll.pregunta, data: chartData });
-            }
-        }
+                return { id: qGroup.latestId, pregunta: qGroup.pregunta, data: chartData };
+            }));
 
-        // 5. Cargar Auditoría del Quiz SARLAFT (3 últimas preguntas)
-        const { data: recentPolls } = await supabase
+            setPollCharts(chartDataArray.reverse());
+        } else {
+            setPollCharts([]);
+        }
+    };
+
+    const fetchQuizAudit = async () => {
+        const { data: allRecent } = await supabase
             .from('asamblea_encuestas')
             .select('*')
             .order('created_at', { ascending: false })
-            .limit(3);
+            .limit(50);
 
-        if (recentPolls && recentPolls.length > 0) {
-            const pollIds = recentPolls.map(p => p.id);
+        if (allRecent && allRecent.length > 0) {
+            // Identificar el set de IDs para las 3 preguntas únicas más recientes
+            const uniqueQuestionsMap = new Map();
+            allRecent.forEach(p => {
+                if (!uniqueQuestionsMap.has(p.pregunta)) {
+                    uniqueQuestionsMap.set(p.pregunta, {
+                        ...p,
+                        allIds: [p.id]
+                    });
+                } else {
+                    uniqueQuestionsMap.get(p.pregunta).allIds.push(p.id);
+                }
+            });
+
+            const top3Questions = Array.from(uniqueQuestionsMap.values()).slice(0, 3);
+            const allRelatedPollIds = top3Questions.flatMap(q => q.allIds);
+
             const { data: allVotes } = await supabase
                 .from('asamblea_votos')
                 .select('*')
-                .in('encuesta_id', pollIds);
+                .in('encuesta_id', allRelatedPollIds);
 
             const { data: allRegistered } = await supabase
                 .from('asamblea_registro')
@@ -190,57 +233,117 @@ export default function AsambleaDashboard() {
                 let globalPending = 0;
 
                 const auditData = allRegistered.map(user => {
-                    const userVotes = {};
-                    pollIds.forEach(pId => {
-                        const poll = recentPolls.find(p => p.id === pId);
-                        const v = allVotes?.find(vote => vote.encuesta_id === pId && vote.user_phone === user.user_phone);
-                        const ans = v ? v.opcion_texto : null;
-                        userVotes[pId] = ans;
+                    const userVotesByQuestion = {}; // Usaremos la pregunta como llave para la tabla de auditoría
+
+                    top3Questions.forEach(qGroup => {
+                        // Buscar si el usuario votó en CUALQUIERA de los IDs asociados a esta pregunta
+                        const v = allVotes?.find(vote => 
+                            qGroup.allIds.includes(vote.encuesta_id) && 
+                            vote.user_phone === user.user_phone
+                        );
                         
+                        const ans = v ? v.opcion_texto : null;
+                        userVotesByQuestion[qGroup.id] = ans; // Mantenemos el ID "representativo" para la UI
+
                         if (ans) {
-                            if (isCorrectAnswer(poll.pregunta, ans)) globalCorrect++;
+                            if (isCorrectAnswer(qGroup.pregunta, ans)) globalCorrect++;
                             else globalIncorrect++;
                         } else {
                             globalPending++;
                         }
                     });
-                    return { ...user, votes: userVotes };
+                    return { ...user, votes: userVotesByQuestion };
                 });
+
                 setQuizAudit({ 
-                    polls: recentPolls, 
+                    polls: top3Questions, 
                     participants: auditData,
                     globalStats: { correct: globalCorrect, incorrect: globalIncorrect, pending: globalPending }
                 });
             }
+        } else {
+            setQuizAudit({ polls: [], participants: [], globalStats: { correct: 0, incorrect: 0, pending: 0 } });
         }
+    };
 
+    const loadData = async () => {
+        setLoading(true);
+        await Promise.all([
+            fetchCensoAndStats(),
+            fetchActivityFeed(),
+            fetchPolls(),
+            fetchQuizAudit()
+        ]);
         setLoading(false);
+    };
+
+    const handleSyncPadron = async () => {
+        setIsSyncing(true);
+        const result = await syncAsambleaPadron();
+        if (result && result.success) {
+            toast.success(`Sincronización exitosa: ${result.count} registros actualizados`);
+            await fetchCensoAndStats(); // Recargar el censo para ver el impacto
+        } else {
+            toast.error("Error al sincronizar con SIISS");
+        }
+        setIsSyncing(false);
+    };
+
+    const handleResetQuiz = async () => {
+        if (window.confirm("¿Estás seguro de que deseas borrar TODOS los resultados del quiz? Esta acción no se puede deshacer.")) {
+            setIsSyncing(true);
+            const result = await clearQuizResults();
+            if (result && result.success) {
+                toast.success("Resultados del quiz eliminados correctamente");
+                // Los datos se actualizarán automáticamente vía Realtime si está habilitado,
+                // Pero forzamos una recarga para estar seguros.
+                await fetchPolls();
+                await fetchQuizAudit();
+            } else {
+                toast.error("Error al reiniciar el quiz");
+            }
+            setIsSyncing(false);
+        }
     };
 
     useEffect(() => {
         loadData();
 
+        console.log("🚀 [RT] Iniciando subscripciones en tiempo real...");
+
         const channel = supabase.channel('asamblea-changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'asamblea_registro' }, (payload) => {
+                console.log("📥 [RT] Cambio en asamblea_registro:", payload.eventType);
                 setIsLive(true);
                 setTimeout(() => setIsLive(false), 2000);
-                loadData();
+                fetchCensoAndStats(); // Solo recargamos stats y censo
+                fetchQuizAudit(); // El audit depende de quién está registrado
             })
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'interactions_log', filter: 'channel_id=eq.bot_asamblea_main' }, () => {
-                loadData();
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'interactions_log', filter: 'channel_id=eq.bot_asamblea_main' }, (payload) => {
+                console.log("📥 [RT] Nueva interacción:", payload.new.id);
+                // Granular state update: agregamos al inicio del feed
+                setActivityFeed(prev => [payload.new, ...prev].slice(0, 15));
             })
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'asamblea_votos' }, (payload) => {
-                console.log("🔥 [RT] Nuevo voto recibido:", payload);
-                loadData();
+                console.log("📥 [RT] Nuevo voto recibido:", payload.new.encuesta_id);
+                // Optimización: en lugar de fetchPolls, podríamos actualizar localmente
+                // Pero como asamblea_votos no tiene el texto de la opción si solo viene el payload (a veces),
+                // o si queremos asegurar consistencia, fetchPolls es más seguro y menos pesado que loadData completa.
+                fetchPolls();
+                fetchQuizAudit();
             })
             .subscribe((status) => {
                 console.log("📡 [RT] Estado de subscripción:", status);
                 if (status === 'SUBSCRIBED') {
-                    toast.success('Conexión en tiempo real establecida');
+                    toast.success('Conexión Realtime Establecida');
+                } else if (status === 'CHANNEL_ERROR') {
+                    console.error("❌ [RT] Error en el canal Realtime. Verifica habilitación en Supabase.");
+                    toast.error('Error de conexión Realtime');
                 }
             });
 
         return () => {
+            console.log("🔌 [RT] Desconectando subscripciones...");
             supabase.removeChannel(channel);
         };
     }, []);
@@ -275,12 +378,23 @@ export default function AsambleaDashboard() {
     const openFaltantesModal = async () => {
         setIsModalOpen(true);
         setLoadingFaltantes(true);
-        const data = await getFaltantesAsamblea();
-        if (data && data.faltantes) {
-            setFaltantes(data.faltantes);
-            setCensoData(data); // update censo data silently
+        try {
+            const data = await getFaltantesAsamblea();
+            if (data && data.faltantes) {
+                setFaltantes(data.faltantes);
+                setCensoData(data);
+            } else {
+                // Si la API falla o no devuelve datos, limpiamos la lista
+                setFaltantes([]);
+                toast.error("No se pudo obtener la lista de faltantes desde SIISS");
+            }
+        } catch (err) {
+            console.error(err);
+            setFaltantes([]);
+            toast.error("Error de conexión con el servidor de asamblea");
+        } finally {
+            setLoadingFaltantes(false);
         }
-        setLoadingFaltantes(false);
     };
 
     const filteredFaltantes = faltantes.filter(f =>
@@ -295,12 +409,39 @@ export default function AsambleaDashboard() {
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Cabecera */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 bg-card/40 border border-white/5 backdrop-blur-md rounded-2xl p-6">
-                <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <Users className="text-primary h-6 w-6" />
-                        <h1 className="text-2xl font-bold tracking-tight text-foreground">Asamblea General 2026</h1>
+                <div className="flex flex-col md:flex-row items-center gap-6">
+                    <div className="flex items-center gap-4">
+                        <QuorumDonut 
+                            enSala={stats.totalRegistrados} 
+                            faltantes={censoData.totalFaltantes > 0 ? censoData.totalFaltantes : Math.max(0, censoData.totalCenso - stats.totalRegistrados)}
+                            size={70}
+                            r={26}
+                            strokeW={6}
+                            fontSize={18}
+                            showLabels={false}
+                        />
+                        <div>
+                            <div className="flex items-center gap-3 mb-1">
+                                <Users className="text-primary h-6 w-6" />
+                                <h1 className="text-2xl font-bold tracking-tight text-foreground">Asamblea General 2026</h1>
+                            </div>
+                            <p className="text-muted-foreground text-[11px] leading-tight max-w-sm">Dashboard oficial de control de asistencia, quórum y encuestas en tiempo real.</p>
+                        </div>
                     </div>
-                    <p className="text-muted-foreground text-sm">Dashboard oficial de control de asistencia, quórum y encuestas en tiempo real.</p>
+
+                    <button
+                        onClick={handleSyncPadron}
+                        disabled={isSyncing}
+                        className={`group flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg
+                            ${isSyncing 
+                                ? 'bg-white/5 text-muted-foreground cursor-not-allowed' 
+                                : 'bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 hover:border-primary/40'
+                            }`}
+                        title="Sincronizar base de datos con SIISS"
+                    >
+                        <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                        <span>{isSyncing ? 'Sincronizando...' : 'Sincronizar SIISS'}</span>
+                    </button>
                 </div>
 
                 <div className="flex items-center gap-3 bg-black/20 rounded-full px-4 py-2 border border-white/5">
@@ -352,7 +493,9 @@ export default function AsambleaDashboard() {
                         <div className="min-w-0">
                             <p className="text-xs font-medium text-muted-foreground truncate">Faltantes Estimados</p>
                             <h3 className="text-3xl font-bold mt-1 tracking-tight">
-                                {censoData.totalFaltantes > 0 ? censoData.totalFaltantes : Math.max(0, censoData.totalCenso - stats.totalRegistrados)}+
+                                {censoData.totalCenso > 0 
+                                    ? (censoData.totalFaltantes > 0 ? censoData.totalFaltantes : Math.max(0, censoData.totalCenso - stats.totalRegistrados)) 
+                                    : '--'}+
                             </h3>
                         </div>
                         <div className="p-2 rounded-lg bg-background/40 text-orange-400 shrink-0 group-hover:scale-110 transition-transform">
@@ -368,115 +511,105 @@ export default function AsambleaDashboard() {
             {/* Fila de Gráficos y Actividad */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
 
-                {/* Gráfico de Quórum */}
-                <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6 lg:col-span-1 lg:row-span-2 flex flex-col items-center justify-start">
-                    <h3 className="text-base font-semibold mb-4 flex items-center gap-2 self-start">
-                        <PieChartIcon className="w-4 h-4 text-primary" />
-                        Estado del Quórum
-                    </h3>
-                    <div className="flex flex-col items-center w-full">
-                        <div className="w-full">
-                            <QuorumDonut
-                                enSala={stats.totalRegistrados}
-                                faltantes={censoData.totalFaltantes > 0 ? censoData.totalFaltantes : Math.max(0, censoData.totalCenso - stats.totalRegistrados)}
-                            />
-                        </div>
-                        <div className="mt-4 w-full space-y-2">
-                            <div className="flex justify-between items-center text-sm bg-black/20 p-2 rounded-lg border border-white/5">
-                                <span className="text-muted-foreground flex items-center gap-2">
-                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[0] }}></div> En Sala
-                                </span>
-                                <span className="font-bold text-white">{stats.totalRegistrados}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm bg-black/20 p-2 rounded-lg border border-white/5">
-                                <span className="text-muted-foreground flex items-center gap-2">
-                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[3] }}></div> Faltantes
-                                </span>
-                                <span className="font-bold text-white">{censoData.totalFaltantes > 0 ? censoData.totalFaltantes : Math.max(0, censoData.totalCenso - stats.totalRegistrados)}</span>
-                            </div>
-                        </div>
+                {/* Gráfico de Encuestas (Quiz Results) - AHORA TOMA 2 COLUMNAS PORQUE QUITARON QUORUM */}
+                <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6 lg:col-span-2 lg:row-span-2 flex flex-col h-[700px]">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-base font-semibold flex items-center gap-2">
+                            <PieChartIcon className="w-4 h-4 text-primary" />
+                            Resultados del Quiz SARLAFT
+                        </h3>
+                        <button
+                            onClick={handleResetQuiz}
+                            disabled={isSyncing}
+                            className="text-[10px] uppercase font-bold tracking-wider px-3 py-1.5 rounded-lg border border-red-500/20 text-red-400 hover:bg-red-500/10 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Borrar todos los votos y preguntas actuales"
+                        >
+                            <Trash2 size={12} />
+                            Reiniciar Quiz
+                        </button>
                     </div>
-                </div>
-
-                {/* Gráfico de Encuestas */}
-                <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6 lg:col-span-1 lg:row-span-2">
-                    <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
-                        <PieChartIcon className="w-4 h-4 text-primary" />
-                        Resultados Última Encuesta
-                    </h3>
-                    {pollChartData ? (
-                        <div className="flex flex-col items-center">
-                            <p className="text-sm text-muted-foreground text-center mb-6 px-4 italic">"{pollChartData.pregunta}"</p>
-                            <div className="h-[250px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={pollChartData.data}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={65}
-                                            outerRadius={90}
-                                            paddingAngle={8}
-                                            dataKey="value"
-                                            stroke="transparent"
-                                            animationBegin={0}
-                                            animationDuration={1500}
-                                        >
-                                            {pollChartData.data.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor: 'rgba(0,0,0,0.85)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', backdropFilter: 'blur(8px)' }}
-                                            itemStyle={{ color: '#fff' }}
-                                            cursor={{ fill: 'transparent' }}
-                                        />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                                {/* Central label for total votes */}
-                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                    <span className="text-2xl font-bold text-foreground">
-                                        {pollChartData.data.reduce((acc, curr) => acc + curr.value, 0)}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">Votos Totales</span>
-                                </div>
-                            </div>
-                            <div className="mt-6 w-full space-y-3">
-                                {(() => {
-                                    const total = pollChartData.data.reduce((acc, curr) => acc + curr.value, 0);
-                                    return pollChartData.data.map((entry, index) => {
-                                        const percent = total > 0 ? (entry.value / total) * 100 : 0;
-                                        const color = COLORS[index % COLORS.length];
-                                        return (
-                                            <div key={index} className="relative group">
-                                                <div className="flex justify-between items-center text-sm p-3 rounded-xl border border-white/5 bg-black/40 relative z-10 transition-all group-hover:border-white/10 overflow-hidden">
-                                                    {/* Background progress bar */}
-                                                    <div 
-                                                        className="absolute inset-0 opacity-[0.08] transition-all duration-1000" 
-                                                        style={{ backgroundColor: color, width: `${percent}%` }}
+                    
+                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-12">
+                        {pollCharts.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {pollCharts.map((poll, pIdx) => (
+                                    <div key={poll.id} className="flex flex-col items-center border-b md:border-b-0 md:border-r border-white/5 pb-8 md:pb-0 md:pr-8 last:border-0 last:pr-0">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="bg-primary/20 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Pregunta {pIdx + 1}</span>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground text-center mb-6 px-4 italic leading-tight h-10 flex items-center">"{poll.pregunta}"</p>
+                                        
+                                        <div className="h-[200px] w-full relative">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <PieChart>
+                                                    <Pie
+                                                        data={poll.data}
+                                                        cx="50%"
+                                                        cy="50%"
+                                                        innerRadius={50}
+                                                        outerRadius={75}
+                                                        paddingAngle={6}
+                                                        dataKey="value"
+                                                        stroke="transparent"
+                                                        animationBegin={0}
+                                                        animationDuration={1000}
+                                                    >
+                                                        {poll.data.map((entry, index) => (
+                                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                        ))}
+                                                    </Pie>
+                                                    <Tooltip
+                                                        contentStyle={{ backgroundColor: 'rgba(0,0,0,0.85)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', backdropFilter: 'blur(8px)' }}
+                                                        itemStyle={{ color: '#fff' }}
+                                                        cursor={{ fill: 'transparent' }}
                                                     />
-                                                    
-                                                    <div className="flex items-center gap-3 relative z-20">
-                                                        <div className="w-2.5 h-2.5 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.2)]" style={{ backgroundColor: color }}></div>
-                                                        <span className="text-foreground/90 font-medium truncate max-w-[180px]">{entry.name}</span>
-                                                    </div>
-                                                    <div className="flex flex-col items-end relative z-20">
-                                                        <span className="font-black text-white">{entry.value}</span>
-                                                        <span className="text-[10px] text-muted-foreground font-bold">{percent.toFixed(0)}%</span>
-                                                    </div>
-                                                </div>
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                                <span className="text-xl font-bold text-foreground">
+                                                    {poll.data.reduce((acc, curr) => acc + curr.value, 0)}
+                                                </span>
+                                                <span className="text-[10px] text-muted-foreground">Votos</span>
                                             </div>
-                                        );
-                                    });
-                                })()}
+                                        </div>
+                                        
+                                        <div className="mt-4 w-full space-y-2">
+                                            {(() => {
+                                                const total = poll.data.reduce((acc, curr) => acc + curr.value, 0);
+                                                return poll.data.map((entry, index) => {
+                                                    const percent = total > 0 ? (entry.value / total) * 100 : 0;
+                                                    const color = COLORS[index % COLORS.length];
+                                                    return (
+                                                        <div key={index} className="relative group">
+                                                            <div className="flex justify-between items-center text-xs p-2.5 rounded-lg border border-white/5 bg-black/40 relative z-10 transition-all group-hover:border-white/10 overflow-hidden">
+                                                                <div 
+                                                                    className="absolute inset-0 opacity-[0.08] transition-all duration-1000" 
+                                                                    style={{ backgroundColor: color, width: `${percent}%` }}
+                                                                />
+                                                                <div className="flex items-center gap-2 relative z-20">
+                                                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }}></div>
+                                                                    <span className="text-foreground/90 font-medium truncate max-w-[150px]">{entry.name}</span>
+                                                                </div>
+                                                                <div className="flex flex-col items-end relative z-20">
+                                                                    <span className="font-bold text-white">{entry.value}</span>
+                                                                    <span className="text-[9px] text-muted-foreground">{percent.toFixed(0)}%</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                });
+                                            })()}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                        </div>
-                    ) : (
-                        <div className="h-64 flex flex-col items-center justify-center text-muted-foreground">
-                            <BarChart3 className="w-12 h-12 mb-4 opacity-20" />
-                            <p>No hay encuestas activas</p>
-                        </div>
-                    )}
+                        ) : (
+                            <div className="h-64 flex flex-col items-center justify-center text-muted-foreground">
+                                <BarChart3 className="w-12 h-12 mb-4 opacity-20" />
+                                <p>No hay encuestas activas</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Tabla de Registros Recientes */}
@@ -739,8 +872,18 @@ export default function AsambleaDashboard() {
                                 </div>
                             ) : faltantes.length === 0 ? (
                                 <div className="text-center py-20 text-muted-foreground">
-                                    <BadgeCheck size={48} className="mx-auto mb-4 text-emerald-500 opacity-50" />
-                                    <p>¡Excelente! Al parecer todos han ingresado.</p>
+                                    {censoData.totalFaltantes === 0 && !loadingFaltantes ? (
+                                        <>
+                                            <BadgeCheck size={48} className="mx-auto mb-4 text-emerald-500 opacity-50" />
+                                            <p>¡Excelente! Al parecer todos han ingresado.</p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <WifiOff size={48} className="mx-auto mb-4 text-red-500 opacity-50" />
+                                            <p>No se pudo cargar la información detallada.</p>
+                                            <p className="text-xs mt-2 uppercase">Verifica la conexión con la API de SIISS</p>
+                                        </>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="grid gap-2">

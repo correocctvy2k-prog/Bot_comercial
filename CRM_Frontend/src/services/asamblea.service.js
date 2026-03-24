@@ -84,3 +84,34 @@ export const deleteAsambleaRecord = async (id) => {
         return false;
     }
 };
+
+// Sincronizar el padrón desde SIISS
+export const syncAsambleaPadron = async () => {
+    try {
+        const backendUrl = import.meta.env.VITE_ASAMBLEA_BACKEND_URL || 'http://localhost:3002';
+        const res = await fetch(`${backendUrl}/api/asamblea/sync-padron`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return await res.json();
+    } catch (err) {
+        console.error("Error en syncAsambleaPadron:", err);
+        return null;
+    }
+};
+
+// Reiniciar los resultados del quiz
+export const clearQuizResults = async () => {
+    try {
+        const backendUrl = import.meta.env.VITE_ASAMBLEA_BACKEND_URL || 'http://localhost:3002';
+        const res = await fetch(`${backendUrl}/api/asamblea/quiz/clear`, {
+            method: 'DELETE'
+        });
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return await res.json();
+    } catch (err) {
+        console.error("Error en clearQuizResults:", err);
+        return null;
+    }
+};
