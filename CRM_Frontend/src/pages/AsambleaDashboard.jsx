@@ -324,11 +324,13 @@ export default function AsambleaDashboard() {
                 // Granular state update: agregamos al inicio del feed
                 setActivityFeed(prev => [payload.new, ...prev].slice(0, 15));
             })
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'asamblea_votos' }, (payload) => {
-                console.log("📥 [RT] Nuevo voto recibido:", payload.new.encuesta_id);
-                // Optimización: en lugar de fetchPolls, podríamos actualizar localmente
-                // Pero como asamblea_votos no tiene el texto de la opción si solo viene el payload (a veces),
-                // o si queremos asegurar consistencia, fetchPolls es más seguro y menos pesado que loadData completa.
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'asamblea_votos' }, (payload) => {
+                console.log("📥 [RT] Cambio en votos:", payload.eventType);
+                fetchPolls();
+                fetchQuizAudit();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'asamblea_encuestas' }, (payload) => {
+                console.log("📥 [RT] Cambio en encuestas:", payload.eventType);
                 fetchPolls();
                 fetchQuizAudit();
             })
