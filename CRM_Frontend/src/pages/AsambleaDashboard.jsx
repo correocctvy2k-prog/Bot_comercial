@@ -122,14 +122,21 @@ export default function AsambleaDashboard() {
     
     const fetchCensoAndStats = async () => {
         try {
+            // Cargar censo de SIISS
             const res = await getFaltantesAsamblea();
+            const totalCenso = (res && res.totalCenso) ? res.totalCenso : 300; // Fallback
             if (res && res.totalCenso) {
                 setCensoData(res);
-                const data = await getAsambleaStats(res.totalCenso);
-                if (data) setStats(data);
             }
+            
+            // Cargar registros locales incluso si SIISS falla
+            const data = await getAsambleaStats(totalCenso);
+            if (data) setStats(data);
         } catch (err) {
             console.error("Error fetching censo/stats:", err);
+            // Intentar cargar la data local de todos modos
+            const fallbackData = await getAsambleaStats(300);
+            if (fallbackData) setStats(fallbackData);
         }
     };
 
