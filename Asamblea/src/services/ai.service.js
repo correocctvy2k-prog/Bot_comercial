@@ -376,10 +376,10 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
         // ── COMANDO OCULTO: ADMIN BROADCAST ──────────────────────────────────
         if (normText(incomingText) === 'admgane') {
             await setAsamSession(waId, { step: 'ASAM_ADMIN_MENU' });
-            await Messaging.sendButtons(waId, "👑 *Panel de Administración*\nBienvenido al centro de control de la Asamblea. ¿Qué deseas hacer?", [
+            await Messaging.sendButtons(waId, "👑 *Panel de Administración*\nBienvenido al centro de control. (Para salir escribe 'salir')\n\n¿Qué deseas hacer?", [
                 { id: "ADMIN_GO_POLL", title: "📣 Difusión Manual" },
                 { id: "ADMIN_START_SARLAFT", title: "🎓 Quiz SARLAFT" },
-                { id: "ADMIN_EXIT", title: "🛑 Salir" }
+                { id: "ADMIN_START_VOTING", title: "🗳️ Votaciones Asam." }
             ], opts);
             return;
         }
@@ -395,6 +395,22 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
             if (incomingText === 'ADMIN_GO_POLL') {
                 await setAsamSession(waId, { step: 'ASAM_ADMIN_ASK_Q' });
                 await Messaging.sendText(waId, "📝 Escribe la *Pregunta* que deseas enviar a todos los accionistas:", opts);
+            } else if (incomingText === 'ADMIN_START_VOTING') {
+                await setAsamSession(waId, { step: 'ASAM_ADMIN_VOTING_MENU' });
+                const sections = [
+                    {
+                        title: "Puntos Oficiales",
+                        rows: [
+                            { id: "VOTE_PREDEF_1", title: "1. Informe Gerente", description: "Votar SI o NO" },
+                            { id: "VOTE_PREDEF_2", title: "2. Estados Financieros", description: "Votar SI o NO" },
+                            { id: "VOTE_PREDEF_3", title: "3. Junta Directiva", description: "Elegir Plancha" },
+                            { id: "VOTE_PREDEF_4", title: "4. Revisor Fiscal", description: "Elegir Proponente" },
+                            { id: "VOTE_PREDEF_5", title: "5. Proposiciones y V.", description: "Votar SI o NO" }
+                        ]
+                    }
+                ];
+                await Messaging.sendList(waId, "🗳️ *Votaciones de Asamblea*\n\nSelecciona el punto que deseas someter a votación:", "Ver Asuntos", sections, opts);
+                return;
             } else if (incomingText === 'ADMIN_START_SARLAFT') {
                 const quizQuestions = [
                     { q: "1. ¿Qué debo hacer al momento de observar una operación inusual?", o: ["A. Reportar a la policía", "B. Reportar a la Gerencia", "C. Reportar al Oficial de cumplimiento"] },
@@ -420,6 +436,47 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
             return;
         }
 
+
+        if (session.step === 'ASAM_ADMIN_VOTING_MENU') {
+            const predefAgendas = {
+                "VOTE_PREDEF_1": { q: "¿Aprueba el informe del Gerente?", o: ["SI", "NO"] },
+                "VOTE_PREDEF_2": { q: "¿Aprueba los estados financieros a 31 Dic de 2025?", o: ["SI", "NO"] },
+                "VOTE_PREDEF_3": { q: "¿Aprueba la elección de la JUNTA DIRECTIVA?", o: ["Plancha 1", "Plancha 2"] },
+                "VOTE_PREDEF_4": { q: "Elección Revisor Fiscal", o: ["Proponente 1", "Proponente 2"] }
+            };
+
+            if (predefAgendas[incomingText]) {
+                const agenda = predefAgendas[incomingText];
+                await setAsamSession(waId, { step: 'ASAM_ADMIN_CONFIRM', question: agenda.q, options: agenda.o });
+                const previewText = `*Vista Previa de Votación:*\n\n${agenda.q}\n\nOpciones:\n${agenda.o.map(o => `🔹 ${o}`).join('\n')}\n\n¿Estás seguro de enviar esta votación a todos los registrados?`;
+                await Messaging.sendButtons(waId, previewText, [
+                    { id: "ADMIN_CONFIRM_YES", title: "✅ Enviar Votación" },
+                    { id: "ADMIN_CONFIRM_NO", title: "❌ Cancelar" }
+                ], opts);
+            } else if (incomingText === 'VOTE_PREDEF_5') {
+                await setAsamSession(waId, { step: 'ASAM_ADMIN_ASK_PROP' });
+                await Messaging.sendText(waId, "✏️ Escribe el texto de la *Proposición* que será sometida a votación (Las opciones SI / NO se agregarán automáticamente):", opts);
+            } else {
+                await Messaging.sendText(waId, "Por favor selecciona una opción válida de la lista.", opts);
+            }
+            return;
+        }
+
+        if (session.step === 'ASAM_ADMIN_ASK_PROP') {
+            const proposition = String(incomingText).trim();
+            if (proposition.length < 3) {
+                await Messaging.sendText(waId, "El texto es muy corto. Por favor escribe una proposición clara.", opts);
+                return;
+            }
+            const questionText = `Proposiciones y Varios:\n¿Aprueba la siguiente propuesta?\n\n"${proposition}"`;
+            await setAsamSession(waId, { step: 'ASAM_ADMIN_CONFIRM', question: questionText, options: ["SI", "NO"] });
+            const previewText = `*Vista Previa de Votación:*\n\n${questionText}\n\nOpciones:\n🔹 SI\n🔹 NO\n\n¿Estás seguro de enviar esta votación a todos los registrados?`;
+            await Messaging.sendButtons(waId, previewText, [
+                { id: "ADMIN_CONFIRM_YES", title: "✅ Enviar Votación" },
+                { id: "ADMIN_CONFIRM_NO", title: "❌ Cancelar" }
+            ], opts);
+            return;
+        }
 
         if (session.step === 'ASAM_ADMIN_ASK_Q') {
             const question = String(incomingText).trim();
