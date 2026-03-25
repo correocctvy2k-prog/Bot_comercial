@@ -276,12 +276,15 @@ async function checkExistingRegistration(waId, documento) {
 async function finalizeAsambleaRegistration(waId, session, opts) {
     const rolFinal = session.rol || 'ACCIONISTA';
     const catOficial = session.categoriaOficial || 'ACCIONISTA';
-    const isGuestOrProxy = ['INVITADO', 'APODERADO'].includes(catOficial);
+    const isInvitado = catOficial === 'INVITADO';
+    const isApoderadoOrRep = catOficial === 'APODERADO' || catOficial === 'REPRESENTANTE_LEGAL';
+    // Invitados no reciben obsequio en mensaje final, tampoco los Apoderados
+    const skipGift = isInvitado || isApoderadoOrRep;
 
     await delay(400);
 
     let siissOk = true;
-    if (rolFinal !== 'INVITADO') {
+    if (!isInvitado) {
         await Messaging.sendText(waId, "¡Casi terminamos! ⏳ Registrando tu asistencia oficialmente...", opts);
         siissOk = await registrarAsistenciaSIISS(session.doc, session.nombre);
     } else {
@@ -316,7 +319,7 @@ async function finalizeAsambleaRegistration(waId, session, opts) {
                    `🕐 *Hora:* ${new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}\n\n`;
 
     // Solo accionistas reciben el recordatorio del regalo aquí (Invitados/Apoderados ya lo vieron al inicio)
-    if (!isGuestOrProxy) {
+    if (!skipGift) {
         finalMsg += `🎁 *¡No olvides reclamar tu obsequio!* Acércate a la mesa principal para recibir nuestro detalle.`;
     } else {
         finalMsg += `¡Gracias por acompañarnos! Te esperamos en el salón principal. 💛`;
