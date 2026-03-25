@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, UserCheck, PhoneMissed, BadgeCheck, Activity as ActivityIcon, BarChart3, Wifi, WifiOff, ListX, X, Search, Trash2, MessageSquare, PieChart as PieChartIcon, RefreshCw } from 'lucide-react';
+import { Users, UserCheck, PhoneMissed, BadgeCheck, Activity as ActivityIcon, BarChart3, Wifi, WifiOff, ListX, X, Search, Trash2, MessageSquare, PieChart as PieChartIcon, RefreshCw, CheckCircle2, Clock } from 'lucide-react';
 import { getAsambleaStats, subscribeToAsamblea, getFaltantesAsamblea, deleteAsambleaRecord, syncAsambleaPadron, clearQuizResults } from '../services/asamblea.service';
 import { supabase } from '../services/supabase';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
@@ -714,13 +714,29 @@ export default function AsambleaDashboard() {
                                     stats.recentLogs.map((log) => (
                                         <tr key={log.id} className="hover:bg-white/[0.04] transition-colors group">
                                             <td className="px-6 py-4">
-                                                <div className="font-medium text-foreground">{log.nombre}</div>
-                                                <div className="text-xs text-muted-foreground mt-0.5">CC. {log.documento}</div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="font-medium text-foreground">{log.nombre}</div>
+                                                    {(() => {
+                                                        const auditData = quizAudit.participants.find(p => p.documento === log.documento);
+                                                        const hasVoted = auditData && Object.values(auditData.votes).some(v => v !== null);
+                                                        return hasVoted ? (
+                                                            <CheckCircle2 size={14} className="text-emerald-400" title="Ya ha participado en votaciones/encuestas" />
+                                                        ) : (
+                                                            <Clock size={14} className="text-orange-400 opacity-60" title="Pendiente por votar" />
+                                                        );
+                                                    })()}
+                                                </div>
+                                                <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                                                    <UserCheck size={12} className="text-blue-400" title="Ingreso verificado" /> CC. {log.documento}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold ${log.rol === 'ASOCIADO' ? 'bg-indigo-500/15 text-indigo-400' : 'bg-purple-500/15 text-purple-400'
-                                                    }`}>
-                                                    {log.rol === 'ASOCIADO' ? 'Asociado Titular' : 'Representante'}
+                                                <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold ${
+                                                    log.rol?.toLowerCase().includes('asociado') ? 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/20' : 
+                                                    log.rol?.toLowerCase().includes('apoderado') ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' :
+                                                    'bg-purple-500/15 text-purple-400 border border-purple-500/20'
+                                                }`}>
+                                                    {log.rol ? log.rol.charAt(0).toUpperCase() + log.rol.slice(1).toLowerCase() : 'Desconocido'}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-right tabular-nums text-muted-foreground flex items-center justify-end gap-3">
