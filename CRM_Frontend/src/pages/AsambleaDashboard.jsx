@@ -9,13 +9,13 @@ import { toast } from 'sonner';
 
 export default function AsambleaDashboard() {
     // ─── SVG Premium Quorum Donut ─────────────────────────────────────────────
-    function QuorumDonut({ enSala = 0, faltantes = 0, size = 200, strokeW = 16, r = 70, fontSize = 42, showLabels = true }) {
+    function QuorumDonut({ enSala = 0, faltantes = 0, percentageOverride = null, size = 200, strokeW = 16, r = 70, fontSize = 42, showLabels = true }) {
         const total = enSala + faltantes;
         const cx = size / 2;
         const cy = size / 2;
 
-        const pct = total === 0 ? 0 : enSala / total;
-        const quorumPct = Math.round(pct * 100);
+        const pct = percentageOverride !== null ? percentageOverride / 100 : (total === 0 ? 0 : enSala / total);
+        const quorumPct = percentageOverride !== null ? Math.round(percentageOverride) : Math.round(pct * 100);
         const circ = 2 * Math.PI * r;
         const dash = pct * circ;
         const gap = circ - dash;
@@ -456,6 +456,7 @@ export default function AsambleaDashboard() {
                         <QuorumDonut 
                             enSala={stats.totalRegistrados} 
                             faltantes={censoData.totalFaltantes > 0 ? censoData.totalFaltantes : Math.max(0, censoData.totalCenso - stats.totalRegistrados)}
+                            percentageOverride={parseFloat(stats.quorumPercentage) || 0}
                             size={70}
                             r={26}
                             strokeW={6}
