@@ -69,11 +69,11 @@ export default function AsambleaDashboard() {
 
                     {total > 0 && (
                         <g>
-                            <text x={cx} y={cy + (fontSize / 4)} textAnchor="middle" fill="white" style={{ fontSize: fontSize, fontVariationSettings: '"wght" 900', fontWeight: 900, fontFamily: "inherit" }}>
+                            <text x={cx} y={showLabels ? cy - 4 : cy + 1} textAnchor="middle" dominantBaseline="central" fill="white" style={{ fontSize: fontSize, fontVariationSettings: '"wght" 900', fontWeight: 900, fontFamily: "inherit" }}>
                                 {quorumPct}%
                             </text>
                             {showLabels && (
-                                <text x={cx} y={cy + (fontSize / 4) + 22} textAnchor="middle" fill="#94a3b8" style={{ fontSize: 10, fontWeight: 600, fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                                <text x={cx} y={cy + (fontSize / 2) + 8} textAnchor="middle" dominantBaseline="central" fill="#94a3b8" style={{ fontSize: 10, fontWeight: 600, fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.1em" }}>
                                     Quórum
                                 </text>
                             )}
@@ -459,7 +459,7 @@ export default function AsambleaDashboard() {
                             size={70}
                             r={26}
                             strokeW={6}
-                            fontSize={18}
+                            fontSize={14}
                             showLabels={false}
                         />
                         <div>
