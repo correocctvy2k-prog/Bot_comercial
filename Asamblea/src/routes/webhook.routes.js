@@ -136,17 +136,23 @@ router.delete('/api/asamblea/quiz/clear', async (req, res) => {
     const { error: errorVotos } = await supabase
       .from('asamblea_votos')
       .delete()
-      .not('id', 'is', null);
+      .neq('id', '00000000-0000-0000-0000-000000000000');
 
-    if (errorVotos) throw errorVotos;
+    if (errorVotos) {
+      console.error("Error borrando asamblea_votos:", errorVotos);
+      throw errorVotos;
+    }
 
     // 2. Borrar todas las encuestas
     const { error: errorEncuestas } = await supabase
       .from('asamblea_encuestas')
       .delete()
-      .not('id', 'is', null);
+      .neq('id', '00000000-0000-0000-0000-000000000000');
 
-    if (errorEncuestas) throw errorEncuestas;
+    if (errorEncuestas) {
+      console.error("Error borrando asamblea_encuestas:", errorEncuestas);
+      throw errorEncuestas;
+    }
 
     console.log("✅ [Quiz] Resultados eliminados correctamente.");
     res.json({ success: true, message: "Resultados del quiz eliminados." });
