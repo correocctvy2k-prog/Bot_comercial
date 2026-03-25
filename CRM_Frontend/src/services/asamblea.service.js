@@ -15,8 +15,9 @@ export const getAsambleaStats = async (totalCenso = 300) => {
 
         // Calcular KPIs en memoria (son pocos, así que no hay problema con rendimiento)
         const total = data.length;
-        const asociados = data.filter(r => r.rol === "ASOCIADO").length;
-        const representantes = data.filter(r => r.rol === "REPRESENTANTE").length;
+        const asociados = data.filter(r => r.categoria_oficial === "ACCIONISTA").length;
+        const apoderadosGroup = data.filter(r => r.categoria_oficial === "APODERADO" || r.categoria_oficial === "REPRESENTANTE_LEGAL").length;
+        const invitados = data.filter(r => r.categoria_oficial === "INVITADO").length;
 
         const syncOk = data.filter(r => r.status === "SYNC_OK").length;
         const syncFailed = data.filter(r => r.status === "SYNC_FAILED").length;
@@ -27,7 +28,8 @@ export const getAsambleaStats = async (totalCenso = 300) => {
         return {
             totalRegistrados: total,
             asociados,
-            representantes,
+            representantes: apoderadosGroup,
+            invitados,
             quorumPercentage,
             syncOk,
             syncFailed,

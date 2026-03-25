@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, UserCheck, PhoneMissed, BadgeCheck, Activity as ActivityIcon, BarChart3, Wifi, WifiOff, ListX, X, Search, Trash2, MessageSquare, PieChart as PieChartIcon, RefreshCw, CheckCircle2, Clock } from 'lucide-react';
+import { Users, UserCheck, PhoneMissed, BadgeCheck, Activity as ActivityIcon, BarChart3, Wifi, WifiOff, ListX, X, Search, Trash2, MessageSquare, PieChart as PieChartIcon, RefreshCw, CheckCircle2, Clock, Coffee } from 'lucide-react';
 import { getAsambleaStats, subscribeToAsamblea, getFaltantesAsamblea, deleteAsambleaRecord, syncAsambleaPadron, clearQuizResults } from '../services/asamblea.service';
 import { supabase } from '../services/supabase';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
@@ -499,7 +499,7 @@ export default function AsambleaDashboard() {
             </div>
 
             {/* Grid de KPIs Principales */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 <KpiCard
                     title="Total Registrados"
                     value={stats.totalRegistrados}
@@ -526,6 +526,15 @@ export default function AsambleaDashboard() {
                     icon={BadgeCheck}
                     accent="from-purple-500/20 to-purple-600/5"
                     iconColor="text-purple-400"
+                />
+                <KpiCard
+                    title="Invitados"
+                    value={stats.invitados || 0}
+                    badge="Cortesía"
+                    badgeColor="text-pink-400"
+                    icon={Coffee}
+                    accent="from-pink-500/20 to-pink-600/5"
+                    iconColor="text-pink-400"
                 />
 
                 <div
