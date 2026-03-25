@@ -216,7 +216,7 @@ async function checkAuthorization(waId) {
     try {
         const { data, error } = await supabase
             .from('asamblea_padron')
-            .select('nombre, categoria, documento')
+            .select('nombre, categoria, documento, nit_representado')
             .eq('wa_id', waId)
             .maybeSingle();
 
@@ -230,7 +230,8 @@ async function checkAuthorization(waId) {
                 authorized: true, 
                 name: data.nombre, 
                 categoria: data.categoria || 'ACCIONISTA',
-                documento: data.documento
+                documento: data.documento,
+                nitRepresentado: data.nit_representado || null
             };
         }
 
@@ -286,7 +287,9 @@ async function finalizeAsambleaRegistration(waId, session, opts) {
     let siissOk = true;
     if (!isInvitado) {
         await Messaging.sendText(waId, "¡Casi terminamos! ⏳ Registrando tu asistencia oficialmente...", opts);
-        siissOk = await registrarAsistenciaSIISS(session.doc, session.nombre);
+        // Apoderados/Representantes Legales deben registrarse con el NIT de la empresa que representan
+        const docParaSIISS = (isApoderadoOrRep && session.nitRepresentado) ? session.nitRepresentado : session.doc;
+        siissOk = await registrarAsistenciaSIISS(docParaSIISS, session.nombre);
     } else {
         await Messaging.sendText(waId, "¡Casi terminamos! ⏳ Registrando tu ingreso de cortesía...", opts);
     }
@@ -708,7 +711,7 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                 await Messaging.sendText(waId, instrMessage, opts);
                 
                 const currentSession = await setAsamSession(waId, { 
-                    step: 'COMPLETED', fullName: auth.name, nombre: auth.name, categoriaOficial: categoria, doc: documento, rol: labelRol 
+                    step: 'COMPLETED', fullName: auth.name, nombre: auth.name, categoriaOficial: categoria, doc: documento, rol: labelRol, nitRepresentado: auth.nitRepresentado 
                 });
                 await finalizeAsambleaRegistration(waId, currentSession, opts);
                 return;
@@ -725,7 +728,7 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
 
             } else if (categoria === 'REPRESENTANTE_LEGAL') {
                 const currentSession = await setAsamSession(waId, { 
-                    step: 'COMPLETED', fullName: auth.name, nombre: auth.name, categoriaOficial: categoria, doc: documento, rol: 'Representante Legal' 
+                    step: 'COMPLETED', fullName: auth.name, nombre: auth.name, categoriaOficial: categoria, doc: documento, rol: 'Representante Legal', nitRepresentado: auth.nitRepresentado 
                 });
                 await finalizeAsambleaRegistration(waId, currentSession, opts);
                 return;
