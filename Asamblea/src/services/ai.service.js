@@ -380,15 +380,21 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
 
         console.log(`[Asamblea v4.0] waId=${waId} step=${session.step} msg="${incomingText}"`);
 
-        // ── COMANDO OCULTO: ADMIN BROADCAST ──────────────────────────────────
+        // ── COMANDO OCULTO: ADMIN BROADCAST ───────────────────────────────────────────────
         if (normText(incomingText) === 'admgane') {
             await setAsamSession(waId, { step: 'ASAM_ADMIN_MENU' });
-            await Messaging.sendButtons(waId, "👑 *Panel de Administración*\nBienvenido al centro de control. (Para salir escribe 'salir')\n\n¿Qué deseas hacer?", [
-                { id: "ADMIN_GO_POLL", title: "📣 Difusión Manual" },
-                { id: "ADMIN_START_SARLAFT", title: "🎓 Quiz SARLAFT" },
-                { id: "ADMIN_START_VOTING", title: "🗳️ Votaciones Asam." },
-                { id: "ADMIN_RESEND_SELECT", title: "🎯 Reenvío Selectivo" }
+            await Messaging.sendButtons(waId, "👑 *Panel de Administración*\nBienvenido al centro de control.\n(Para salir escribe 'salir')", [
+                { id: "ADMIN_GO_POLL",       title: "📣 Difusión Manual" },
+                { id: "ADMIN_START_SARLAFT",  title: "🎓 Quiz SARLAFT" },
+                { id: "ADMIN_START_VOTING",   title: "🗳️ Votaciones Asam." }
             ], opts);
+            return;
+        }
+
+        // ── COMANDO OCULTO: REENVIO SELECTIVO ─────────────────────────────────────────────
+        if (normText(incomingText) === 'reenvio') {
+            await setAsamSession(waId, { step: 'ASAM_ADMIN_RESEND_PHONES' });
+            await Messaging.sendText(waId, "🎯 *Reenvío Selectivo de Últimas Preguntas*\n\nEscribe los números de teléfono separados por coma.\n\nEjemplo:\n`573001234567, 573009876543`\n\n_Usa formato internacional completo (57...)._", opts);
             return;
         }
 
