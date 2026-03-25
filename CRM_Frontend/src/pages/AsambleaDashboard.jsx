@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Users, UserCheck, PhoneMissed, BadgeCheck, Activity as ActivityIcon, BarChart3, Wifi, WifiOff, ListX, X, Search, Trash2, MessageSquare, PieChart as PieChartIcon, RefreshCw, CheckCircle2, Clock, Coffee } from 'lucide-react';
+import { Users, UserCheck, PhoneMissed, BadgeCheck, Activity as ActivityIcon, BarChart3, Wifi, WifiOff, ListX, X, Search, Trash2, MessageSquare, PieChart as PieChartIcon, RefreshCw, CheckCircle2, Clock, Coffee, FileDown } from 'lucide-react';
 import { getAsambleaStats, subscribeToAsamblea, getFaltantesAsamblea, deleteAsambleaRecord, syncAsambleaPadron, clearQuizResults } from '../services/asamblea.service';
 import { supabase } from '../services/supabase';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { generarReporteAsamblea } from '../utils/asambleaReport';
 
 export default function AsambleaDashboard() {
     // ─── SVG Premium Quorum Donut ─────────────────────────────────────────────
@@ -125,6 +126,34 @@ export default function AsambleaDashboard() {
     const [faltantes, setFaltantes] = useState([]);
     const [loadingFaltantes, setLoadingFaltantes] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+    const generatePDF = async () => {
+        setIsGeneratingPdf(true);
+        try {
+            // Cargar datos frescos para el reporte
+            const [{ data: registros }, { data: encuestasRaw }, { data: votos }] = await Promise.all([
+                supabase.from('asamblea_registro').select('*').order('created_at', { ascending: true }),
+                supabase.from('asamblea_encuestas').select('*').order('created_at', { ascending: true }),
+                supabase.from('asamblea_votos').select('*')
+            ]);
+
+            generarReporteAsamblea({
+                registros:  registros  || [],
+                encuestas:  encuestasRaw || [],
+                votos:      votos      || [],
+                totalCenso: censoData.totalCenso || 0,
+                quorumPct:  stats.quorumPercentage || '0'
+            });
+
+            toast.success('Reporte PDF generado y descargado correctamente.');
+        } catch (err) {
+            console.error('Error generando PDF:', err);
+            toast.error('Error al generar el reporte PDF.');
+        } finally {
+            setIsGeneratingPdf(false);
+        }
+    };
 
     // ─── Granular Fetchers ──────────────────────────────────────────────────
     
@@ -472,19 +501,34 @@ export default function AsambleaDashboard() {
                         </div>
                     </div>
 
-                    <button
-                        onClick={handleSyncPadron}
-                        disabled={isSyncing}
-                        className={`group flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg
-                            ${isSyncing 
-                                ? 'bg-white/5 text-muted-foreground cursor-not-allowed' 
-                                : 'bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 hover:border-primary/40'
-                            }`}
-                        title="Sincronizar base de datos con SIISS"
-                    >
-                        <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                        <span>{isSyncing ? 'Sincronizando...' : 'Sincronizar SIISS'}</span>
-                    </button>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={handleSyncPadron}
+                            disabled={isSyncing}
+                            className={`group flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg
+                            ${isSyncing
+                                    ? 'bg-white/5 text-muted-foreground cursor-not-allowed'
+                                    : 'bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 hover:border-primary/40'
+                                }`}
+                            title="Sincronizar base de datos con SIISS"
+                        >
+                            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                            <span>{isSyncing ? 'Sincronizando...' : 'Sincronizar SIISS'}</span>
+                        </button>
+                        <button
+                            onClick={generatePDF}
+                            disabled={isGeneratingPdf}
+                            className={`group flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg
+                            ${isGeneratingPdf
+                                    ? 'bg-white/5 text-muted-foreground cursor-not-allowed'
+                                    : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/40'
+                                }`}
+                            title="Generar reporte PDF de la asamblea"
+                        >
+                            <FileDown className={`w-4 h-4 ${isGeneratingPdf ? 'animate-bounce' : ''}`} />
+                            <span>{isGeneratingPdf ? 'Generando PDF...' : 'Descargar PDF'}</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-3 bg-black/20 rounded-full px-4 py-2 border border-white/5">
