@@ -454,8 +454,8 @@ export default function AsambleaDashboard() {
                 <div className="flex flex-col md:flex-row items-center gap-6">
                     <div className="flex items-center gap-4">
                         <QuorumDonut 
-                            enSala={stats.totalRegistrados} 
-                            faltantes={censoData.totalFaltantes > 0 ? censoData.totalFaltantes : Math.max(0, censoData.totalCenso - stats.totalRegistrados)}
+                            enSala={stats.quorumTotal || 0} 
+                            faltantes={censoData.totalFaltantes > 0 ? censoData.totalFaltantes : Math.max(0, censoData.totalCenso - (stats.quorumTotal || 0))}
                             percentageOverride={parseFloat(stats.quorumPercentage) || 0}
                             size={70}
                             r={26}

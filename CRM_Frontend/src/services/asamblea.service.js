@@ -37,11 +37,13 @@ export const getAsambleaStats = async (totalCenso = 300) => {
         const syncOk = data.filter(r => r.status === "SYNC_OK").length;
         const syncFailed = data.filter(r => r.status === "SYNC_FAILED").length;
 
-        // Porcentaje de quórum dinámico
-        const quorumPercentage = totalCenso > 0 ? ((total / totalCenso) * 100).toFixed(1) : 0;
+        // Porcentaje de quórum dinámico (Solo Titulares y Delegados)
+        const quorumTotal = asociados + apoderadosGroup;
+        const quorumPercentage = totalCenso > 0 ? ((quorumTotal / totalCenso) * 100).toFixed(1) : 0;
 
         return {
             totalRegistrados: total,
+            quorumTotal,
             asociados,
             representantes: apoderadosGroup,
             invitados,
