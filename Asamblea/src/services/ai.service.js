@@ -275,7 +275,8 @@ async function checkExistingRegistration(waId, documento) {
  */
 async function finalizeAsambleaRegistration(waId, session, opts) {
     const rolFinal = session.rol || 'ACCIONISTA';
-    const isGuestOrProxy = ['INVITADO', 'APODERADO'].includes(rolFinal);
+    const catOficial = session.categoriaOficial || 'ACCIONISTA';
+    const isGuestOrProxy = ['INVITADO', 'APODERADO'].includes(catOficial);
 
     await delay(400);
 
