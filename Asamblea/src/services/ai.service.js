@@ -386,7 +386,8 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
             await Messaging.sendButtons(waId, "👑 *Panel de Administración*\nBienvenido al centro de control. (Para salir escribe 'salir')\n\n¿Qué deseas hacer?", [
                 { id: "ADMIN_GO_POLL", title: "📣 Difusión Manual" },
                 { id: "ADMIN_START_SARLAFT", title: "🎓 Quiz SARLAFT" },
-                { id: "ADMIN_START_VOTING", title: "🗳️ Votaciones Asam." }
+                { id: "ADMIN_START_VOTING", title: "🗳️ Votaciones Asam." },
+                { id: "ADMIN_RESEND_SELECT", title: "🎯 Reenvío Selectivo" }
             ], opts);
             return;
         }
@@ -439,7 +440,59 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                     { id: "ADMIN_QUIZ_CANCEL", title: "❌ Cancelar" }
                 ], opts);
                 return;
+            } else if (incomingText === 'ADMIN_RESEND_SELECT') {
+                await setAsamSession(waId, { step: 'ASAM_ADMIN_RESEND_PHONES' });
+                await Messaging.sendText(waId, "🎯 *Reenvío Selectivo de Últimas Preguntas*\n\nEscribe los números de teléfono separados por coma.\n\nEjemplo:\n`573001234567, 573009876543`\n\n_Usa formato internacional completo (57...)._", opts);
+                return;
             }
+            return;
+        }
+
+        // --- PASO: REENVIO SELECTIVO A TELEFONOS ESPECIFICOS ---
+        if (session.step === 'ASAM_ADMIN_RESEND_PHONES') {
+            const rawInput = String(incomingText).trim();
+            const phones = rawInput.split(',').map(p => p.trim().replace(/\D/g, '')).filter(p => p.length >= 10);
+
+            if (phones.length === 0) {
+                await Messaging.sendText(waId, "⚠️ No detecté números válidos. Por favor escríbelos separados por coma en formato internacional (57...).", opts);
+                return;
+            }
+
+            const { data: polls, error: pollErr } = await supabase
+                .from('asamblea_encuestas')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(3);
+
+            if (pollErr || !polls || polls.length === 0) {
+                await Messaging.sendText(waId, "❌ No hay encuestas activas para reenviar. Crea una difusión primero.", opts);
+                await setAsamSession(waId, { step: 'ASAM_ADMIN_MENU' });
+                return;
+            }
+
+            const pollNames = polls.map((p, i) => `${i+1}. ${p.pregunta.substring(0, 60)}...`).join('\n');
+            await Messaging.sendText(waId, `✅ Reenviando *${polls.length}* pregunta(s) a *${phones.length}* número(s):\n${phones.map(p => '• +' + p).join('\n')}\n\n_Preguntas:_\n${pollNames}`, opts);
+            await setAsamSession(waId, { step: 'ASAM_ADMIN_MENU' });
+
+            (async () => {
+                for (const poll of polls.reverse()) {
+                    const pollButtons = poll.opciones.map((opt, idx) => ({
+                        id: `VOTE_${poll.id}_${idx}`,
+                        title: opt.substring(0, 20)
+                    }));
+                    const questionBody = `📊 *Encuesta Pendiente*\n\n${poll.pregunta}\n\n${poll.opciones.map(o => `🔹 ${o}`).join('\n')}\n\n⏳ _Tienes 15 minutos para responder._`;
+
+                    for (const phone of phones) {
+                        try {
+                            await Messaging.sendButtons(phone, questionBody, pollButtons, {});
+                            await delay(800);
+                        } catch (e) {
+                            console.error(`[Resend] Error enviando a ${phone}:`, e.message);
+                        }
+                    }
+                    await delay(2000);
+                }
+            })();
             return;
         }
 
