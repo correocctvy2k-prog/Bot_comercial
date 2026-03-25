@@ -699,8 +699,18 @@ async function processIncomingAsamblea(waId, value, msg, channelId) {
                 await delay(800);
             } catch (e) {}
 
-            if (categoria === 'APODERADO' || categoria === 'INVITADO') {
-                const instrMessage = `📌 Por favor, **dirígete a la mesa principal de registro** para completar tu ingreso presencial y reclamar tu obsequio. ¡Te esperamos! 🎁`;
+            if (categoria === 'APODERADO') {
+                const instrMessage = `📌 Por favor, *dirígete a la mesa principal de registro* para completar tu ingreso presencial y reclamar tu obsequio. ¡Te esperamos! 🎁`;
+                await Messaging.sendText(waId, instrMessage, opts);
+                
+                const currentSession = await setAsamSession(waId, { 
+                    step: 'COMPLETED', fullName: auth.name, nombre: auth.name, categoriaOficial: categoria, doc: documento, rol: labelRol 
+                });
+                await finalizeAsambleaRegistration(waId, currentSession, opts);
+                return;
+
+            } else if (categoria === 'INVITADO') {
+                const instrMessage = `📌 Por favor, *dirígete a la mesa principal de registro* para completar tu ingreso presencial. ¡Te esperamos! ✨`;
                 await Messaging.sendText(waId, instrMessage, opts);
                 
                 const currentSession = await setAsamSession(waId, { 
