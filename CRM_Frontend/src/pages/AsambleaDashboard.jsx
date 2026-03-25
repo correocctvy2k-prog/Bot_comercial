@@ -100,7 +100,15 @@ export default function AsambleaDashboard() {
 
     const [activityFeed, setActivityFeed] = useState([]);
     const [pollCharts, setPollCharts] = useState([]);
+    const [quizCharts, setQuizCharts] = useState([]);
     const [quizAudit, setQuizAudit] = useState({ polls: [], participants: [], globalStats: { correct: 0, incorrect: 0, pending: 0 } });
+
+    // Helper para identificar preguntas que pertenecen a la capacitación SARLAFT
+    const isQuizQuestion = (q) => {
+        if(!q) return false;
+        const lower = q.toLowerCase();
+        return lower.includes('inusual') || lower.includes('alerta') || lower.includes('sarlaft');
+    };
 
     // Helper para validar respuestas SARLAFT (1=C, 2=A, 3=C)
     const isCorrectAnswer = (question, answer) => {
@@ -159,7 +167,7 @@ export default function AsambleaDashboard() {
             .limit(50);
 
         if (allRecent && allRecent.length > 0) {
-            // Agrupar por texto de pregunta para identificar las 3 preguntas distintas más recientes
+            // Agrupar por texto de pregunta para identificar distintas preguntas
             const uniqueQuestionsMap = new Map();
             allRecent.forEach(p => {
                 if (!uniqueQuestionsMap.has(p.pregunta)) {
@@ -174,29 +182,45 @@ export default function AsambleaDashboard() {
                 }
             });
 
-            // Tomamos las 3 preguntas únicas más recientes
-            const top3Questions = Array.from(uniqueQuestionsMap.values()).slice(0, 3);
+            const quizQuestions = [];
+            const pollQuestions = [];
 
-            const chartDataArray = await Promise.all(top3Questions.map(async (qGroup) => {
-                // Consultamos votos para TODOS los IDs que tengan esta misma pregunta
-                const { data: votos } = await supabase
-                    .from('asamblea_votos')
-                    .select('opcion_texto')
-                    .in('encuesta_id', qGroup.allIds);
-
-                const counts = {};
-                qGroup.opciones.forEach(o => counts[o] = 0);
-                if (votos) {
-                    votos.forEach(v => {
-                        if (counts[v.opcion_texto] !== undefined) counts[v.opcion_texto]++;
-                    });
+            Array.from(uniqueQuestionsMap.values()).forEach(qGroup => {
+                if (isQuizQuestion(qGroup.pregunta)) {
+                    if (quizQuestions.length < 3) quizQuestions.push(qGroup);
+                } else {
+                    if (pollQuestions.length < 5) pollQuestions.push(qGroup);
                 }
-                const chartData = Object.keys(counts).map(key => ({ name: key, value: counts[key] }));
-                return { id: qGroup.latestId, pregunta: qGroup.pregunta, data: chartData };
-            }));
+            });
 
-            setPollCharts(chartDataArray.reverse());
+            const buildCharts = async (questions) => {
+                return await Promise.all(questions.map(async (qGroup) => {
+                    const { data: votos } = await supabase
+                        .from('asamblea_votos')
+                        .select('opcion_texto')
+                        .in('encuesta_id', qGroup.allIds);
+
+                    const counts = {};
+                    qGroup.opciones.forEach(o => counts[o] = 0);
+                    if (votos) {
+                        votos.forEach(v => {
+                            if (counts[v.opcion_texto] !== undefined) counts[v.opcion_texto]++;
+                        });
+                    }
+                    const chartData = Object.keys(counts).map(key => ({ name: key, value: counts[key] }));
+                    return { id: qGroup.latestId, pregunta: qGroup.pregunta, data: chartData };
+                }));
+            };
+
+            const [quizData, pollData] = await Promise.all([
+                buildCharts(quizQuestions),
+                buildCharts(pollQuestions)
+            ]);
+
+            setQuizCharts(quizData.reverse());
+            setPollCharts(pollData.reverse());
         } else {
+            setQuizCharts([]);
             setPollCharts([]);
         }
     };
@@ -209,7 +233,7 @@ export default function AsambleaDashboard() {
             .limit(50);
 
         if (allRecent && allRecent.length > 0) {
-            // Identificar el set de IDs para las 3 preguntas únicas más recientes
+            // Identificar el set de IDs para agrupar preguntas
             const uniqueQuestionsMap = new Map();
             allRecent.forEach(p => {
                 if (!uniqueQuestionsMap.has(p.pregunta)) {
@@ -222,8 +246,17 @@ export default function AsambleaDashboard() {
                 }
             });
 
-            const top3Questions = Array.from(uniqueQuestionsMap.values()).slice(0, 3);
-            const allRelatedPollIds = top3Questions.flatMap(q => q.allIds);
+            // Solo tomar encuestas de Capacitación (máx 3)
+            const quizQuestions = Array.from(uniqueQuestionsMap.values())
+                                       .filter(q => isQuizQuestion(q.pregunta))
+                                       .slice(0, 3);
+            
+            if (quizQuestions.length === 0) {
+                setQuizAudit({ polls: [], participants: [], globalStats: { correct: 0, incorrect: 0, pending: 0 } });
+                return;
+            }
+
+            const allRelatedPollIds = quizQuestions.flatMap(q => q.allIds);
 
             const { data: allVotes } = await supabase
                 .from('asamblea_votos')
@@ -242,7 +275,7 @@ export default function AsambleaDashboard() {
                 const auditData = allRegistered.map(user => {
                     const userVotesByQuestion = {}; // Usaremos la pregunta como llave para la tabla de auditoría
 
-                    top3Questions.forEach(qGroup => {
+                    quizQuestions.forEach(qGroup => {
                         // Buscar si el usuario votó en CUALQUIERA de los IDs asociados a esta pregunta
                         const v = allVotes?.find(vote => 
                             qGroup.allIds.includes(vote.encuesta_id) && 
@@ -263,7 +296,7 @@ export default function AsambleaDashboard() {
                 });
 
                 setQuizAudit({ 
-                    polls: top3Questions, 
+                    polls: quizQuestions, 
                     participants: auditData,
                     globalStats: { correct: globalCorrect, incorrect: globalIncorrect, pending: globalPending }
                 });
@@ -520,104 +553,138 @@ export default function AsambleaDashboard() {
             {/* Fila de Gráficos y Actividad */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
 
-                {/* Gráfico de Encuestas (Quiz Results) - AHORA TOMA 2 COLUMNAS PORQUE QUITARON QUORUM */}
-                <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6 lg:col-span-2 lg:row-span-2 flex flex-col h-[700px]">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-base font-semibold flex items-center gap-2">
-                            <PieChartIcon className="w-4 h-4 text-primary" />
-                            Resultados del Quiz SARLAFT
-                        </h3>
-                        <button
-                            onClick={handleResetQuiz}
-                            disabled={isSyncing}
-                            className="text-[10px] uppercase font-bold tracking-wider px-3 py-1.5 rounded-lg border border-red-500/20 text-red-400 hover:bg-red-500/10 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Borrar todos los votos y preguntas actuales"
-                        >
-                            <Trash2 size={12} />
-                            Reiniciar Quiz
-                        </button>
-                    </div>
+                {/* Contenedor de Gráficos Separados (Votaciones y SARLAFT) */}
+                <div className="lg:col-span-2 lg:row-span-2 flex flex-col gap-6 h-[700px]">
                     
-                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-12">
-                        {pollCharts.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                {pollCharts.map((poll, pIdx) => (
-                                    <div key={poll.id} className="flex flex-col items-center border-b md:border-b-0 md:border-r border-white/5 pb-8 md:pb-0 md:pr-8 last:border-0 last:pr-0">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <span className="bg-primary/20 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Pregunta {pIdx + 1}</span>
-                                        </div>
-                                        <p className="text-sm text-muted-foreground text-center mb-6 px-4 italic leading-tight h-10 flex items-center">"{poll.pregunta}"</p>
-                                        
-                                        <div className="h-[200px] w-full relative">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <PieChart>
-                                                    <Pie
-                                                        data={poll.data}
-                                                        cx="50%"
-                                                        cy="50%"
-                                                        innerRadius={50}
-                                                        outerRadius={75}
-                                                        paddingAngle={6}
-                                                        dataKey="value"
-                                                        stroke="transparent"
-                                                        animationBegin={0}
-                                                        animationDuration={1000}
-                                                    >
-                                                        {poll.data.map((entry, index) => (
-                                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                        ))}
-                                                    </Pie>
-                                                    <Tooltip
-                                                        contentStyle={{ backgroundColor: 'rgba(0,0,0,0.85)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', backdropFilter: 'blur(8px)' }}
-                                                        itemStyle={{ color: '#fff' }}
-                                                        cursor={{ fill: 'transparent' }}
-                                                    />
-                                                </PieChart>
-                                            </ResponsiveContainer>
-                                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                                <span className="text-xl font-bold text-foreground">
-                                                    {poll.data.reduce((acc, curr) => acc + curr.value, 0)}
-                                                </span>
-                                                <span className="text-[10px] text-muted-foreground">Votos</span>
+                    {/* Votaciones Oficiales (Polls) */}
+                    <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6 flex-1 flex flex-col overflow-hidden relative">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
+                            <h3 className="text-base font-semibold flex items-center gap-2">
+                                <PieChartIcon className="w-4 h-4 text-primary" />
+                                Votaciones Oficiales de Asamblea
+                            </h3>
+                            <button
+                                onClick={handleResetQuiz}
+                                disabled={isSyncing}
+                                className="text-[10px] uppercase font-bold tracking-wider px-3 py-1.5 rounded-lg border border-red-500/20 text-red-400 hover:bg-red-500/10 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed z-10 whitespace-nowrap shrink-0"
+                                title="Borrar TODOS los votos y preguntas (Reset Global)"
+                            >
+                                <Trash2 size={12} />
+                                Reiniciar Todo
+                            </button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar pb-2">
+                            {pollCharts.length > 0 ? (
+                                <div className="flex gap-4 h-full min-w-max">
+                                    {pollCharts.map((poll, pIdx) => (
+                                        <div key={poll.id} className="flex-1 flex flex-col items-center border-r border-white/5 pr-4 last:border-0 last:pr-0 w-[200px] sm:w-[250px] shrink-0">
+                                            <span className="bg-white/10 text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider mb-2">Votación {pIdx + 1}</span>
+                                            <p className="text-xs text-muted-foreground text-center mb-2 px-1 italic leading-tight h-8 overflow-hidden line-clamp-2" title={poll.pregunta}>"{poll.pregunta}"</p>
+                                            
+                                            <div className="flex-1 w-full relative min-h-[120px]">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart>
+                                                        <Pie
+                                                            data={poll.data}
+                                                            cx="50%" cy="50%" innerRadius="40%" outerRadius="75%" paddingAngle={6} dataKey="value" stroke="transparent"
+                                                        >
+                                                            {poll.data.map((entry, index) => (
+                                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                            ))}
+                                                        </Pie>
+                                                        <Tooltip contentStyle={{ backgroundColor: 'rgba(0,0,0,0.85)', border: 'none', borderRadius: '8px' }} itemStyle={{ color: '#fff', fontSize: '12px' }} />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                            
+                                            <div className="w-full mt-2 grid grid-cols-2 gap-1 gap-x-2">
+                                                {(() => {
+                                                    const total = poll.data.reduce((acc, curr) => acc + curr.value, 0);
+                                                    return poll.data.map((entry, index) => {
+                                                        const percent = total > 0 ? (entry.value / total) * 100 : 0;
+                                                        const color = COLORS[index % COLORS.length];
+                                                        return (
+                                                            <div key={index} className="flex items-center justify-between text-[10px] p-1.5 rounded-md bg-black/20 border border-white/5 overflow-hidden relative">
+                                                                <div className="absolute inset-0 opacity-[0.1]" style={{ backgroundColor: color, width: `${percent}%` }} />
+                                                                <span className="text-white/80 truncate pr-1 z-10" title={entry.name}>{entry.name}</span>
+                                                                <span className="font-bold text-white z-10 pl-1">{entry.value}</span>
+                                                            </div>
+                                                        );
+                                                    });
+                                                })()}
                                             </div>
                                         </div>
-                                        
-                                        <div className="mt-4 w-full space-y-2">
-                                            {(() => {
-                                                const total = poll.data.reduce((acc, curr) => acc + curr.value, 0);
-                                                return poll.data.map((entry, index) => {
-                                                    const percent = total > 0 ? (entry.value / total) * 100 : 0;
-                                                    const color = COLORS[index % COLORS.length];
-                                                    return (
-                                                        <div key={index} className="relative group">
-                                                            <div className="flex justify-between items-center text-xs p-2.5 rounded-lg border border-white/5 bg-black/40 relative z-10 transition-all group-hover:border-white/10 overflow-hidden">
-                                                                <div 
-                                                                    className="absolute inset-0 opacity-[0.08] transition-all duration-1000" 
-                                                                    style={{ backgroundColor: color, width: `${percent}%` }}
-                                                                />
-                                                                <div className="flex items-center gap-2 relative z-20">
-                                                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }}></div>
-                                                                    <span className="text-foreground/90 font-medium truncate max-w-[150px]">{entry.name}</span>
-                                                                </div>
-                                                                <div className="flex flex-col items-end relative z-20">
-                                                                    <span className="font-bold text-white">{entry.value}</span>
-                                                                    <span className="text-[9px] text-muted-foreground">{percent.toFixed(0)}%</span>
-                                                                </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
+                                    <BarChart3 className="w-8 h-8 mb-2 opacity-20" />
+                                    <p className="text-xs">No hay votaciones activas</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Resultados del Quiz SARLAFT (Quiz) */}
+                    <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6 flex-1 flex flex-col overflow-hidden relative">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-base font-semibold flex items-center gap-2">
+                                <BadgeCheck className="w-4 h-4 text-emerald-400" />
+                                Resultados del Quiz SARLAFT
+                            </h3>
+                        </div>
+                        
+                        <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar pb-2">
+                            {quizCharts.length > 0 ? (
+                                <div className="flex gap-4 h-full min-w-max">
+                                    {quizCharts.map((poll, pIdx) => (
+                                        <div key={poll.id} className="flex-1 flex flex-col items-center border-r border-white/5 pr-4 last:border-0 last:pr-0 w-[200px] sm:w-[250px] shrink-0">
+                                            <span className="bg-primary/20 text-primary text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider mb-2">Pregunta {pIdx + 1}</span>
+                                            <p className="text-xs text-muted-foreground text-center mb-2 px-1 italic leading-tight h-8 overflow-hidden line-clamp-2" title={poll.pregunta}>"{poll.pregunta}"</p>
+                                            
+                                            <div className="flex-1 w-full relative min-h-[120px]">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart>
+                                                        <Pie
+                                                            data={poll.data}
+                                                            cx="50%" cy="50%" innerRadius="40%" outerRadius="75%" paddingAngle={6} dataKey="value" stroke="transparent"
+                                                        >
+                                                            {poll.data.map((entry, index) => (
+                                                                <Cell key={`cell-${index}`} fill={COLORS[(index + 3) % COLORS.length]} />
+                                                            ))}
+                                                        </Pie>
+                                                        <Tooltip contentStyle={{ backgroundColor: 'rgba(0,0,0,0.85)', border: 'none', borderRadius: '8px' }} itemStyle={{ color: '#fff', fontSize: '12px' }} />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                            
+                                            <div className="w-full mt-2 grid grid-cols-1 gap-1">
+                                                {(() => {
+                                                    const total = poll.data.reduce((acc, curr) => acc + curr.value, 0);
+                                                    return poll.data.map((entry, index) => {
+                                                        const percent = total > 0 ? (entry.value / total) * 100 : 0;
+                                                        const color = COLORS[(index + 3) % COLORS.length];
+                                                        return (
+                                                            <div key={index} className="flex items-center justify-between text-[10px] p-1.5 rounded-md bg-black/20 border border-white/5 overflow-hidden relative">
+                                                                <div className="absolute inset-0 opacity-[0.1]" style={{ backgroundColor: color, width: `${percent}%` }} />
+                                                                <span className="text-white/80 truncate pr-1 z-10" title={entry.name}>{entry.name}</span>
+                                                                <span className="font-bold text-white z-10 pl-1">{entry.value}</span>
                                                             </div>
-                                                        </div>
-                                                    );
-                                                });
-                                            })()}
+                                                        );
+                                                    });
+                                                })()}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="h-64 flex flex-col items-center justify-center text-muted-foreground">
-                                <BarChart3 className="w-12 h-12 mb-4 opacity-20" />
-                                <p>No hay encuestas activas</p>
-                            </div>
-                        )}
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
+                                    <BadgeCheck className="w-8 h-8 mb-2 opacity-20 text-emerald-400" />
+                                    <p className="text-xs">No hay quiz de capacitación activo</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
