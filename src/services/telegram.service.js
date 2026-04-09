@@ -1,14 +1,19 @@
-const { TELEGRAM_BOT_TOKEN } = process.env;
+const { TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_TOKEN_COMERCIAL, TELEGRAM_BOT_TOKEN_ASAMBLEA } = process.env;
 
 function getUrl(method, options = {}) {
     // 1. Dynamic Token
-    if (options.token) {
+    if (options.telegram_token) {
+        return `https://api.telegram.org/bot${options.telegram_token}/${method}`;
+    }
+    // A valid Telegram token contains a colon (e.g. 123456:ABC-DEF)
+    if (options.token && String(options.token).includes(':')) {
         return `https://api.telegram.org/bot${options.token}/${method}`;
     }
 
     // 2. Fallback Static Token
-    if (TELEGRAM_BOT_TOKEN) {
-        return `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${method}`;
+    const fallback = TELEGRAM_BOT_TOKEN_COMERCIAL || TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN_ASAMBLEA;
+    if (fallback) {
+        return `https://api.telegram.org/bot${fallback}/${method}`;
     }
 
     throw new Error("No Token provided for Telegram API");
