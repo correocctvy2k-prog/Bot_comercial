@@ -66,3 +66,16 @@ services:
     environment:
       - TZ=America/Bogota
     command: node src/worker.js
+
+  # ==========================================
+  # MICROSERVICIO 3: CRM FRONTEND (Vite/React)
+  # ==========================================
+  crm-frontend:
+    build:
+      context: ./CRM_Frontend
+    container_name: crm-frontend
+    restart: always
+    ports:
+      - "3003:80"
+    environment:
+      - TZ=America/Bogota
