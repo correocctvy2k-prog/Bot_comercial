@@ -3,6 +3,7 @@ const { verifyMetaSignature } = require("../utils/signature");
 const { logIncoming } = require("../utils/logger");
 const { seenBefore } = require("../utils/dedupe");
 const { processIncomingWhatsApp } = require("../services/bot.service");
+const { runMonitor } = require("../services/monitor.service");
 
 function verifyWebhookGet(req, res) {
     const mode = req.query["hub.mode"];
@@ -90,8 +91,29 @@ async function handleTelegramWebhook(req, res) {
     }
 }
 
+async function handleTriggerMonitor(req, res) {
+    console.log("手动触发监控 / Manual monitor trigger requested");
+    try {
+        // Ejecutar el monitor en segundo plano (async) para no bloquear la respuesta
+        // o esperar a que termine si se prefiere feedback inmediato (tomará ~10-30s)
+        // El usuario solicitó generar alertas, así que esperaremos para confirmar éxito.
+        const result = await runMonitor({ tipo: 'standard' });
+        
+        if (result.ok) {
+            return res.status(200).json({ ok: true, message: "Monitor ejecutado correctamente", detail: result.payload });
+        } else {
+            console.error("Error ejecutando monitor:", result.stderr);
+            return res.status(500).json({ ok: false, error: "Error al ejecutar el monitor", detail: result.stderr });
+        }
+    } catch (error) {
+        console.error("Error en handleTriggerMonitor:", error);
+        return res.status(500).json({ ok: false, error: error.message });
+    }
+}
+
 module.exports = {
     verifyWebhookGet,
     handleWebhookPost,
-    handleTelegramWebhook
+    handleTelegramWebhook,
+    handleTriggerMonitor
 };

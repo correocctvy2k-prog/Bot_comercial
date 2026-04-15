@@ -335,5 +335,42 @@ export const pointsService = {
         });
         if (!resp.ok) throw new Error('Error al mejorar con IA');
         return await resp.json();
+    },
+
+    async clearAllAlerts() {
+        try {
+            // Delete all records from store_alerts
+            // Supabase delete requires a filter, .neq('id', 0) matches all uuid/int ids usually
+            const { error } = await supabase
+                .from('store_alerts')
+                .delete()
+                .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete everything
+
+            if (error) throw error;
+            return { ok: true };
+        } catch (error) {
+            console.error('Error in pointsService.clearAllAlerts:', error);
+            throw error;
+        }
+    },
+
+    async triggerDailyMonitor() {
+        try {
+            const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+            const resp = await fetch(`${backendUrl}/api/webhook/trigger-monitor`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (!resp.ok) {
+                const errorData = await resp.json().catch(() => ({ error: 'Error desconocido' }));
+                throw new Error(errorData.error || 'Failed to trigger monitor');
+            }
+
+            return await resp.json();
+        } catch (error) {
+            console.error('Error in pointsService.triggerDailyMonitor:', error);
+            throw error;
+        }
     }
 };

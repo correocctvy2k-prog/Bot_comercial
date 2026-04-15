@@ -1,0 +1,59 @@
+# ANTIGRAVITY RULES — ECOSISTEMA BOT COMERCIAL / PARKING DESKTOP
+Actualizado: 2026-04-15
+
+---
+
+## 0. PROYECTO Y ECOSISTEMA ACTUAL
+
+*Entorno del Proyecto:* Bot_comercial / Módulo de Asamblea / **Parking Desktop (LPR)**.
+*Owner en GitHub:* `correocctvy2k-prog`
+*Repositorios Remotos:*
+1. `correocctvy2k-prog/Bot_comercial` (Master)
+2. `correocctvy2k-prog/parking_desktop` (Nuevo / Sync OK)
+*Bases de Supabase Activas:*
+1. `Bot_Comercial` (`fxlbqlzsbrgnkpcduzxt`) - Producción Bots.
+2. `KM_Base_Vectorial_Agentes` (`qqavaomzxxcwpptfrsti`) - Memoria Centralizada.
+
+---
+
+## 1. PROTOCOLO DE CONOCIMIENTO CENTRALIZADO (VECTORES)
+
+Todo agente operacional DEBE integrarse con la base de datos `qqavaomzxxcwpptfrsti`.
+
+1. **Patrón de Implementación:** Utilizar `core/vector_service.py` para abstraer las llamadas REST hacia Supabase.
+2. **Registro de Proyectos:** Cada nuevo proyecto debe estar en `km_projects`.
+   - `parking_desktop` ID: `f3b6a9a0-7b2e-4b7e-9e8a-8a8b8c8d8e8f`.
+3. **Actualización Obligatoria y Constante:** Es **MANDATORIO** que cada agente, al finalizar su tarea o sesión, actualice la tabla `km_agent_memory` con los hallazgos, correcciones de bugs, o nuevos patrones identificados. La memoria no es opcional, es el motor de eficiencia del ecosistema.
+
+---
+
+## 2. ESTÁNDARES DE DESARROLLO GOOGLE (DESKTOP)
+
+Para aplicaciones que interactúan con Google Sheets/Drive en Windows:
+
+1. **Autenticación:** Utilizar `core/auth.py` para obtener servicios de Google.
+2. **Gestión de Credenciales:**
+   - **PROHIBIDO:** Subir `client_secret.json` o `token.json` a GitHub.
+   - Estos archivos deben estar listados en `.gitignore`.
+3. **Consolidación de Configuración:** Los IDs de Drive y Sheets deben centralizarse en `core/config.py`.
+
+---
+
+## 3. HIGIENE DEL REPOSITORIO (GIT)
+
+1. **Archivos Pesados:** NO subir carpetas `core/input_data/` ni archivos `.zip` de procesamiento. Usar `.gitignore`.
+2. **Tokens y Secretos:** El escaneo de secretos de GitHub está activo. Nunca "amendar" commits que contengan secretos; usar `git rm --cached` y `reset` si es necesario limpiar el historial.
+
+---
+
+## 4. CONEXIÓN MCP Y DIAGNÓSTICO
+
+1. **Inspección de DB:** Priorizar `mcp_supabase-mcp-server_list_tables` antes de escribir SQL.
+2. **Logs de Servicio:** Usar `mcp_supabase-mcp-server_get_logs` para diagnosticar fallos en Realtime o Auth.
+3. **GitHub Workflow:** Crear ramas temporales para cambios significativos y usar `mcp_github_push_files` para sincronizar el progreso.
+
+---
+
+## 5. REGLA DE ORO DE ANTIGRAVITY (CICLO DE MEMORIA)
+
+Es un **PROCESO CÍCLICO OBLIGATORIO**: Ninguna sesión comienza sin consultar `km_agent_memory`, y ninguna sesión termina sin haberla enriquecido. Si no hubo hallazgos técnicos complejos, se debe registrar al menos un resumen del progreso y decisiones clave para asegurar la continuidad del siguiente agente.

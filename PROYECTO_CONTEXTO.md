@@ -204,10 +204,10 @@ GEMINI_API_KEY=<key>
 - **Empresa:** `EMPRCODI=8150006772`, `ASAMCODI=10`
 - **Credenciales:** `123123123` / `CP123`
 - **Endpoints usados:**
-   - `POST /siiss-login/api/v1/qvaccesosys/login` → obtener JWT
-   - `POST /siiss-quorum/api/v1/qoAccionistas/getAccionistasLst` → lista accionistas
-   - `POST /siiss-quorum/api/v1/qoAsistencias/registraAsistencia` → registrar asistencia
-   - `GET /siiss-basicas/api/v1/qvestaciones/estacionesByPing` → estado puntos (para monitor)
+  - `POST /siiss-login/api/v1/qvaccesosys/login` → obtener JWT
+  - `POST /siiss-quorum/api/v1/qoAccionistas/getAccionistasLst` → lista accionistas
+  - `POST /siiss-quorum/api/v1/qoAsistencias/registraAsistencia` → registrar asistencia
+  - `GET /siiss-basicas/api/v1/qvestaciones/estacionesByPing` → estado puntos (para monitor)
 
 ---
 
