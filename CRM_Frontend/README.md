@@ -1,16 +1,31 @@
-# React + Vite
+# 🖥️ CRM Frontend - Panel de Control Skylab
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Este es el Panel de Control administrativo del ecosistema Skylab, construido con **React 19 + Vite 7**.
 
-Currently, two official plugins are available:
+## 🚀 Características principales
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Dashboard Realtime:** Monitoreo de KPIs de los bots y estado de puntos de venta.
+- **Terminal SSH Embebida:** Control directo de los servidores VPS mediante xterm.js (puente vía Socket.io al backend).
+- **Gestión de Puntos:** Mapa interactivo con Leaflet y gestión de alertas.
+- **Centro de Comando:** Autopilot para reinicio de túneles Cloudflare y actualizaciones de Git.
 
-## React Compiler
+## 🛠️ Desarrollo Local
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+# Instalar dependencias
+npm install
 
-## Expanding the ESLint configuration
+# Correr en modo desarrollo
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 🐳 Despliegue (Docker)
+
+Esta aplicación está configurada para ser servida por Nginx dentro de un contenedor Docker. 
+La configuración se encuentra en la raíz del proyecto para integrarse con el `docker-compose.yml` general.
+
+- **Dockerfile:** Multi-etapa (Build Node / Prod Nginx).
+- **Puerto:** Mapeado al 3003 en el host.
+
+---
+*Parte del Ecosistema Skylab.*

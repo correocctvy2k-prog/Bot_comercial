@@ -1,0 +1,439 @@
+# 📋 CONTEXTO MAESTRO DEL ECOSISTEMA SKYLAB
+> **Última actualización:** 2026-04-15  
+> **Propósito:** Referencia rápida para el asistente IA antes de cualquier intervención en los proyectos. Actualizar al finalizar cada sesión de trabajo.
+
+---
+
+## 🏗️ ESTRUCTURA GENERAL DEL REPOSITORIO
+
+**Ruta local:** `C:\Users\johnathan.beltran\.gemini\antigravity\playground\final-skylab\`  
+**GitHub:** `correocctvy2k-prog/Bot_comercial` (rama: `main`)  
+**VPS Ubuntu con Docker:** Red privada `192.168.8.65` (usuario: `skylab`)
+
+### Carpetas principales:
+```
+final-skylab/
+├── src/                   ← Bot Comercial (raíz del proyecto)
+├── Asamblea/              ← Bot Asamblea (subproyecto)
+├── CRM_Frontend/          ← Frontend React (local, próximamente en VPS)
+├── monitor_puntos_wpp.py  ← Script Python que genera reportes de puntos
+├── docker-compose.yml     ← Orquesta los 4 contenedores del VPS
+├── package.json           ← bot-comercial v12.0.0
+├── .env                   ← Variables del Bot Comercial (NO subir a GitHub)
+└── PROYECTO_CONTEXTO.md   ← Este archivo
+```
+
+---
+
+## 🏛️ RAZÓN DE LA ARQUITECTURA (SISTEMA MONOREPO)
+
+Se ha decidido mantener los tres componentes (**Bot Comercial**, **Bot Asamblea** y **CRM**) dentro del mismo repositorio y servidor por las siguientes razones:
+
+1.  **Integración Directa:** El CRM utiliza WebSockets para conectarse al backend del Bot Comercial para la terminal SSH. Compartir el mismo host facilita esta conexión.
+2.  **Base de Datos Compartida:** Todos los servicios consumen la misma instancia de Supabase.
+3.  **Despliegue Atómico:** Al usar un único `docker-compose.yml`, podemos asegurar que las actualizaciones de los bots y el frontend se sincronicen correctamente.
+4.  **Simplicidad para el Equipo:** Se reduce la sobrecarga de gestionar múltiples repositorios y credenciales de acceso al VPS.
+
+---
+
+## 🔄 FLUJO DE TRABAJO / DESPLIEGUE
+
+```
+[Cambios locales en Windows]
+        ↓
+  git push → GitHub (main)
+        ↓
+ [Notificar al usuario]
+        ↓
+  Pull manual en VPS Ubuntu:
+  cd ~/Bot_comercial/Bot_comercial
+  sudo git pull origin main
+        ↓
+  Reiniciar contenedores (si aplica):
+  sudo docker compose restart        ← Comercial (bot + worker)
+  cd Asamblea && sudo docker compose restart  ← Asamblea (bot + worker)
+```
+
+> ⚠️ **REGLA CRÍTICA:** Después de cada cambio de código que funcione, siempre hay que hacer `git push` e **indicar al usuario que ejecute `git pull` en el VPS**. El CRM_Frontend NO necesita pull en el VPS (por ahora corre local).
+
+---
+
+## 🤖 PROYECTO 1: BOT COMERCIAL (`src/` en la raíz)
+
+### Propósito
+Bot de WhatsApp y Telegram para el área **comercial** de Gane Palmira. Permite a usuarios autorizados solicitar reportes de estado de puntos de venta por zona geográfica.
+
+### Contenedores Docker (VPS)
+| Contenedor | Puerto | Comando |
+|---|---|---|
+| `comercial-bot` | `3001` | `node src/index.js` |
+| `comercial-worker` | — | `node src/worker.js` |
+
+### Arquitectura
+```
+WhatsApp/Meta API → Webhook POST /webhook → bot_queue (Supabase) → Worker → bot.service.js
+Telegram API → Webhook POST /webhook/telegram → bot_queue → Worker → bot.service.js
+```
+
+### Flujo del Bot Comercial
+1. **Nuevo usuario:** Pregunta nombre → solicita consentimiento de datos
+2. **Estado `READY`:** Muestra menú de reportes según rol (`RBAC`)
+3. **Selección de zona:** Ejecuta `monitor_puntos_wpp.py` (Python) → devuelve JSON con mensajes
+4. **Roles:** `SUPERADMIN` (acceso total), `ADMIN` (acceso multi-zona), `USER` (zonas asignadas), `pending` (espera aprobación), `BLOCKED`
+5. **Sesiones:** Se cierran automáticamente por inactividad (20 min por defecto, controlado por `IDLE_CLOSE_MS`)
+
+### Zonas configuradas
+`PALMIRA`, `AMAIME Y EL PLACER`, `ROZO`, `CANDELARIA`, `PRADERA`, `FLORIDA`, `OCCIDENTE`
+
+### Servicios clave (`src/services/`)
+| Archivo | Función |
+|---|---|
+| `bot.service.js` | Lógica principal del flujo conversacional (39KB) |
+| `monitor.service.js` | Lanza Python, parsea JSON y envía mensajes |
+| `socket.service.js` | WebSocket + SSH bridge + Autopilot + logs en tiempo real |
+| `whatsapp.service.js` | API Cloud de Meta (envío de textos, botones, imágenes, documentos, stickers) |
+| `telegram.service.js` | Envío de mensajes y botones por Telegram |
+| `messaging.service.js` | Capa unificada WA/Telegram (detecta canal por prefijo `tg_`) |
+| `ai.service.js` | Gemini AI para NLU (clasificar intención del texto) |
+| `session.service.js` | Lectura/escritura de sesiones en Supabase (`bot_sessions`) |
+| `access.service.js` | RBAC: leer/escribir roles desde Supabase |
+| `monitor.service.js` | Spawn Python, TTL 3 min, parseo seguro de JSON |
+| `siiss.service.js` | Integración con SIISS para estado de estaciones (ping/activo) |
+| `logger.service.js` | Log de interacciones CRM en Supabase |
+| `consent.service.js` | Registro físico de consentimiento (archivo local) |
+
+### Variables de entorno importantes (`.env` raíz)
+```
+PORT=3001
+WPP_TOKEN=<Meta Bearer Token>
+PHONE_NUMBER_ID=<ID Número WA>
+WPP_VERSION=v22.0
+TELEGRAM_BOT_TOKEN_COMERCIAL=<token>
+SUPABASE_URL=https://fxlbqlzsbrgnkpcduzxt.supabase.co
+SUPABASE_KEY=<service_role key>
+GEMINI_API_KEY=<key>
+IDLE_CLOSE_MS=1200000  (20 min)
+MONITOR_SCRIPT=monitor_puntos_wpp.py
+PYTHON_BIN=python
+MONITOR_TIMEOUT_MS=180000
+SIISS_URL=http://10.192.168.8:8101
+```
+
+### Script Python (`monitor_puntos_wpp.py`)
+- Lee los puntos de venta desde Supabase (`puntos_venta`)
+- Hace ping a cada IP
+- Devuelve JSON con `{ ok, messages[], image?, summary }` al bot Node.js
+- Parámetros: `--json --tipo standard [--zona PALMIRA]`
+
+---
+
+## 🎪 PROYECTO 2: BOT ASAMBLEA (`Asamblea/`)
+
+### Propósito
+Bot de WhatsApp y Telegram para el registro y gestión de la **Asamblea de Accionistas 2026** de Gane Palmira.
+
+### Contenedores Docker (VPS)
+| Contenedor | Puerto | Comando |
+|---|---|---|
+| `asamblea-bot` | `3002` | `node src/index.js` |
+| `asamblea-worker` | — | `node src/worker.js` |
+
+### Arquitectura
+```
+WhatsApp → /webhook → bot_queue → Worker → ai.service.js (processIncomingAsamblea)
+Telegram → /webhook/telegram-asamblea → bot_queue → Worker → ai.service.js
+```
+
+### Flujo del Bot Asamblea
+1. **Verificación de padrón:** Valida que el teléfono esté en `asamblea_padron` (Supabase)
+2. **Registro ya existente:** Si está en `asamblea_registro` con status `SYNC_OK`, informa y finaliza
+3. **Categorías de participantes:**
+   - `ACCIONISTA`: Flujo completo (puede ser empresa o persona natural)
+   - `REPRESENTANTE_LEGAL`: Registro directo con NIT de la empresa representada
+   - `APODERADO`: Dirección a mesa presencial + registro automático
+   - `INVITADO`: Registro de cortesía sin validación SIISS
+4. **Sincronización SIISS:** Registra asistencia en `registraAsistencia` usando el NIT de la empresa (para REPRESENTANTES_LEGALES/APODERADOS) o el documento personal
+5. **Panel Admin** (comando `admgane`):
+   - Difusión de preguntas/votaciones a todos los registrados
+   - Quiz SARLAFT masivo
+   - Reenvío selectivo a teléfonos específicos (comando `reenvio`)
+   - Votaciones predefinidas (aprobación de informes, elección de junta directiva)
+
+### Tablas Supabase usadas (Asamblea)
+| Tabla | Uso |
+|---|---|
+| `asamblea_padron` | Lista blanca de autorizados con `wa_id`, `nombre`, `documento`, `categoria`, `nit_representado` |
+| `asamblea_registro` | Registro de asistencia confirmada (`SYNC_OK` o `SYNC_FAILED`) |
+| `asamblea_encuestas` | Preguntas enviadas por difusión (`pregunta`, `opciones[]`) |
+| `asamblea_votos` | Respuestas de accionistas a encuestas |
+| `bot_sessions` | Sesiones activas del bot |
+| `bot_queue` | Cola de mensajes entrantes |
+| `interactions_log` | Log CRM de interacciones |
+
+### Servicios clave (`Asamblea/src/services/`)
+| Archivo | Función |
+|---|---|
+| `ai.service.js` | Toda la lógica de conversación Asamblea (processIncomingAsamblea) |
+| `api.asamblea.service.js` | Llamadas a API SIISS para validación y registro de asistencia |
+| `whatsapp.service.js` | Envío WA (con upload de media local para imágenes y documentos) |
+| `telegram.service.js` | Envío Telegram |
+| `messaging.service.js` | Capa unificada WA/Telegram (con token propio de Asamblea) |
+| `siiss.service.js` | Sincronización de estado de estaciones (usado por el Worker) |
+| `session.service.js` | Sesiones en Supabase |
+| `logger.service.js` | Log CRM |
+
+### Assets (`Asamblea/assets/`)
+- `logo_asamblea.png` — Enviado en mensaje de bienvenida
+- `logo_gane_sticker.webp` — Sticker enviado tras registro exitoso
+- `ASAMBLEA DE ACCIONISTAS 2026.pdf` — Informe de gestión
+
+### Variables de entorno importantes (`Asamblea/.env`)
+```
+PORT=3002
+WPP_TOKEN=<Meta Bearer Token Asamblea>
+PHONE_NUMBER_ID=1073623179160908
+WPP_VERSION=v22.0
+TELEGRAM_BOT_TOKEN=<token asamblea>
+SUPABASE_URL=https://fxlbqlzsbrgnkpcduzxt.supabase.co
+SUPABASE_KEY=<service_role key>
+GEMINI_API_KEY=<key>
+```
+
+### Integración SIISS (API interna red privada)
+- **URL base:** `http://10.192.168.8:8101`
+- **Empresa:** `EMPRCODI=8150006772`, `ASAMCODI=10`
+- **Credenciales:** `123123123` / `CP123`
+- **Endpoints usados:**
+   - `POST /siiss-login/api/v1/qvaccesosys/login` → obtener JWT
+   - `POST /siiss-quorum/api/v1/qoAccionistas/getAccionistasLst` → lista accionistas
+   - `POST /siiss-quorum/api/v1/qoAsistencias/registraAsistencia` → registrar asistencia
+   - `GET /siiss-basicas/api/v1/qvestaciones/estacionesByPing` → estado puntos (para monitor)
+
+---
+
+## 🖥️ PROYECTO 3: CRM FRONTEND (`CRM_Frontend/`)
+
+### Propósito
+Aplicación React + Vite que actúa como **panel de control centralizado** para monitorear los bots y gestionar los puntos de venta y contactos. Incluye un terminal SSH embebido para controlar el VPS sin salir de la app.
+
+### Estado de despliegue
+- ✅ **Actualmente:** Solo local (`npm run dev` → `http://localhost:5173`)
+- 🔜 **Próximamente:** Subir al VPS también
+
+### Stack técnico
+- **React 19** + **Vite 7** + **TailwindCSS 3**
+- **Radix UI** (componentes UI accesibles)
+- **Recharts** (gráficos)
+- **React Leaflet** (mapas interactivos)
+- **Framer Motion** (animaciones)
+- **xterm.js** (terminal SSH embebido)
+- **Socket.io-client** (conexión WebSocket al backend Comercial)
+- **@tanstack/react-query** (caché y sincronización de datos)
+- **Supabase JS** (acceso directo a BD)
+
+### Rutas disponibles
+| Ruta | Componente | Función |
+|---|---|---|
+| `/` | `Dashboard` | KPIs comerciales, charts de puntos online/offline |
+| `/points` | `Points` | Gestión de puntos de venta (CRUD, alertas, mapa) |
+| `/connections` | `Connections` | Estado de canales (WhatsApp, Telegram) y sus configuraciones |
+| `/connections/:id/config` | `BotConfig` | Configuración detallada de cada canal/bot |
+| `/contacts` | `Contacts` | Lista de contactos CRM |
+| `/contacts/:id` | `ContactDetail` | Detalle de un contacto, historial de interacciones |
+| `/command-center` | `CommandCenter` | Terminal SSH + Control DevOps de los servidores |
+| `/asamblea` | `AsambleaDashboard` | Dashboard específico para el evento Asamblea |
+| `/test-wa` | `PruebaWhatsApp` | Página de prueba de mensajería |
+
+### Servicios Frontend (`CRM_Frontend/src/services/`)
+| Archivo | Función |
+|---|---|
+| `supabase.js` | Cliente Supabase (URL hardcoded + service_role key, sin auth) |
+| `crm.service.js` | Queries de contactos, interacciones, sesiones |
+| `points.service.js` | Queries de puntos de venta, actividad, alertas |
+| `asamblea.service.js` | Queries del dashboard de Asamblea |
+| `channels.service.js` | Estado de canales de mensajería |
+
+### Componentes clave (`CRM_Frontend/src/components/`)
+| Componente | Función |
+|---|---|
+| `AlertsTab.jsx` | Panel de alertas en tiempo real de los puntos (69KB) |
+| `SystemHealthPanel.jsx` | Estado del sistema (SSH, túnel, bots) con botones de acción rápida |
+| `MapView.jsx` | Mapa Leaflet con ubicación y estado de cada punto |
+| `GerenciaDashboard.jsx` | Sub-dashboard para vista gerencial |
+
+### CommandCenter (Terminal SSH)
+El `CommandCenter.jsx` conecta via WebSocket al backend del **Bot Comercial** (puerto 3001) que implementa el puente SSH (`socket.service.js`). Permite:
+- Terminal SSH interactiva (shell completa en el VPS)
+- Terminal secundaria para logs de túneles Cloudflare
+- Espejo live de logs de Node.js del bot
+- Autopilot para Comercial (mata túnel viejo, levanta nuevo, registra webhook en Telegram, escribe `.env`)
+- Autopilot para Asamblea (similar pero puerto 3002)
+- Macros de comandos predefinidas: git pull, docker restart, logs en tiempo real, diagnóstico
+
+### Variable de entorno Frontend
+```
+VITE_BACKEND_URL=http://localhost:3001   ← URL del Bot Comercial para WebSocket
+VITE_SUPABASE_URL=https://fxlbqlzsbrgnkpcduzxt.supabase.co
+VITE_SUPABASE_KEY=<service_role key>
+```
+
+---
+
+## 🗄️ BASE DE DATOS SUPABASE
+
+**URL:** `https://fxlbqlzsbrgnkpcduzxt.supabase.co`  
+**Key (service_role):** `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4bGJxbHpzYnJnbmtwY2R1enh0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIwNzg3NiwiZXhwIjoyMDg1NzgzODc2fQ.odcV7pu9oD6l3UgFTY97AljC7lCxZskuxRrd4m2Nl5Y`
+
+### Tablas principales del Bot Comercial
+| Tabla | Uso |
+|---|---|
+| `puntos_venta` | Puntos de venta con IP, nombre, zona, estado SIISS (`siiss_active`), coordenadas |
+| `bot_queue` | Cola FIFO de mensajes entrantes (status: `pending`, `completed`, `failed`, `expired`) |
+| `bot_sessions` | Estado de sesión por `wa_id` (step, consent, name) |
+| `interactions_log` | Log CRM de todos los mensajes INCOMING/OUTGOING |
+| `contacts` | Directorio de contactos del CRM |
+| `bot_access` | Roles y permisos del RBAC por `wa_id` |
+| `point_activity_log` | Historial de eventos OPENED/CLOSED de puntos |
+| `channels` | Configuración de canales de mensajería |
+
+### Tablas de Asamblea
+| Tabla | Uso |
+|---|---|
+| `asamblea_padron` | Lista blanca: `wa_id`, `nombre`, `documento`, `categoria`, `nit_representado` |
+| `asamblea_registro` | Registro asistencia: `user_phone`, `documento`, `nombre`, `rol`, `categoria_oficial`, `status` |
+| `asamblea_encuestas` | Preguntas enviadas: `pregunta`, `opciones[]` |
+| `asamblea_votos` | Votos: `encuesta_id`, `user_phone`, `opcion_index`, `opcion_texto` |
+
+---
+
+## 🌐 INFRAESTRUCTURA VPS
+
+### Red privada
+- **IP del servidor:** `192.168.8.65`
+- **Usuario SSH:** `skylab`
+- **Ruta del proyecto en VPS:** `~/Bot_comercial/Bot_comercial/`
+
+### Túneles Cloudflare (modo gratuito, URLs cambian con cada reinicio)
+| Bot | Puerto | Túnel |
+|---|---|---|
+| Comercial | `3001` | URL temporal `*.trycloudflare.com` |
+| Asamblea | `3002` | URL temporal `*.trycloudflare.com` |
+
+> ⚠️ Cuando un túnel se reinicia, hay que actualizar el webhook en **Meta (WhatsApp)** y/o **Telegram**. El Autopilot del CommandCenter hace esto automáticamente para Telegram, pero Meta/WhatsApp hay que actualizarlo manualmente en el dashboard de Meta for Developers.
+
+### Comandos frecuentes en VPS
+```bash
+# Ver estado de contenedores
+sudo docker ps -a
+
+# Logs en tiempo real
+sudo docker logs -f comercial-bot
+sudo docker logs -f asamblea-bot
+sudo docker logs -f comercial-worker
+
+# Git pull y reiniciar bots
+cd ~/Bot_comercial/Bot_comercial && sudo git pull origin main
+sudo docker compose restart   # Comercial bot + worker
+cd Asamblea && sudo docker compose restart  # Asamblea bot + worker
+
+# Reiniciar solo un contenedor
+sudo docker restart comercial-bot comercial-worker
+sudo docker restart asamblea-bot asamblea-worker
+
+# Lanzar túnel manualmente
+cloudflared tunnel --url http://localhost:3001
+cloudflared tunnel --url http://localhost:3002
+```
+
+---
+
+## 🔗 RELACIONES ENTRE PROYECTOS
+
+```
+CRM_Frontend (localhost:5173)
+    │
+    ├─ WebSocket → Bot Comercial (:3001) ← SSH Bridge al VPS
+    │
+    └─ Directo Supabase → BD compartida
+                                 │
+                     ┌───────────┴───────────┐
+                     │                       │
+             Bot Comercial               Bot Asamblea
+            (VPS :3001)                  (VPS :3002)
+                     │                       │
+             supabase.co            supabase.co (misma BD)
+                     │                       │
+            monitor_puntos.py          API SIISS (:8101)
+```
+
+---
+
+## 📝 CONVENCIONES DE CÓDIGO
+
+### IDs de botones de WhatsApp (NO cambiar)
+Los IDs de botones están hardcodeados y se usan para routing en el worker. Cambiarlos rompe el flujo de usuarios en sesión activa.
+
+### Identificación de canal
+- **WhatsApp:** `wa_id` es número puro (ej: `573001234567`)
+- **Telegram:** `wa_id` lleva prefijo `tg_` (ej: `tg_7859763818`)
+- La función `normWaId()` normaliza ambos formatos
+
+### Queue (bot_queue)
+TTL de 5 minutos: mensajes más antiguos se marcan como `expired` para evitar procesarlos tarde. El worker se suscribe a Supabase Realtime y también hace polling cada 15s.
+
+### RBAC (access.service.js)
+Roles: `SUPERADMIN` → `ADMIN` → `USER` → `pending` → `BLOCKED`  
+Bypass hardcodeado para `573162892244` (acceso de emergencia).
+
+---
+
+## 🚨 PROBLEMAS CONOCIDOS / GOTCHAS
+
+1. **DNS IPv6:** Tanto el bot comercial como el asamblea fuerzan `dns.setDefaultResultOrder('ipv4first')` al inicio para evitar timeouts de red en Linux.
+
+2. **Circular dependencies:** Los servicios `messaging.service.js` y `bot.service.js` usan lazy requires (`get property()`) para evitar referencias circulares.
+
+3. **Supabase Realtime:** Si el estado del canal es `CHANNEL_ERROR`, el worker hace `process.exit(1)` para que Docker lo reinicie automáticamente. Esto es intencional.
+
+4. **Autopilot Asamblea:** El `socket.service.js` del bot Comercial contiene código para actualizar remotamente el `bot.service.js` del contenedor Asamblea inyectando código base64 vía SSH. Esto fue un fix de emergencia y puede necesitar actualización si el código del bot Asamblea cambia.
+
+5. **Tokens Telegram en socket.service.js:** Hay tokens de Telegram hardcodeados en el socket.service.js (dentro del Autopilot de Asamblea). Si cambian los tokens, hay que actualizarlos ahí también.
+
+6. **Meta Webhook:** Después de reiniciar el túnel Cloudflare del Bot Comercial, hay que actualizar manualmente la URL del webhook en Meta for Developers → WhatsApp → Configuración. El Telegram se actualiza automáticamente con el Autopilot.
+
+7. **CRM Supabase key:** El frontend usa la `service_role key` hardcodeada directamente en el código. Esto es un riesgo de seguridad en producción — antes de desplegar públicamente debe moverse a variables de entorno y usar `anon key` + RLS.
+
+---
+
+## ✅ CHECKLIST PARA CAMBIOS
+
+### Al modificar Bot Comercial o Asamblea:
+- [ ] Hacer los cambios localmente en Windows
+- [ ] Probar localmente si es posible
+- [ ] `git add . && git commit -m "descripción" && git push`
+- [ ] Notificar al usuario para que ejecute `git pull` en el VPS
+- [ ] Reiniciar el(los) contenedor(es) afectado(s)
+- [ ] Verificar logs para confirmar que no hay errores
+
+### Al modificar CRM_Frontend:
+- [ ] Hacer los cambios localmente
+- [ ] Verificar en `http://localhost:5173`
+- [ ] `git add . && git commit -m "descripción" && git push`
+- [ ] (Sincronizar en VPS): Ejecutar `sudo docker compose up -d --build crm-frontend`
+
+---
+
+## 📅 HISTORIAL DE CAMBIOS IMPORTANTES
+
+| Fecha | Cambio |
+|---|---|
+| 2026-04-15 | Migración a Docker y despliegue en VPS del CRM_Frontend |
+| 2026-04-09 | Creación de este documento de contexto |
+| 2026-03-25 | Asamblea: NIT de representados para SIISS (accionistas empresa) |
+| 2026-03-25 | Asamblea: Reenvío selectivo de preguntas por teléfonos específicos |
+| 2026-03-18 | CRM: Corrección del modal "Faltantes" en AsambleaDashboard |
+| 2026-03-18 | Comercial: Exclusión de puntos permanentemente cerrados y unificación de IPs |
+| 2026-03 | Asamblea: Panel Admin completo (votaciones, SARLAFT quiz, difusión masiva) |
+| 2026-02 | CRM Frontend: Terminal SSH embebido (xterm.js + Socket.io) |
+| 2026-02 | CRM Frontend: Autopilot Cloudflare para Comercial y Asamblea |
+| 2026-01 | Comercial: Integración SIISS para estado de estaciones en tiempo real |
