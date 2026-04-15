@@ -486,6 +486,24 @@ export default function AlertsTab() {
         }
     });
 
+    const clearAlertsMutation = useMutation({
+        mutationFn: () => pointsService.clearAllAlerts(),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['store-alerts'] });
+            toast.success("Todas las alertas han sido eliminadas.");
+        },
+        onError: (err) => toast.error("Error al limpiar alertas: " + err.message)
+    });
+
+    const triggerMonitorMutation = useMutation({
+        mutationFn: () => pointsService.triggerDailyMonitor(),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['store-alerts'] });
+            toast.success("Monitoreo completado. Alertas generadas.");
+        },
+        onError: (err) => toast.error("Error al generar alertas: " + err.message)
+    });
+
     const [editingGlobal, setEditingGlobal] = useState(false);
     const [globalFormData, setGlobalFormData] = useState({
         weekday_open: '08:00', weekday_close: '20:00',
@@ -633,6 +651,34 @@ export default function AlertsTab() {
             {/* INBOX TAB */}
             {subTab === 'inbox' && (
                 <div className="flex-1 overflow-auto space-y-4">
+                    {/* ACCIONES DE CONTROL MANUAL */}
+                    <div className="flex gap-3 px-4 py-2 bg-primary/5 border-y border-primary/10 items-center justify-end">
+                        <span className="text-[10px] font-bold text-primary/60 uppercase tracking-widest mr-auto">Gestión de Alertas</span>
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 text-xs border-rose-500/30 text-rose-500 hover:bg-rose-500/10"
+                            disabled={clearAlertsMutation.isPending}
+                            onClick={() => {
+                                if (window.confirm("¿Estás seguro de que deseas eliminar ABSOLUTAMENTE TODAS las alertas (incluyendo el historial)?")) {
+                                    clearAlertsMutation.mutate();
+                                }
+                            }}
+                        >
+                            {clearAlertsMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <XCircle className="w-3.5 h-3.5 mr-2" />}
+                            Limpiar Alertas
+                        </Button>
+                        <Button 
+                            size="sm" 
+                            className="h-8 text-xs bg-primary hover:bg-primary/90"
+                            disabled={triggerMonitorMutation.isPending}
+                            onClick={() => triggerMonitorMutation.mutate()}
+                        >
+                            {triggerMonitorMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <TrendingUp className="w-3.5 h-3.5 mr-2" />}
+                            Generar Alertas del Día
+                        </Button>
+                    </div>
+
                     {/* BARRA DE FILTROS INBOX (FASE 13) */}
                     <div className="flex flex-wrap gap-4 items-center bg-card/20 p-3 rounded-lg border border-border/40 mb-4">
                         <div className="flex items-center gap-2">
