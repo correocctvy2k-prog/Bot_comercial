@@ -537,6 +537,9 @@ export default function UsersDashboard() {
                             </div>
                         </motion.div>
                     </div>
+                )}
+            </AnimatePresence>
+
             {/* Modal de Nuevo Usuario */}
             <AnimatePresence>
                 {isAddModalOpen && (
