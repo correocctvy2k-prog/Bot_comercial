@@ -50,6 +50,7 @@ export default function UsersDashboard() {
 
     const fetchData = async () => {
         setLoading(true);
+        console.log("Dashboard: Iniciando carga de datos...");
         try {
             // Fetch profiles with roles
             const { data: profiles, error: pError } = await supabase
@@ -58,6 +59,7 @@ export default function UsersDashboard() {
                 .order('created_at', { ascending: false });
 
             if (pError) throw pError;
+            console.log("Dashboard: Usuarios cargados:", profiles?.length);
 
             // Fetch roles with their assigned module IDs
             const { data: rolesData, error: rError } = await supabase
@@ -70,6 +72,7 @@ export default function UsersDashboard() {
                 `);
 
             if (rError) throw rError;
+            console.log("Dashboard: Roles cargados:", rolesData?.length);
 
             // Fetch all available modules
             const { data: modulesData, error: mError } = await supabase
@@ -78,13 +81,14 @@ export default function UsersDashboard() {
                 .order('name');
 
             if (mError) throw mError;
+            console.log("Dashboard: Módulos cargados:", modulesData?.length);
 
-            setUsers(profiles);
-            setRoles(rolesData);
-            setModules(modulesData);
+            setUsers(profiles || []);
+            setRoles(rolesData || []);
+            setModules(modulesData || []);
         } catch (error) {
-            toast.error('Error al cargar datos');
-            console.error(error);
+            toast.error('Error al cargar datos del sistema');
+            console.error("Dashboard Fetch Error:", error);
         } finally {
             setLoading(false);
         }

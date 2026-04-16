@@ -10,63 +10,96 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // 1. Obtener la sesión inicial
+        let mounted = true;
+
         const initAuth = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                await fetchProfileAndPermissions(session.user);
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session && mounted) {
+                    await fetchProfileAndPermissions(session.user);
+                }
+            } catch (err) {
+                console.error("Auth Init Error:", err);
+            } finally {
+                if (mounted) setLoading(false);
             }
-            setLoading(false);
         };
 
         initAuth();
 
-        // 2. Escuchar cambios de estado
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            if (session) {
-                await fetchProfileAndPermissions(session.user);
-            } else {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                if (session && mounted) {
+                    await fetchProfileAndPermissions(session.user);
+                }
+            } else if (event === 'SIGNED_OUT') {
                 setUser(null);
                 setProfile(null);
                 setPermissions([]);
             }
-            setLoading(false);
+            
+            if (mounted) setLoading(false);
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            mounted = false;
+            subscription.unsubscribe();
+        };
     }, []);
 
     const fetchProfileAndPermissions = async (authUser) => {
         try {
             setUser(authUser);
             
-            // Traer perfil con el nombre del rol
             const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
                 .select('*, roles(name, display_name)')
                 .eq('id', authUser.id)
                 .single();
 
-            if (profileError) throw profileError;
-            setProfile(profileData);
-
-            // Traer módulos permitidos para este rol
-            const { data: modulesData, error: modulesError } = await supabase
-                .from('role_modules')
-                .select('modules(module_key)')
-                .eq('role_id', profileData.role_id);
-
-            if (modulesError) throw modulesError;
+            if (profileError) {
+                if (profileError.code === 'PGRST116') {
+                    console.warn("Perfil no encontrado para el usuario auth.");
+                } else {
+                    throw profileError;
+                }
+            }
             
-            const moduleKeys = modulesData.map(rm => rm.modules.module_key);
-            setPermissions(moduleKeys);
+            if (profileData) {
+                setProfile(profileData);
+
+                const { data: modulesData, error: modulesError } = await supabase
+                    .from('role_modules')
+                    .select('modules(module_key)')
+                    .eq('role_id', profileData.role_id);
+
+                if (modulesError) throw modulesError;
+                
+                const moduleKeys = modulesData?.map(rm => rm.modules?.module_key).filter(Boolean) || [];
+                setPermissions(moduleKeys);
+            }
 
         } catch (error) {
             console.error('Error fetching auth metadata:', error.message);
         }
     };
 
-    const login = async (email, password) => {
+    const login = async (identifier, password) => {
+        let email = identifier;
+
+        // Si no contiene '@', intentamos resolver username -> email
+        if (!identifier.includes('@')) {
+            const { data: profileData, error: findError } = await supabase
+                .from('profiles')
+                .select('email')
+                .eq('username', identifier)
+                .maybeSingle();
+            
+            if (findError) throw new Error("Error al verificar el usuario");
+            if (!profileData) throw new Error("El nombre de usuario no existe");
+            email = profileData.email;
+        }
+
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
     };
