@@ -7,15 +7,8 @@ let io;
 function initSockets(httpServer) {
     io = new Server(httpServer, {
         cors: {
-            origin: [
-                "http://localhost:5173", 
-                "http://127.0.0.1:5173",
-                "http://192.168.8.65:3003", // Puerto del CRM en el VPS
-                "http://localhost:3003",
-                "http://127.0.0.1:3003"
-            ],
-            methods: ["GET", "POST"],
-            credentials: true
+            origin: "*", 
+            methods: ["GET", "POST"]
         }
     });
 

@@ -41,8 +41,11 @@ export default function CommandCenter() {
 
         // Conectamos al backend usando la variable de entorno o localhost por defecto
         const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+        console.log("Intentando conectar Socket.io a:", backendUrl);
+        
         const socket = io(backendUrl, {
             auth: { token: socketToken },
+            transports: ['websocket', 'polling'],
             reconnectionDelayMax: 5000,
         });
         socketRef.current = socket;
