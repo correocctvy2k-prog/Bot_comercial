@@ -12,8 +12,17 @@ RUN npm install
 # Copiar el resto del código
 COPY . .
 
+# Definir argumentos de construcción (build args)
+ARG VITE_BACKEND_URL
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+
+# Establecer como variables de entorno para que Vite las reconozca
+ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
+
 # Construir la aplicación para producción
-# Las variables VITE_ se inyectan aquí desde el entorno o archivo .env
 RUN npm run build
 
 # Stage 2: Servir con Nginx

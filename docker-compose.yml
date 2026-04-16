@@ -73,6 +73,10 @@ services:
   crm-frontend:
     build:
       context: ./CRM_Frontend
+      args:
+        - VITE_BACKEND_URL=http://192.168.8.65:3001
+        - VITE_SUPABASE_URL=https://fxlbqlzsbrgnkpcduzxt.supabase.co
+        - VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4bGJxbHpzYnJnbmtwY2R1enh0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIwNzg3NiwiZXhwIjoyMDg1NzgzODc2fQ.odcV7pu9oD6l3UgFTY97AljC7lCxZskuxRrd4m2Nl5Y
     container_name: crm-frontend
     restart: always
     ports:
