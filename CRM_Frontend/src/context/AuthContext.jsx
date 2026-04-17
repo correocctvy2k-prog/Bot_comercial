@@ -123,7 +123,8 @@ export const AuthProvider = ({ children }) => {
             loading,
             login,
             logout,
-            hasPermission
+            hasPermission,
+            refreshProfile: () => user && fetchProfileAndPermissions(user)
         }}>
             {children}
         </AuthContext.Provider>
