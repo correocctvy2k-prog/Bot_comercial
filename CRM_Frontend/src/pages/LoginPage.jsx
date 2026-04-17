@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LogIn, Lock, Loader2, Eye, EyeOff, Bot, BarChart3, Shield, Zap } from 'lucide-react';
+import { LogIn, Lock, Loader2, Eye, EyeOff, Bot, BarChart3, Shield, Zap, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 import SkylabBot from '../components/SkylabBot';
