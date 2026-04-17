@@ -288,7 +288,7 @@ export default function UsersDashboard() {
             // 1. Crear usuario en supabase auth
             const { data: authData, error: authError } = await supabaseAdmin.auth.signUp({
                 email: newUser.email,
-                password: 'Skylab.2026*', // Contraseña por defecto fuerte
+                password: '#Seguridad.48', // Contraseña provisional para forzar reset
                 options: {
                     data: {
                         full_name: newUser.full_name,
