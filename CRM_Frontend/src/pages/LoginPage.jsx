@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LogIn, Lock, Loader2, Eye, EyeOff, Bot, BarChart3, Shield, Zap, Sparkles } from 'lucide-react';
+import { LogIn, Lock, Loader2, Eye, EyeOff, Bot, BarChart3, Shield, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 import SkylabBot from '../components/SkylabBot';
@@ -9,8 +9,8 @@ import SkylabBot from '../components/SkylabBot';
 const FEATURES = [
     {
         icon: Bot,
-        title: 'Bot Comercial IA',
-        desc: 'Reportes automáticos vía WhatsApp y Telegram',
+        title: 'Bots Personalizados',
+        desc: 'Integración y monitoreo de Bots a medida',
         color: 'text-blue-400',
         bg: 'bg-blue-500/10',
         border: 'border-blue-500/20',
@@ -33,8 +33,8 @@ const FEATURES = [
     },
     {
         icon: Zap,
-        title: 'Automatización Total',
-        desc: 'Workflows inteligentes para operaciones comerciales',
+        title: 'Automatización',
+        desc: 'Workflows inteligentes para agilizar procesos',
         color: 'text-cyan-400',
         bg: 'bg-cyan-500/10',
         border: 'border-cyan-500/20',
@@ -123,15 +123,13 @@ export default function LoginPage() {
                     className="flex items-center gap-4 relative z-10"
                 >
                     <div className="relative">
-                        {/* Glow ring */}
-                        <div className="absolute inset-0 rounded-2xl bg-blue-500/20 blur-xl scale-125" />
-                        <div className="relative w-14 h-14 bg-gradient-to-br from-blue-600/30 to-indigo-700/30 border border-blue-500/30 rounded-2xl flex items-center justify-center text-blue-400 backdrop-blur-sm shadow-xl">
-                            <SkylabBot size={32} className="text-blue-400" />
-                        </div>
+                        {/* Soft glow behind bot — sin recuadro */}
+                        <div className="absolute inset-0 rounded-full bg-blue-500/15 blur-2xl scale-150" />
+                        <SkylabBot size={48} className="text-blue-400 relative z-10" />
                     </div>
                     <div>
                         <h1 className="text-2xl font-black tracking-tight text-white">SKYLAB</h1>
-                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-400/70">CRM Inteligente</p>
+                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-400/70">Gestión Inteligente</p>
                     </div>
                 </motion.div>
 
@@ -146,7 +144,7 @@ export default function LoginPage() {
                             Ecosistema Operacional
                         </p>
                         <h2 className="text-4xl xl:text-5xl font-black text-white leading-tight tracking-tight">
-                            Gestión comercial{' '}
+                            Gestión corporativa{' '}
                             <span className="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
                                 potenciada por IA
                             </span>
@@ -185,7 +183,14 @@ export default function LoginPage() {
                     className="flex items-center gap-3 relative z-10"
                 >
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
-                        <Sparkles size={12} className="text-yellow-400" />
+                        <video
+                            src="/gemini.mp4"
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            className="w-5 h-5 rounded-sm object-cover shrink-0"
+                        />
                         <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Powered by Gemini AI</span>
                     </div>
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
@@ -205,12 +210,13 @@ export default function LoginPage() {
                 >
                     {/* Mobile-only logo */}
                     <div className="flex lg:hidden items-center justify-center gap-3 mb-10">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-600/30 to-indigo-700/30 border border-blue-500/30 rounded-2xl flex items-center justify-center">
-                            <SkylabBot size={28} className="text-blue-400" />
+                        <div className="relative">
+                            <div className="absolute inset-0 rounded-full bg-blue-500/15 blur-xl scale-150" />
+                            <SkylabBot size={36} className="text-blue-400 relative z-10" />
                         </div>
                         <div>
                             <h1 className="text-xl font-black tracking-tight text-white">SKYLAB</h1>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400/70">CRM Inteligente</p>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400/70">Gestión Inteligente</p>
                         </div>
                     </div>
 
