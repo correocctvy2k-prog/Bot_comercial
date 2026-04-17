@@ -75,7 +75,7 @@ export default function UsersDashboard() {
             const { data: profiles, error: pError } = await supabase
                 .from('profiles')
                 .select('*, roles(name, display_name)')
-                .order('created_at', { ascending: false });
+                .order('username', { ascending: true });
             if (pError) throw pError;
 
             const { data: rolesData, error: rError } = await supabase
@@ -785,8 +785,8 @@ export default function UsersDashboard() {
                             exit={{ scale: 0.9, opacity: 0 }}
                             className="relative w-full max-w-2xl bg-card border border-border rounded-[32px] p-10 overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto"
                         >
-                            <div className="absolute top-0 right-0 p-8">
-                                <button onClick={() => setIsRoleModalOpen(false)} className="text-muted-foreground hover:text-foreground p-2 rounded-xl hover:bg-white/5">
+                            <div className="absolute top-0 right-0 p-8 z-20">
+                                <button type="button" onClick={() => setIsRoleModalOpen(false)} className="text-muted-foreground hover:text-foreground p-2 rounded-xl hover:bg-white/5">
                                     <XCircle size={24} />
                                 </button>
                             </div>
