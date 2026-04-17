@@ -108,7 +108,8 @@ export default function UsersDashboard() {
             username: user.username || '',
             email: user.email || '',
             role_id: user.role_id || '',
-            is_active: user.is_active ?? true
+            is_active: user.is_active ?? true,
+            avatar_url: user.avatar_url || ''
         });
         setIsEditModalOpen(true);
     };
@@ -124,7 +125,8 @@ export default function UsersDashboard() {
                     username: editForm.username,
                     email: editForm.email,
                     role_id: editForm.role_id,
-                    is_active: editForm.is_active
+                    is_active: editForm.is_active,
+                    avatar_url: editForm.avatar_url
                 })
                 .eq('id', editingUser.id);
             if (error) throw error;
@@ -424,9 +426,13 @@ export default function UsersDashboard() {
                                     <tr key={user.id} className="hover:bg-white/[0.02] transition-colors group">
                                         <td className="px-6 py-5">
                                             <div className="flex items-center gap-4">
-                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${user.is_active ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                                                    {user.full_name?.charAt(0) || user.username?.charAt(0)}
-                                                </div>
+                                                {user.avatar_url ? (
+                                                    <img src={user.avatar_url} alt={user.username} className={`w-10 h-10 rounded-full object-cover border-2 shrink-0 ${user.is_active ? 'border-primary/50' : 'border-muted'}`} />
+                                                ) : (
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${user.is_active ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                                                        {user.full_name?.charAt(0) || user.username?.charAt(0) || '?'}
+                                                    </div>
+                                                )}
                                                 <div>
                                                     <p className={`font-bold leading-none ${user.is_active ? 'text-foreground' : 'text-muted-foreground'}`}>
                                                         {user.full_name || 'Sin Nombre'}
@@ -570,9 +576,13 @@ export default function UsersDashboard() {
                         >
                             {/* Modal Header */}
                             <div className="bg-gradient-to-r from-blue-500/10 via-indigo-500/5 to-transparent border-b border-border/50 p-8 flex items-center gap-5 shrink-0">
-                                <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-black text-xl shadow-inner">
-                                    {editingUser.full_name?.charAt(0)?.toUpperCase() || editingUser.username?.charAt(0)?.toUpperCase()}
-                                </div>
+                                {editingUser.avatar_url ? (
+                                    <img src={editingUser.avatar_url} alt={editingUser.username} className="w-14 h-14 rounded-2xl object-cover border border-primary/20 shadow-inner shrink-0" />
+                                ) : (
+                                    <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-black text-xl shadow-inner shrink-0">
+                                        {editingUser.full_name?.charAt(0)?.toUpperCase() || editingUser.username?.charAt(0)?.toUpperCase() || '?'}
+                                    </div>
+                                )}
                                 <div className="flex-1">
                                     <h2 className="text-xl font-black text-foreground">Editar Usuario</h2>
                                     <p className="text-sm text-muted-foreground font-medium italic">@{editingUser.username}</p>
@@ -617,6 +627,16 @@ export default function UsersDashboard() {
                                                 onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                                             />
                                         </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">URL de Foto de Perfil (Opcional)</label>
+                                        <input
+                                            type="url" placeholder="https://ejemplo.com/mifoto.jpg"
+                                            className={inputCls}
+                                            value={editForm.avatar_url}
+                                            onChange={(e) => setEditForm({ ...editForm, avatar_url: e.target.value })}
+                                        />
                                     </div>
 
                                     <div className="space-y-2">
