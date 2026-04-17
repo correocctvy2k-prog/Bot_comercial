@@ -214,7 +214,12 @@ export default function UsersDashboard() {
                     .insert([{ name: roleForm.name, display_name: roleForm.display_name }])
                     .select()
                     .single();
-                if (error) throw error;
+                if (error) {
+                    if (error.code === '23505' || error.status === 409) {
+                        throw new Error('Ya existe un rol con esta Key Interna. Elige otro slug.');
+                    }
+                    throw error;
+                }
                 roleId = data.id;
             } else {
                 const { error } = await supabase
