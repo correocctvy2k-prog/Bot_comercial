@@ -17,7 +17,7 @@ import {
     SendHorizontal,
     Power
 } from 'lucide-react';
-import { supabase } from '../services/supabase';
+import { supabase, supabaseAdmin } from '../services/supabase';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -285,14 +285,34 @@ export default function UsersDashboard() {
         e.preventDefault();
         setLoading(true);
         try {
-            const { error } = await supabase.from('profiles').insert([{
+            // 1. Crear usuario en supabase auth
+            const { data: authData, error: authError } = await supabaseAdmin.auth.signUp({
+                email: newUser.email,
+                password: 'Skylab.2026*', // Contraseña por defecto fuerte
+                options: {
+                    data: {
+                        full_name: newUser.full_name,
+                        username: newUser.username
+                    }
+                }
+            });
+            if (authError) throw authError;
+
+            if (!authData?.user) {
+                throw new Error("No se pudo obtener el usuario creado.");
+            }
+
+            // 2. Upsert a perfiles públicos para evitar error de FK y actualizar permisos extras
+            const { error: profileError } = await supabase.from('profiles').upsert([{
+                id: authData.user.id,
                 username: newUser.username,
                 email: newUser.email,
                 full_name: newUser.full_name,
                 role_id: newUser.role_id,
                 is_active: true
             }]);
-            if (error) throw error;
+            
+            if (profileError) throw profileError;
             toast.success('Usuario registrado con éxito.');
             setIsAddModalOpen(false);
             setNewUser({ username: '', email: '', full_name: '', role_id: '' });
