@@ -86,18 +86,25 @@ export default function Layout({ children }) {
         return profile.username?.substring(0, 2).toUpperCase() || '??';
     };
 
-    // Filtrar MENU_ITEMS basado en permisos
+    // Filtrar MENU_ITEMS basado en permisos.
+    // IMPORTANTE: Se crean copias nuevas con spread en lugar de mutar MENU_ITEMS_RAW.
+    // Mutar item.subItems directamente corrompía la constante de módulo, haciendo
+    // que "Configuraciones" desapareciera permanentemente al refrescar la página.
     const filteredMenu = MENU_ITEMS_RAW.map(group => ({
         ...group,
-        items: group.items.filter(item => {
-            // Si tiene subItems, verificar si al menos uno es visible o si el padre es visible
-            if (item.subItems) {
-                const visibleSubs = item.subItems.filter(sub => hasPermission(sub.module));
-                item.subItems = visibleSubs;
-                return visibleSubs.length > 0;
-            }
-            return hasPermission(item.module);
-        })
+        items: group.items
+            .map(item => {
+                if (item.subItems) {
+                    // Crear nueva copia del item con subItems filtrados (no mutar el original)
+                    const visibleSubs = item.subItems.filter(sub => hasPermission(sub.module));
+                    return { ...item, subItems: visibleSubs };
+                }
+                return item;
+            })
+            .filter(item => {
+                if (item.subItems) return item.subItems.length > 0;
+                return hasPermission(item.module);
+            })
     })).filter(group => group.items.length > 0);
 
     // Auto-detectar la info de la página actual para el Header
