@@ -188,17 +188,26 @@ export default function UsersDashboard() {
         if (!userToDelete) return;
         setLoading(true);
         try {
-            const { error } = await supabase
+            // 1. Eliminar identidad del baúl de autenticación de Supabase
+            const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userToDelete.id);
+            if (authError) {
+                console.error("Error eliminando auth user:", authError);
+                throw new Error("No se pudo eliminar la identidad de autenticación. " + authError.message);
+            }
+
+            // 2. Eliminar registro del perfil público
+            const { error: profileError } = await supabase
                 .from('profiles')
                 .delete()
                 .eq('id', userToDelete.id);
-            if (error) throw error;
-            toast.success(`Usuario ${userToDelete.full_name || userToDelete.username} eliminado`);
+            if (profileError) throw profileError;
+
+            toast.success(`Cuentas y perfil de ${userToDelete.full_name || userToDelete.username} eliminados completamente`);
             setIsDeleteConfirmOpen(false);
             setUserToDelete(null);
             fetchData();
         } catch (error) {
-            toast.error('Error al eliminar usuario', { description: error.message });
+            toast.error('Error Crítico al eliminar', { description: error.message });
         } finally {
             setLoading(false);
         }
