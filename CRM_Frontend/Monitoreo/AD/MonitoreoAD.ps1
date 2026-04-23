@@ -17,7 +17,7 @@
 $ErrorActionPreference = "Continue"
 $OutputPath = "C:\AD_Reports"
 $BackupPath = "\\ganepalmir\dpto.informatica\Johnathan.Beltran\OTROS\Chequeos\Active Directory"
-$BackendUrl = "http://localhost:3001/api/monitoring/upload" # Cambiar por IP del servidor si es remoto
+$BackendUrl = "http://192.168.8.65:3001/api/monitoring/upload" # IP del servidor donde corre el Bot Comercial / Monitoring API
 $ReportDate = Get-Date -Format "yyyy-MM-dd_HHmm"
 $ReportName = "Informe_AD_$ReportDate"
 
