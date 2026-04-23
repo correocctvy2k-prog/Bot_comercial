@@ -19,15 +19,25 @@ function createApp() {
     app.get("/", (req, res) => res.status(200).send("COMERCIAL BOT OK"));
     app.get("/api/health", (req, res) => res.json({ status: "up", bot: "comercial" }));
 
-    // Cargar rutas
+    // Cargar rutas de Webhooks
     try {
         const webhookRoutes = require("./routes/webhook.routes");
-        const monitoringRoutes = require("./routes/monitoring.routes");
         app.use(webhookRoutes);
-        app.use(monitoringRoutes);
     } catch (e) {
-        console.warn("⚠️ Routes failed to load in Comercial. Using fallback.");
+        console.error("❌ Error loading Webhook Routes:", e.message);
     }
+
+    // Cargar rutas de Monitoreo
+    try {
+        const monitoringRoutes = require("./routes/monitoring.routes");
+        app.use(monitoringRoutes);
+        console.log("✅ Monitoring Routes loaded successfully");
+    } catch (e) {
+        console.error("❌ Error loading Monitoring Routes:", e.message);
+    }
+
+    // Health check específico para monitoreo
+    app.get("/api/monitoring/check", (req, res) => res.json({ status: "active", module: "monitoring" }));
 
     return app;
 }
