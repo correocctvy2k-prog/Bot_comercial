@@ -21,9 +21,11 @@ function createApp() {
     // Cargar rutas
     try {
         const webhookRoutes = require("./routes/webhook.routes");
+        const monitoringRoutes = require("./routes/monitoring.routes");
         app.use(webhookRoutes);
+        app.use(monitoringRoutes);
     } catch (e) {
-        console.warn("⚠️ Webhook routes failed to load in Comercial. Using fallback.");
+        console.warn("⚠️ Routes failed to load in Comercial. Using fallback.");
     }
 
     return app;

@@ -43,6 +43,7 @@ const MENU_ITEMS_RAW = [
         section: "Sistema Operativo",
         items: [
             { to: '/command-center', icon: Terminal, label: 'Centro de Mando', module: 'command-center' },
+            { to: '/monitoring', icon: ShieldCheck, label: 'Monitoreo IT', module: 'bot-activity' }, // Usamos bot-activity temporalmente como permiso
             {
                 label: 'Configuraciones',
                 icon: Settings,

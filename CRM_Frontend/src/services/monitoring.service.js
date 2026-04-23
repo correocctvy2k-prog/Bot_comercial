@@ -1,0 +1,34 @@
+const API_URL = import.meta.env.VITE_MONITORING_BACKEND_URL || 'http://localhost:3001';
+
+export const monitoringService = {
+    /**
+     * Obtiene el último estado de un servicio (AD, KSC, ZK)
+     */
+    async getLatestStatus(service) {
+        try {
+            const response = await fetch(`${API_URL}/api/monitoring/latest/${service}`);
+            if (!response.ok) {
+                if (response.status === 404) return null;
+                throw new Error('Error al obtener el monitoreo');
+            }
+            return await response.json();
+        } catch (error) {
+            console.error(`[MONITORING SERVICE] Error en ${service}:`, error);
+            return null;
+        }
+    },
+
+    /**
+     * Obtiene la lista de reportes históricos
+     */
+    async getHistory(service) {
+        try {
+            const response = await fetch(`${API_URL}/api/monitoring/history/${service}`);
+            if (!response.ok) return { files: [] };
+            return await response.json();
+        } catch (error) {
+            console.error(`[MONITORING SERVICE] Error en historial ${service}:`, error);
+            return { files: [] };
+        }
+    }
+};

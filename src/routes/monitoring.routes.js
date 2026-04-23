@@ -1,0 +1,14 @@
+const express = require('express');
+const router = express.Router();
+const monitoringController = require('../controllers/monitoring.controller');
+
+// Subir datos (desde PowerShell)
+router.post('/api/monitoring/upload', monitoringController.uploadMonitoringData);
+
+// Consultar últimos datos (para el CRM)
+router.get('/api/monitoring/latest/:service', monitoringController.getLatestStatus);
+
+// Consultar historial
+router.get('/api/monitoring/history/:service', monitoringController.getHistory);
+
+module.exports = router;

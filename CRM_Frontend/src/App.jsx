@@ -16,6 +16,7 @@ import AsambleaDashboard from './pages/AsambleaDashboard'
 import PruebaWhatsApp from './pages/PruebaWhatsApp'
 import LoginPage from './pages/LoginPage'
 import UsersDashboard from './pages/UsersDashboard'
+import Monitoring from './pages/Monitoring'
 import Layout from './layout/Layout'
 
 const queryClient = new QueryClient()
@@ -43,6 +44,7 @@ function App() {
                       <Route path="/contacts/:id" element={<ProtectedRoute module="contacts"><ContactDetail /></ProtectedRoute>} />
                       <Route path="/command-center" element={<ProtectedRoute module="command-center"><CommandCenter /></ProtectedRoute>} />
                       <Route path="/asamblea" element={<ProtectedRoute module="asamblea"><AsambleaDashboard /></ProtectedRoute>} />
+                      <Route path="/monitoring" element={<ProtectedRoute module="bot-activity"><Monitoring /></ProtectedRoute>} />
                       <Route path="/users" element={<ProtectedRoute module="users-management"><UsersDashboard /></ProtectedRoute>} />
                       <Route path="/test-wa" element={<ProtectedRoute module="settings"><PruebaWhatsApp /></ProtectedRoute>} />
                       
