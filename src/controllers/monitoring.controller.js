@@ -5,6 +5,7 @@ const path = require('path');
  * Recibe y guarda datos de monitoreo localmente
  */
 exports.uploadMonitoringData = async (req, res) => {
+    console.log(`[MONITORING] Intento de subida recibido para servicio: ${req.body?.service}`);
     try {
         const { service, data } = req.body;
 

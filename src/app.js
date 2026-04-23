@@ -10,6 +10,7 @@ function createApp() {
 
     app.use(cors());
     app.use(express.json({
+        limit: '50mb',
         verify: (req, res, buf) => {
             req.rawBody = buf;
         },
