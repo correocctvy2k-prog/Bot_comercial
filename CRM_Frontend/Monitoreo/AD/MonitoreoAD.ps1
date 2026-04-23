@@ -1937,12 +1937,14 @@ try {
     }
     
     $jsonPayload = $payload | ConvertTo-Json -Depth 10
+    Write-Host "   - Tamaño del reporte: $([Math]::Round($jsonPayload.Length / 1KB, 2)) KB" -ForegroundColor Gray
     
-    $response = Invoke-RestMethod -Method Post -Uri $BackendUrl -Body $jsonPayload -ContentType "application/json"
+    $response = Invoke-RestMethod -Method Post -Uri $BackendUrl -Body $jsonPayload -ContentType "application/json" -TimeoutSec 60
     Write-Host "✓ Datos enviados exitosamente al CRM: $($response.message)" -ForegroundColor Green
 } catch {
-    Write-Host "⚠ No se pudo conectar con el CRM ($BackendUrl). Verifique que el servidor de Node.js esté corriendo." -ForegroundColor Yellow
-    Write-Host "  Error: $($_.Exception.Message)" -ForegroundColor Gray
+    Write-Host "⚠ No se pudo conectar con el CRM ($BackendUrl)." -ForegroundColor Yellow
+    Write-Host "   - Status Code: $($_.Exception.Response.StatusCode.Value__)" -ForegroundColor Gray
+    Write-Host "   - Detalle: $($_.Exception.Message)" -ForegroundColor Gray
 }
 
 # ==================== RESUMEN FINAL ====================
