@@ -16,8 +16,8 @@ function createApp() {
         },
     }));
 
-    app.get("/", (req, res) => res.status(200).send("COMERCIAL BOT OK"));
-    app.get("/api/health", (req, res) => res.json({ status: "up", bot: "comercial" }));
+    app.get("/", (req, res) => res.status(200).send("COMERCIAL BOT OK - V2 (Monitoring)"));
+    app.get("/api/health", (req, res) => res.json({ status: "up", bot: "comercial", version: "2.1" }));
 
     // Cargar rutas de Webhooks
     try {
