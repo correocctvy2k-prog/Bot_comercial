@@ -98,8 +98,28 @@ export default function Monitoring() {
               <div className="grid grid-cols-2 gap-3">
                 <MetricSmall label="Controladores" value={adData.DCs?.Status?.length || 0} icon={<CheckCircle2 className="w-3.5 h-3.5" />} />
                 <MetricSmall label="Replicación" value={adData.Replication?.Status || 'N/A'} color={adData.Replication?.Status === 'OK' ? 'text-emerald-400' : 'text-rose-400'} />
-                <MetricSmall label="FSMO Roles" value={adData.FSMO?.Status || 'N/A'} color={adData.FSMO?.Status === 'OK' ? 'text-sky-400' : 'text-rose-400'} />
+                <MetricSmall label="Espacio Disco" value={`${adData.Disk?.Disks?.[0]?.PercentFree || 0}% libre`} color={adData.Disk?.Status === 'OK' ? 'text-emerald-400' : 'text-rose-400'} />
                 <MetricSmall label="Backup AD" value={adData.Backups?.Status || 'N/A'} color={adData.Backups?.Status === 'OK' ? 'text-emerald-400' : 'text-rose-400'} />
+              </div>
+
+              <div className="pt-2 border-t border-border/50">
+                <p className="text-xs text-muted-foreground mb-2">Salud del Servidor</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[11px]">
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Uptime:</span>
+                    <span className="font-mono text-sky-400">{adData.DCs?.Status?.[0]?.Uptime || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Servicios:</span>
+                    <span className={`font-bold ${adData.DCs?.Status?.[0]?.ServiceIssues?.length === 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {adData.DCs?.Status?.[0]?.ServiceIssues?.length === 0 ? '✓ OK' : `⚠ ${adData.DCs?.Status?.[0]?.ServiceIssues?.length} fail`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center col-span-2">
+                    <span className="text-muted-foreground">SO:</span>
+                    <span className="truncate max-w-[140px]">{adData.DCs?.Status?.[0]?.OSVersion || 'N/A'}</span>
+                  </div>
+                </div>
               </div>
 
               <div className="pt-2 border-t border-border/50">
