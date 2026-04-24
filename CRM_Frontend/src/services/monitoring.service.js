@@ -30,5 +30,12 @@ export const monitoringService = {
             console.error(`[MONITORING SERVICE] Error en historial ${service}:`, error);
             return { files: [] };
         }
+    },
+
+    /**
+     * Retorna la URL para ver el reporte HTML
+     */
+    getReportHtmlUrl(service, filename = 'latest') {
+        return `${API_URL}/api/monitoring/html/${service}/${filename}`;
     }
 };

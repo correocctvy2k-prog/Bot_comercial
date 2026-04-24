@@ -115,7 +115,12 @@ export default function Monitoring() {
                   <Clock className="w-3 h-3" />
                   {adData.Date ? `Actualizado: ${adData.Date}` : 'Sin fecha'}
                 </span>
-                <a href="#" className="flex items-center gap-1 text-primary hover:underline font-medium">
+                <a 
+                  href={monitoringService.getReportHtmlUrl("AD", "latest")} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-primary hover:underline font-medium"
+                >
                   Ver Reporte Completo <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
@@ -203,7 +208,14 @@ export default function Monitoring() {
                       <StatusBadge status="success" label="OK" />
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="text-primary hover:underline text-xs font-medium">Ver JSON</button>
+                      <a 
+                        href={monitoringService.getReportHtmlUrl("AD", file.replace('.json', ''))} 
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline text-xs font-medium"
+                      >
+                        Ver Reporte
+                      </a>
                     </td>
                   </tr>
                 ))

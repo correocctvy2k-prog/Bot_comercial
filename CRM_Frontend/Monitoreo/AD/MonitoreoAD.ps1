@@ -1934,6 +1934,7 @@ try {
     $payload = @{
         service = "AD"
         data = $reportData
+        html = $htmlReport
     }
     
     $jsonPayload = $payload | ConvertTo-Json -Depth 10

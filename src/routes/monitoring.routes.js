@@ -11,4 +11,7 @@ router.get('/api/monitoring/latest/:service', monitoringController.getLatestStat
 // Consultar historial
 router.get('/api/monitoring/history/:service', monitoringController.getHistory);
 
+// Obtener reporte HTML
+router.get('/api/monitoring/html/:service/:filename', monitoringController.getReportHtml);
+
 module.exports = router;
