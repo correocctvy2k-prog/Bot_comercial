@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { io } from "socket.io-client";
 import { 
   Server, 
   ShieldCheck, 
@@ -29,6 +30,8 @@ const STATUS_COLORS = {
   gray: "text-slate-400 bg-slate-500/10 border-slate-500/20"
 };
 
+const SOCKET_URL = import.meta.env.VITE_MONITORING_BACKEND_URL || 'http://localhost:3001';
+
 const UpdateBadge = ({ updates }) => {
   if (!updates) return null;
   const isPending = updates.RebootPending;
@@ -54,11 +57,15 @@ const AzureADIcon = () => (
   </svg>
 );
 
-const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, lastBackup, updates, icon, isPrimary, isHealthy, onClick }) => {
+const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, lastBackup, updates, icon, isPrimary, isHealthy, pingStatus, onClick }) => {
+  const isOffline = pingStatus && pingStatus.status === 'DOWN';
+  const latency = pingStatus && pingStatus.status === 'UP' ? `${Math.round(pingStatus.time)}ms` : '';
+  const displayHealthy = isOffline ? false : isHealthy;
+
   return (
     <div 
       onClick={onClick}
-      className={`bg-background/60 border ${isHealthy ? 'border-border' : 'border-rose-500/40'} rounded-xl p-5 transition-all hover:bg-background/80 flex flex-col ${onClick ? 'cursor-pointer hover:border-primary/50' : ''}`}
+      className={`bg-background/60 border ${displayHealthy ? 'border-border' : 'border-rose-500/40'} ${isOffline ? 'bg-rose-500/5' : ''} rounded-xl p-5 transition-all hover:bg-background/80 flex flex-col ${onClick ? 'cursor-pointer hover:border-primary/50' : ''}`}
     >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -66,11 +73,15 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
             {icon}
           </div>
           <div>
-            <h3 className="text-sm font-bold text-foreground">{title}</h3>
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+              {title}
+              {isOffline && <span className="px-1.5 py-0.5 rounded text-[9px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
+              {!isOffline && latency && <span className="text-[10px] text-emerald-400 font-normal">{latency}</span>}
+            </h3>
             <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">{role}</span>
           </div>
         </div>
-        <div className={`w-2.5 h-2.5 rounded-full ${isHealthy ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]' : 'bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.8)]'}`}></div>
+        <div className={`w-2.5 h-2.5 rounded-full ${displayHealthy ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]' : 'bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.8)]'}`}></div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 text-xs mb-4 flex-1">
@@ -80,8 +91,8 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
          </div>
          <div className="flex flex-col gap-1">
            <span className="text-muted-foreground flex items-center gap-1.5"><Activity className="w-3.5 h-3.5" /> Servicios</span>
-           <span className={`font-bold pl-5 ${isHealthy ? 'text-emerald-400' : 'text-rose-400'}`}>
-             {servicesOk} de {servicesTotal} OK
+           <span className={`font-bold pl-5 ${displayHealthy ? 'text-emerald-400' : 'text-rose-400'}`}>
+             {isOffline ? 'SIN CONEXIÓN' : `${servicesOk} de ${servicesTotal} OK`}
            </span>
          </div>
          <div className="flex flex-col gap-1">
@@ -122,6 +133,7 @@ export default function Monitoring() {
     dc01: null,
     dc02: null
   });
+  const [pingData, setPingData] = useState({});
   const [isADModalOpen, setIsADModalOpen] = useState(false);
 
   const fetchData = async () => {
@@ -148,7 +160,17 @@ export default function Monitoring() {
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 60000); // Actualizar cada minuto
-    return () => clearInterval(interval);
+
+    // Conectar WebSocket para Ping Heartbeat
+    const socket = io(SOCKET_URL);
+    socket.on('monitoring:heartbeat', (data) => {
+      setPingData(data);
+    });
+
+    return () => {
+      clearInterval(interval);
+      socket.disconnect();
+    };
   }, []);
 
   return (
@@ -174,11 +196,15 @@ export default function Monitoring() {
         {/* Host Físico */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-sky-500/20 text-sky-400 rounded-xl">
+            <div className={`p-3 rounded-xl ${pingData['AD-HOST']?.status === 'DOWN' ? 'bg-rose-500/20 text-rose-400' : 'bg-sky-500/20 text-sky-400'}`}>
               <Server className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-bold">Host Físico: ANFIGANE</h2>
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                Host Físico: ANFIGANE
+                {pingData['AD-HOST']?.status === 'DOWN' && <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
+                {pingData['AD-HOST']?.status === 'UP' && <span className="text-xs text-emerald-400 font-normal">{Math.round(pingData['AD-HOST'].time)}ms</span>}
+              </h2>
               <p className="text-xs text-muted-foreground">ProLiant / Hyper-V Server</p>
             </div>
           </div>
@@ -218,10 +244,11 @@ export default function Monitoring() {
                 diskSpace={nodes.dc01.Disk?.Disks?.find(d => d.DC === 'AD01')}
                 lastBackup={nodes.dc01.Backups?.Status?.find(b => b.Ruta?.includes('AD01'))?.UltimoBackup || 'N/A'}
                 updates={nodes.dc01.Updates}
-                icon={<WindowsADIcon />} 
-                isHealthy={nodes.dc01.DCs?.Status?.find(d => d.Name === 'AD01')?.ServiceIssues?.length === 0}
+                isHealthy={nodes.dc01.OverallStatus === 'OK' && (!pingData['AD-DC01'] || pingData['AD-DC01'].status === 'UP')}
+                pingStatus={pingData['AD-DC01']}
                 isPrimary={true}
                 onClick={() => setIsADModalOpen(true)}
+                icon={<WindowsADIcon />} 
               />
             ) : (
               <div className="bg-background/40 border border-border/50 rounded-lg p-4 animate-pulse h-[180px]"></div>
@@ -237,8 +264,9 @@ export default function Monitoring() {
                 diskSpace={nodes.dc02.LocalHealth?.Disk?.[0]}
                 lastBackup={nodes.dc01?.Backups?.Status?.find(b => b.Ruta?.includes('AD02'))?.UltimoBackup || 'N/A'}
                 updates={nodes.dc02.LocalHealth?.Updates}
+                isHealthy={nodes.dc02.LocalHealth?.Services?.every(s => s.Status === 'Running' || s.Status === 4) && nodes.dc02.LocalHealth?.Replication === "OK" && (!pingData['AD-DC02'] || pingData['AD-DC02'].status === 'UP')}
+                pingStatus={pingData['AD-DC02']}
                 icon={<AzureADIcon />} 
-                isHealthy={nodes.dc02.LocalHealth?.Services?.every(s => s.Status === 'Running' || s.Status === 4) && nodes.dc02.LocalHealth?.Replication === "OK"}
               />
             ) : (
               <div className="bg-background/40 border border-border/50 rounded-lg p-4 animate-pulse h-[180px]"></div>

@@ -42,12 +42,17 @@ function createApp() {
     return app;
 }
 
+const { startPingService } = require("./services/ping.service");
+
 function startServer() {
     const app = createApp();
     const server = http.createServer(app);
 
     // Inicializar Sockets
     initSockets(server);
+    
+    // Iniciar latidos de Ping
+    startPingService();
 
     server.listen(PORT, "0.0.0.0", () => logStartup(PORT));
 }
