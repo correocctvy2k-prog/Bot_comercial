@@ -1,8 +1,8 @@
-<#
+﻿<#
 .SYNOPSIS
     Script automatizado para monitoreo mensual de Active Directory
 .DESCRIPTION
-    Recopila informaci├│n cr├¡tica del AD y genera reportes en formato TXT, HTML y PDF
+    Recopila información crítica del AD y genera reportes en formato TXT, HTML y PDF
     Alineado con ISO/IEC 27001:2022 e ISO/IEC 27002:2022
 .AUTHOR
     Sistema de Monitoreo AD - Seguridad Perimetral
@@ -10,10 +10,10 @@
     Octubre 2025
 .COMPLIANCE
     ISO/IEC 27001:2022 - Controles: A.5.1, A.8.2, A.8.3, A.8.5, A.8.8, A.8.12, A.8.15
-    ISO/IEC 27002:2022 - Controles de Seguridad de la Informaci├│n
+    ISO/IEC 27002:2022 - Controles de Seguridad de la Información
 #>
 
-# Configuraci├│n inicial
+# Configuración inicial
 $ErrorActionPreference = "Continue"
 $OutputPath = "C:\AD_Reports"
 $BackupPath = "\\ganepalmir\dpto.informatica\Johnathan.Beltran\OTROS\Chequeos\Active Directory"
@@ -26,29 +26,47 @@ foreach ($path in @($OutputPath, $BackupPath)) {
     if (-not (Test-Path $path)) {
         try {
             New-Item -ItemType Directory -Path $path -Force | Out-Null
-            Write-Host "Ô£ô Directorio creado: $path" -ForegroundColor Green
+            Write-Host "✓ Directorio creado: $path" -ForegroundColor Green
         } catch {
-            Write-Host "ÔÜá No se pudo crear/acceder: $path" -ForegroundColor Yellow
+            Write-Host "⚠ No se pudo crear/acceder: $path" -ForegroundColor Yellow
         }
     }
 }
 
-# Importar m├│dulo de Active Directory
+# --- Importar Módulos ---
+Import-Module ActiveDirectory
+if (Get-Module -ListAvailable GroupPolicy) { Import-Module GroupPolicy }
+
+# --- Actualizaciones ---
+function Get-UpdateStatus {
+    $rebootPending = (Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending") -or 
+                     (Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired")
+    
+    $lastUpdate = Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 1
+    
+    return @{
+        RebootRequired = $rebootPending
+        LastInstalled = if ($lastUpdate.InstalledOn) { $lastUpdate.InstalledOn.ToString("yyyy-MM-dd") } else { "Desconocida" }
+        LastKB = $lastUpdate.HotFixID
+    }
+}
+
+# Importar módulo de Active Directory
 try {
     Import-Module ActiveDirectory -ErrorAction Stop
-    Write-Host "Ô£ô M├│dulo Active Directory cargado" -ForegroundColor Green
+    Write-Host "✓ Módulo Active Directory cargado" -ForegroundColor Green
 } catch {
-    Write-Host "Ô£ù Error al cargar Active Directory: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "✗ Error al cargar Active Directory: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }
 
 # Intentar cargar GroupPolicy (opcional)
 try {
     Import-Module GroupPolicy -ErrorAction Stop
-    Write-Host "Ô£ô M├│dulo Group Policy cargado" -ForegroundColor Green
+    Write-Host "✓ Módulo Group Policy cargado" -ForegroundColor Green
     $GPModuleLoaded = $true
 } catch {
-    Write-Host "ÔÜá M├│dulo Group Policy no disponible - Se omitir├í an├ílisis de GPOs" -ForegroundColor Yellow
+    Write-Host "⚠ Módulo Group Policy no disponible - Se omitirá análisis de GPOs" -ForegroundColor Yellow
     $GPModuleLoaded = $false
 }
 
@@ -58,20 +76,6 @@ function Write-SectionHeader {
     param([string]$Title)
     $separator = "=" * 80
     return "`n$separator`n$Title`n$separator`n"
-}
-
-function Get-UpdateStatus {
-    $rebootPending = $false
-    if (Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired") { $rebootPending = $true }
-    if (Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending") { $rebootPending = $true }
-    
-    $lastUpdate = Get-HotFix -ErrorAction SilentlyContinue | Sort-Object InstalledOn -Descending | Select-Object -First 1
-    
-    return @{
-        RebootPending = $rebootPending
-        LastInstalled = if ($lastUpdate.InstalledOn) { $lastUpdate.InstalledOn.ToString("yyyy-MM-dd") } else { "Desconocido" }
-        LastKB = if ($lastUpdate.HotFixID) { $lastUpdate.HotFixID } else { "N/A" }
-    }
 }
 
 function Get-ISO27001Control {
@@ -104,7 +108,7 @@ function Get-DCStatus {
         if (Test-Connection -ComputerName $dc -Count 2 -Quiet) {
             $dcInfo.Pingable = $true
             
-            # Verificar servicios cr├¡ticos
+            # Verificar servicios críticos
             $services = @('NTDS','DNS','KDC','W32Time','Netlogon','DFSR')
             foreach ($service in $services) {
                 try {
@@ -114,7 +118,7 @@ function Get-DCStatus {
                     
                     if ($status -ne "Running") {
                         $dcInfo.ServiceIssues += $service
-                        $issues += "El servicio $service en $dc est├í en estado - $status"
+                        $issues += "El servicio $service en $dc está en estado - $status"
                     }
                 } catch {
                     $dcInfo.Services += "$service - Error"
@@ -122,12 +126,12 @@ function Get-DCStatus {
                 }
             }
             
-            # Obtener informaci├│n del sistema
+            # Obtener información del sistema
             try {
                 $os = Get-CimInstance -ComputerName $dc -ClassName Win32_OperatingSystem -ErrorAction SilentlyContinue
                 $lastBoot = [datetime]$os.LastBootUpTime
                 $uptime = (Get-Date) - $lastBoot
-                $dcInfo.Uptime = "$($uptime.Days) d├¡as, $($uptime.Hours) horas"
+                $dcInfo.Uptime = "$($uptime.Days) días, $($uptime.Hours) horas"
                 $dcInfo.LastReboot = $lastBoot.ToString("yyyy-MM-dd HH:mm:ss")
                 $dcInfo.OSVersion = $os.Caption
                 
@@ -180,7 +184,7 @@ function Get-FSMORoles {
         
         $recommendation = ""
         if ($uniqueHolders.Count -eq 1) {
-            $recommendation = "ISO 27002 8.14: Todos los roles FSMO en un ├║nico controlador - Riesgo de disponibilidad"
+            $recommendation = "ISO 27002 8.14: Todos los roles FSMO en un único controlador - Riesgo de disponibilidad"
         }
         
         return @{
@@ -201,7 +205,7 @@ function Get-FSMORoles {
 }
 
 function Get-ReplicationStatus {
-    Write-Host "[3/9] Verificando replicaci├│n entre controladores..." -ForegroundColor Cyan
+    Write-Host "[3/9] Verificando replicación entre controladores..." -ForegroundColor Cyan
     
     $replStatus = @{
         Summary = ""
@@ -220,7 +224,7 @@ function Get-ReplicationStatus {
             $replStatus.Status = "CRITICAL"
             $replStatus.Recommendation = "ISO 27001 A.8.12: Datos inconsistentes detectados - Ejecute repadmin /syncall"
         } else {
-            $replStatus.Errors = "No se encontraron errores de replicaci├│n"
+            $replStatus.Errors = "No se encontraron errores de replicación"
         }
         
         try {
@@ -243,7 +247,7 @@ function Get-ReplicationStatus {
         }
         
     } catch {
-        $replStatus.Summary = "Error al verificar replicaci├│n: $($_.Exception.Message)"
+        $replStatus.Summary = "Error al verificar replicación: $($_.Exception.Message)"
         $replStatus.Status = "ERROR"
     }
     
@@ -269,7 +273,7 @@ function Get-BackupStatus {
             UltimoBackup = "N/A"
             ArchivosRecientes = 0
             Status = "ERROR"
-            Tama├▒oTotal = 0
+            TamañoTotal = 0
         }
         
         if (Test-Path $ruta) {
@@ -279,7 +283,7 @@ function Get-BackupStatus {
             
             if ($archivosRecientes) {
                 $backupInfo.ArchivosRecientes = $archivosRecientes.Count
-                $backupInfo.Tama├▒oTotal = [math]::Round(($archivosRecientes | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
+                $backupInfo.TamañoTotal = [math]::Round(($archivosRecientes | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
                 $backupInfo.UltimoBackup = ($archivosRecientes | Sort-Object LastWriteTime -Descending | 
                     Select-Object -First 1).LastWriteTime.ToString("yyyy-MM-dd HH:mm")
                 $backupInfo.Status = "OK"
@@ -309,7 +313,7 @@ function Get-BackupStatus {
 }
 
 function Get-UserStatistics {
-    Write-Host "[5/9] Analizando estad├¡sticas de usuarios..." -ForegroundColor Cyan
+    Write-Host "[5/9] Analizando estadísticas de usuarios..." -ForegroundColor Cyan
     
     $userStats = @{
         Total = 0
@@ -370,7 +374,7 @@ function Get-UserStatistics {
             }
         }
         
-        # Usuarios que nunca iniciaron sesi├│n
+        # Usuarios que nunca iniciaron sesión
         $neverLoggedIn = $allUsers | Where-Object { 
             -not $_.LastLogonDate -and $_.Enabled -eq $true
         }
@@ -383,7 +387,7 @@ function Get-UserStatistics {
             }
         }
         
-        # Buscar usuarios eliminados en AD Recycle Bin (si est├í habilitado)
+        # Buscar usuarios eliminados en AD Recycle Bin (si está habilitado)
         try {
             $deletedUsers = Get-ADObject -Filter {ObjectClass -eq "user" -and IsDeleted -eq $true} `
                 -IncludeDeletedObjects -Properties * -ErrorAction SilentlyContinue
@@ -415,22 +419,22 @@ function Get-UserStatistics {
         $userStats.RecentlyCreated = (Get-ADUser -Filter {Created -gt $lastMonth}).Count
         $userStats.RecentlyModified = (Get-ADUser -Filter {Modified -gt $lastMonth}).Count
         
-        # An├ílisis ISO 27001
+        # Análisis ISO 27001
         if ($userStats.Locked -gt 0) {
             $userStats.Issues += "ISO 27001 A.5.17: $($userStats.Locked) cuenta(s) bloqueada(s)"
         }
         
         if ($userStats.Inactive90 -gt 10) {
-            $userStats.Issues += "ISO 27001 A.5.18: $($userStats.Inactive90) usuarios inactivos >90 d├¡as"
-            $userStats.Recommendations += "Revisar y deshabilitar cuentas inactivas seg├║n pol├¡tica de acceso"
+            $userStats.Issues += "ISO 27001 A.5.18: $($userStats.Inactive90) usuarios inactivos >90 días"
+            $userStats.Recommendations += "Revisar y deshabilitar cuentas inactivas según política de acceso"
         }
         
         if ($userStats.NonExpiringPwd -gt 5) {
-            $userStats.Issues += "ISO 27002 5.17: $($userStats.NonExpiringPwd) cuentas con contrase├▒as no expirables"
+            $userStats.Issues += "ISO 27002 5.17: $($userStats.NonExpiringPwd) cuentas con contraseñas no expirables"
         }
         
     } catch {
-        Write-Host "Error en estad├¡sticas de usuarios: $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host "Error en estadísticas de usuarios: $($_.Exception.Message)" -ForegroundColor Yellow
     }
     
     return $userStats
@@ -450,9 +454,9 @@ function Get-GPOStatus {
         Recommendations = @()
     }
     
-    # Verificar si el m├│dulo est├í disponible
+    # Verificar si el módulo está disponible
     if (-not $GPModuleLoaded) {
-        $gpoStats.Issues += "M├│dulo Group Policy no disponible - An├ílisis omitido"
+        $gpoStats.Issues += "Módulo Group Policy no disponible - Análisis omitido"
         return $gpoStats
     }
     
@@ -463,7 +467,7 @@ function Get-GPOStatus {
         foreach ($gpo in $allGPOs) {
             $gpoReport = [xml](Get-GPOReport -Guid $gpo.Id -ReportType Xml)
             
-            # Detectar GPOs vac├¡as
+            # Detectar GPOs vacías
             $isEmpty = $gpoReport.GPO.Computer.ExtensionData -eq $null -and 
                        $gpoReport.GPO.User.ExtensionData -eq $null
             
@@ -479,7 +483,7 @@ function Get-GPOStatus {
                 $gpoStats.Unlinked++
             }
             
-            # GPOs modificadas recientemente (├║ltimos 30 d├¡as)
+            # GPOs modificadas recientemente (últimos 30 días)
             if ($gpo.ModificationTime -gt (Get-Date).AddDays(-30)) {
                 $gpoStats.RecentlyModified += [PSCustomObject]@{
                     Nombre = $gpo.DisplayName
@@ -500,10 +504,10 @@ function Get-GPOStatus {
             }
         }
         
-        # An├ílisis de seguridad
+        # Análisis de seguridad
         if ($gpoStats.Empty -gt 0) {
-            $gpoStats.Issues += "ISO 27002 5.15: $($gpoStats.Empty) GPO(s) vac├¡as detectadas"
-            $gpoStats.Recommendations += "Eliminar GPOs vac├¡as para mantener la higiene del dominio"
+            $gpoStats.Issues += "ISO 27002 5.15: $($gpoStats.Empty) GPO(s) vacías detectadas"
+            $gpoStats.Recommendations += "Eliminar GPOs vacías para mantener la higiene del dominio"
         }
         
         if ($gpoStats.Unlinked -gt 5) {
@@ -511,12 +515,12 @@ function Get-GPOStatus {
             $gpoStats.Recommendations += "Revisar GPOs sin enlazar - pueden ser obsoletas"
         }
         
-        # Verificar GPOs cr├¡ticas de seguridad
+        # Verificar GPOs críticas de seguridad
         $criticalGPOs = @("Default Domain Policy", "Default Domain Controllers Policy")
         foreach ($criticalGPO in $criticalGPOs) {
             $exists = $allGPOs | Where-Object {$_.DisplayName -eq $criticalGPO}
             if (-not $exists) {
-                $gpoStats.Issues += "CR├ìTICO: GPO '$criticalGPO' no encontrada"
+                $gpoStats.Issues += "CRÍTICO: GPO '$criticalGPO' no encontrada"
             }
         }
         
@@ -606,12 +610,12 @@ function Get-SecurityEvents {
             LogName='Security'; ID=4724; StartTime=$startDate
         } -ErrorAction SilentlyContinue).Count
         
-        # Cambios en pol├¡ticas (Event ID 4719)
+        # Cambios en políticas (Event ID 4719)
         $securityEvents.PolicyChanges = (Get-WinEvent -FilterHashtable @{
             LogName='Security'; ID=4719; StartTime=$startDate
         } -ErrorAction SilentlyContinue).Count
         
-        # An├ílisis ISO 27001
+        # Análisis ISO 27001
         if ($securityEvents.FailedLogins -gt 100) {
             $securityEvents.Issues += "ISO 27001 A.8.15: $($securityEvents.FailedLogins) intentos fallidos"
             $securityEvents.Recommendations += "Posible ataque de fuerza bruta - Revisar Event ID 4625"
@@ -622,8 +626,8 @@ function Get-SecurityEvents {
         }
         
         if ($securityEvents.PolicyChanges -gt 0) {
-            $securityEvents.Issues += "ISO 27001 A.5.1: $($securityEvents.PolicyChanges) cambios en pol├¡ticas"
-            $securityEvents.Recommendations += "Revisar cambios en pol├¡ticas de seguridad (Event ID 4719)"
+            $securityEvents.Issues += "ISO 27001 A.5.1: $($securityEvents.PolicyChanges) cambios en políticas"
+            $securityEvents.Recommendations += "Revisar cambios en políticas de seguridad (Event ID 4719)"
         }
         
     } catch {
@@ -634,7 +638,7 @@ function Get-SecurityEvents {
 }
 
 function Get-PasswordPolicyCompliance {
-    Write-Host "[9/9] Verificando cumplimiento de pol├¡ticas de contrase├▒a..." -ForegroundColor Cyan
+    Write-Host "[9/9] Verificando cumplimiento de políticas de contraseña..." -ForegroundColor Cyan
     
     $policyCompliance = @{
         DomainPolicy = $null
@@ -644,7 +648,7 @@ function Get-PasswordPolicyCompliance {
     }
     
     try {
-        # Pol├¡tica de dominio por defecto
+        # Política de dominio por defecto
         $defaultPolicy = Get-ADDefaultDomainPasswordPolicy
         $policyCompliance.DomainPolicy = [PSCustomObject]@{
             MinPasswordLength = $defaultPolicy.MinPasswordLength
@@ -656,18 +660,18 @@ function Get-PasswordPolicyCompliance {
             LockoutThreshold = $defaultPolicy.LockoutThreshold
         }
         
-        # An├ílisis de cumplimiento ISO 27002
+        # Análisis de cumplimiento ISO 27002
         if ($defaultPolicy.MinPasswordLength -lt 12) {
-            $policyCompliance.Issues += "ISO 27002 5.17: Longitud m├¡nima de contrase├▒a insuficiente ($($defaultPolicy.MinPasswordLength) caracteres)"
-            $policyCompliance.Recommendations += "ISO 27002 recomienda m├¡nimo 12 caracteres"
+            $policyCompliance.Issues += "ISO 27002 5.17: Longitud mínima de contraseña insuficiente ($($defaultPolicy.MinPasswordLength) caracteres)"
+            $policyCompliance.Recommendations += "ISO 27002 recomienda mínimo 12 caracteres"
         }
         
         if (-not $defaultPolicy.ComplexityEnabled) {
-            $policyCompliance.Issues += "ISO 27002 5.17: Complejidad de contrase├▒a no habilitada"
+            $policyCompliance.Issues += "ISO 27002 5.17: Complejidad de contraseña no habilitada"
         }
         
         if ($defaultPolicy.MaxPasswordAge.Days -gt 90) {
-            $policyCompliance.Issues += "ISO 27002 5.17: Edad m├íxima de contrase├▒a excede 90 d├¡as"
+            $policyCompliance.Issues += "ISO 27002 5.17: Edad máxima de contraseña excede 90 días"
         }
         
         if ($defaultPolicy.LockoutThreshold -eq 0 -or $defaultPolicy.LockoutThreshold -gt 5) {
@@ -675,7 +679,7 @@ function Get-PasswordPolicyCompliance {
             $policyCompliance.Recommendations += "Configure entre 3-5 intentos fallidos"
         }
         
-        # Pol├¡ticas de contrase├▒a de grano fino (Fine-Grained Password Policies)
+        # Políticas de contraseña de grano fino (Fine-Grained Password Policies)
         $fineGrainedPolicies = Get-ADFineGrainedPasswordPolicy -Filter * -ErrorAction SilentlyContinue
         if ($fineGrainedPolicies) {
             foreach ($fgpp in $fineGrainedPolicies) {
@@ -690,17 +694,17 @@ function Get-PasswordPolicyCompliance {
         }
         
     } catch {
-        $policyCompliance.Issues += "Error al verificar pol├¡ticas de contrase├▒a: $($_.Exception.Message)"
+        $policyCompliance.Issues += "Error al verificar políticas de contraseña: $($_.Exception.Message)"
     }
     
     return $policyCompliance
 }
 
-# ==================== RECOPILACI├ôN DE DATOS ====================
+# ==================== RECOPILACIÓN DE DATOS ====================
 
-Write-Host "`nÔòöÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòù" -ForegroundColor Green
-Write-Host "Ôòæ   MONITOREO AD - ISO 27001:2022 / ISO 27002:2022     Ôòæ" -ForegroundColor Green
-Write-Host "ÔòÜÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòØ`n" -ForegroundColor Green
+Write-Host "`n╔═══════════════════════════════════════════════════════╗" -ForegroundColor Green
+Write-Host "║   MONITOREO AD - ISO 27001:2022 / ISO 27002:2022     ║" -ForegroundColor Green
+Write-Host "╚═══════════════════════════════════════════════════════╝`n" -ForegroundColor Green
 
 $reportData = @{
     Date = Get-Date -Format "dd/MM/yyyy HH:mm:ss"
@@ -709,16 +713,16 @@ $reportData = @{
     Replication = Get-ReplicationStatus
     Backups = Get-BackupStatus
     Users = Get-UserStatistics
+    Updates = Get-UpdateStatus
     GPOs = Get-GPOStatus
     Disk = Get-DiskSpace
     Security = Get-SecurityEvents
     PasswordPolicy = Get-PasswordPolicyCompliance
-    Updates = Get-UpdateStatus
 }
 
-# ==================== GENERACI├ôN DE REPORTE HTML ====================
+# ==================== GENERACIÓN DE REPORTE HTML ====================
 
-Write-Host "`nGenerando reporte HTML con dise├▒o Microsoft Learn..." -ForegroundColor Cyan
+Write-Host "`nGenerando reporte HTML con diseño Microsoft Learn..." -ForegroundColor Cyan
 
 $htmlReport = @"
 <!DOCTYPE html>
@@ -1056,7 +1060,7 @@ $htmlReport = @"
         }
 
         .collapsible:after {
-            content: 'Ôû╝';
+            content: '▼';
             font-size: 12px;
             margin-left: auto;
             transition: transform 0.3s;
@@ -1127,7 +1131,7 @@ $htmlReport = @"
     <div class="top-bar">
         <div class="top-bar-content">
             <div class="logo">
-                <span>­ƒøí´©Å</span>
+                <span>🛡️</span>
                 <span>Active Directory Monitoring</span>
             </div>
             <span class="iso-badge">ISO 27001:2022</span>
@@ -1140,15 +1144,15 @@ $htmlReport = @"
             <h3>Contenido</h3>
             <nav>
                 <ul>
-                    <li><a href="#dc-status">­ƒûÑ´©Å Controladores</a></li>
-                    <li><a href="#fsmo">ÔÜÖ´©Å Roles FSMO</a></li>
-                    <li><a href="#replication">­ƒöä Replicaci├│n</a></li>
-                    <li><a href="#backups">­ƒÆ¥ Backups</a></li>
-                    <li><a href="#users">­ƒæÑ Usuarios</a></li>
-                    <li><a href="#gpos">­ƒôï GPOs</a></li>
-                    <li><a href="#passwords">­ƒöÉ Pol├¡ticas</a></li>
-                    <li><a href="#disk">­ƒÆ┐ Disco</a></li>
-                    <li><a href="#security">­ƒöÆ Seguridad</a></li>
+                    <li><a href="#dc-status">🖥️ Controladores</a></li>
+                    <li><a href="#fsmo">⚙️ Roles FSMO</a></li>
+                    <li><a href="#replication">🔄 Replicación</a></li>
+                    <li><a href="#backups">💾 Backups</a></li>
+                    <li><a href="#users">👥 Usuarios</a></li>
+                    <li><a href="#gpos">📋 GPOs</a></li>
+                    <li><a href="#passwords">🔐 Políticas</a></li>
+                    <li><a href="#disk">💿 Disco</a></li>
+                    <li><a href="#security">🔒 Seguridad</a></li>
                 </ul>
             </nav>
         </aside>
@@ -1157,21 +1161,21 @@ $htmlReport = @"
             <div class="page-header">
                 <h1>Informe de Monitoreo Active Directory</h1>
                 <p style="font-size: 16px; color: var(--text-secondary); margin-top: 8px;">
-                    An├ílisis de cumplimiento ISO/IEC 27001:2022 e ISO/IEC 27002:2022
+                    Análisis de cumplimiento ISO/IEC 27001:2022 e ISO/IEC 27002:2022
                 </p>
                 <div class="meta">
-                    <span>­ƒôà $($reportData.Date)</span>
-                    <span>­ƒôï Controles A.5, A.8</span>
-                    <span>­ƒÅó Dominio: $(([System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()).Name)</span>
+                    <span>📅 $($reportData.Date)</span>
+                    <span>📋 Controles A.5, A.8</span>
+                    <span>🏢 Dominio: $(([System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()).Name)</span>
                 </div>
             </div>
 
-            <button class="btn" onclick="window.print()">­ƒû¿´©Å Imprimir / Guardar PDF</button>
+            <button class="btn" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
 
-            <!-- SECCI├ôN 1: CONTROLADORES DE DOMINIO -->
+            <!-- SECCIÓN 1: CONTROLADORES DE DOMINIO -->
             <section id="dc-status" class="section">
                 <div class="section-header">
-                    <div class="section-icon">­ƒûÑ´©Å</div>
+                    <div class="section-icon">🖥️</div>
                     <h2>Controladores de Dominio</h2>
                     <span class="iso-control-badge">ISO 27001 A.8.2, A.8.15</span>
                 </div>
@@ -1196,7 +1200,7 @@ $htmlReport = @"
                             <th>Estado</th>
                             <th>Uptime</th>
                             <th>SO</th>
-                            <th>├Ültimo Reinicio</th>
+                            <th>Último Reinicio</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1204,9 +1208,9 @@ $htmlReport = @"
 
 foreach ($dc in $reportData.DCs.Status) {
     $statusBadge = if($dc.Pingable) { 
-        '<span class="status-badge ok">ÔùÅ Online</span>' 
+        '<span class="status-badge ok">● Online</span>' 
     } else { 
-        '<span class="status-badge critical">ÔùÅ Offline</span>' 
+        '<span class="status-badge critical">● Offline</span>' 
     }
     
     $htmlReport += @"
@@ -1226,21 +1230,21 @@ $htmlReport += @"
 
                 $(if($reportData.Disk.Issues.Count -gt 0) {
                     "<div class='recommendation-box'>" +
-                    "<h3>­ƒÆí Acciones Inmediatas Requeridas</h3><ul>" +
+                    "<h3>💡 Acciones Inmediatas Requeridas</h3><ul>" +
                     "<li>Libere espacio eliminando archivos temporales y logs antiguos</li>" +
                     "<li>Use - <code>cleanmgr.exe</code> para limpieza de disco</li>" +
-                    "<li>Revise tama├▒o de logs en C:\\Windows\\NTDS\\ y C:\\Windows\\Logs\\</li>" +
-                    "<li>Considere compactar la base de datos NTDS.dit si est├í muy grande</li>" +
+                    "<li>Revise tamaño de logs en C:\\Windows\\NTDS\\ y C:\\Windows\\Logs\\</li>" +
+                    "<li>Considere compactar la base de datos NTDS.dit si está muy grande</li>" +
                     "<li>Implemente alertas cuando el espacio libre sea menor al 20%</li>" +
-                    "<li>Planifique expansi├│n de almacenamiento si el crecimiento es constante</li>" +
+                    "<li>Planifique expansión de almacenamiento si el crecimiento es constante</li>" +
                     "</ul></div>"
                 })
             </section>
 
-            <!-- SECCI├ôN 2: ROLES FSMO -->
+            <!-- SECCIÓN 2: ROLES FSMO -->
             <section id="fsmo" class="section">
                 <div class="section-header">
-                    <div class="section-icon">ÔÜÖ´©Å</div>
+                    <div class="section-icon">⚙️</div>
                     <h2>Roles FSMO (Flexible Single Master Operations)</h2>
                     <span class="iso-control-badge">ISO 27001 A.8.14</span>
                 </div>
@@ -1248,7 +1252,7 @@ $htmlReport += @"
                 <div class="alert alert-$($reportData.FSMO.Status.ToLower())">
                     <div>
                         <strong>Estado de Roles FSMO - $($reportData.FSMO.Status)</strong>
-                        <p style="margin-top: 8px;">$(if($reportData.FSMO.Recommendation){$reportData.FSMO.Recommendation}else{"La distribuci├│n de roles FSMO es adecuada."})</p>
+                        <p style="margin-top: 8px;">$(if($reportData.FSMO.Recommendation){$reportData.FSMO.Recommendation}else{"La distribución de roles FSMO es adecuada."})</p>
                     </div>
                 </div>
 
@@ -1279,26 +1283,26 @@ $htmlReport += @"
 
                 $(if($reportData.FSMO.Recommendation) {
                     "<div class='recommendation-box'>" +
-                    "<h3>­ƒÆí Recomendaciones ISO 27002</h3><ul>" +
+                    "<h3>💡 Recomendaciones ISO 27002</h3><ul>" +
                     "<li>Considere transferir algunos roles FSMO al controlador secundario para balancear la carga</li>" +
                     "<li>Documente el procedimiento de transferencia de roles FSMO para DR</li>" +
                     "<li>Use el comando - <code>netdom query fsmo</code> para verificar roles</li>" +
-                    "<li>Mantenga un respaldo de los roles FSMO en la documentaci├│n</li>" +
+                    "<li>Mantenga un respaldo de los roles FSMO en la documentación</li>" +
                     "</ul></div>"
                 })
             </section>
 
-            <!-- SECCI├ôN 3: REPLICACI├ôN -->
+            <!-- SECCIÓN 3: REPLICACIÓN -->
             <section id="replication" class="section">
                 <div class="section-header">
-                    <div class="section-icon">­ƒöä</div>
-                    <h2>Estado de Replicaci├│n</h2>
+                    <div class="section-icon">🔄</div>
+                    <h2>Estado de Replicación</h2>
                     <span class="iso-control-badge">ISO 27001 A.8.12</span>
                 </div>
 
                 <div class="alert alert-$($reportData.Replication.Status.ToLower())">
                     <div>
-                        <strong>Estado de Replicaci├│n - $($reportData.Replication.Status)</strong>
+                        <strong>Estado de Replicación - $($reportData.Replication.Status)</strong>
                         <p style="margin-top: 8px;">$($reportData.Replication.Errors)</p>
                     </div>
                 </div>
@@ -1312,20 +1316,20 @@ $htmlReport += @"
 
                 $(if($reportData.Replication.Recommendation) {
                     "<div class='recommendation-box'>" +
-                    "<h3>­ƒÆí Acciones Recomendadas</h3><ul>" +
+                    "<h3>💡 Acciones Recomendadas</h3><ul>" +
                     "<li>$($reportData.Replication.Recommendation)</li>" +
                     "<li>Ejecute - <code>repadmin /showrepl</code> para ver detalles</li>" +
-                    "<li>Use - <code>repadmin /syncall /AdeP</code> para forzar sincronizaci├│n</li>" +
+                    "<li>Use - <code>repadmin /syncall /AdeP</code> para forzar sincronización</li>" +
                     "<li>Verifique conectividad de red entre DCs</li>" +
                     "<li>Revise puertos - 389 (LDAP), 636 (LDAPS), 3268 (GC), 88 (Kerberos)</li>" +
                     "</ul></div>"
                 })
             </section>
 
-            <!-- SECCI├ôN 4: BACKUPS -->
+            <!-- SECCIÓN 4: BACKUPS -->
             <section id="backups" class="section">
                 <div class="section-header">
-                    <div class="section-icon">­ƒÆ¥</div>
+                    <div class="section-icon">💾</div>
                     <h2>Estado de Backups</h2>
                     <span class="iso-control-badge">ISO 27001 A.8.13</span>
                 </div>
@@ -1338,7 +1342,7 @@ $htmlReport += @"
                             ($reportData.Backups.Issues | ForEach-Object { "<li>$_</li>" }) -join "" + 
                             "</ul>"
                         } else {
-                            "<p style='margin-top: 8px;'>Todos los backups est├ín funcionando correctamente.</p>"
+                            "<p style='margin-top: 8px;'>Todos los backups están funcionando correctamente.</p>"
                         })
                     </div>
                 </div>
@@ -1348,9 +1352,9 @@ $htmlReport += @"
                         <tr>
                             <th>Ruta de Backup</th>
                             <th>Accesible</th>
-                            <th>├Ültimo Backup</th>
+                            <th>Último Backup</th>
                             <th>Archivos (24h)</th>
-                            <th>Tama├▒o Total</th>
+                            <th>Tamaño Total</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1358,9 +1362,9 @@ $htmlReport += @"
 
 foreach ($backup in $reportData.Backups.Backups) {
     $accessBadge = if($backup.Accesible) { 
-        '<span class="status-badge ok">ÔùÅ Accesible</span>' 
+        '<span class="status-badge ok">● Accesible</span>' 
     } else { 
-        '<span class="status-badge critical">ÔùÅ No Accesible</span>' 
+        '<span class="status-badge critical">● No Accesible</span>' 
     }
     
     $htmlReport += @"
@@ -1369,7 +1373,7 @@ foreach ($backup in $reportData.Backups.Backups) {
                             <td>$accessBadge</td>
                             <td>$($backup.UltimoBackup)</td>
                             <td>$($backup.ArchivosRecientes)</td>
-                            <td>$($backup.Tama├▒oTotal) GB</td>
+                            <td>$($backup.TamañoTotal) GB</td>
                         </tr>
 "@
 }
@@ -1380,21 +1384,21 @@ $htmlReport += @"
 
                 $(if($reportData.Backups.Issues.Count -gt 0) {
                     "<div class='recommendation-box'>" +
-                    "<h3>­ƒÆí Acciones Requeridas</h3><ul>" +
+                    "<h3>💡 Acciones Requeridas</h3><ul>" +
                     "<li>Verifique la conectividad con el NAS y el estado del servicio de backup</li>" +
-                    "<li>Aseg├║rese de que las tareas programadas est├®n activas</li>" +
-                    "<li>Pruebe la restauraci├│n de un backup al menos mensualmente</li>" +
+                    "<li>Asegúrese de que las tareas programadas estén activas</li>" +
+                    "<li>Pruebe la restauración de un backup al menos mensualmente</li>" +
                     "<li>Implemente la regla 3-2-1 - 3 copias, 2 tipos de medios, 1 offsite</li>" +
-                    "<li>Documente el procedimiento de restauraci├│n de Active Directory</li>" +
+                    "<li>Documente el procedimiento de restauración de Active Directory</li>" +
                     "</ul></div>"
                 })
             </section>
 
-            <!-- SECCI├ôN 5: USUARIOS CON DESPLEGABLES -->
+            <!-- SECCIÓN 5: USUARIOS CON DESPLEGABLES -->
             <section id="users" class="section">
                 <div class="section-header">
-                    <div class="section-icon">­ƒæÑ</div>
-                    <h2>Estad├¡sticas de Usuarios</h2>
+                    <div class="section-icon">👥</div>
+                    <h2>Estadísticas de Usuarios</h2>
                     <span class="iso-control-badge">ISO 27001 A.5.17, A.5.18</span>
                 </div>
 
@@ -1417,15 +1421,15 @@ $htmlReport += @"
                     </div>
                 </div>
 
-                <!-- Desplegable: Usuarios Inactivos 90+ d├¡as -->
+                <!-- Desplegable: Usuarios Inactivos 90+ días -->
                 <button class="collapsible">
-                    ÔÜá´©Å Usuarios Inactivos (+90 d├¡as): $($reportData.Users.Inactive90) usuarios
+                    ⚠️ Usuarios Inactivos (+90 días): $($reportData.Users.Inactive90) usuarios
                 </button>
                 <div class="collapsible-content">
                     <div class="collapsible-inner">
                         $(if($reportData.Users.DetailedInactive90.Count -gt 0) {
                             "<table class='data-table'><thead><tr>" +
-                            "<th>Usuario</th><th>Nombre</th><th>├Ültimo Acceso</th><th>D├¡as Inactivo</th><th>Departamento</th>" +
+                            "<th>Usuario</th><th>Nombre</th><th>Último Acceso</th><th>Días Inactivo</th><th>Departamento</th>" +
                             "</tr></thead><tbody>" +
                             ($reportData.Users.DetailedInactive90 | ForEach-Object {
                                 "<tr><td>$($_.Usuario)</td><td>$($_.Nombre)</td><td>$($_.UltimoAcceso)</td>" +
@@ -1433,20 +1437,20 @@ $htmlReport += @"
                             }) -join "" +
                             "</tbody></table>"
                         } else {
-                            "<p style='color: var(--success-color);'>Ô£ô No hay usuarios inactivos por m├ís de 90 d├¡as</p>"
+                            "<p style='color: var(--success-color);'>✓ No hay usuarios inactivos por más de 90 días</p>"
                         })
                     </div>
                 </div>
 
                 <!-- Desplegable: Usuarios Deshabilitados -->
                 <button class="collapsible">
-                    ­ƒÜ½ Usuarios Deshabilitados: $($reportData.Users.Disabled) usuarios
+                    🚫 Usuarios Deshabilitados: $($reportData.Users.Disabled) usuarios
                 </button>
                 <div class="collapsible-content">
                     <div class="collapsible-inner">
                         $(if($reportData.Users.DetailedDisabled.Count -gt 0) {
                             "<table class='data-table'><thead><tr>" +
-                            "<th>Usuario</th><th>Nombre</th><th>├Ültima Modificaci├│n</th><th>Departamento</th>" +
+                            "<th>Usuario</th><th>Nombre</th><th>Última Modificación</th><th>Departamento</th>" +
                             "</tr></thead><tbody>" +
                             ($reportData.Users.DetailedDisabled | ForEach-Object {
                                 "<tr><td>$($_.Usuario)</td><td>$($_.Nombre)</td><td>$($_.UltimaModificacion)</td>" +
@@ -1462,13 +1466,13 @@ $htmlReport += @"
 
                 <!-- Desplegable: Usuarios Eliminados -->
                 <button class="collapsible">
-                    ­ƒùæ´©Å Usuarios Eliminados (Papelera AD): $($reportData.Users.DetailedDeleted.Count) usuarios
+                    🗑️ Usuarios Eliminados (Papelera AD): $($reportData.Users.DetailedDeleted.Count) usuarios
                 </button>
                 <div class="collapsible-content">
                     <div class="collapsible-inner">
                         $(if($reportData.Users.DetailedDeleted.Count -gt 0) {
                             "<table class='data-table'><thead><tr>" +
-                            "<th>Usuario</th><th>Nombre</th><th>Fecha Eliminaci├│n</th><th>├Ültima Ubicaci├│n</th>" +
+                            "<th>Usuario</th><th>Nombre</th><th>Fecha Eliminación</th><th>Última Ubicación</th>" +
                             "</tr></thead><tbody>" +
                             ($reportData.Users.DetailedDeleted | ForEach-Object {
                                 "<tr><td>$($_.Usuario)</td><td>$($_.Nombre)</td><td>$($_.FechaEliminacion)</td>" +
@@ -1481,15 +1485,15 @@ $htmlReport += @"
                     </div>
                 </div>
 
-                <!-- Desplegable: Usuarios que Nunca Iniciaron Sesi├│n -->
+                <!-- Desplegable: Usuarios que Nunca Iniciaron Sesión -->
                 <button class="collapsible">
-                    ÔØô Nunca Iniciaron Sesi├│n: $($reportData.Users.DetailedNeverLoggedIn.Count) usuarios
+                    ❓ Nunca Iniciaron Sesión: $($reportData.Users.DetailedNeverLoggedIn.Count) usuarios
                 </button>
                 <div class="collapsible-content">
                     <div class="collapsible-inner">
                         $(if($reportData.Users.DetailedNeverLoggedIn.Count -gt 0) {
                             "<table class='data-table'><thead><tr>" +
-                            "<th>Usuario</th><th>Nombre</th><th>Fecha Creaci├│n</th><th>Departamento</th>" +
+                            "<th>Usuario</th><th>Nombre</th><th>Fecha Creación</th><th>Departamento</th>" +
                             "</tr></thead><tbody>" +
                             ($reportData.Users.DetailedNeverLoggedIn | ForEach-Object {
                                 "<tr><td>$($_.Usuario)</td><td>$($_.Nombre)</td><td>$($_.FechaCreacion)</td>" +
@@ -1497,14 +1501,14 @@ $htmlReport += @"
                             }) -join "" +
                             "</tbody></table>"
                         } else {
-                            "<p style='color: var(--success-color);'>Ô£ô Todos los usuarios activos han iniciado sesi├│n</p>"
+                            "<p style='color: var(--success-color);'>✓ Todos los usuarios activos han iniciado sesión</p>"
                         })
                     </div>
                 </div>
 
                 $(if($reportData.Users.Issues.Count -gt 0) {
                     "<div class='alert alert-warning' style='margin-top: 24px;'>" +
-                    "<div><strong>ÔÜá´©Å Problemas Detectados</strong>" +
+                    "<div><strong>⚠️ Problemas Detectados</strong>" +
                     "<ul style='margin-top: 8px;'>" +
                     ($reportData.Users.Issues | ForEach-Object { "<li>$_</li>" }) -join "" +
                     "</ul></div></div>"
@@ -1512,10 +1516,10 @@ $htmlReport += @"
 
                 $(if($reportData.Users.Recommendations.Count -gt 0) {
                     "<div class='recommendation-box'>" +
-                    "<h3>­ƒÆí Recomendaciones ISO 27001/27002</h3><ul>" +
+                    "<h3>💡 Recomendaciones ISO 27001/27002</h3><ul>" +
                     ($reportData.Users.Recommendations | ForEach-Object { "<li>$_</li>" }) -join "" +
-                    "<li>Revise mensualmente las cuentas inactivas y deshabil├¡telas</li>" +
-                    "<li>Implemente rotaci├│n de contrase├▒as para cuentas administrativas</li>" +
+                    "<li>Revise mensualmente las cuentas inactivas y deshabilítelas</li>" +
+                    "<li>Implemente rotación de contraseñas para cuentas administrativas</li>" +
                     "<li>Use - <code>Search-ADAccount -AccountInactive -TimeSpan 90</code></li>" +
                     "<li>Considere implementar Privileged Access Management (PAM)</li>" +
                     "<li>Documente la matriz de accesos y permisos</li>" +
@@ -1523,10 +1527,10 @@ $htmlReport += @"
                 })
             </section>
 
-            <!-- SECCI├ôN 6: GPOs -->
+            <!-- SECCIÓN 6: GPOs -->
             <section id="gpos" class="section">
                 <div class="section-header">
-                    <div class="section-icon">­ƒôï</div>
+                    <div class="section-icon">📋</div>
                     <h2>Group Policy Objects (GPOs)</h2>
                     <span class="iso-control-badge">ISO 27001 A.8.3, A.5.15</span>
                 </div>
@@ -1545,7 +1549,7 @@ $htmlReport += @"
                         <div class="stat-card-value warning">$($reportData.GPOs.Unlinked)</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-card-label">GPOs Vac├¡as</div>
+                        <div class="stat-card-label">GPOs Vacías</div>
                         <div class="stat-card-value $(if($reportData.GPOs.Empty -gt 0){"warning"}else{""})">$($reportData.GPOs.Empty)</div>
                     </div>
                 </div>
@@ -1558,22 +1562,22 @@ $htmlReport += @"
                     "</ul></div></div>"
                 } else {
                     "<div class='alert alert-success'><div>" +
-                    "<strong>Ô£ô Estado de GPOs Normal</strong>" +
-                    "<p>No se detectaron problemas en las pol├¡ticas de grupo</p></div></div>"
+                    "<strong>✓ Estado de GPOs Normal</strong>" +
+                    "<p>No se detectaron problemas en las políticas de grupo</p></div></div>"
                 })
 
                 <!-- Desplegable: Todas las GPOs -->
                 $(if($reportData.GPOs.Total -gt 0) {
                     "<button class='collapsible'>" +
-                    "­ƒôä Lista Completa de GPOs ($($reportData.GPOs.Total) pol├¡ticas)" +
+                    "📄 Lista Completa de GPOs ($($reportData.GPOs.Total) políticas)" +
                     "</button>" +
                     "<div class='collapsible-content'>" +
                     "<div class='collapsible-inner'>" +
                     "<table class='data-table'><thead><tr>" +
-                    "<th>Nombre</th><th>Estado</th><th>Creaci├│n</th><th>├Ültima Modificaci├│n</th><th>Enlaces</th><th>Vac├¡a</th>" +
+                    "<th>Nombre</th><th>Estado</th><th>Creación</th><th>Última Modificación</th><th>Enlaces</th><th>Vacía</th>" +
                     "</tr></thead><tbody>" +
                     ($reportData.GPOs.GPODetails | ForEach-Object {
-                        $emptyBadge = if($_.Vacia) { '<span class="status-badge warning">S├¡</span>' } else { '<span class="status-badge ok">No</span>' }
+                        $emptyBadge = if($_.Vacia) { '<span class="status-badge warning">Sí</span>' } else { '<span class="status-badge ok">No</span>' }
                         "<tr>" +
                         "<td><strong>$($_.Nombre)</strong></td>" +
                         "<td>$($_.Estado)</td>" +
@@ -1586,9 +1590,9 @@ $htmlReport += @"
                     "</tbody></table></div></div>"
                 } else {
                     "<div class='alert alert-info'><div>" +
-                    "<strong>Ôä╣´©Å An├ílisis de GPOs No Disponible</strong>" +
-                    "<p>El m├│dulo Group Policy no est├í instalado o no hay GPOs para analizar.</p>" +
-                    "<p style='margin-top: 8px;'>Para habilitar el an├ílisis de GPOs, instale RSAT:</p>" +
+                    "<strong>ℹ️ Análisis de GPOs No Disponible</strong>" +
+                    "<p>El módulo Group Policy no está instalado o no hay GPOs para analizar.</p>" +
+                    "<p style='margin-top: 8px;'>Para habilitar el análisis de GPOs, instale RSAT:</p>" +
                     "<code style='display: block; margin-top: 8px; padding: 8px; background: #f5f5f5;'>" +
                     "Install-WindowsFeature GPMC -IncludeManagementTools</code>" +
                     "</div></div>"
@@ -1597,12 +1601,12 @@ $htmlReport += @"
                 <!-- Desplegable: GPOs Modificadas Recientemente -->
                 $(if($reportData.GPOs.RecentlyModified.Count -gt 0) {
                     "<button class='collapsible'>" +
-                    "­ƒöä GPOs Modificadas (├Ültimos 30 d├¡as): $($reportData.GPOs.RecentlyModified.Count) pol├¡ticas" +
+                    "🔄 GPOs Modificadas (Últimos 30 días): $($reportData.GPOs.RecentlyModified.Count) políticas" +
                     "</button>" +
                     "<div class='collapsible-content'>" +
                     "<div class='collapsible-inner'>" +
                     "<table class='data-table'><thead><tr>" +
-                    "<th>Nombre GPO</th><th>Fecha Modificaci├│n</th><th>Modificado Por</th>" +
+                    "<th>Nombre GPO</th><th>Fecha Modificación</th><th>Modificado Por</th>" +
                     "</tr></thead><tbody>" +
                     ($reportData.GPOs.RecentlyModified | ForEach-Object {
                         "<tr><td><strong>$($_.Nombre)</strong></td><td>$($_.FechaModificacion)</td><td>$($_.ModificadoPor)</td></tr>"
@@ -1612,41 +1616,41 @@ $htmlReport += @"
 
                 $(if($reportData.GPOs.Recommendations.Count -gt 0) {
                     "<div class='recommendation-box'>" +
-                    "<h3>­ƒÆí Recomendaciones ISO 27002</h3><ul>" +
+                    "<h3>💡 Recomendaciones ISO 27002</h3><ul>" +
                     ($reportData.GPOs.Recommendations | ForEach-Object { "<li>$_</li>" }) -join "" +
-                    "<li>Auditar cambios en GPOs cr├¡ticas regularmente</li>" +
+                    "<li>Auditar cambios en GPOs críticas regularmente</li>" +
                     "<li>Implementar versionado y respaldo de GPOs</li>" +
-                    "<li>Revisar permisos de edici├│n de GPOs (principio de m├¡nimo privilegio)</li>" +
+                    "<li>Revisar permisos de edición de GPOs (principio de mínimo privilegio)</li>" +
                     "</ul></div>"
                 })
             </section>
 
-            <!-- SECCI├ôN 7: POL├ìTICAS DE CONTRASE├æA -->
+            <!-- SECCIÓN 7: POLÍTICAS DE CONTRASEÑA -->
             <section id="passwords" class="section">
                 <div class="section-header">
-                    <div class="section-icon">­ƒöÉ</div>
-                    <h2>Pol├¡ticas de Contrase├▒a</h2>
+                    <div class="section-icon">🔐</div>
+                    <h2>Políticas de Contraseña</h2>
                     <span class="iso-control-badge">ISO 27002 5.17</span>
                 </div>
 
-                <h3 style="margin-bottom: 16px; font-size: 20px;">Pol├¡tica de Dominio Predeterminada</h3>
+                <h3 style="margin-bottom: 16px; font-size: 20px;">Política de Dominio Predeterminada</h3>
                 
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-card-label">Longitud M├¡nima</div>
+                        <div class="stat-card-label">Longitud Mínima</div>
                         <div class="stat-card-value $(if($reportData.PasswordPolicy.DomainPolicy.MinPasswordLength -lt 12){"warning"}else{"success"})">
                             $($reportData.PasswordPolicy.DomainPolicy.MinPasswordLength) caracteres
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-card-label">Edad M├íxima</div>
+                        <div class="stat-card-label">Edad Máxima</div>
                         <div class="stat-card-value $(if($reportData.PasswordPolicy.DomainPolicy.MaxPasswordAge -gt 90){"warning"}else{"success"})">
-                            $($reportData.PasswordPolicy.DomainPolicy.MaxPasswordAge) d├¡as
+                            $($reportData.PasswordPolicy.DomainPolicy.MaxPasswordAge) días
                         </div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-card-label">Historial</div>
-                        <div class="stat-card-value">$($reportData.PasswordPolicy.DomainPolicy.PasswordHistoryCount) contrase├▒as</div>
+                        <div class="stat-card-value">$($reportData.PasswordPolicy.DomainPolicy.PasswordHistoryCount) contraseñas</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-card-label">Umbral Bloqueo</div>
@@ -1657,23 +1661,23 @@ $htmlReport += @"
                     <div class="stat-card">
                         <div class="stat-card-label">Complejidad</div>
                         <div class="stat-card-value $(if($reportData.PasswordPolicy.DomainPolicy.ComplexityEnabled){"success"}else{"error"})">
-                            $(if($reportData.PasswordPolicy.DomainPolicy.ComplexityEnabled){"Ô£ô Habilitada"}else{"Ô£ù Deshabilitada"})
+                            $(if($reportData.PasswordPolicy.DomainPolicy.ComplexityEnabled){"✓ Habilitada"}else{"✗ Deshabilitada"})
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-card-label">Duraci├│n Bloqueo</div>
+                        <div class="stat-card-label">Duración Bloqueo</div>
                         <div class="stat-card-value">$($reportData.PasswordPolicy.DomainPolicy.LockoutDuration) min</div>
                     </div>
                 </div>
 
                 $(if($reportData.PasswordPolicy.FineGrainedPolicies.Count -gt 0) {
-                    "<h3 style='margin: 32px 0 16px; font-size: 20px;'>Pol├¡ticas de Grano Fino (PSOs)</h3>" +
+                    "<h3 style='margin: 32px 0 16px; font-size: 20px;'>Políticas de Grano Fino (PSOs)</h3>" +
                     "<table class='data-table'><thead><tr>" +
-                    "<th>Nombre</th><th>Precedencia</th><th>Long. M├¡nima</th><th>Complejidad</th><th>Aplica A</th>" +
+                    "<th>Nombre</th><th>Precedencia</th><th>Long. Mínima</th><th>Complejidad</th><th>Aplica A</th>" +
                     "</tr></thead><tbody>" +
                     ($reportData.PasswordPolicy.FineGrainedPolicies | ForEach-Object {
                         "<tr><td><strong>$($_.Name)</strong></td><td>$($_.Precedence)</td>" +
-                        "<td>$($_.MinPasswordLength)</td><td>$(if($_.ComplexityEnabled){"Ô£ô"}else{"Ô£ù"})</td>" +
+                        "<td>$($_.MinPasswordLength)</td><td>$(if($_.ComplexityEnabled){"✓"}else{"✗"})</td>" +
                         "<td>$($_.AppliesTo) usuarios/grupos</td></tr>"
                     }) -join "" +
                     "</tbody></table>"
@@ -1687,22 +1691,22 @@ $htmlReport += @"
                     "</ul></div></div>"
                 } else {
                     "<div class='alert alert-success' style='margin-top: 24px;'>" +
-                    "<div><strong>Ô£ô Pol├¡ticas de Contrase├▒a Conformes</strong>" +
-                    "<p>Las pol├¡ticas cumplen con las recomendaciones de ISO 27002:2022</p></div></div>"
+                    "<div><strong>✓ Políticas de Contraseña Conformes</strong>" +
+                    "<p>Las políticas cumplen con las recomendaciones de ISO 27002:2022</p></div></div>"
                 })
 
                 $(if($reportData.PasswordPolicy.Recommendations.Count -gt 0) {
                     "<div class='recommendation-box'>" +
-                    "<h3>­ƒÆí Recomendaciones ISO 27002</h3><ul>" +
+                    "<h3>💡 Recomendaciones ISO 27002</h3><ul>" +
                     ($reportData.PasswordPolicy.Recommendations | ForEach-Object { "<li>$_</li>" }) -join "" +
                     "</ul></div>"
                 })
             </section>
 
-            <!-- SECCI├ôN 8: ESPACIO EN DISCO -->
+            <!-- SECCIÓN 8: ESPACIO EN DISCO -->
             <section id="disk" class="section">
                 <div class="section-header">
-                    <div class="section-icon">­ƒÆ┐</div>
+                    <div class="section-icon">💿</div>
                     <h2>Espacio en Disco</h2>
                     <span class="iso-control-badge">ISO 27001 A.8.6</span>
                 </div>
@@ -1725,7 +1729,7 @@ $htmlReport += @"
                         <tr>
                             <th>Controlador</th>
                             <th>Unidad</th>
-                            <th>Tama├▒o Total</th>
+                            <th>Tamaño Total</th>
                             <th>Espacio Libre</th>
                             <th>% Libre</th>
                             <th>Estado</th>
@@ -1736,11 +1740,11 @@ $htmlReport += @"
 
 foreach ($disk in $reportData.Disk.Disks) {
     $statusBadge = if($disk.PercentFree -ge 25) { 
-        '<span class="status-badge ok">ÔùÅ Saludable</span>' 
+        '<span class="status-badge ok">● Saludable</span>' 
     } elseif($disk.PercentFree -ge 15) { 
-        '<span class="status-badge warning">ÔùÅ Advertencia</span>' 
+        '<span class="status-badge warning">● Advertencia</span>' 
     } else { 
-        '<span class="status-badge critical">ÔùÅ Cr├¡tico</span>' 
+        '<span class="status-badge critical">● Crítico</span>' 
     }
     
     $htmlReport += @"
@@ -1760,11 +1764,11 @@ $htmlReport += @"
                 </table>
             </section>
 
-            <!-- SECCI├ôN 9: EVENTOS DE SEGURIDAD -->
+            <!-- SECCIÓN 9: EVENTOS DE SEGURIDAD -->
             <section id="security" class="section">
                 <div class="section-header">
-                    <div class="section-icon">­ƒöÆ</div>
-                    <h2>Eventos de Seguridad (├Ültimos 7 D├¡as)</h2>
+                    <div class="section-icon">🔒</div>
+                    <h2>Eventos de Seguridad (Últimos 7 Días)</h2>
                     <span class="iso-control-badge">ISO 27001 A.8.15, A.8.16</span>
                 </div>
 
@@ -1786,11 +1790,11 @@ $htmlReport += @"
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-card-label">Cambios Contrase├▒a</div>
+                        <div class="stat-card-label">Cambios Contraseña</div>
                         <div class="stat-card-value">$($reportData.Security.PasswordChanges)</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-card-label">Cambios en Pol├¡ticas</div>
+                        <div class="stat-card-label">Cambios en Políticas</div>
                         <div class="stat-card-value $(if($reportData.Security.PolicyChanges -gt 0){"warning"}else{""})">
                             $($reportData.Security.PolicyChanges)
                         </div>
@@ -1805,25 +1809,25 @@ $htmlReport += @"
                     "</ul></div></div>"
                 } else {
                     "<div class='alert alert-success' style='margin-top: 24px;'>" +
-                    "<div><strong>Ô£ô Estado de Seguridad Normal</strong>" +
-                    "<p>No se detectaron patrones an├│malos en los ├║ltimos 7 d├¡as</p></div></div>"
+                    "<div><strong>✓ Estado de Seguridad Normal</strong>" +
+                    "<p>No se detectaron patrones anómalos en los últimos 7 días</p></div></div>"
                 })
 
                 $(if($reportData.Security.Recommendations.Count -gt 0) {
                     "<div class='recommendation-box'>" +
-                    "<h3>­ƒÆí Acciones Recomendadas</h3><ul>" +
+                    "<h3>💡 Acciones Recomendadas</h3><ul>" +
                     ($reportData.Security.Recommendations | ForEach-Object { "<li>$_</li>" }) -join "" +
                     "<li>Implementar monitoreo continuo con SIEM</li>" +
-                    "<li>Configurar alertas autom├íticas para eventos cr├¡ticos</li>" +
-                    "<li>Revisar Event IDs: 4625 (fallos), 4740 (bloqueos), 4719 (pol├¡ticas)</li>" +
+                    "<li>Configurar alertas automáticas para eventos críticos</li>" +
+                    "<li>Revisar Event IDs: 4625 (fallos), 4740 (bloqueos), 4719 (políticas)</li>" +
                     "</ul></div>"
                 })
             </section>
 
-            <!-- SECCI├ôN: RESUMEN ISO 27001 -->
+            <!-- SECCIÓN: RESUMEN ISO 27001 -->
             <section class="section">
                 <div class="section-header">
-                    <div class="section-icon">­ƒôè</div>
+                    <div class="section-icon">📊</div>
                     <h2>Resumen de Cumplimiento ISO 27001:2022</h2>
                 </div>
 
@@ -1832,15 +1836,15 @@ $htmlReport += @"
                         <strong>Controles Evaluados</strong>
                         <p style="margin-top: 12px;">Este informe cubre los siguientes controles de ISO/IEC 27001:2022:</p>
                         <ul style="margin-top: 8px; column-count: 2;">
-                            <li><strong>A.5.1</strong> - Pol├¡ticas de seguridad</li>
+                            <li><strong>A.5.1</strong> - Políticas de seguridad</li>
                             <li><strong>A.5.15</strong> - Control de acceso</li>
-                            <li><strong>A.5.17</strong> - Autenticaci├│n</li>
+                            <li><strong>A.5.17</strong> - Autenticación</li>
                             <li><strong>A.5.18</strong> - Derechos de acceso</li>
                             <li><strong>A.8.2</strong> - Acceso privilegiado</li>
-                            <li><strong>A.8.3</strong> - Restricci├│n de acceso</li>
-                            <li><strong>A.8.6</strong> - Gesti├│n de capacidad</li>
-                            <li><strong>A.8.12</strong> - Prevenci├│n de fuga de datos</li>
-                            <li><strong>A.8.13</strong> - Respaldo de informaci├│n</li>
+                            <li><strong>A.8.3</strong> - Restricción de acceso</li>
+                            <li><strong>A.8.6</strong> - Gestión de capacidad</li>
+                            <li><strong>A.8.12</strong> - Prevención de fuga de datos</li>
+                            <li><strong>A.8.13</strong> - Respaldo de información</li>
                             <li><strong>A.8.14</strong> - Redundancia</li>
                             <li><strong>A.8.15</strong> - Registro de eventos</li>
                             <li><strong>A.8.16</strong> - Monitoreo de actividades</li>
@@ -1849,14 +1853,14 @@ $htmlReport += @"
                 </div>
 
                 <div class="recommendation-box">
-                    <h3>­ƒôï Pr├│ximas Acciones</h3>
+                    <h3>📋 Próximas Acciones</h3>
                     <ul>
-                        <li>Revisar y atender todos los problemas marcados como CR├ìTICOS</li>
-                        <li>Planificar remediaci├│n de advertencias en los pr├│ximos 30 d├¡as</li>
-                        <li>Documentar cambios realizados para auditor├¡as ISO 27001</li>
-                        <li>Agendar pr├│xima revisi├│n mensual de Active Directory</li>
-                        <li>Actualizar matriz de riesgos de seguridad de la informaci├│n</li>
-                        <li>Compartir hallazgos con el Comit├® de Seguridad</li>
+                        <li>Revisar y atender todos los problemas marcados como CRÍTICOS</li>
+                        <li>Planificar remediación de advertencias en los próximos 30 días</li>
+                        <li>Documentar cambios realizados para auditorías ISO 27001</li>
+                        <li>Agendar próxima revisión mensual de Active Directory</li>
+                        <li>Actualizar matriz de riesgos de seguridad de la información</li>
+                        <li>Compartir hallazgos con el Comité de Seguridad</li>
                     </ul>
                 </div>
             </section>
@@ -1864,9 +1868,9 @@ $htmlReport += @"
             <div class="footer" style="text-align: center; padding: 32px; border-top: 1px solid var(--border-color); margin-top: 48px;">
                 <p style="font-weight: 600; margin-bottom: 8px;">Fin del Informe de Monitoreo</p>
                 <p>Generado por Sistema de Monitoreo AD - Seguridad Perimetral</p>
-                <p style="margin-top: 8px;">­ƒôï Cumplimiento: ISO/IEC 27001:2022 e ISO/IEC 27002:2022</p>
+                <p style="margin-top: 8px;">📋 Cumplimiento: ISO/IEC 27001:2022 e ISO/IEC 27002:2022</p>
                 <p style="margin-top: 16px; color: var(--text-secondary); font-size: 12px;">
-                    ÔÜá´©Å CONFIDENCIAL - Distribuci├│n restringida al personal autorizado
+                    ⚠️ CONFIDENCIAL - Distribución restringida al personal autorizado
                 </p>
             </div>
         </main>
@@ -1896,7 +1900,7 @@ $htmlReport += @"
                 });
             });
 
-            // Resaltar secci├│n activa
+            // Resaltar sección activa
             const observerOptions = {
                 root: null,
                 rootMargin: '-20% 0px -70% 0px',
@@ -1930,64 +1934,62 @@ $htmlReport += @"
 # Guardar HTML
 $htmlPath = Join-Path $OutputPath "$ReportName.html"
 $htmlReport | Out-File -FilePath $htmlPath -Encoding UTF8
-Write-Host "Ô£ô Reporte HTML guardado en: $htmlPath" -ForegroundColor Green
+Write-Host "✓ Reporte HTML guardado en: $htmlPath" -ForegroundColor Green
 
 # Copiar a backup
 try {
     $htmlBackupPath = Join-Path $BackupPath "$ReportName.html"
     Copy-Item -Path $htmlPath -Destination $htmlBackupPath -Force
-    Write-Host "Ô£ô Copia de seguridad guardada en: $htmlBackupPath" -ForegroundColor Green
+    Write-Host "✓ Copia de seguridad guardada en: $htmlBackupPath" -ForegroundColor Green
 } catch {
-    Write-Host "ÔÜá No se pudo guardar copia en: $BackupPath" -ForegroundColor Yellow
+    Write-Host "⚠ No se pudo guardar copia en: $BackupPath" -ForegroundColor Yellow
 }
 
-# ==================== ENV├ìO AL CRM (LOCAL) ====================
+# ==================== ENVÍO AL CRM (LOCAL) ====================
 
 Write-Host "`nEnviando datos al CRM local..." -ForegroundColor Cyan
 
-$reportData | Add-Member -MemberType NoteProperty -Name "Updates" -Value (Get-UpdateStatus)
-
 try {
     $payload = @{
-        service = "AD-DC01"
+        service = "AD"
         data = $reportData
         html = $htmlReport
     }
     
     $jsonPayload = $payload | ConvertTo-Json -Depth 10
-    Write-Host "   - Tama├▒o del reporte: $([Math]::Round($jsonPayload.Length / 1KB, 2)) KB" -ForegroundColor Gray
+    Write-Host "   - Tamaño del reporte: $([Math]::Round($jsonPayload.Length / 1KB, 2)) KB" -ForegroundColor Gray
     
     $response = Invoke-RestMethod -Method Post -Uri $BackendUrl -Body $jsonPayload -ContentType "application/json" -TimeoutSec 60
-    Write-Host "Ô£ô Datos enviados exitosamente al CRM: $($response.message)" -ForegroundColor Green
+    Write-Host "✓ Datos enviados exitosamente al CRM: $($response.message)" -ForegroundColor Green
 } catch {
-    Write-Host "ÔÜá No se pudo conectar con el CRM ($BackendUrl)." -ForegroundColor Yellow
+    Write-Host "⚠ No se pudo conectar con el CRM ($BackendUrl)." -ForegroundColor Yellow
     Write-Host "   - Status Code: $($_.Exception.Response.StatusCode.Value__)" -ForegroundColor Gray
     Write-Host "   - Detalle: $($_.Exception.Message)" -ForegroundColor Gray
 }
 
 # ==================== RESUMEN FINAL ====================
 
-Write-Host "`nÔòöÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòù" -ForegroundColor Green
-Write-Host "Ôòæ          GENERACI├ôN DE REPORTES COMPLETADA           Ôòæ" -ForegroundColor Green
-Write-Host "ÔòÜÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòØ`n" -ForegroundColor Green
+Write-Host "`n╔═══════════════════════════════════════════════════════╗" -ForegroundColor Green
+Write-Host "║          GENERACIÓN DE REPORTES COMPLETADA           ║" -ForegroundColor Green
+Write-Host "╚═══════════════════════════════════════════════════════╝`n" -ForegroundColor Green
 
-Write-Host "­ƒôü Archivos generados:" -ForegroundColor Cyan
-Write-Host "   Ô£ô $ReportName.html" -ForegroundColor Green
-Write-Host "`n­ƒôè Resumen Ejecutivo:`n" -ForegroundColor Cyan
+Write-Host "📁 Archivos generados:" -ForegroundColor Cyan
+Write-Host "   ✓ $ReportName.html" -ForegroundColor Green
+Write-Host "`n📊 Resumen Ejecutivo:`n" -ForegroundColor Cyan
 
 # Mostrar resumen
-Write-Host "­ƒûÑ´©Å  Controladores: $($reportData.DCs.OverallStatus)" -ForegroundColor $(if($reportData.DCs.OverallStatus -eq "OK"){"Green"}else{"Red"})
-Write-Host "­ƒæÑ Usuarios:" -ForegroundColor White
-Write-Host "   - Inactivos 90+ d├¡as: $($reportData.Users.Inactive90)" -ForegroundColor Yellow
+Write-Host "🖥️  Controladores: $($reportData.DCs.OverallStatus)" -ForegroundColor $(if($reportData.DCs.OverallStatus -eq "OK"){"Green"}else{"Red"})
+Write-Host "👥 Usuarios:" -ForegroundColor White
+Write-Host "   - Inactivos 90+ días: $($reportData.Users.Inactive90)" -ForegroundColor Yellow
 Write-Host "   - Deshabilitados: $($reportData.Users.Disabled)" -ForegroundColor Gray
 Write-Host "   - Bloqueados: $($reportData.Users.Locked)" -ForegroundColor $(if($reportData.Users.Locked -gt 0){"Red"}else{"Green"})
-Write-Host "­ƒôï GPOs: $($reportData.GPOs.Total) total, $($reportData.GPOs.Empty) vac├¡as" -ForegroundColor White
-Write-Host "­ƒöÉ Pol├¡tica Contrase├▒a: $(if($reportData.PasswordPolicy.DomainPolicy.MinPasswordLength -ge 12){"Ô£ô Conforme"}else{"ÔÜá Revisar"})" -ForegroundColor $(if($reportData.PasswordPolicy.DomainPolicy.MinPasswordLength -ge 12){"Green"}else{"Yellow"})
-Write-Host "­ƒöÆ Eventos Seguridad: $($reportData.Security.FailedLogins) intentos fallidos" -ForegroundColor $(if($reportData.Security.FailedLogins -gt 100){"Red"}else{"Green"})
+Write-Host "📋 GPOs: $($reportData.GPOs.Total) total, $($reportData.GPOs.Empty) vacías" -ForegroundColor White
+Write-Host "🔐 Política Contraseña: $(if($reportData.PasswordPolicy.DomainPolicy.MinPasswordLength -ge 12){"✓ Conforme"}else{"⚠ Revisar"})" -ForegroundColor $(if($reportData.PasswordPolicy.DomainPolicy.MinPasswordLength -ge 12){"Green"}else{"Yellow"})
+Write-Host "🔒 Eventos Seguridad: $($reportData.Security.FailedLogins) intentos fallidos" -ForegroundColor $(if($reportData.Security.FailedLogins -gt 100){"Red"}else{"Green"})
 
-Write-Host "`nÔ£ô Presiona Enter para abrir el reporte..." -ForegroundColor Cyan
+Write-Host "`n✓ Presiona Enter para abrir el reporte..." -ForegroundColor Cyan
 Read-Host
 
 Start-Process $htmlPath
 
-Write-Host "`nÔ£ô Script completado exitosamente" -ForegroundColor Green
+Write-Host "`n✓ Script completado exitosamente" -ForegroundColor Green
