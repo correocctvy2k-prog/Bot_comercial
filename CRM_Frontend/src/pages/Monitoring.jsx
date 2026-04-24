@@ -177,7 +177,7 @@ export default function Monitoring() {
         monitoringService.getLatestStatus('ANFI-SEG'),  // Host 2
         monitoringService.getLatestStatus('AD'),        // AD01
         monitoringService.getLatestStatus('AD-DC02'),   // AD02
-        monitoringService.getLatestStatus('SERV-KSC')   // Kaspersky
+        monitoringService.getLatestStatus('KSC')        // Kaspersky
       ]);
       
       setNodes({ host1, host2, dc01, dc02, ksc });
@@ -428,11 +428,23 @@ export default function Monitoring() {
                 </div>
                 <div className="flex-1 flex flex-col items-center justify-center py-2 gap-1">
                   {nodes.ksc ? (
-                    <>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">EJECUTANDO</span>
-                      <p className="text-[10px] text-muted-foreground text-center mt-1">Uptime: {nodes.ksc.Uptime || 'N/A'}</p>
-                      <p className="text-[10px] text-muted-foreground text-center font-mono">RAM Libre: {nodes.ksc.RAM?.FreeGB}GB</p>
-                    </>
+                    <div className="w-full space-y-2">
+                      <div className="flex justify-between items-center bg-emerald-500/5 border border-emerald-500/20 px-2.5 py-1 rounded-md">
+                        <span className="text-[9px] text-emerald-400 font-bold uppercase">Estado</span>
+                        <span className="text-[10px] text-emerald-400 font-bold">ONLINE</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-background/40 border border-border/50 rounded-lg p-2">
+                           <p className="text-[8px] text-muted-foreground uppercase">Endpoints</p>
+                           <p className="text-xs font-bold text-foreground">{nodes.ksc.Endpoints?.Active ?? 0} / {nodes.ksc.Endpoints?.Total ?? 0}</p>
+                        </div>
+                        <div className="bg-background/40 border border-border/50 rounded-lg p-2">
+                           <p className="text-[8px] text-muted-foreground uppercase">RAM</p>
+                           <p className="text-xs font-bold text-foreground">{nodes.ksc.RAM?.FreeGB ?? 'N/A'} GB</p>
+                        </div>
+                      </div>
+                      <p className="text-[9px] text-muted-foreground text-center italic">Uptime: {nodes.ksc.Uptime || 'N/A'}</p>
+                    </div>
                   ) : (
                     <>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/10 text-slate-400 border border-slate-500/20">
@@ -600,10 +612,10 @@ export default function Monitoring() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Kaspersky Card */}
-        <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6 flex flex-col opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-300">
+        <div className={`bg-card/40 backdrop-blur-sm border rounded-xl p-6 flex flex-col transition-all duration-300 ${nodes.ksc ? 'border-emerald-500/30' : 'opacity-60 grayscale hover:grayscale-0 hover:opacity-100 border-border'}`}>
            <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+              <div className={`p-2.5 rounded-lg ${nodes.ksc ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-400'}`}>
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
@@ -611,12 +623,31 @@ export default function Monitoring() {
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Security Center</span>
               </div>
             </div>
-            <StatusBadge status="gray" label="Desconectado" />
+            <StatusBadge status={nodes.ksc ? "success" : "gray"} label={nodes.ksc ? "Activo" : "Desconectado"} />
           </div>
-          <div className="flex-1 flex flex-col items-center justify-center py-10">
-            <p className="text-sm font-medium">Módulo en Desarrollo</p>
-            <p className="text-xs mt-1 text-center">Próximamente: Monitoreo de Endpoints y Licencias</p>
-          </div>
+          
+          {nodes.ksc ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <MetricSmall label="Endpoints Protegidos" value={nodes.ksc.Endpoints?.Active ?? 0} icon={<ShieldCheck className="w-3 h-3" />} color="text-emerald-400" />
+                <MetricSmall label="Licencias Usadas" value={`${nodes.ksc.Licenses?.Used ?? 0} / ${nodes.ksc.Licenses?.Total ?? 0}`} icon={<Users className="w-3 h-3" />} />
+              </div>
+              <div className="bg-background/40 border border-border/50 rounded-lg p-3">
+                <div className="flex justify-between items-center text-xs mb-2">
+                  <span className="text-muted-foreground">Vencimiento Licencia</span>
+                  <span className="font-bold">{nodes.ksc.Licenses?.Expiry ?? 'N/A'}</span>
+                </div>
+                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-500 w-[75%]"></div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center py-10 text-center">
+              <p className="text-sm font-medium">Módulo en Desarrollo</p>
+              <p className="text-xs mt-1 text-muted-foreground">Próximamente: Inventario detallado de endpoints y alertas de virus</p>
+            </div>
+          )}
         </div>
 
         {/* ZKBioSecurity Card */}

@@ -111,15 +111,33 @@ function generateHtmlReport(service, data) {
 }
 
 /**
+ * Normaliza el nombre del servicio para coincidir con las carpetas
+ */
+function normalizeServiceId(service) {
+    if (!service) return '';
+    const s = service.toLowerCase();
+    if (s.includes('ksc')) return 'ksc';
+    if (s.includes('zk')) return 'zk';
+    if (s.includes('ad01') || s === 'ad') return 'ad';
+    if (s.includes('ad02') || s === 'ad-dc02') return 'ad-dc02';
+    if (s.includes('ad03') || s === 'ad-dc03') return 'ad-dc03';
+    if (s.includes('host1') || s.includes('anfigane')) return 'ad-host';
+    if (s.includes('host2') || s.includes('anfi-seg')) return 'anfi-seg';
+    return s;
+}
+
+/**
  * Obtiene el último estado de un servicio
  */
 exports.getLatestStatus = (req, res) => {
     try {
-        const service = req.params.service.toLowerCase();
+        const rawService = req.params.service;
+        const service = normalizeServiceId(rawService);
         const latestFile = path.join(__dirname, '../../data/monitoring', service, 'latest.json');
 
         if (!fs.existsSync(latestFile)) {
             // Devolver 200 con null en lugar de 404 para evitar errores en consola del frontend
+            console.log(`[MONITORING] Sin datos para ${rawService} (mapped: ${service})`);
             return res.status(200).json(null);
         }
 
@@ -136,11 +154,12 @@ exports.getLatestStatus = (req, res) => {
  */
 exports.getHistory = (req, res) => {
     try {
-        const { service } = req.params;
-        const baseDir = path.join(__dirname, '../../data/monitoring', service.toLowerCase());
+        const service = normalizeServiceId(req.params.service);
+        const baseDir = path.join(__dirname, '../../data/monitoring', service);
 
         if (!fs.existsSync(baseDir)) {
-            return res.status(404).json({ error: 'No hay historial para este servicio' });
+            // Devolver lista vacía en lugar de 404
+            return res.status(200).json({ files: [] });
         }
 
         const files = fs.readdirSync(baseDir)
