@@ -2,9 +2,11 @@ const ping = require('ping');
 const { getIO } = require('./socket.service');
 
 const nodesToMonitor = [
-    { id: 'AD-HOST', ip: '192.168.8.43', name: 'Host Físico' },
-    { id: 'AD-DC01', ip: '192.168.8.44', name: 'AD01 Master' },
-    { id: 'AD-DC02', ip: '192.168.8.45', name: 'AD02 Secundario' }
+    { id: 'AD-HOST',  ip: '192.168.8.43', name: 'ANFIGANE (Host 1)' },
+    { id: 'AD-DC01',  ip: '192.168.8.44', name: 'AD01 Master' },
+    { id: 'AD-DC02',  ip: '192.168.8.45', name: 'AD02 Secundario' },
+    { id: 'ANFI-SEG', ip: '192.168.8.41', name: 'ANFI-SEG13798 (Host 2)' },
+    { id: 'SERV-KSC', ip: '192.168.8.42', name: 'Kaspersky Security Center' }
 ];
 
 let pingInterval = null;

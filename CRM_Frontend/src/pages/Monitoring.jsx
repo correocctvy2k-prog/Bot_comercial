@@ -371,21 +371,32 @@ export default function Monitoring() {
               </div>
 
               {/* SERV-KSC — Kaspersky Security Center */}
-              <div className="bg-background/30 border border-dashed border-emerald-500/20 rounded-xl p-4 flex flex-col gap-3">
+              <div className={`bg-background/30 border border-dashed rounded-xl p-4 flex flex-col gap-3 ${pingData['SERV-KSC']?.status === 'DOWN' ? 'border-rose-500/30' : 'border-emerald-500/20'}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-400">
+                    <div className={`p-1.5 rounded-lg ${pingData['SERV-KSC']?.status === 'DOWN' ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
                       <ShieldCheck className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold">SERV-KSC</p>
-                      <p className="text-[9px] text-muted-foreground uppercase tracking-wider">KASPERSKY SECURITY CENTER</p>
+                      <p className="text-sm font-bold flex items-center gap-1.5">
+                        SERV-KSC
+                        {pingData['SERV-KSC']?.status === 'UP' && <span className="text-[9px] text-emerald-400 font-normal">{Math.round(pingData['SERV-KSC'].time)}ms</span>}
+                        {pingData['SERV-KSC']?.status === 'DOWN' && <span className="px-1 py-0.5 rounded text-[8px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
+                      </p>
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wider">KASPERSKY SECURITY CENTER • 192.168.8.42</p>
                     </div>
                   </div>
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></div>
+                  <div className={`w-2 h-2 rounded-full ${
+                    !pingData['SERV-KSC'] ? 'bg-slate-500' :
+                    pingData['SERV-KSC'].status === 'UP' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]' :
+                    'bg-rose-500 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.8)]'
+                  }`}></div>
                 </div>
-                <div className="flex-1 flex flex-col items-center justify-center py-4 gap-1">
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">EJECUTANDO</span>
+                <div className="flex-1 flex flex-col items-center justify-center py-3 gap-1">
+                  {pingData['SERV-KSC']?.status === 'UP'
+                    ? <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">EJECUTANDO</span>
+                    : <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/10 text-slate-400 border border-slate-500/20">SIN DATOS AÚN</span>
+                  }
                   <p className="text-[10px] text-muted-foreground text-center mt-1">Monitoreo de endpoints próximamente disponible</p>
                 </div>
               </div>
