@@ -150,26 +150,34 @@ export default function Monitoring() {
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [nodes, setNodes] = useState({
-    host: null,
+    host1: null,
+    host2: null,
     dc01: null,
-    dc02: null
+    dc02: null,
+    dc03: null,
+    ksc: null
   });
   const [pingData, setPingData] = useState({});
   const [isADModalOpen, setIsADModalOpen] = useState(false);
 
   const fetchData = async () => {
-    setLoading(true);
+    // No ponemos loading=true aquí para evitar parpadeos en el autorefresh
     try {
-      const [host, dc01, dc02] = await Promise.all([
-        monitoringService.getLatestStatus('AD-HOST'),
-        monitoringService.getLatestStatus('AD'), // Payload monolítico que contiene todo el AD01
-        monitoringService.getLatestStatus('AD-DC02')
+      const [host1, host2, dc01, dc02, ksc] = await Promise.all([
+        monitoringService.getLatestStatus('AD-HOST'),   // ANFIGANE
+        monitoringService.getLatestStatus('ANFI-SEG'),  // Host 2
+        monitoringService.getLatestStatus('AD'),        // AD01
+        monitoringService.getLatestStatus('AD-DC02'),   // AD02
+        monitoringService.getLatestStatus('SERV-KSC')   // Kaspersky
       ]);
       
-      const hist = await monitoringService.getHistory("AD-DC01");
-      setNodes({ host, dc01, dc02 });
+      setNodes({ host1, host2, dc01, dc02, ksc });
       setAdData(dc01);
+      
+      // Historial opcional para el modal
+      const hist = await monitoringService.getHistory("AD-DC01");
       setHistory(hist.files || []);
+      
       setLastUpdate(new Date());
     } catch (error) {
       console.error("Error fetching monitoring data", error);
@@ -213,48 +221,44 @@ export default function Monitoring() {
       </div>
 
 
-      {/* Arquitectura Física: 2 Servidores Anfitriones */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
 
-        {/* ═══ HOST 1: ANFIGANE ═══ */}
         <div className={`bg-card/40 backdrop-blur-sm border rounded-xl p-5 ${pingData['AD-HOST']?.status === 'DOWN' ? 'border-rose-500/40' : 'border-border'}`}>
-          {/* Header Host ANFIGANE */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
-              <div className={`p-2.5 rounded-xl ${pingData['AD-HOST']?.status === 'DOWN' ? 'bg-rose-500/20 text-rose-400' : 'bg-sky-500/20 text-sky-400'}`}>
-                <Server className="w-5 h-5" />
+              <div className={`p-3 rounded-xl ${pingData['AD-HOST']?.status === 'DOWN' ? 'bg-rose-500/20 text-rose-400' : 'bg-sky-500/20 text-sky-400'}`}>
+                <Server className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-base font-bold flex items-center gap-2">
+                <h2 className="text-lg font-bold flex items-center gap-2">
                   ANFIGANE
-                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                  <div className={`w-2.5 h-2.5 rounded-full ${
                     !pingData['AD-HOST'] ? 'bg-slate-400' :
-                    pingData['AD-HOST'].status === 'UP' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.9)]' :
-                    'bg-rose-500 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.9)]'
+                    pingData['AD-HOST'].status === 'UP' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]' :
+                    'bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.8)]'
                   }`}></div>
-                  {pingData['AD-HOST']?.status === 'DOWN' && <span className="px-1.5 py-0.5 rounded text-[9px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
-                  {pingData['AD-HOST']?.status === 'UP' && <span className="text-[10px] text-emerald-400 font-normal">{Math.round(pingData['AD-HOST'].time)}ms</span>}
+                  {pingData['AD-HOST']?.status === 'DOWN' && <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
+                  {pingData['AD-HOST']?.status === 'UP' && <span className="text-xs text-emerald-400 font-normal">{Math.round(pingData['AD-HOST'].time)}ms</span>}
                 </h2>
                 <p className="text-[10px] text-muted-foreground">ProLiant / Hyper-V • 192.168.8.43</p>
               </div>
             </div>
-            {nodes.host && (
+            {nodes.host1 && (
               <div className="flex flex-wrap items-center gap-2 text-[10px]">
                 <div className="flex items-center gap-1 px-2 py-1 bg-background rounded-md border border-border">
                   <Cpu className="w-3 h-3 text-primary" />
                   <span className="text-muted-foreground">RAM:</span>
-                  <span className="font-mono">{nodes.host.RAM?.FreeGB}GB / {nodes.host.RAM?.TotalGB}GB</span>
+                  <span className="font-mono">{nodes.host1.RAM?.FreeGB}GB / {nodes.host1.RAM?.TotalGB}GB</span>
                 </div>
                 <div className="flex items-center gap-1 px-2 py-1 bg-background rounded-md border border-border">
                   <Activity className="w-3 h-3 text-emerald-400" />
-                  <span className="font-bold text-emerald-400">{nodes.host.VMs?.filter(v => v.State === 2 || v.State === 'Running').length}/{nodes.host.VMs?.length} VMs</span>
+                  <span className="font-bold text-emerald-400">{nodes.host1.VMs?.filter(v => v.State === 2 || v.State === 'Running').length}/{nodes.host1.VMs?.length} VMs</span>
                 </div>
-                <UpdateBadge updates={nodes.host.Updates} />
+                <UpdateBadge updates={nodes.host1.Updates} />
               </div>
             )}
           </div>
 
-          {/* VMs de ANFIGANE: AD01 y AD02 */}
           <div className="border-t border-border/30 pt-4">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <Database className="w-3 h-3" /> Máquinas Virtuales
@@ -314,39 +318,17 @@ export default function Monitoring() {
           </div>
         </div>
 
-        {/* ═══ HOST 2: ANFI-SEG13798 ═══ */}
         <div className={`bg-card/40 backdrop-blur-sm border rounded-xl p-5 ${pingData['ANFI-SEG']?.status === 'DOWN' ? 'border-rose-500/40' : 'border-border'}`}>
-          {/* Header Host ANFI-SEG13798 */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
-              <div className={`p-2.5 rounded-xl ${pingData['ANFI-SEG']?.status === 'DOWN' ? 'bg-rose-500/20 text-rose-400' : 'bg-violet-500/20 text-violet-400'}`}>
-                <Server className="w-5 h-5" />
+              <div className={`p-3 rounded-xl ${pingData['ANFI-SEG']?.status === 'DOWN' ? 'bg-rose-500/20 text-rose-400' : 'bg-purple-500/20 text-purple-400'}`}>
+                <Server className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-base font-bold flex items-center gap-2">
+                <h2 className="text-lg font-bold flex items-center gap-2">
                   ANFI-SEG13798
-                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                  <div className={`w-2.5 h-2.5 rounded-full ${
                     !pingData['ANFI-SEG'] ? 'bg-slate-400' :
-                    pingData['ANFI-SEG'].status === 'UP' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.9)]' :
-                    'bg-rose-500 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.9)]'
-                  }`}></div>
-                  {pingData['ANFI-SEG']?.status === 'DOWN' && <span className="px-1.5 py-0.5 rounded text-[9px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
-                  {pingData['ANFI-SEG']?.status === 'UP' && <span className="text-[10px] text-emerald-400 font-normal">{Math.round(pingData['ANFI-SEG'].time)}ms</span>}
-                </h2>
-                <p className="text-[10px] text-muted-foreground">HP ProLiant DL160 Gen9 / Hyper-V • 64GB RAM</p>
-              </div>
-            </div>
-            {/* Stats fijas del host por ahora */}
-            <div className="flex items-center gap-2 text-[10px]">
-              <div className="flex items-center gap-1 px-2 py-1 bg-background rounded-md border border-border">
-                <Activity className="w-3 h-3 text-violet-400" />
-                <span className="font-bold text-violet-400">1/2 VMs</span>
-              </div>
-            </div>
-          </div>
-
-          {/* VMs de ANFI-SEG13798: AD03 + SERV-KSC */}
-          <div className="border-t border-border/30 pt-4">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <Database className="w-3 h-3" /> Máquinas Virtuales
             </p>
@@ -393,11 +375,20 @@ export default function Monitoring() {
                   }`}></div>
                 </div>
                 <div className="flex-1 flex flex-col items-center justify-center py-3 gap-1">
-                  {pingData['SERV-KSC']?.status === 'UP'
-                    ? <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">EJECUTANDO</span>
-                    : <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/10 text-slate-400 border border-slate-500/20">SIN DATOS AÚN</span>
-                  }
-                  <p className="text-[10px] text-muted-foreground text-center mt-1">Monitoreo de endpoints próximamente disponible</p>
+                  {nodes.ksc ? (
+                    <>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">EJECUTANDO</span>
+                      <p className="text-[10px] text-muted-foreground text-center mt-1">Uptime: {nodes.ksc.Uptime || 'N/A'}</p>
+                      <p className="text-[10px] text-muted-foreground text-center">RAM: {nodes.ksc.RAM?.FreeGB}GB Libres</p>
+                    </>
+                  ) : (
+                    <>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/10 text-slate-400 border border-slate-500/20">
+                        {pingData['SERV-KSC']?.status === 'UP' ? 'ESPERANDO AGENTE' : 'SIN DATOS'}
+                      </span>
+                      <p className="text-[10px] text-muted-foreground text-center mt-1">Monitoreo de endpoints próximamente</p>
+                    </>
+                  )}
                 </div>
               </div>
 
