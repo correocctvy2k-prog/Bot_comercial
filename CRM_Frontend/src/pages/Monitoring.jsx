@@ -65,9 +65,9 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
   // Si no hay ping, pero isHealthy es true (datos recientes), lo damos por válido.
   const displayHealthy = isOffline ? false : (isHealthy || (pingStatus && pingStatus.status === 'UP'));
   
-  const ledColor = isOffline ? 'bg-rose-500 animate-pulse shadow-[0_0:10px_rgba(244,63,94,0.8)]' :
-                   (pingStatus && pingStatus.status === 'UP') ? 'bg-emerald-500 shadow-[0_0:10px_rgba(16,185,129,0.8)]' :
-                   isHealthy ? 'bg-emerald-500/80 shadow-[0_0:5px_rgba(16,185,129,0.5)]' : // Datos frescos pero sin ping
+  const ledColor = isOffline ? 'bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.8)]' :
+                   (pingStatus && pingStatus.status === 'UP') ? 'bg-emerald-500 animate-pulse-subtle shadow-[0_0_15px_rgba(16,185,129,0.7)]' :
+                   isHealthy ? 'bg-emerald-500/80 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : // Datos frescos pero sin ping
                    'bg-slate-500'; // Realmente sin datos ni ping
 
   return (
@@ -85,7 +85,7 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
               {title}
               {isOffline && <span className="px-1.5 py-0.5 rounded text-[9px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
               {!isOffline && latency && <span className="text-[10px] text-emerald-400 font-normal">{latency}</span>}
-              {!pingStatus && <span className="text-[10px] text-muted-foreground animate-pulse">Iniciando...</span>}
+              {!pingStatus && !isHealthy && <span className="text-[10px] text-muted-foreground animate-pulse">Iniciando...</span>}
             </h3>
             <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">{role}</span>
           </div>
@@ -243,7 +243,7 @@ export default function Monitoring() {
                   ANFIGANE
                   <div className={`w-2.5 h-2.5 rounded-full ${
                     !pingData['AD-HOST'] ? 'bg-slate-400' :
-                    pingData['AD-HOST'].status === 'UP' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]' :
+                    pingData['AD-HOST'].status === 'UP' ? 'bg-emerald-500 animate-pulse-subtle shadow-[0_0_15px_rgba(16,185,129,0.7)]' :
                     'bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.8)]'
                   }`}></div>
                   {pingData['AD-HOST']?.status === 'DOWN' && <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
@@ -323,7 +323,12 @@ export default function Monitoring() {
                     nodes.dc02.Disk?.Disks?.find(d => d.Drive?.includes('C')) ??
                     nodes.dc02.LocalHealth?.Disk?.[0]
                   }
-                  lastBackup={nodes.dc01?.Backups?.Status?.AD02 ?? 'Desconocido'}
+                  lastBackup={
+                    nodes.dc01.Backups?.Status?.AD02 ?? 
+                    nodes.dc02.LocalHealth?.Backup ?? 
+                    nodes.dc01.BackupStatus?.AD02 ?? 
+                    'Desconocido'
+                  }
                   replication={nodes.dc01?.Replication?.Status}
                   updates={nodes.dc02.LocalHealth?.Updates}
                   isHealthy={true}
@@ -348,7 +353,7 @@ export default function Monitoring() {
                   ANFI-SEG13798
                   <div className={`w-2.5 h-2.5 rounded-full ${
                     !pingData['ANFI-SEG'] ? 'bg-slate-400' :
-                    pingData['ANFI-SEG'].status === 'UP' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]' :
+                    pingData['ANFI-SEG'].status === 'UP' ? 'bg-emerald-500 animate-pulse-subtle shadow-[0_0_15px_rgba(16,185,129,0.7)]' :
                     'bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.8)]'
                   }`}></div>
                   {pingData['ANFI-SEG']?.status === 'DOWN' && <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
