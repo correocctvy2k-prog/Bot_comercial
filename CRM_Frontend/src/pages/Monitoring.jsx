@@ -42,49 +42,69 @@ const UpdateBadge = ({ updates }) => {
   );
 };
 
-const DCCard = ({ title, data, icon, isPrimary, onClick }) => {
-  if (!data) return (
-    <div className="bg-background/40 border border-border/50 rounded-lg p-4 animate-pulse h-[140px]"></div>
-  );
+const WindowsADIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0 3.449L9.75 2.1v9.645H0V3.45zM10.749 1.95L24 0v11.745H10.75V1.95zM0 12.63h9.75v9.27L0 20.551V12.63zM10.749 12.63H24V24l-13.251-1.95V12.63z"/>
+  </svg>
+);
 
-  const isHealthy = data.LocalHealth?.Services?.every(s => s.Status === 'Running' || s.Status === 4) && data.LocalHealth?.Replication === "OK";
+const AzureADIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 1L1 12l11 11 11-11L12 1zm0 3.5a2.5 2.5 0 110 5 2.5 2.5 0 010-5zm-6 10.5a2.5 2.5 0 110 5 2.5 2.5 0 010-5zm12 0a2.5 2.5 0 110 5 2.5 2.5 0 010-5zm-5-3.3v-2.4a3.5 3.5 0 00-2 0v2.4a3.5 3.5 0 002 0zm-3.5 1.5l-2.1 1.2a3.5 3.5 0 001 1.7l2.1-1.2a3.5 3.5 0 00-1-1.7zm8 0a3.5 3.5 0 00-1 1.7l2.1 1.2a3.5 3.5 0 001-1.7l-2.1-1.2z" />
+  </svg>
+);
 
+const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, lastBackup, updates, icon, isPrimary, isHealthy, onClick }) => {
   return (
     <div 
       onClick={onClick}
-      className={`bg-background/60 border ${isHealthy ? 'border-border' : 'border-rose-500/40'} rounded-lg p-4 transition-all hover:bg-background/80 ${onClick ? 'cursor-pointer hover:border-primary/50' : ''}`}
+      className={`bg-background/60 border ${isHealthy ? 'border-border' : 'border-rose-500/40'} rounded-xl p-5 transition-all hover:bg-background/80 flex flex-col ${onClick ? 'cursor-pointer hover:border-primary/50' : ''}`}
     >
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-primary/10 rounded-lg text-primary">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-[#0078D4]/10 rounded-lg text-[#0078D4]">
             {icon}
           </div>
           <div>
-            <h3 className="text-sm font-semibold">{title}</h3>
-            <span className="text-[10px] text-muted-foreground uppercase">{data.Role || "Controlador de Dominio"}</span>
+            <h3 className="text-sm font-bold text-foreground">{title}</h3>
+            <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">{role}</span>
           </div>
         </div>
-        <div className={`w-2 h-2 rounded-full ${isHealthy ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-rose-500 animate-pulse'}`}></div>
+        <div className={`w-2.5 h-2.5 rounded-full ${isHealthy ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]' : 'bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.8)]'}`}></div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 text-[11px] mb-3">
-         <div className="flex flex-col">
-           <span className="text-muted-foreground">Uptime:</span>
-           <span>{data.Uptime || 'N/A'}</span>
+      <div className="grid grid-cols-2 gap-4 text-xs mb-4 flex-1">
+         <div className="flex flex-col gap-1">
+           <span className="text-muted-foreground flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Uptime</span>
+           <span className="font-medium pl-5">{uptime}</span>
          </div>
-         <div className="flex flex-col">
-           <span className="text-muted-foreground">Servicios:</span>
-           <span className={isHealthy ? 'text-emerald-400' : 'text-rose-400'}>
-             {data.LocalHealth?.Services?.filter(s => s.Status === 'Running' || s.Status === 4).length || 0} de 4 OK
+         <div className="flex flex-col gap-1">
+           <span className="text-muted-foreground flex items-center gap-1.5"><Activity className="w-3.5 h-3.5" /> Servicios</span>
+           <span className={`font-bold pl-5 ${isHealthy ? 'text-emerald-400' : 'text-rose-400'}`}>
+             {servicesOk} de {servicesTotal} OK
            </span>
          </div>
+         <div className="flex flex-col gap-1">
+           <span className="text-muted-foreground flex items-center gap-1.5"><HardDrive className="w-3.5 h-3.5" /> Almacenamiento</span>
+           <span className="font-medium pl-5">
+             {diskSpace ? (
+               <span className={diskSpace.PercentFree < 15 ? 'text-rose-400' : diskSpace.PercentFree < 25 ? 'text-amber-400' : 'text-emerald-400'}>
+                 {diskSpace.FreeGB}GB Libres ({diskSpace.PercentFree}%)
+               </span>
+             ) : 'N/A'}
+           </span>
+         </div>
+         <div className="flex flex-col gap-1">
+           <span className="text-muted-foreground flex items-center gap-1.5"><Database className="w-3.5 h-3.5" /> Último Backup</span>
+           <span className="font-medium pl-5">{lastBackup}</span>
+         </div>
       </div>
 
-      <div className="flex justify-between items-center border-t border-border/50 pt-2">
-        <UpdateBadge updates={data.LocalHealth?.Updates || data.Updates} />
+      <div className="flex justify-between items-center border-t border-border/50 pt-3 mt-auto">
+        <UpdateBadge updates={updates} />
         {isPrimary && (
-          <span className="text-[10px] text-primary flex items-center gap-1 hover:underline">
-            Ver AD Data <ExternalLink className="w-3 h-3" />
+          <span className="text-xs font-semibold text-primary flex items-center gap-1 hover:underline bg-primary/10 px-2 py-1 rounded">
+            Análisis Profundo <ExternalLink className="w-3.5 h-3.5" />
           </span>
         )}
       </div>
@@ -109,7 +129,7 @@ export default function Monitoring() {
     try {
       const [host, dc01, dc02] = await Promise.all([
         monitoringService.getLatestStatus('AD-HOST'),
-        monitoringService.getLatestStatus('AD-DC01'),
+        monitoringService.getLatestStatus('AD'), // Payload monolítico que contiene todo el AD01
         monitoringService.getLatestStatus('AD-DC02')
       ]);
       
@@ -188,18 +208,41 @@ export default function Monitoring() {
             <Database className="w-4 h-4" /> Máquinas Virtuales (Controladores de Dominio)
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <DCCard 
-              title="AD01 (Master)" 
-              data={nodes.dc01} 
-              icon={<ShieldCheck className="w-5 h-5" />} 
-              isPrimary={true}
-              onClick={() => setIsADModalOpen(true)}
-            />
-            <DCCard 
-              title="AD02 (Secundario)" 
-              data={nodes.dc02} 
-              icon={<ShieldAlert className="w-5 h-5" />} 
-            />
+            {nodes.dc01 ? (
+              <DCCard 
+                title="AD01 (Master)" 
+                role="CONTROLADOR DE DOMINIO"
+                uptime={nodes.dc01.DCs?.Status?.find(d => d.Name === 'AD01')?.Uptime || 'N/A'}
+                servicesOk={nodes.dc01.DCs?.Status?.find(d => d.Name === 'AD01')?.Services?.filter(s => s.includes('Running')).length || 0}
+                servicesTotal={6}
+                diskSpace={nodes.dc01.Disk?.Disks?.find(d => d.DC === 'AD01')}
+                lastBackup={nodes.dc01.Backups?.Status?.find(b => b.Ruta?.includes('AD01'))?.UltimoBackup || 'N/A'}
+                updates={nodes.dc01.Updates}
+                icon={<WindowsADIcon />} 
+                isHealthy={nodes.dc01.DCs?.Status?.find(d => d.Name === 'AD01')?.ServiceIssues?.length === 0}
+                isPrimary={true}
+                onClick={() => setIsADModalOpen(true)}
+              />
+            ) : (
+              <div className="bg-background/40 border border-border/50 rounded-lg p-4 animate-pulse h-[180px]"></div>
+            )}
+            
+            {nodes.dc02 ? (
+              <DCCard 
+                title="AD02 (Secundario)" 
+                role="BDC (BACKUP DOMAIN CONTROLLER)"
+                uptime={nodes.dc02.Uptime || 'N/A'}
+                servicesOk={nodes.dc02.LocalHealth?.Services?.filter(s => s.Status === 'Running' || s.Status === 4).length || 0}
+                servicesTotal={4}
+                diskSpace={nodes.dc02.LocalHealth?.Disk?.[0]}
+                lastBackup={nodes.dc01?.Backups?.Status?.find(b => b.Ruta?.includes('AD02'))?.UltimoBackup || 'N/A'}
+                updates={nodes.dc02.LocalHealth?.Updates}
+                icon={<AzureADIcon />} 
+                isHealthy={nodes.dc02.LocalHealth?.Services?.every(s => s.Status === 'Running' || s.Status === 4) && nodes.dc02.LocalHealth?.Replication === "OK"}
+              />
+            ) : (
+              <div className="bg-background/40 border border-border/50 rounded-lg p-4 animate-pulse h-[180px]"></div>
+            )}
           </div>
         </div>
       </div>
