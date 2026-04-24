@@ -278,7 +278,9 @@ export default function Monitoring() {
           </div>
         </div>
       )}
-
+      {/* Modulos Secundarios */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
         {/* Kaspersky Card */}
         <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6 flex flex-col opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-300">
            <div className="flex items-center justify-between mb-6">
