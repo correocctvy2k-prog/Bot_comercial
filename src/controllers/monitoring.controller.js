@@ -15,7 +15,6 @@ exports.uploadMonitoringData = async (req, res) => {
 
         const baseDir = path.join(__dirname, '../../data/monitoring', service.toLowerCase());
         
-        // Asegurar que el directorio existe
         if (!fs.existsSync(baseDir)) {
             fs.mkdirSync(baseDir, { recursive: true });
         }
@@ -24,30 +23,92 @@ exports.uploadMonitoringData = async (req, res) => {
         const historyFile = path.join(baseDir, `report_${timestamp}.json`);
         const latestFile = path.join(baseDir, 'latest.json');
 
-        // Guardar en historial
         fs.writeFileSync(historyFile, JSON.stringify(data, null, 2));
-        
-        // Actualizar último estado
         fs.writeFileSync(latestFile, JSON.stringify(data, null, 2));
 
-        // Guardar HTML si viene
-        if (html) {
-            fs.writeFileSync(path.join(baseDir, `report_${timestamp}.html`), html);
-            fs.writeFileSync(path.join(baseDir, 'latest.html'), html);
-        }
+        // Guardar HTML: si viene del script úsalo, si no, generarlo automáticamente del JSON
+        const htmlContent = html || generateHtmlReport(service, data);
+        fs.writeFileSync(path.join(baseDir, `report_${timestamp}.html`), htmlContent);
+        fs.writeFileSync(path.join(baseDir, 'latest.html'), htmlContent);
 
-        console.log(`[MONITORING] Recibido reporte de ${service} y guardado localmente.`);
+        console.log(`[MONITORING] Reporte de ${service} guardado. HTML: ${html ? 'enviado por script' : 'generado automáticamente'}`);
 
         res.status(201).json({ 
             message: 'Datos guardados correctamente',
             file: `report_${timestamp}.json`,
-            hasHtml: !!html
+            hasHtml: true
         });
     } catch (error) {
         console.error('[MONITORING ERROR]', error);
         res.status(500).json({ error: 'Error al procesar el monitoreo' });
     }
 };
+
+/**
+ * Genera un reporte HTML básico a partir del JSON de monitoreo
+ */
+function generateHtmlReport(service, data) {
+    const ts = new Date().toLocaleString('es-VE', { timeZone: 'America/Caracas' });
+    const json = JSON.stringify(data, null, 2);
+    const title = `Reporte de Monitoreo — ${service.toUpperCase()}`;
+    
+    // Secciones específicas para AD
+    let sections = '';
+    if (data.DCs?.Status) {
+        sections += `<h2>🖥️ Estado de Controladores de Dominio</h2><table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%"><tr style="background:#1e293b;color:#e2e8f0"><th>Nombre</th><th>Uptime</th><th>Ping</th><th>Sitio</th></tr>`;
+        data.DCs.Status.forEach(dc => {
+            const ok = dc.Ping === 'OK';
+            sections += `<tr><td><b>${dc.Name}</b></td><td>${dc.Uptime||'N/A'}</td><td style="color:${ok?'#10b981':'#f43f5e'};font-weight:bold">${dc.Ping||'N/A'}</td><td>${dc.Site||'N/A'}</td></tr>`;
+        });
+        sections += '</table>';
+    }
+    if (data.Replication) {
+        const ok = data.Replication.Status === 'OK';
+        sections += `<h2>🔄 Replicación AD</h2><p style="color:${ok?'#10b981':'#f43f5e'};font-size:1.4em;font-weight:bold">${data.Replication.Status}</p>`;
+    }
+    if (data.Security) {
+        sections += `<h2>🔒 Eventos de Seguridad (7 días)</h2><ul><li>Fallos de login (4625): <b style="color:#f43f5e">${data.Security.FailedLogins??0}</b></li><li>Bloqueos de cuenta: <b style="color:#f59e0b">${data.Security.AccountLockouts??0}</b></li><li>Cambios de política: <b>${data.Security.PolicyChanges??0}</b></li></ul>`;
+    }
+    if (data.Disk?.Disks) {
+        sections += `<h2>💾 Almacenamiento</h2><table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse"><tr style="background:#1e293b;color:#e2e8f0"><th>DC</th><th>Unidad</th><th>Libre</th><th>%</th></tr>`;
+        data.Disk.Disks.forEach(d => {
+            const color = d.PercentFree < 15 ? '#f43f5e' : d.PercentFree < 25 ? '#f59e0b' : '#10b981';
+            sections += `<tr><td>${d.DC}</td><td>${d.Drive||'C:'}</td><td>${d.FreeGB}GB</td><td style="color:${color};font-weight:bold">${d.PercentFree}%</td></tr>`;
+        });
+        sections += '</table>';
+    }
+    if (data.Backups?.Status) {
+        sections += `<h2>📦 Backups</h2><table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse"><tr style="background:#1e293b;color:#e2e8f0"><th>DC</th><th>Último Backup</th></tr>`;
+        Object.entries(data.Backups.Status).forEach(([dc, date]) => {
+            sections += `<tr><td>${dc}</td><td>${date}</td></tr>`;
+        });
+        sections += '</table>';
+    }
+
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>${title}</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background:#0f172a; color:#e2e8f0; padding:2rem; }
+    h1 { color:#38bdf8; border-bottom:2px solid #1e3a5f; padding-bottom:.5rem; }
+    h2 { color:#94a3b8; margin-top:2rem; font-size:1rem; text-transform:uppercase; letter-spacing:.05em; }
+    table { margin-top:.5rem; margin-bottom:1rem; }
+    td, th { padding:6px 12px; border:1px solid #1e3a5f; }
+    pre { background:#1e293b; padding:1rem; border-radius:8px; overflow:auto; font-size:.8rem; color:#94a3b8; }
+    .meta { color:#64748b; font-size:.85rem; margin-bottom:1.5rem; }
+  </style>
+</head>
+<body>
+  <h1>${title}</h1>
+  <p class="meta">Generado: ${ts} | Equipo: ${data.Hostname || service}</p>
+  ${sections}
+  <h2>📋 Datos Raw (JSON)</h2>
+  <pre>${json}</pre>
+</body>
+</html>`;
+}
 
 /**
  * Obtiene el último estado de un servicio

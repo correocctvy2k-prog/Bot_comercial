@@ -432,52 +432,121 @@ export default function Monitoring() {
             <div className="p-6 overflow-y-auto custom-scrollbar">
               {adData ? (
                 <div className="space-y-6">
-                  {/* General Stats */}
+                  {/* KPIs principales */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <MetricSmall label="Total Usuarios" value={adData.Users?.Total || 0} icon={<Users className="w-4 h-4" />} />
-                    <MetricSmall label="Bloqueados" value={adData.Users?.Locked || 0} color={adData.Users?.Locked > 0 ? 'text-rose-400' : 'text-emerald-400'} icon={<Lock className="w-4 h-4" />} />
-                    <MetricSmall label="Replicación" value={adData.Replication?.Status || 'N/A'} color={adData.Replication?.Status === 'OK' ? 'text-emerald-400' : 'text-rose-400'} icon={<RefreshCw className="w-4 h-4" />} />
-                    <MetricSmall label="Estado Backups" value={adData.Backups?.Status || 'N/A'} color={adData.Backups?.Status === 'OK' ? 'text-emerald-400' : 'text-rose-400'} icon={<Database className="w-4 h-4" />} />
-                  </div>
-
-                  {/* AD Details */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-background border border-border rounded-lg p-4">
-                      <h4 className="text-sm font-semibold mb-3 border-b border-border/50 pb-2">Salud de Objetos</h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between"><span className="text-muted-foreground">Cuentas Inactivas (>90 días):</span><span className="font-medium text-amber-400">{adData.Users?.Inactive90 || 0}</span></div>
-                        <div className="flex justify-between"><span className="text-muted-foreground">Contraseñas No Expiran:</span><span className="font-medium text-amber-400">{adData.Users?.NonExpiringPwd || 0}</span></div>
-                        <div className="flex justify-between"><span className="text-muted-foreground">Total GPOs:</span><span className="font-medium">{adData.GPOs?.Total || 0}</span></div>
-                        <div className="flex justify-between"><span className="text-muted-foreground">GPOs Vacías/Sin enlazar:</span><span className="font-medium">{adData.GPOs?.Empty || 0}</span></div>
-                      </div>
+                    <div className="bg-background border border-border rounded-lg p-4 text-center">
+                      <p className={`text-2xl font-bold ${adData.Replication?.Status === 'OK' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {adData.Replication?.Status || 'N/A'}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Replicación AD</p>
                     </div>
-                    
-                    <div className="bg-background border border-border rounded-lg p-4">
-                      <h4 className="text-sm font-semibold mb-3 border-b border-border/50 pb-2">Eventos de Seguridad (7 días)</h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between"><span className="text-muted-foreground">Intentos Fallidos (4625):</span><span className="font-medium text-rose-400">{adData.Security?.FailedLogins || 0}</span></div>
-                        <div className="flex justify-between"><span className="text-muted-foreground">Cambios en Políticas:</span><span className="font-medium">{adData.Security?.PolicyChanges || 0}</span></div>
-                        <div className="flex justify-between"><span className="text-muted-foreground">Roles FSMO Locales:</span><span className="font-medium">{adData.FSMO?.Status || 'OK'}</span></div>
-                        <div className="flex justify-between"><span className="text-muted-foreground">Ruta Backups:</span><span className="font-medium text-[10px] truncate max-w-[150px]" title={adData.Backups?.Path || ''}>{adData.Backups?.Path || 'N/A'}</span></div>
-                      </div>
+                    <div className="bg-background border border-border rounded-lg p-4 text-center">
+                      <p className={`text-2xl font-bold ${adData.FSMO?.Status === 'OK' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        {adData.FSMO?.Status || 'N/A'}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Roles FSMO</p>
+                    </div>
+                    <div className="bg-background border border-border rounded-lg p-4 text-center">
+                      <p className={`text-2xl font-bold ${(adData.Security?.FailedLogins || 0) > 50 ? 'text-rose-400' : 'text-amber-400'}`}>
+                        {adData.Security?.FailedLogins ?? 0}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Fallos Login (7d)</p>
+                    </div>
+                    <div className="bg-background border border-border rounded-lg p-4 text-center">
+                      <p className={`text-2xl font-bold ${(adData.Security?.AccountLockouts || 0) > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                        {adData.Security?.AccountLockouts ?? 0}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Bloqueos (7d)</p>
                     </div>
                   </div>
 
-                  <div className="flex justify-end pt-4">
+                  {/* Estado de DCs */}
+                  {adData.DCs?.Status && (
+                    <div className="bg-background border border-border rounded-lg p-4">
+                      <h4 className="text-sm font-semibold mb-3 border-b border-border/50 pb-2 flex items-center gap-2">
+                        <Server className="w-4 h-4" /> Estado de Controladores de Dominio
+                      </h4>
+                      <div className="space-y-2">
+                        {adData.DCs.Status.map((dc, i) => (
+                          <div key={i} className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs border border-border/30 rounded-lg p-3 bg-background/60">
+                            <div><p className="text-muted-foreground">Nombre</p><p className="font-bold">{dc.Name}</p></div>
+                            <div><p className="text-muted-foreground">Uptime</p><p className="font-medium">{dc.Uptime || 'N/A'}</p></div>
+                            <div><p className="text-muted-foreground">Ping</p><p className={`font-bold ${dc.Ping === 'OK' ? 'text-emerald-400' : 'text-rose-400'}`}>{dc.Ping || 'N/A'}</p></div>
+                            <div><p className="text-muted-foreground">Sitio AD</p><p className="font-medium">{dc.Site || 'N/A'}</p></div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Disco por DC */}
+                    {adData.Disk?.Disks && (
+                      <div className="bg-background border border-border rounded-lg p-4">
+                        <h4 className="text-sm font-semibold mb-3 border-b border-border/50 pb-2 flex items-center gap-2">
+                          <HardDrive className="w-4 h-4" /> Almacenamiento por DC
+                        </h4>
+                        <div className="space-y-2">
+                          {adData.Disk.Disks.map((disk, i) => (
+                            <div key={i} className="flex justify-between text-xs border border-border/30 rounded p-2">
+                              <span className="font-bold">{disk.DC} — {disk.Drive || 'C:'}</span>
+                              <span className={disk.PercentFree < 15 ? 'text-rose-400 font-bold' : disk.PercentFree < 25 ? 'text-amber-400' : 'text-emerald-400'}>
+                                {disk.FreeGB}GB libres ({disk.PercentFree}%)
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Backups */}
+                    {adData.Backups?.Status && (
+                      <div className="bg-background border border-border rounded-lg p-4">
+                        <h4 className="text-sm font-semibold mb-3 border-b border-border/50 pb-2 flex items-center gap-2">
+                          <Database className="w-4 h-4" /> Estado de Backups
+                        </h4>
+                        <div className="space-y-2">
+                          {Object.entries(adData.Backups.Status).map(([dc, date]) => (
+                            <div key={dc} className="flex justify-between text-xs border border-border/30 rounded p-2">
+                              <span className="font-bold">{dc}</span>
+                              <span className="text-muted-foreground">Último: <span className="text-foreground font-medium">{date}</span></span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Eventos de Seguridad */}
+                  {adData.Security && (
+                    <div className="bg-background border border-border rounded-lg p-4">
+                      <h4 className="text-sm font-semibold mb-3 border-b border-border/50 pb-2 flex items-center gap-2">
+                        <ShieldAlert className="w-4 h-4 text-rose-400" /> Eventos de Seguridad — Últimos 7 días
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                        <div className="border border-border/30 rounded p-2"><p className="text-muted-foreground">Fallos login (4625)</p><p className="font-bold text-rose-400">{adData.Security.FailedLogins ?? 0}</p></div>
+                        <div className="border border-border/30 rounded p-2"><p className="text-muted-foreground">Bloqueos cuenta</p><p className="font-bold text-amber-400">{adData.Security.AccountLockouts ?? 0}</p></div>
+                        <div className="border border-border/30 rounded p-2"><p className="text-muted-foreground">Cambios política</p><p className="font-bold">{adData.Security.PolicyChanges ?? 0}</p></div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end pt-2">
                     <a 
-                      href={monitoringService.getReportHtmlUrl("AD-DC01", "latest")} 
+                      href={monitoringService.getReportHtmlUrl("ad", "latest")} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg font-medium transition-colors"
                     >
-                      Abrir Reporte HTML de Sistema <ExternalLink className="w-4 h-4" />
+                      Abrir Reporte HTML <ExternalLink className="w-4 h-4" />
                     </a>
                   </div>
                 </div>
               ) : (
                 <div className="py-12 flex flex-col items-center text-muted-foreground">
                   <Database className="w-12 h-12 mb-4 opacity-20 animate-pulse" />
-                  <p>Cargando datos detallados de AD...</p>
+                  <p>No hay datos de AD disponibles aún.</p>
+                  <p className="text-xs mt-2">Espera a que el script Monitor-AD01.ps1 ejecute y envíe datos.</p>
                 </div>
               )}
             </div>
