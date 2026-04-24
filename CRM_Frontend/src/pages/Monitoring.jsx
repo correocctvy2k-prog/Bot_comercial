@@ -279,10 +279,18 @@ export default function Monitoring() {
                   role="MASTER DC"
                   uptime={nodes.dc01.LocalHealth?.Uptime ?? nodes.dc01.DCs?.Status?.find(d => d.Name?.includes('AD01'))?.Uptime ?? 'N/A'}
                   servicesOk={
-                    nodes.dc01.LocalHealth?.Services?.filter(s => s.Status === 'Running' || s.Status === 'OK' || s.Status === 4).length ?? 
-                    nodes.dc01.DCs?.Status?.find(d => d.Name?.includes('AD01'))?.Services?.filter(s => s.includes('Running')).length ?? 0
+                    Array.isArray(nodes.dc01.LocalHealth?.Services) 
+                      ? nodes.dc01.LocalHealth.Services.filter(s => s?.toString().includes('Running') || s?.Status === 'Running').length
+                      : (nodes.dc01.LocalHealth?.Services ? Object.values(nodes.dc01.LocalHealth.Services).filter(s => s === 'Running' || s === 'OK').length : 0)
+                    || nodes.dc01.DCs?.Status?.find(d => d.Name?.includes('AD01'))?.Services?.filter(s => s.includes('Running')).length
+                    || 0
                   }
-                  servicesTotal={nodes.dc01.LocalHealth?.Services?.length ?? nodes.dc01.DCs?.Status?.find(d => d.Name?.includes('AD01'))?.Services?.length ?? 4}
+                  servicesTotal={
+                    Array.isArray(nodes.dc01.LocalHealth?.Services) ? nodes.dc01.LocalHealth.Services.length :
+                    (nodes.dc01.LocalHealth?.Services ? Object.keys(nodes.dc01.LocalHealth.Services).length : 0)
+                    || nodes.dc01.DCs?.Status?.find(d => d.Name?.includes('AD01'))?.Services?.length
+                    || 6
+                  }
                   diskSpace={
                     nodes.dc01.LocalHealth?.Storage?.find(d => d.Drive?.includes('C')) ?? 
                     nodes.dc01.Disk?.Disks?.find(d => d.Drive?.includes('C')) ??
