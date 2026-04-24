@@ -238,11 +238,11 @@ export default function Monitoring() {
               <DCCard 
                 title="AD01 (Master)" 
                 role="CONTROLADOR DE DOMINIO"
-                uptime={nodes.dc01.DCs?.Status?.find(d => d.Name === 'AD01')?.Uptime || 'N/A'}
-                servicesOk={nodes.dc01.DCs?.Status?.find(d => d.Name === 'AD01')?.Services?.filter(s => s.includes('Running')).length || 0}
-                servicesTotal={6}
-                diskSpace={nodes.dc01.Disk?.Disks?.find(d => d.DC === 'AD01')}
-                lastBackup={nodes.dc01.Backups?.Status?.find(b => b.Ruta?.includes('AD01'))?.UltimoBackup || 'N/A'}
+                uptime={nodes.dc01.LocalHealth?.Uptime || 'N/A'}
+                servicesOk={nodes.dc01.LocalHealth?.Services ? Object.values(nodes.dc01.LocalHealth.Services).filter(s => s === 'Running').length : 0}
+                servicesTotal={nodes.dc01.LocalHealth?.Services ? Object.keys(nodes.dc01.LocalHealth.Services).length : 0}
+                diskSpace={nodes.dc01.LocalHealth?.Storage?.find(d => d.Drive === 'C:\\')}
+                lastBackup={nodes.dc01.Backups?.Status?.AD01 || "Desconocido"}
                 updates={nodes.dc01.Updates}
                 isHealthy={nodes.dc01.OverallStatus === 'OK' && (!pingData['AD-DC01'] || pingData['AD-DC01'].status === 'UP')}
                 pingStatus={pingData['AD-DC01']}
