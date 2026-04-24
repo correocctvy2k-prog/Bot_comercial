@@ -262,7 +262,7 @@ export default function Monitoring() {
                 servicesOk={nodes.dc02.LocalHealth?.Services?.filter(s => s.Status === 'Running' || s.Status === 4).length || 0}
                 servicesTotal={4}
                 diskSpace={nodes.dc02.LocalHealth?.Disk?.[0]}
-                lastBackup={nodes.dc01?.Backups?.Status?.find(b => b.Ruta?.includes('AD02'))?.UltimoBackup || 'N/A'}
+                lastBackup={nodes.dc01?.Backups?.Status?.AD02 || "Desconocido"}
                 updates={nodes.dc02.LocalHealth?.Updates}
                 isHealthy={nodes.dc02.LocalHealth?.Services?.every(s => s.Status === 'Running' || s.Status === 4) && nodes.dc02.LocalHealth?.Replication === "OK" && (!pingData['AD-DC02'] || pingData['AD-DC02'].status === 'UP')}
                 pingStatus={pingData['AD-DC02']}
