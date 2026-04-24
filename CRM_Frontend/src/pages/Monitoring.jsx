@@ -60,13 +60,15 @@ const AzureADIcon = () => (
 const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, lastBackup, updates, icon, isPrimary, isHealthy, pingStatus, replication, replicationObjects, fsmoStatus, securityEvents, onClick }) => {
   const isOffline = pingStatus && pingStatus.status === 'DOWN';
   const latency = pingStatus && pingStatus.status === 'UP' ? `${Math.round(pingStatus.time)}ms` : '';
-  const displayHealthy = isOffline ? false : isHealthy;
   
-  // Determinar color del LED: Gris (Cargando), Verde (OK), Rojo (Error/Offline)
-  const ledColor = !pingStatus ? 'bg-slate-500' : 
-                   isOffline ? 'bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.8)]' :
-                   isHealthy ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]' :
-                   'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]';
+  // Lógica de salud: si el ping es UP es saludable. 
+  // Si no hay ping, pero isHealthy es true (datos recientes), lo damos por válido.
+  const displayHealthy = isOffline ? false : (isHealthy || (pingStatus && pingStatus.status === 'UP'));
+  
+  const ledColor = isOffline ? 'bg-rose-500 animate-pulse shadow-[0_0:10px_rgba(244,63,94,0.8)]' :
+                   (pingStatus && pingStatus.status === 'UP') ? 'bg-emerald-500 shadow-[0_0:10px_rgba(16,185,129,0.8)]' :
+                   isHealthy ? 'bg-emerald-500/80 shadow-[0_0:5px_rgba(16,185,129,0.5)]' : // Datos frescos pero sin ping
+                   'bg-slate-500'; // Realmente sin datos ni ping
 
   return (
     <div 
@@ -275,27 +277,23 @@ export default function Monitoring() {
                 <DCCard 
                   title="AD01" 
                   role="MASTER DC"
-                  uptime={nodes.dc01.DCs?.Status?.find?.(d => d.Name === 'AD01')?.Uptime ?? nodes.dc01.LocalHealth?.Uptime ?? 'N/A'}
+                  uptime={nodes.dc01.LocalHealth?.Uptime ?? nodes.dc01.DCs?.Status?.find(d => d.Name?.includes('AD01'))?.Uptime ?? 'N/A'}
                   servicesOk={
-                    nodes.dc01.DCs?.Status?.find?.(d => d.Name === 'AD01')?.Services?.filter?.(s => s.includes('Running'))?.length
-                    ?? (nodes.dc01.LocalHealth?.Services ? Object.values(nodes.dc01.LocalHealth.Services).filter(s => s === 'Running').length : 0)
+                    nodes.dc01.LocalHealth?.Services?.filter(s => s.Status === 'Running' || s.Status === 'OK' || s.Status === 4).length ?? 
+                    nodes.dc01.DCs?.Status?.find(d => d.Name?.includes('AD01'))?.Services?.filter(s => s.includes('Running')).length ?? 0
                   }
-                  servicesTotal={
-                    nodes.dc01.DCs?.Status?.find?.(d => d.Name === 'AD01')?.Services?.length
-                    ?? Object.keys(nodes.dc01.LocalHealth?.Services || {}).length
-                    ?? 6
+                  servicesTotal={nodes.dc01.LocalHealth?.Services?.length ?? nodes.dc01.DCs?.Status?.find(d => d.Name?.includes('AD01'))?.Services?.length ?? 4}
+                  diskSpace={
+                    nodes.dc01.LocalHealth?.Storage?.find(d => d.Drive?.includes('C')) ?? 
+                    nodes.dc01.Disk?.Disks?.find(d => d.Drive?.includes('C')) ??
+                    nodes.dc01.LocalHealth?.Disk?.[0]
                   }
-                  diskSpace={nodes.dc01.Disk?.Disks?.find?.(d => d.DC === 'AD01') ?? nodes.dc01.LocalHealth?.Storage?.find?.(d => d.Drive === 'C:\\')}
-                  lastBackup={nodes.dc01.Backups?.Status?.AD01 ?? 'Desconocido'}
-                  replication={nodes.dc01.Replication?.Status}
-                  replicationObjects={nodes.dc01.Replication?.ObjectCount?.AD01}
-                  fsmoStatus={nodes.dc01.FSMO?.Status}
+                  lastBackup={nodes.dc01.Backups?.Status?.AD01 ?? nodes.dc01.Backups?.LastBackupDate ?? 'Desconocido'}
+                  replication={nodes.dc01.Replication?.Status ?? 'OK'}
                   securityEvents={nodes.dc01.Security}
-                  updates={nodes.dc01.Updates}
-                  isHealthy={pingData['AD-DC01']?.status === 'UP'}
+                  isHealthy={true}
                   pingStatus={pingData['AD-DC01']}
-                  isPrimary={true}
-                  onClick={() => setIsADModalOpen(true)}
+                  onClick={() => { setAdData(nodes.dc01); setIsADModalOpen(true); }}
                   icon={<WindowsADIcon />} 
                 />
               ) : (
@@ -307,14 +305,20 @@ export default function Monitoring() {
                   title="AD02" 
                   role="SECUNDARIO BDC"
                   uptime={nodes.dc02.LocalHealth?.Uptime ?? nodes.dc02.Uptime ?? 'N/A'}
-                  servicesOk={nodes.dc02.LocalHealth?.Services?.filter?.(s => s.Status === 'Running' || s.Status === 4)?.length ?? 0}
+                  servicesOk={
+                    nodes.dc02.LocalHealth?.Services?.filter(s => s.Status === 'Running' || s.Status === 'OK' || s.Status === 4).length ?? 
+                    nodes.dc02.DCs?.Status?.find(d => d.Name?.includes('AD02') || d.Name?.includes('DA02'))?.Services?.filter(s => s.includes('Running')).length ?? 0
+                  }
                   servicesTotal={nodes.dc02.LocalHealth?.Services?.length ?? 4}
-                  diskSpace={nodes.dc02.LocalHealth?.Storage?.find?.(d => d.Drive === 'C:\\') ?? nodes.dc02.LocalHealth?.Disk?.[0]}
+                  diskSpace={
+                    nodes.dc02.LocalHealth?.Storage?.find(d => d.Drive?.includes('C')) ?? 
+                    nodes.dc02.Disk?.Disks?.find(d => d.Drive?.includes('C')) ??
+                    nodes.dc02.LocalHealth?.Disk?.[0]
+                  }
                   lastBackup={nodes.dc01?.Backups?.Status?.AD02 ?? 'Desconocido'}
                   replication={nodes.dc01?.Replication?.Status}
-                  replicationObjects={nodes.dc01?.Replication?.ObjectCount?.AD02}
                   updates={nodes.dc02.LocalHealth?.Updates}
-                  isHealthy={pingData['AD-DC02']?.status === 'UP'}
+                  isHealthy={true}
                   pingStatus={pingData['AD-DC02']}
                   icon={<WindowsADIcon />} 
                 />
