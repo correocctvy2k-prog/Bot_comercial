@@ -29,61 +29,63 @@ const STATUS_COLORS = {
   gray: "text-slate-400 bg-slate-500/10 border-slate-500/20"
 };
 
-const NodeCard = ({ title, data, icon, type }) => {
-  if (!data) return (
-    <div className="bg-card/20 border border-border/50 rounded-lg p-4 animate-pulse">
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-8 h-8 rounded bg-muted"></div>
-        <div className="h-4 w-32 bg-muted rounded"></div>
-      </div>
-      <div className="h-10 bg-muted rounded"></div>
+const UpdateBadge = ({ updates }) => {
+  if (!updates) return null;
+  const isPending = updates.RebootPending;
+  return (
+    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border ${
+      isPending ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+    }`}>
+      {isPending ? <RefreshCw className="w-3 h-3 animate-spin-slow" /> : <CheckCircle2 className="w-3 h-3" />}
+      {isPending ? 'Reinicio Pendiente (Updates)' : `Updates OK (${updates.LastInstalled})`}
     </div>
   );
+};
 
-  const isHealthy = type === 'host' ? true : (type === 'dc' ? data.LocalHealth?.Services?.every(s => s.Status === 'Running' || s.Status === 4) : true);
+const DCCard = ({ title, data, icon, isPrimary, onClick }) => {
+  if (!data) return (
+    <div className="bg-background/40 border border-border/50 rounded-lg p-4 animate-pulse h-[140px]"></div>
+  );
+
+  const isHealthy = data.LocalHealth?.Services?.every(s => s.Status === 'Running' || s.Status === 4) && data.LocalHealth?.Replication === "OK";
 
   return (
-    <div className={`bg-card/40 backdrop-blur-sm border ${isHealthy ? 'border-border' : 'border-rose-500/40'} rounded-lg p-4 transition-all hover:bg-card/60`}>
-      <div className="flex items-center justify-between mb-4">
+    <div 
+      onClick={onClick}
+      className={`bg-background/60 border ${isHealthy ? 'border-border' : 'border-rose-500/40'} rounded-lg p-4 transition-all hover:bg-background/80 ${onClick ? 'cursor-pointer hover:border-primary/50' : ''}`}
+    >
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="p-2 bg-primary/10 rounded-lg text-primary">
+          <div className="p-1.5 bg-primary/10 rounded-lg text-primary">
             {icon}
           </div>
-          <h3 className="text-sm font-semibold">{title}</h3>
+          <div>
+            <h3 className="text-sm font-semibold">{title}</h3>
+            <span className="text-[10px] text-muted-foreground uppercase">{data.Role || "Controlador de Dominio"}</span>
+          </div>
         </div>
         <div className={`w-2 h-2 rounded-full ${isHealthy ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-rose-500 animate-pulse'}`}></div>
       </div>
 
-      <div className="space-y-3">
-        <div className="flex justify-between text-[11px]">
-          <span className="text-muted-foreground">Estado:</span>
-          <span className={isHealthy ? 'text-emerald-400' : 'text-rose-400'}>{isHealthy ? 'Operativo' : 'Requiere Atención'}</span>
-        </div>
-        
-        {type === 'host' ? (
-          <>
-            <div className="flex justify-between text-[11px]">
-              <span className="text-muted-foreground">RAM:</span>
-              <span>{data.RAM?.TotalGB}GB ({Math.round(data.RAM?.FreeGB / 102.4) / 10}GB libres)</span>
-            </div>
-            <div className="flex justify-between text-[11px]">
-              <span className="text-muted-foreground">VMs Activas:</span>
-              <span className="text-sky-400 font-bold">{data.VMs?.filter(v => v.State === 2 || v.State === 'Running').length} / {data.VMs?.length}</span>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="flex justify-between text-[11px]">
-              <span className="text-muted-foreground">Uptime:</span>
-              <span>{data.Uptime}</span>
-            </div>
-            <div className="flex justify-between text-[11px]">
-              <span className="text-muted-foreground">Servicios:</span>
-              <span className={isHealthy ? 'text-emerald-400' : 'text-rose-400'}>
-                {data.LocalHealth?.Services?.filter(s => s.Status === 'Running' || s.Status === 4).length} OK
-              </span>
-            </div>
-          </>
+      <div className="grid grid-cols-2 gap-2 text-[11px] mb-3">
+         <div className="flex flex-col">
+           <span className="text-muted-foreground">Uptime:</span>
+           <span>{data.Uptime || 'N/A'}</span>
+         </div>
+         <div className="flex flex-col">
+           <span className="text-muted-foreground">Servicios:</span>
+           <span className={isHealthy ? 'text-emerald-400' : 'text-rose-400'}>
+             {data.LocalHealth?.Services?.filter(s => s.Status === 'Running' || s.Status === 4).length || 0} de 4 OK
+           </span>
+         </div>
+      </div>
+
+      <div className="flex justify-between items-center border-t border-border/50 pt-2">
+        <UpdateBadge updates={data.LocalHealth?.Updates || data.Updates} />
+        {isPrimary && (
+          <span className="text-[10px] text-primary flex items-center gap-1 hover:underline">
+            Ver AD Data <ExternalLink className="w-3 h-3" />
+          </span>
         )}
       </div>
     </div>
@@ -100,6 +102,7 @@ export default function Monitoring() {
     dc01: null,
     dc02: null
   });
+  const [isADModalOpen, setIsADModalOpen] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -146,110 +149,135 @@ export default function Monitoring() {
         </button>
       </div>
 
-      {/* Main Grid */}
-      {/* Sección de Infraestructura de Nodos */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <NodeCard 
-          title="Host Físico (ANFIGANE)" 
-          data={nodes.host} 
-          icon={<Server className="w-5 h-5" />} 
-          type="host"
-        />
-        <NodeCard 
-          title="Controlador Primario (AD01)" 
-          data={nodes.dc01} 
-          icon={<ShieldCheck className="w-5 h-5" />} 
-          type="dc"
-        />
-        <NodeCard 
-          title="Controlador Secundario (AD02)" 
-          data={nodes.dc02} 
-          icon={<ShieldAlert className="w-5 h-5" />} 
-          type="dc"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Active Directory Card */}
-        <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6 flex flex-col group hover:border-primary/40 transition-all duration-300">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-sky-500/20 text-sky-400 group-hover:scale-110 transition-transform">
-                <Server className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-lg">Active Directory</h3>
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Windows Server 2022</span>
-              </div>
+      {/* Nivel 2: Arquitectura Anfitrión -> VMs */}
+      <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6 mb-8">
+        {/* Host Físico */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-sky-500/20 text-sky-400 rounded-xl">
+              <Server className="w-6 h-6" />
             </div>
-            {adData ? (
-              <StatusBadge status={adData.DCs?.OverallStatus === 'OK' ? 'success' : 'warning'} label={adData.DCs?.OverallStatus || 'Pendiente'} />
-            ) : (
-              <StatusBadge status="gray" label="Pendiente" />
-            )}
+            <div>
+              <h2 className="text-xl font-bold">Host Físico: ANFIGANE</h2>
+              <p className="text-xs text-muted-foreground">ProLiant / Hyper-V Server</p>
+            </div>
           </div>
-
-          {adData ? (
-            <div className="space-y-4 flex-1">
-              <div className="grid grid-cols-2 gap-3">
-                <MetricSmall label="Controladores" value={adData.DCs?.Status?.length || 0} icon={<CheckCircle2 className="w-3.5 h-3.5" />} />
-                <MetricSmall label="Replicación" value={adData.Replication?.Status || 'N/A'} color={adData.Replication?.Status === 'OK' ? 'text-emerald-400' : 'text-rose-400'} />
-                <MetricSmall label="Espacio Disco" value={`${adData.Disk?.Disks?.[0]?.PercentFree || 0}% libre`} color={adData.Disk?.Status === 'OK' ? 'text-emerald-400' : 'text-rose-400'} />
-                <MetricSmall label="Backup AD" value={adData.Backups?.Status || 'N/A'} color={adData.Backups?.Status === 'OK' ? 'text-emerald-400' : 'text-rose-400'} />
+          
+          {nodes.host ? (
+            <div className="flex flex-wrap items-center gap-4 text-xs">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-lg border border-border">
+                <Cpu className="w-4 h-4 text-primary" />
+                <span className="text-muted-foreground">RAM:</span>
+                <span className="font-mono">{Math.round(nodes.host.RAM?.FreeGB / 102.4) / 10}GB libres de {nodes.host.RAM?.TotalGB}GB</span>
               </div>
-
-              <div className="pt-2 border-t border-border/50">
-                <p className="text-xs text-muted-foreground mb-2">Salud del Servidor</p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[11px]">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Uptime:</span>
-                    <span className="font-mono text-sky-400">{adData.DCs?.Status?.[0]?.Uptime || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Servicios:</span>
-                    <span className={`font-bold ${adData.DCs?.Status?.[0]?.ServiceIssues?.length === 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {adData.DCs?.Status?.[0]?.ServiceIssues?.length === 0 ? '✓ OK' : `⚠ ${adData.DCs?.Status?.[0]?.ServiceIssues?.length} fail`}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center col-span-2">
-                    <span className="text-muted-foreground">SO:</span>
-                    <span className="truncate max-w-[140px]">{adData.DCs?.Status?.[0]?.OSVersion || 'N/A'}</span>
-                  </div>
-                </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-lg border border-border">
+                <Activity className="w-4 h-4 text-emerald-400" />
+                <span className="text-muted-foreground">VMs Activas:</span>
+                <span className="font-bold text-emerald-400">{nodes.host.VMs?.filter(v => v.State === 2 || v.State === 'Running').length} / {nodes.host.VMs?.length}</span>
               </div>
-
-              <div className="pt-2 border-t border-border/50">
-                <p className="text-xs text-muted-foreground mb-2">Seguridad (ISO 27001)</p>
-                <div className="space-y-2">
-                  <SecurityMetric label="Intentos fallidos" value={adData.Security?.FailedLogins || 0} max={100} />
-                  <SecurityMetric label="Usuarios bloqueados" value={adData.Users?.Locked || 0} max={5} />
-                </div>
-              </div>
-
-              <div className="mt-auto pt-4 flex items-center justify-between text-[11px] text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {adData.Date ? `Actualizado: ${adData.Date}` : 'Sin fecha'}
-                </span>
-                <a 
-                  href={monitoringService.getReportHtmlUrl("AD", "latest")} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-primary hover:underline font-medium"
-                >
-                  Ver Reporte Completo <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
+              <UpdateBadge updates={nodes.host.Updates} />
             </div>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center py-10 opacity-50">
-              <Database className="w-12 h-12 mb-3 text-muted-foreground" />
-              <p className="text-sm font-medium">Esperando datos del script...</p>
-              <p className="text-xs mt-1 text-center">Ejecute MonitoreoAD.ps1 para ver resultados</p>
-            </div>
+            <div className="h-8 w-64 bg-muted rounded animate-pulse"></div>
           )}
         </div>
+
+        {/* VMs (Domain Controllers) */}
+        <div className="border-t border-border/50 pt-6">
+          <h3 className="text-sm font-semibold text-muted-foreground mb-4 flex items-center gap-2">
+            <Database className="w-4 h-4" /> Máquinas Virtuales (Controladores de Dominio)
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <DCCard 
+              title="AD01 (Master)" 
+              data={nodes.dc01} 
+              icon={<ShieldCheck className="w-5 h-5" />} 
+              isPrimary={true}
+              onClick={() => setIsADModalOpen(true)}
+            />
+            <DCCard 
+              title="AD02 (Secundario)" 
+              data={nodes.dc02} 
+              icon={<ShieldAlert className="w-5 h-5" />} 
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Modal AD01 Detailed Info */}
+      {isADModalOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            <div className="p-4 border-b border-border flex justify-between items-center bg-muted/30">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 text-primary rounded-lg">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold">Análisis Profundo - AD01</h2>
+                  <p className="text-xs text-muted-foreground">Detalles de Directorio Activo (ISO 27001)</p>
+                </div>
+              </div>
+              <button onClick={() => setIsADModalOpen(false)} className="p-2 hover:bg-muted rounded-lg transition-colors">
+                <XCircle className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto custom-scrollbar">
+              {adData ? (
+                <div className="space-y-6">
+                  {/* General Stats */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <MetricSmall label="Total Usuarios" value={adData.Users?.Total || 0} icon={<Users className="w-4 h-4" />} />
+                    <MetricSmall label="Bloqueados" value={adData.Users?.Locked || 0} color={adData.Users?.Locked > 0 ? 'text-rose-400' : 'text-emerald-400'} icon={<Lock className="w-4 h-4" />} />
+                    <MetricSmall label="Replicación" value={adData.Replication?.Status || 'N/A'} color={adData.Replication?.Status === 'OK' ? 'text-emerald-400' : 'text-rose-400'} icon={<RefreshCw className="w-4 h-4" />} />
+                    <MetricSmall label="Estado Backups" value={adData.Backups?.Status || 'N/A'} color={adData.Backups?.Status === 'OK' ? 'text-emerald-400' : 'text-rose-400'} icon={<Database className="w-4 h-4" />} />
+                  </div>
+
+                  {/* AD Details */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-background border border-border rounded-lg p-4">
+                      <h4 className="text-sm font-semibold mb-3 border-b border-border/50 pb-2">Salud de Objetos</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between"><span className="text-muted-foreground">Cuentas Inactivas (>90 días):</span><span className="font-medium text-amber-400">{adData.Users?.Inactive90 || 0}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Contraseñas No Expiran:</span><span className="font-medium text-amber-400">{adData.Users?.NonExpiringPwd || 0}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Total GPOs:</span><span className="font-medium">{adData.GPOs?.Total || 0}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">GPOs Vacías/Sin enlazar:</span><span className="font-medium">{adData.GPOs?.Empty || 0}</span></div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-background border border-border rounded-lg p-4">
+                      <h4 className="text-sm font-semibold mb-3 border-b border-border/50 pb-2">Eventos de Seguridad (7 días)</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between"><span className="text-muted-foreground">Intentos Fallidos (4625):</span><span className="font-medium text-rose-400">{adData.Security?.FailedLogins || 0}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Cambios en Políticas:</span><span className="font-medium">{adData.Security?.PolicyChanges || 0}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Roles FSMO Locales:</span><span className="font-medium">{adData.FSMO?.Status || 'OK'}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Ruta Backups:</span><span className="font-medium text-[10px] truncate max-w-[150px]" title={adData.Backups?.Path || ''}>{adData.Backups?.Path || 'N/A'}</span></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-4">
+                    <a 
+                      href={monitoringService.getReportHtmlUrl("AD-DC01", "latest")} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Abrir Reporte HTML de Sistema <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-12 flex flex-col items-center text-muted-foreground">
+                  <Database className="w-12 h-12 mb-4 opacity-20 animate-pulse" />
+                  <p>Cargando datos detallados de AD...</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
         {/* Kaspersky Card */}
         <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6 flex flex-col opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-300">

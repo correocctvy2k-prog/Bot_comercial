@@ -22,7 +22,23 @@ $Disks = Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" | Select-Object
     @{N='PercentFree';E={[math]::Round(($_.FreeSpace/$_.Size)*100, 2)}}
 
 # 4. Servicios Críticos del Host
-$Services = Get-Service -Name "vmms", "nvspwmi", "vds" | Select-Object Name, Status
+$Services = Get-Service -Name "vmms", "vds" -ErrorAction SilentlyContinue | Select-Object Name, Status
+
+# 5. Estado de Actualizaciones
+function Get-UpdateStatus {
+    $rebootPending = $false
+    if (Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired") { $rebootPending = $true }
+    if (Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending") { $rebootPending = $true }
+    
+    $lastUpdate = Get-HotFix -ErrorAction SilentlyContinue | Sort-Object InstalledOn -Descending | Select-Object -First 1
+    
+    return @{
+        RebootPending = $rebootPending
+        LastInstalled = if ($lastUpdate.InstalledOn) { $lastUpdate.InstalledOn.ToString("yyyy-MM-dd") } else { "Desconocido" }
+        LastKB = if ($lastUpdate.HotFixID) { $lastUpdate.HotFixID } else { "N/A" }
+    }
+}
+$Updates = Get-UpdateStatus
 
 # Consolidar Data
 $reportData = @{
@@ -36,6 +52,7 @@ $reportData = @{
     Disks = $Disks
     VMs = $VMs
     Services = $Services
+    Updates = $Updates
     ReportDate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 }
 

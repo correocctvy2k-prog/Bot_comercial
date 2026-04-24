@@ -16,6 +16,22 @@ $Disks = Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" | Select-Object
 $Replica = repadmin /showrepl /errorsonly 2>&1
 $ReplicaStatus = if ($Replica -match "error|fail") { "ERROR" } else { "OK" }
 
+# --- Actualizaciones ---
+function Get-UpdateStatus {
+    $rebootPending = $false
+    if (Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired") { $rebootPending = $true }
+    if (Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending") { $rebootPending = $true }
+    
+    $lastUpdate = Get-HotFix -ErrorAction SilentlyContinue | Sort-Object InstalledOn -Descending | Select-Object -First 1
+    
+    return @{
+        RebootPending = $rebootPending
+        LastInstalled = if ($lastUpdate.InstalledOn) { $lastUpdate.InstalledOn.ToString("yyyy-MM-dd") } else { "Desconocido" }
+        LastKB = if ($lastUpdate.HotFixID) { $lastUpdate.HotFixID } else { "N/A" }
+    }
+}
+$Updates = Get-UpdateStatus
+
 $reportData = @{
     Node = "AD-DC02"
     Role = "BDC (Backup Domain Controller)"
@@ -24,6 +40,7 @@ $reportData = @{
         Disk = $Disks
         Services = Get-Service -Name "NTDS", "DNS", "KDC", "Netlogon" | Select-Object Name, Status
         Replication = $ReplicaStatus
+        Updates = $Updates
     }
     ReportDate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 }
