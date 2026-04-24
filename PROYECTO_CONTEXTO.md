@@ -1,5 +1,5 @@
 # 📋 CONTEXTO MAESTRO DEL ECOSISTEMA SKYLAB
-> **Última actualización:** 2026-04-15  
+> **Última actualización:** 2026-04-24  
 > **Propósito:** Referencia rápida para el asistente IA antes de cualquier intervención en los proyectos. Actualizar al finalizar cada sesión de trabajo.
 
 ---
@@ -437,3 +437,61 @@ Bypass hardcodeado para `573162892244` (acceso de emergencia).
 | 2026-02 | CRM Frontend: Terminal SSH embebido (xterm.js + Socket.io) |
 | 2026-02 | CRM Frontend: Autopilot Cloudflare para Comercial y Asamblea |
 | 2026-01 | Comercial: Integración SIISS para estado de estaciones en tiempo real |
+---
+
+## 🖥️ PROYECTO 3: DASHBOARD DE MONITOREO DE INFRAESTRUCTURA (ISO 27001)
+
+### Propósito
+Visualización en tiempo real del estado de salud de la infraestructura crítica (Servidores Físicos y Virtuales) de Gane Palmira, alineado con controles de seguridad **ISO 27001:2022**.
+
+### Arquitectura de Monitoreo
+El sistema utiliza una arquitectura jerárquica de dos niveles:
+1.  **Hosts Físicos (Anfitriones Hyper-V):** Monitoreo de hardware, RAM total, estado de replicación y salud de las VMs.
+2.  **Nodos Virtuales (VMs):** Monitoreo profundo de servicios de Active Directory, seguridad, backups y almacenamiento.
+
+### Inventario de Infraestructura
+| ID Servicio | Nombre / Función | IP Local | Host Físico |
+|---|---|---|---|
+| `AD-HOST` | **ANFIGANE** (Master Host) | `192.168.8.43` | ProLiant DL360 |
+| `AD` | **AD01** (Master DC) | `192.168.8.44` | ANFIGANE |
+| `AD-DC02` | **AD02** (Secundario BDC) | `192.168.8.45` | ANFIGANE |
+| `ANFI-SEG` | **ANFI-SEG13798** (Security Host) | `192.168.8.41` | ProLiant DL160 |
+| `SERV-KSC` | **KSC** (Kaspersky Center) | `192.168.8.42` | ANFI-SEG13798 |
+| `AD-DC03` | **AD03** (Próximamente) | - | ANFI-SEG13798 |
+
+### Flujo de Datos Técnico
+1.  **Agentes PowerShell (`.ps1`):** Corren localmente en cada servidor mediante Tareas Programadas.
+2.  **Upload API:** Envían un POST JSON a `http://192.168.8.65:3001/api/monitoring/upload`.
+3.  **Procesamiento Backend:**
+    - Guarda `latest.json` y un histórico con timestamp.
+    - **Auto-generación de Reportes:** El servidor genera automáticamente un `latest.html` con diseño Dark Mode si el agente no lo envía, garantizando que el enlace de reporte siempre funcione.
+4.  **Frontend (React):**
+    - Consume `/api/monitoring/latest/:service`.
+    - **Heartbeat:** Usa WebSockets (`monitoring:heartbeat`) para LEDs de estado en tiempo real (Ping).
+
+### 💡 Lecciones Aprendidas y Soluciones (Knowledge Base)
+
+#### 1. Variabilidad de Payloads (Mapeo Agresivo)
+**Problema:** Diferentes versiones de PowerShell o diferentes roles de servidor envían datos de servicios o discos en estructuras distintas (ej. `LocalHealth.Services` vs `DCs.Status.Services`).
+**Solución:** Implementar en el frontend un mapeo "agresivo" que busque el valor en múltiples rutas posibles usando encadenamiento opcional (`?.`) y fallbacks dinámicos.
+```javascript
+// Ejemplo de patrón exitoso:
+uptime={nodes.dc01.LocalHealth?.Uptime ?? nodes.dc01.DCs?.Status?.find(d => d.Name?.includes('AD01'))?.Uptime ?? 'N/A'}
+```
+
+#### 2. Silenciamiento de Errores 404 (Console Cleanliness)
+**Problema:** El frontend consulta servicios nuevos que aún no han reportado datos, generando spam de errores 404 en la consola del navegador.
+**Solución:** El backend debe interceptar la falta de archivo y devolver `200 OK (null)` en lugar de `404`. El frontend maneja el `null` mostrando estados de "Iniciando..." o "Esperando Agente".
+
+#### 3. LEDs de Estado Resilientes
+**Problema:** El ping ICMP puede estar bloqueado por firewalls locales aunque el servidor esté operativo.
+**Solución:** Lógica de LED híbrida. El LED se pone en verde si: (Ping es UP) **Ó** (Hay datos frescos del agente recibidos recientemente).
+
+#### 4. Sincronización VPS (Critical Path)
+**Problema:** Cambios en el mapeo del frontend no coinciden con la lógica del backend si no se reinicia el servicio.
+**Regla:** Siempre que se actualice `monitoring.controller.js`, es obligatorio ejecutar `pm2 restart all` en el VPS para activar la auto-generación de reportes HTML.
+
+---
+
+## 🧠 MEMORIA CENTRALIZADA Y APRENDIZAJE AGÉNTICO
+*Consulte `km_agent_memory` en Supabase para detalles técnicos específicos de implementación de controladores.*
