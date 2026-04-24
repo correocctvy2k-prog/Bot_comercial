@@ -115,17 +115,19 @@ function generateHtmlReport(service, data) {
  */
 exports.getLatestStatus = (req, res) => {
     try {
-        const { service } = req.params;
-        const filePath = path.join(__dirname, '../../data/monitoring', service.toLowerCase(), 'latest.json');
+        const service = req.params.service.toLowerCase();
+        const latestFile = path.join(__dirname, '../../data/monitoring', service, 'latest.json');
 
-        if (!fs.existsSync(filePath)) {
-            return res.status(404).json({ error: 'No hay reportes para este servicio' });
+        if (!fs.existsSync(latestFile)) {
+            // Devolver 200 con null en lugar de 404 para evitar errores en consola del frontend
+            return res.status(200).json(null);
         }
 
-        const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        const data = JSON.parse(fs.readFileSync(latestFile, 'utf8'));
         res.json(data);
     } catch (error) {
-        res.status(500).json({ error: 'Error al obtener el reporte' });
+        console.error('[MONITORING GET ERROR]', error);
+        res.status(500).json({ error: 'Error al obtener el estado' });
     }
 };
 
