@@ -212,151 +212,192 @@ export default function Monitoring() {
         </button>
       </div>
 
-      {/* Nivel 2: Arquitectura Anfitrión -> VMs — Layout 50/50 */}
+
+      {/* Arquitectura Física: 2 Servidores Anfitriones */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
 
-        {/* Columna Izquierda: Host Físico */}
-        <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6">
-          {/* Host Físico Header */}
-          <div className="flex items-center justify-between mb-5">
+        {/* ═══ HOST 1: ANFIGANE ═══ */}
+        <div className={`bg-card/40 backdrop-blur-sm border rounded-xl p-5 ${pingData['AD-HOST']?.status === 'DOWN' ? 'border-rose-500/40' : 'border-border'}`}>
+          {/* Header Host ANFIGANE */}
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-xl ${pingData['AD-HOST']?.status === 'DOWN' ? 'bg-rose-500/20 text-rose-400' : 'bg-sky-500/20 text-sky-400'}`}>
-                <Server className="w-6 h-6" />
+              <div className={`p-2.5 rounded-xl ${pingData['AD-HOST']?.status === 'DOWN' ? 'bg-rose-500/20 text-rose-400' : 'bg-sky-500/20 text-sky-400'}`}>
+                <Server className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-lg font-bold flex items-center gap-2">
-                  Host Físico: ANFIGANE
-                  <div className={`w-2.5 h-2.5 rounded-full ${
+                <h2 className="text-base font-bold flex items-center gap-2">
+                  ANFIGANE
+                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
                     !pingData['AD-HOST'] ? 'bg-slate-400' :
-                    pingData['AD-HOST'].status === 'UP' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]' :
-                    'bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.8)]'
+                    pingData['AD-HOST'].status === 'UP' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.9)]' :
+                    'bg-rose-500 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.9)]'
                   }`}></div>
-                  {pingData['AD-HOST']?.status === 'DOWN' && <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
-                  {pingData['AD-HOST']?.status === 'UP' && <span className="text-xs text-emerald-400 font-normal">{Math.round(pingData['AD-HOST'].time)}ms</span>}
+                  {pingData['AD-HOST']?.status === 'DOWN' && <span className="px-1.5 py-0.5 rounded text-[9px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
+                  {pingData['AD-HOST']?.status === 'UP' && <span className="text-[10px] text-emerald-400 font-normal">{Math.round(pingData['AD-HOST'].time)}ms</span>}
                 </h2>
-                <p className="text-xs text-muted-foreground">ProLiant / Hyper-V Server • 192.168.8.43</p>
+                <p className="text-[10px] text-muted-foreground">ProLiant / Hyper-V • 192.168.8.43</p>
               </div>
             </div>
-          </div>
-          {nodes.host ? (
-            <div className="grid grid-cols-1 gap-3 text-xs">
-              <div className="flex flex-wrap gap-3">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-lg border border-border">
-                  <Cpu className="w-4 h-4 text-primary" />
+            {nodes.host && (
+              <div className="flex flex-wrap items-center gap-2 text-[10px]">
+                <div className="flex items-center gap-1 px-2 py-1 bg-background rounded-md border border-border">
+                  <Cpu className="w-3 h-3 text-primary" />
                   <span className="text-muted-foreground">RAM:</span>
-                  <span className="font-mono">{nodes.host.RAM?.FreeGB}GB libres de {nodes.host.RAM?.TotalGB}GB</span>
+                  <span className="font-mono">{nodes.host.RAM?.FreeGB}GB / {nodes.host.RAM?.TotalGB}GB</span>
                 </div>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-lg border border-border">
-                  <Activity className="w-4 h-4 text-emerald-400" />
-                  <span className="text-muted-foreground">VMs Activas:</span>
-                  <span className="font-bold text-emerald-400">{nodes.host.VMs?.filter(v => v.State === 2 || v.State === 'Running').length} / {nodes.host.VMs?.length}</span>
+                <div className="flex items-center gap-1 px-2 py-1 bg-background rounded-md border border-border">
+                  <Activity className="w-3 h-3 text-emerald-400" />
+                  <span className="font-bold text-emerald-400">{nodes.host.VMs?.filter(v => v.State === 2 || v.State === 'Running').length}/{nodes.host.VMs?.length} VMs</span>
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-3">
                 <UpdateBadge updates={nodes.host.Updates} />
-                {nodes.host.Uptime && (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-lg border border-border">
-                    <Clock className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Uptime:</span>
-                    <span>{nodes.host.Uptime}</span>
-                  </div>
-                )}
               </div>
-              {nodes.host.Storage && nodes.host.Storage.length > 0 && (
-                <div className="mt-2 border-t border-border/30 pt-3">
-                  <p className="text-muted-foreground mb-2 flex items-center gap-1.5"><HardDrive className="w-3.5 h-3.5" /> Almacenamiento</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {nodes.host.Storage.map((disk, i) => (
-                      <div key={i} className="bg-background/60 rounded-lg p-2 border border-border/50">
-                        <p className="font-mono font-bold">{disk.Drive}</p>
-                        <p className={disk.PercentFree < 15 ? 'text-rose-400' : disk.PercentFree < 25 ? 'text-amber-400' : 'text-emerald-400'}>
-                          {disk.FreeGB}GB libres ({disk.PercentFree}%)
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+            )}
+          </div>
+
+          {/* VMs de ANFIGANE: AD01 y AD02 */}
+          <div className="border-t border-border/30 pt-4">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <Database className="w-3 h-3" /> Máquinas Virtuales
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {nodes.dc01 ? (
+                <DCCard 
+                  title="AD01" 
+                  role="MASTER DC"
+                  uptime={nodes.dc01.DCs?.Status?.find?.(d => d.Name === 'AD01')?.Uptime ?? nodes.dc01.LocalHealth?.Uptime ?? 'N/A'}
+                  servicesOk={
+                    nodes.dc01.DCs?.Status?.find?.(d => d.Name === 'AD01')?.Services?.filter?.(s => s.includes('Running'))?.length
+                    ?? (nodes.dc01.LocalHealth?.Services ? Object.values(nodes.dc01.LocalHealth.Services).filter(s => s === 'Running').length : 0)
+                  }
+                  servicesTotal={
+                    nodes.dc01.DCs?.Status?.find?.(d => d.Name === 'AD01')?.Services?.length
+                    ?? Object.keys(nodes.dc01.LocalHealth?.Services || {}).length
+                    ?? 6
+                  }
+                  diskSpace={nodes.dc01.Disk?.Disks?.find?.(d => d.DC === 'AD01') ?? nodes.dc01.LocalHealth?.Storage?.find?.(d => d.Drive === 'C:\\')}
+                  lastBackup={nodes.dc01.Backups?.Status?.AD01 ?? 'Desconocido'}
+                  replication={nodes.dc01.Replication?.Status}
+                  replicationObjects={nodes.dc01.Replication?.ObjectCount?.AD01}
+                  fsmoStatus={nodes.dc01.FSMO?.Status}
+                  securityEvents={nodes.dc01.Security}
+                  updates={nodes.dc01.Updates}
+                  isHealthy={pingData['AD-DC01']?.status === 'UP'}
+                  pingStatus={pingData['AD-DC01']}
+                  isPrimary={true}
+                  onClick={() => setIsADModalOpen(true)}
+                  icon={<WindowsADIcon />} 
+                />
+              ) : (
+                <div className="bg-background/40 border border-border/50 rounded-lg p-4 animate-pulse h-[200px]"></div>
+              )}
+
+              {nodes.dc02 ? (
+                <DCCard 
+                  title="AD02" 
+                  role="SECUNDARIO BDC"
+                  uptime={nodes.dc02.LocalHealth?.Uptime ?? nodes.dc02.Uptime ?? 'N/A'}
+                  servicesOk={nodes.dc02.LocalHealth?.Services?.filter?.(s => s.Status === 'Running' || s.Status === 4)?.length ?? 0}
+                  servicesTotal={nodes.dc02.LocalHealth?.Services?.length ?? 4}
+                  diskSpace={nodes.dc02.LocalHealth?.Storage?.find?.(d => d.Drive === 'C:\\') ?? nodes.dc02.LocalHealth?.Disk?.[0]}
+                  lastBackup={nodes.dc01?.Backups?.Status?.AD02 ?? 'Desconocido'}
+                  replication={nodes.dc01?.Replication?.Status}
+                  replicationObjects={nodes.dc01?.Replication?.ObjectCount?.AD02}
+                  updates={nodes.dc02.LocalHealth?.Updates}
+                  isHealthy={pingData['AD-DC02']?.status === 'UP'}
+                  pingStatus={pingData['AD-DC02']}
+                  icon={<WindowsADIcon />} 
+                />
+              ) : (
+                <div className="bg-background/40 border border-border/50 rounded-lg p-4 animate-pulse h-[200px]"></div>
               )}
             </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="h-8 w-full bg-muted rounded animate-pulse"></div>
-              <div className="h-8 w-full bg-muted rounded animate-pulse"></div>
-            </div>
-          )}
+          </div>
         </div>
 
-        {/* Columna Derecha: Controladores de Dominio */}
-        <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6">
-          <h3 className="text-sm font-semibold text-muted-foreground mb-4 flex items-center gap-2">
-            <Database className="w-4 h-4" /> Máquinas Virtuales (Controladores de Dominio)
-          </h3>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {nodes.dc01 ? (
-              <DCCard 
-                title="AD01" 
-                role="MASTER DC"
-                uptime={nodes.dc01.DCs?.Status?.find?.(d => d.Name === 'AD01')?.Uptime ?? nodes.dc01.LocalHealth?.Uptime ?? 'N/A'}
-                servicesOk={
-                  nodes.dc01.DCs?.Status?.find?.(d => d.Name === 'AD01')?.Services?.filter?.(s => s.includes('Running'))?.length
-                  ?? (nodes.dc01.LocalHealth?.Services ? Object.values(nodes.dc01.LocalHealth.Services).filter(s => s === 'Running').length : 0)
-                }
-                servicesTotal={
-                  nodes.dc01.DCs?.Status?.find?.(d => d.Name === 'AD01')?.Services?.length
-                  ?? Object.keys(nodes.dc01.LocalHealth?.Services || {}).length
-                  ?? 6
-                }
-                diskSpace={nodes.dc01.Disk?.Disks?.find?.(d => d.DC === 'AD01') ?? nodes.dc01.LocalHealth?.Storage?.find?.(d => d.Drive === 'C:\\')}
-                lastBackup={nodes.dc01.Backups?.Status?.AD01 ?? 'Desconocido'}
-                replication={nodes.dc01.Replication?.Status}
-                replicationObjects={nodes.dc01.Replication?.ObjectCount?.AD01}
-                fsmoStatus={nodes.dc01.FSMO?.Status}
-                securityEvents={nodes.dc01.Security}
-                updates={nodes.dc01.Updates}
-                isHealthy={pingData['AD-DC01']?.status === 'UP'}
-                pingStatus={pingData['AD-DC01']}
-                isPrimary={true}
-                onClick={() => setIsADModalOpen(true)}
-                icon={<WindowsADIcon />} 
-              />
-            ) : (
-              <div className="bg-background/40 border border-border/50 rounded-lg p-4 animate-pulse h-[220px]"></div>
-            )}
-            
-            {nodes.dc02 ? (
-              <DCCard 
-                title="AD02" 
-                role="SECUNDARIO"
-                uptime={nodes.dc02.LocalHealth?.Uptime ?? nodes.dc02.Uptime ?? 'N/A'}
-                servicesOk={nodes.dc02.LocalHealth?.Services?.filter?.(s => s.Status === 'Running' || s.Status === 4)?.length ?? 0}
-                servicesTotal={nodes.dc02.LocalHealth?.Services?.length ?? 4}
-                diskSpace={nodes.dc02.LocalHealth?.Storage?.find?.(d => d.Drive === 'C:\\') ?? nodes.dc02.LocalHealth?.Disk?.[0]}
-                lastBackup={nodes.dc01?.Backups?.Status?.AD02 ?? 'Desconocido'}
-                replication={nodes.dc01?.Replication?.Status}
-                replicationObjects={nodes.dc01?.Replication?.ObjectCount?.AD02}
-                updates={nodes.dc02.LocalHealth?.Updates}
-                isHealthy={pingData['AD-DC02']?.status === 'UP'}
-                pingStatus={pingData['AD-DC02']}
-                icon={<WindowsADIcon />} 
-              />
-            ) : (
-              <div className="bg-background/40 border border-border/50 rounded-lg p-4 animate-pulse h-[220px]"></div>
-            )}
+        {/* ═══ HOST 2: ANFI-SEG13798 ═══ */}
+        <div className={`bg-card/40 backdrop-blur-sm border rounded-xl p-5 ${pingData['ANFI-SEG']?.status === 'DOWN' ? 'border-rose-500/40' : 'border-border'}`}>
+          {/* Header Host ANFI-SEG13798 */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className={`p-2.5 rounded-xl ${pingData['ANFI-SEG']?.status === 'DOWN' ? 'bg-rose-500/20 text-rose-400' : 'bg-violet-500/20 text-violet-400'}`}>
+                <Server className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold flex items-center gap-2">
+                  ANFI-SEG13798
+                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                    !pingData['ANFI-SEG'] ? 'bg-slate-400' :
+                    pingData['ANFI-SEG'].status === 'UP' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.9)]' :
+                    'bg-rose-500 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.9)]'
+                  }`}></div>
+                  {pingData['ANFI-SEG']?.status === 'DOWN' && <span className="px-1.5 py-0.5 rounded text-[9px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
+                  {pingData['ANFI-SEG']?.status === 'UP' && <span className="text-[10px] text-emerald-400 font-normal">{Math.round(pingData['ANFI-SEG'].time)}ms</span>}
+                </h2>
+                <p className="text-[10px] text-muted-foreground">HP ProLiant DL160 Gen9 / Hyper-V • 64GB RAM</p>
+              </div>
+            </div>
+            {/* Stats fijas del host por ahora */}
+            <div className="flex items-center gap-2 text-[10px]">
+              <div className="flex items-center gap-1 px-2 py-1 bg-background rounded-md border border-border">
+                <Activity className="w-3 h-3 text-violet-400" />
+                <span className="font-bold text-violet-400">1/2 VMs</span>
+              </div>
+            </div>
+          </div>
 
-            {/* AD03 Placeholder */}
-            <div className="bg-background/30 border border-dashed border-border/40 rounded-xl p-5 flex flex-col items-center justify-center gap-3 opacity-50 hover:opacity-80 transition-opacity">
-              <div className="p-2 bg-slate-500/10 rounded-lg text-slate-400">
-                <WindowsADIcon />
+          {/* VMs de ANFI-SEG13798: AD03 + SERV-KSC */}
+          <div className="border-t border-border/30 pt-4">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <Database className="w-3 h-3" /> Máquinas Virtuales
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+              {/* AD03 — desactivada, sin agente todavía */}
+              <div className="bg-background/30 border border-dashed border-border/50 rounded-xl p-4 flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-[#0078D4]/10 rounded-lg text-[#0078D4]"><WindowsADIcon /></div>
+                    <div>
+                      <p className="text-sm font-bold">AD03</p>
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wider">CONTROLADOR DE DOMINIO</p>
+                    </div>
+                  </div>
+                  <div className="w-2 h-2 rounded-full bg-slate-500"></div>
+                </div>
+                <div className="flex-1 flex flex-col items-center justify-center py-4 gap-1">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/10 text-slate-400 border border-slate-500/20">DESACTIVADA</span>
+                  <p className="text-[10px] text-muted-foreground text-center mt-1">Pendiente de integración con agente de monitoreo</p>
+                </div>
               </div>
-              <div className="text-center">
-                <p className="text-sm font-semibold text-slate-400">AD03</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">PRÓXIMAMENTE</p>
+
+              {/* SERV-KSC — Kaspersky Security Center */}
+              <div className="bg-background/30 border border-dashed border-emerald-500/20 rounded-xl p-4 flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-400">
+                      <ShieldCheck className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">SERV-KSC</p>
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wider">KASPERSKY SECURITY CENTER</p>
+                    </div>
+                  </div>
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></div>
+                </div>
+                <div className="flex-1 flex flex-col items-center justify-center py-4 gap-1">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">EJECUTANDO</span>
+                  <p className="text-[10px] text-muted-foreground text-center mt-1">Monitoreo de endpoints próximamente disponible</p>
+                </div>
               </div>
-              <div className="w-1.5 h-1.5 rounded-full bg-slate-600"></div>
+
             </div>
           </div>
         </div>
+
       </div>
+
+
+
 
       {/* Modal AD01 Detailed Info */}
       {isADModalOpen && (
