@@ -87,7 +87,7 @@ export default function Monitoring() {
               </div>
             </div>
             {adData ? (
-              <StatusBadge status={adData.OverallStatus === 'OK' ? 'success' : 'warning'} label={adData.OverallStatus} />
+              <StatusBadge status={adData.DCs?.OverallStatus === 'OK' ? 'success' : 'warning'} label={adData.DCs?.OverallStatus || 'Pendiente'} />
             ) : (
               <StatusBadge status="gray" label="Pendiente" />
             )}
@@ -96,24 +96,24 @@ export default function Monitoring() {
           {adData ? (
             <div className="space-y-4 flex-1">
               <div className="grid grid-cols-2 gap-3">
-                <MetricSmall label="Controladores" value={adData.DCs.Total} icon={<CheckCircle2 className="w-3.5 h-3.5" />} />
-                <MetricSmall label="Replicación" value={adData.Replication.Status} color={adData.Replication.Status === 'OK' ? 'text-emerald-400' : 'text-rose-400'} />
-                <MetricSmall label="FSMO Roles" value="Transferibles" color="text-sky-400" />
-                <MetricSmall label="Backup AD" value={adData.Backup.Status} color={adData.Backup.Status === 'OK' ? 'text-emerald-400' : 'text-rose-400'} />
+                <MetricSmall label="Controladores" value={adData.DCs?.Status?.length || 0} icon={<CheckCircle2 className="w-3.5 h-3.5" />} />
+                <MetricSmall label="Replicación" value={adData.Replication?.Status || 'N/A'} color={adData.Replication?.Status === 'OK' ? 'text-emerald-400' : 'text-rose-400'} />
+                <MetricSmall label="FSMO Roles" value={adData.FSMO?.Status || 'N/A'} color={adData.FSMO?.Status === 'OK' ? 'text-sky-400' : 'text-rose-400'} />
+                <MetricSmall label="Backup AD" value={adData.Backups?.Status || 'N/A'} color={adData.Backups?.Status === 'OK' ? 'text-emerald-400' : 'text-rose-400'} />
               </div>
 
               <div className="pt-2 border-t border-border/50">
                 <p className="text-xs text-muted-foreground mb-2">Seguridad (ISO 27001)</p>
                 <div className="space-y-2">
-                  <SecurityMetric label="Intentos fallidos" value={adData.Security.FailedLogins} max={100} />
-                  <SecurityMetric label="Usuarios bloqueados" value={adData.Users.Locked} max={5} />
+                  <SecurityMetric label="Intentos fallidos" value={adData.Security?.FailedLogins || 0} max={100} />
+                  <SecurityMetric label="Usuarios bloqueados" value={adData.Users?.Locked || 0} max={5} />
                 </div>
               </div>
 
               <div className="mt-auto pt-4 flex items-center justify-between text-[11px] text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Clock className="w-3 h-3" />
-                  {formatDistanceToNow(new Date(adData.ReportDate), { addSuffix: true, locale: es })}
+                  {adData.Date ? `Actualizado: ${adData.Date}` : 'Sin fecha'}
                 </span>
                 <a href="#" className="flex items-center gap-1 text-primary hover:underline font-medium">
                   Ver Reporte Completo <ExternalLink className="w-3 h-3" />
