@@ -57,7 +57,7 @@ const AzureADIcon = () => (
   </svg>
 );
 
-const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, lastBackup, updates, icon, isPrimary, isHealthy, pingStatus, onClick }) => {
+const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, lastBackup, updates, icon, isPrimary, isHealthy, pingStatus, replication, replicationObjects, fsmoStatus, securityEvents, onClick }) => {
   const isOffline = pingStatus && pingStatus.status === 'DOWN';
   const latency = pingStatus && pingStatus.status === 'UP' ? `${Math.round(pingStatus.time)}ms` : '';
   const displayHealthy = isOffline ? false : isHealthy;
@@ -84,31 +84,52 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
         <div className={`w-2.5 h-2.5 rounded-full ${displayHealthy ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]' : 'bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.8)]'}`}></div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 text-xs mb-4 flex-1">
+      <div className="grid grid-cols-2 gap-3 text-xs mb-3 flex-1">
          <div className="flex flex-col gap-1">
-           <span className="text-muted-foreground flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Uptime</span>
-           <span className="font-medium pl-5">{uptime}</span>
+           <span className="text-muted-foreground flex items-center gap-1.5"><Clock className="w-3 h-3" /> Uptime</span>
+           <span className="font-medium pl-4">{uptime}</span>
          </div>
          <div className="flex flex-col gap-1">
-           <span className="text-muted-foreground flex items-center gap-1.5"><Activity className="w-3.5 h-3.5" /> Servicios</span>
-           <span className={`font-bold pl-5 ${displayHealthy ? 'text-emerald-400' : 'text-rose-400'}`}>
+           <span className="text-muted-foreground flex items-center gap-1.5"><Activity className="w-3 h-3" /> Servicios</span>
+           <span className={`font-bold pl-4 ${displayHealthy ? 'text-emerald-400' : 'text-rose-400'}`}>
              {isOffline ? 'SIN CONEXIÓN' : `${servicesOk} de ${servicesTotal} OK`}
            </span>
          </div>
          <div className="flex flex-col gap-1">
-           <span className="text-muted-foreground flex items-center gap-1.5"><HardDrive className="w-3.5 h-3.5" /> Almacenamiento</span>
-           <span className="font-medium pl-5">
+           <span className="text-muted-foreground flex items-center gap-1.5"><HardDrive className="w-3 h-3" /> Disco C:</span>
+           <span className="font-medium pl-4">
              {diskSpace ? (
                <span className={diskSpace.PercentFree < 15 ? 'text-rose-400' : diskSpace.PercentFree < 25 ? 'text-amber-400' : 'text-emerald-400'}>
-                 {diskSpace.FreeGB}GB Libres ({diskSpace.PercentFree}%)
+                 {diskSpace.FreeGB}GB libres ({diskSpace.PercentFree}%)
                </span>
              ) : 'N/A'}
            </span>
          </div>
          <div className="flex flex-col gap-1">
-           <span className="text-muted-foreground flex items-center gap-1.5"><Database className="w-3.5 h-3.5" /> Último Backup</span>
-           <span className="font-medium pl-5">{lastBackup}</span>
+           <span className="text-muted-foreground flex items-center gap-1.5"><Database className="w-3 h-3" /> Último Backup</span>
+           <span className="font-medium pl-4 truncate">{lastBackup}</span>
          </div>
+         <div className="flex flex-col gap-1">
+           <span className="text-muted-foreground flex items-center gap-1.5"><RefreshCw className="w-3 h-3" /> Replicación</span>
+           <span className={`font-bold pl-4 ${replication === 'OK' ? 'text-emerald-400' : replication ? 'text-rose-400' : 'text-slate-400'}`}>
+             {replication || 'N/A'}{replicationObjects != null ? ` · ${replicationObjects} obj.` : ''}
+           </span>
+         </div>
+         {fsmoStatus !== undefined && (
+           <div className="flex flex-col gap-1">
+             <span className="text-muted-foreground flex items-center gap-1.5"><ShieldCheck className="w-3 h-3" /> FSMO</span>
+             <span className={`font-bold pl-4 ${fsmoStatus === 'OK' ? 'text-emerald-400' : 'text-amber-400'}`}>{fsmoStatus || 'N/A'}</span>
+           </div>
+         )}
+         {securityEvents && (
+           <div className="flex flex-col gap-1 col-span-2">
+             <span className="text-muted-foreground flex items-center gap-1.5"><Lock className="w-3 h-3" /> Seg. 7 días</span>
+             <span className="pl-4 flex gap-3">
+               <span className="text-rose-400 font-bold">{securityEvents.FailedLogins ?? 0} fallidos</span>
+               <span className="text-amber-400">{securityEvents.AccountLockouts ?? 0} bloqueos</span>
+             </span>
+           </div>
+         )}
       </div>
 
       <div className="flex justify-between items-center border-t border-border/50 pt-3 mt-auto">
@@ -228,21 +249,32 @@ export default function Monitoring() {
           )}
         </div>
 
-        {/* VMs (Domain Controllers) */}
+        {/* VMs (Domain Controllers) — mitad de pantalla */}
         <div className="border-t border-border/50 pt-6">
           <h3 className="text-sm font-semibold text-muted-foreground mb-4 flex items-center gap-2">
             <Database className="w-4 h-4" /> Máquinas Virtuales (Controladores de Dominio)
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 xl:w-1/2">
             {nodes.dc01 ? (
               <DCCard 
                 title="AD01 (Master)" 
                 role="CONTROLADOR DE DOMINIO"
-                uptime={nodes.dc01.LocalHealth?.Uptime || 'N/A'}
-                servicesOk={nodes.dc01.LocalHealth?.Services ? Object.values(nodes.dc01.LocalHealth.Services).filter(s => s === 'Running').length : 0}
-                servicesTotal={nodes.dc01.LocalHealth?.Services ? Object.keys(nodes.dc01.LocalHealth.Services).length : 0}
-                diskSpace={nodes.dc01.LocalHealth?.Storage?.find(d => d.Drive === 'C:\\')}
-                lastBackup={nodes.dc01.Backups?.Status?.AD01 || "Desconocido"}
+                uptime={nodes.dc01.DCs?.Status?.find?.(d => d.Name === 'AD01')?.Uptime ?? nodes.dc01.LocalHealth?.Uptime ?? 'N/A'}
+                servicesOk={
+                  nodes.dc01.DCs?.Status?.find?.(d => d.Name === 'AD01')?.Services?.filter?.(s => s.includes('Running'))?.length
+                  ?? (nodes.dc01.LocalHealth?.Services ? Object.values(nodes.dc01.LocalHealth.Services).filter(s => s === 'Running').length : 0)
+                }
+                servicesTotal={
+                  nodes.dc01.DCs?.Status?.find?.(d => d.Name === 'AD01')?.Services?.length
+                  ?? Object.keys(nodes.dc01.LocalHealth?.Services || {}).length
+                  ?? 6
+                }
+                diskSpace={nodes.dc01.Disk?.Disks?.find?.(d => d.DC === 'AD01') ?? nodes.dc01.LocalHealth?.Storage?.find?.(d => d.Drive === 'C:\\')}
+                lastBackup={nodes.dc01.Backups?.Status?.AD01 ?? 'Desconocido'}
+                replication={nodes.dc01.Replication?.Status}
+                replicationObjects={nodes.dc01.Replication?.ObjectCount?.AD01}
+                fsmoStatus={nodes.dc01.FSMO?.Status}
+                securityEvents={nodes.dc01.Security}
                 updates={nodes.dc01.Updates}
                 isHealthy={nodes.dc01.OverallStatus === 'OK' && (!pingData['AD-DC01'] || pingData['AD-DC01'].status === 'UP')}
                 pingStatus={pingData['AD-DC01']}
@@ -251,25 +283,27 @@ export default function Monitoring() {
                 icon={<WindowsADIcon />} 
               />
             ) : (
-              <div className="bg-background/40 border border-border/50 rounded-lg p-4 animate-pulse h-[180px]"></div>
+              <div className="bg-background/40 border border-border/50 rounded-lg p-4 animate-pulse h-[220px]"></div>
             )}
             
             {nodes.dc02 ? (
               <DCCard 
                 title="AD02 (Secundario)" 
                 role="BDC (BACKUP DOMAIN CONTROLLER)"
-                uptime={nodes.dc02.Uptime || 'N/A'}
-                servicesOk={nodes.dc02.LocalHealth?.Services?.filter(s => s.Status === 'Running' || s.Status === 4).length || 0}
-                servicesTotal={4}
+                uptime={nodes.dc02.LocalHealth?.Uptime ?? nodes.dc02.Uptime ?? 'N/A'}
+                servicesOk={nodes.dc02.LocalHealth?.Services?.filter?.(s => s.Status === 'Running' || s.Status === 4)?.length ?? 0}
+                servicesTotal={nodes.dc02.LocalHealth?.Services?.length ?? 4}
                 diskSpace={nodes.dc02.LocalHealth?.Disk?.[0]}
-                lastBackup={nodes.dc01?.Backups?.Status?.AD02 || "Desconocido"}
+                lastBackup={nodes.dc01?.Backups?.Status?.AD02 ?? 'Desconocido'}
+                replication={nodes.dc01?.Replication?.Status}
+                replicationObjects={nodes.dc01?.Replication?.ObjectCount?.AD02}
                 updates={nodes.dc02.LocalHealth?.Updates}
-                isHealthy={nodes.dc02.LocalHealth?.Services?.every(s => s.Status === 'Running' || s.Status === 4) && nodes.dc02.LocalHealth?.Replication === "OK" && (!pingData['AD-DC02'] || pingData['AD-DC02'].status === 'UP')}
+                isHealthy={(!pingData['AD-DC02'] || pingData['AD-DC02'].status === 'UP') && nodes.dc02.LocalHealth?.Replication === 'OK'}
                 pingStatus={pingData['AD-DC02']}
-                icon={<AzureADIcon />} 
+                icon={<WindowsADIcon />} 
               />
             ) : (
-              <div className="bg-background/40 border border-border/50 rounded-lg p-4 animate-pulse h-[180px]"></div>
+              <div className="bg-background/40 border border-border/50 rounded-lg p-4 animate-pulse h-[220px]"></div>
             )}
           </div>
         </div>
