@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { 
   Server, 
   ShieldCheck, 
+  ShieldAlert,
   Lock, 
   Clock, 
   CheckCircle2, 
@@ -12,7 +13,9 @@ import {
   Users,
   RefreshCw,
   History,
-  ExternalLink
+  ExternalLink,
+  Cpu,
+  Activity
 } from "lucide-react";
 import { monitoringService } from "@/services/monitoring.service";
 import { formatDistanceToNow } from "date-fns";
@@ -26,18 +29,90 @@ const STATUS_COLORS = {
   gray: "text-slate-400 bg-slate-500/10 border-slate-500/20"
 };
 
+const NodeCard = ({ title, data, icon, type }) => {
+  if (!data) return (
+    <div className="bg-card/20 border border-border/50 rounded-lg p-4 animate-pulse">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-8 h-8 rounded bg-muted"></div>
+        <div className="h-4 w-32 bg-muted rounded"></div>
+      </div>
+      <div className="h-10 bg-muted rounded"></div>
+    </div>
+  );
+
+  const isHealthy = type === 'host' ? true : (type === 'dc' ? data.LocalHealth?.Services?.every(s => s.Status === 'Running' || s.Status === 4) : true);
+
+  return (
+    <div className={`bg-card/40 backdrop-blur-sm border ${isHealthy ? 'border-border' : 'border-rose-500/40'} rounded-lg p-4 transition-all hover:bg-card/60`}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-primary/10 rounded-lg text-primary">
+            {icon}
+          </div>
+          <h3 className="text-sm font-semibold">{title}</h3>
+        </div>
+        <div className={`w-2 h-2 rounded-full ${isHealthy ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-rose-500 animate-pulse'}`}></div>
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex justify-between text-[11px]">
+          <span className="text-muted-foreground">Estado:</span>
+          <span className={isHealthy ? 'text-emerald-400' : 'text-rose-400'}>{isHealthy ? 'Operativo' : 'Requiere Atención'}</span>
+        </div>
+        
+        {type === 'host' ? (
+          <>
+            <div className="flex justify-between text-[11px]">
+              <span className="text-muted-foreground">RAM:</span>
+              <span>{data.RAM?.TotalGB}GB ({Math.round(data.RAM?.FreeGB / 102.4) / 10}GB libres)</span>
+            </div>
+            <div className="flex justify-between text-[11px]">
+              <span className="text-muted-foreground">VMs Activas:</span>
+              <span className="text-sky-400 font-bold">{data.VMs?.filter(v => v.State === 2 || v.State === 'Running').length} / {data.VMs?.length}</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex justify-between text-[11px]">
+              <span className="text-muted-foreground">Uptime:</span>
+              <span>{data.Uptime}</span>
+            </div>
+            <div className="flex justify-between text-[11px]">
+              <span className="text-muted-foreground">Servicios:</span>
+              <span className={isHealthy ? 'text-emerald-400' : 'text-rose-400'}>
+                {data.LocalHealth?.Services?.filter(s => s.Status === 'Running' || s.Status === 4).length} OK
+              </span>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export default function Monitoring() {
   const [adData, setAdData] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [nodes, setNodes] = useState({
+    host: null,
+    dc01: null,
+    dc02: null
+  });
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const data = await monitoringService.getLatestStatus("AD");
-      const hist = await monitoringService.getHistory("AD");
-      setAdData(data);
+      const [host, dc01, dc02] = await Promise.all([
+        monitoringService.getLatestStatus('AD-HOST'),
+        monitoringService.getLatestStatus('AD-DC01'),
+        monitoringService.getLatestStatus('AD-DC02')
+      ]);
+      
+      const hist = await monitoringService.getHistory("AD-DC01");
+      setNodes({ host, dc01, dc02 });
+      setAdData(dc01);
       setHistory(hist.files || []);
       setLastUpdate(new Date());
     } catch (error) {
@@ -72,7 +147,29 @@ export default function Monitoring() {
       </div>
 
       {/* Main Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      {/* Sección de Infraestructura de Nodos */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <NodeCard 
+          title="Host Físico (ANFIGANE)" 
+          data={nodes.host} 
+          icon={<Server className="w-5 h-5" />} 
+          type="host"
+        />
+        <NodeCard 
+          title="Controlador Primario (AD01)" 
+          data={nodes.dc01} 
+          icon={<ShieldCheck className="w-5 h-5" />} 
+          type="dc"
+        />
+        <NodeCard 
+          title="Controlador Secundario (AD02)" 
+          data={nodes.dc02} 
+          icon={<ShieldAlert className="w-5 h-5" />} 
+          type="dc"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Active Directory Card */}
         <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6 flex flex-col group hover:border-primary/40 transition-all duration-300">
