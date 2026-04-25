@@ -313,19 +313,30 @@ export default function Monitoring() {
               <div className={`p-3 rounded-xl ${pingData['AD-HOST']?.status === 'DOWN' ? 'bg-rose-500/20 text-rose-400' : 'bg-sky-500/20 text-sky-400'}`}>
                 <Server className="w-6 h-6" />
               </div>
-              <div>
+              <div className="flex flex-col">
                 <h2 className="text-lg font-bold flex items-center gap-2">
                   ANFIGANE
                   <div 
-                    className={`w-3 h-3 rounded-full ${(!pingData['AD-HOST'] && !pingData['ANFIGANE']) ? 'bg-slate-600' : (pingData['AD-HOST']?.status === 'UP' || pingData['ANFIGANE']?.status === 'UP') ? 'bg-emerald-400' : 'bg-rose-500'}`}
+                    className={`w-3 h-3 rounded-full ${(!pingData['AD-HOST'] && !pingData['ANFIGANE']) ? 'bg-slate-600' : (pingData['AD-HOST']?.status === 'UP' || pingData['ANFIGANE']?.status === 'UP') ? 'bg-emerald-400' : 'bg-rose-500'} ${ (pingData['AD-HOST']?.status === 'UP' || pingData['ANFIGANE']?.status === 'UP') ? 'animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.5)]' : ''}`}
                     style={{
                       animation: (!pingData['AD-HOST'] && !pingData['ANFIGANE']) ? 'none' : (pingData['AD-HOST']?.status === 'UP' || pingData['ANFIGANE']?.status === 'UP') ? 'breathe 3s ease-in-out infinite' : 'breathe-red 2s ease-in-out infinite'
                     }}
-                  ></div>
-                  {pingData['AD-HOST']?.status === 'DOWN' && <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
-                  {pingData['AD-HOST']?.status === 'UP' && <span className="text-xs text-emerald-400 font-normal">{Math.round(pingData['AD-HOST'].time)}ms</span>}
+                  />
+                  { (pingData['AD-HOST']?.status === 'UP' || pingData['ANFIGANE']?.status === 'UP') && (
+                    <span className="text-xs text-emerald-400 font-normal">
+                      {Math.round(pingData['AD-HOST']?.time || pingData['ANFIGANE']?.time || 0)}ms
+                    </span>
+                  )}
                 </h2>
-                <p className="text-[10px] text-muted-foreground">ProLiant / Hyper-V • 192.168.8.43</p>
+                <div className="flex flex-col gap-0.5">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">ProLiant / Hyper-V • 192.168.8.43</p>
+                  {nodes.host1?.Uptime && (
+                    <span className="text-[11px] text-emerald-400/90 font-bold flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      UPTIME: {nodes.host1.Uptime}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             {nodes.host1 && (

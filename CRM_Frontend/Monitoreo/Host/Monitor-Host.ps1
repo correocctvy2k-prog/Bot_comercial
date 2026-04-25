@@ -41,18 +41,29 @@ function Get-UpdateStatus {
 $Updates = Get-UpdateStatus
 
 # Consolidar Data
+# 7. Recolectar datos finales
+$os = Get-CimInstance Win32_OperatingSystem
+$lastBoot = $os.LastBootUpTime
+$uptime = (Get-Date) - $lastBoot
+$uptimeStr = "{0} días, {1} horas" -f $uptime.Days, $uptime.Hours
+
 $reportData = @{
-    Hostname = $env:COMPUTERNAME
-    Model = $CS.Model
-    Uptime = "$($Uptime.Days)d $($Uptime.Hours)h"
-    RAM = @{
-        TotalGB = [math]::Round($CS.TotalPhysicalMemory/1GB, 2)
-        FreeGB = [math]::Round($OS.FreePhysicalMemory/1MB, 2)
+    Timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+    Uptime = $uptimeStr
+    Updates = @{
+        LastInstalled = (Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 1).InstalledOn.ToString("yyyy-MM-dd")
+        RebootRequired = (Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired")
+        PendingUpdates = (Get-CimInstance -Namespace root/Microsoft/Windows/WindowsUpdate -ClassName MSFT_WUOperationsState).RebootRequired -or (Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired")
+    }
+    System = @{
+        OS = $os.Caption
+        Version = $os.Version
+        RAM_Total = [math]::Round($os.TotalVisibleMemorySize / 1MB, 2)
+        RAM_Free = [math]::Round($os.FreePhysicalMemory / 1MB, 2)
     }
     Disks = $Disks
     VMs = $VMs
     Services = $Services
-    Updates = $Updates
     ReportDate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 }
 
