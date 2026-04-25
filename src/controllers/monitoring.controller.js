@@ -16,6 +16,8 @@ exports.uploadMonitoringData = async (req, res) => {
         const mappedService = normalizeServiceId(service);
         const baseDir = path.join(__dirname, '../../data/monitoring', mappedService.toLowerCase());
         
+        console.log(`[MONITORING] Guardando datos en carpeta mapeada: ${mappedService} (Original: ${service})`);
+        
         if (!fs.existsSync(baseDir)) {
             fs.mkdirSync(baseDir, { recursive: true });
         }
@@ -115,14 +117,16 @@ function generateHtmlReport(service, data) {
  * Normaliza el nombre del servicio para coincidir con las carpetas
  */
 function normalizeServiceId(service) {
-    if (!service) return '';
-    const s = service.toLowerCase();
-    if (s === 'ksc' || s.includes('kaspersky')) return 'ksc';
-    if (s === 'zk') return 'zk';
-    if (s === 'ad' || s.includes('ad01')) return 'ad';
-    if (s === 'ad-dc02' || s.includes('ad02')) return 'ad-dc02';
-    if (s === 'anfigane' || s.includes('host1')) return 'ad-host';
-    if (s === 'anfi-seg' || s.includes('host2')) return 'anfi-seg';
+    if (!service) return 'unknown';
+    const s = service.trim().toLowerCase();
+    
+    // Mapeo Maestro
+    if (s === 'anfigane' || s === 'ad-host' || s === 'host1') return 'ad-host';
+    if (s === 'ad' || s === 'ad01' || s === 'ad-dc01') return 'ad';
+    if (s === 'ad-dc02' || s === 'ad02') return 'ad-dc02';
+    if (s === 'anfi-seg' || s === 'host2' || s === 'anfi-seg13798') return 'anfi-seg';
+    if (s === 'ksc' || s === 'serv-ksc') return 'ksc';
+    
     return s;
 }
 

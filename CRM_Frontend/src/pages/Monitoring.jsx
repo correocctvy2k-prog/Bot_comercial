@@ -249,8 +249,18 @@ export default function Monitoring() {
 
     // Conectar WebSocket para Ping Heartbeat
     const socket = io(SOCKET_URL);
+    
+    socket.on('connect', () => {
+      console.log("✅ [SOCKET] Conectado al servidor de monitoreo");
+    });
+
     socket.on('monitoring:heartbeat', (data) => {
+      console.log("📡 [HEARTBEAT] Datos de ping recibidos:", data);
       setPingData(data);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error("❌ [SOCKET] Error de conexión:", error);
     });
 
     return () => {
