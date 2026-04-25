@@ -38,7 +38,7 @@ $reportData = @{
     Uptime = "$([math]::Round(((Get-Date) - $OS.LastBootUpTime).TotalDays, 1)) días"
     LocalHealth = @{
         Disk = $Disks
-        Services = Get-Service -Name "NTDS", "DNS", "KDC", "Netlogon" | Select-Object Name, Status
+        Services = Get-Service -Name "NTDS", "DNS", "KDC", "Netlogon", "DFSR" -ErrorAction SilentlyContinue | Select-Object Name, Status
         Replication = $ReplicaStatus
         Updates = $Updates
     }
