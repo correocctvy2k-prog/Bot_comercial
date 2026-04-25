@@ -13,7 +13,8 @@ exports.uploadMonitoringData = async (req, res) => {
             return res.status(400).json({ error: 'Servicio y datos son requeridos' });
         }
 
-        const baseDir = path.join(__dirname, '../../data/monitoring', service.toLowerCase());
+        const mappedService = normalizeServiceId(service);
+        const baseDir = path.join(__dirname, '../../data/monitoring', mappedService.toLowerCase());
         
         if (!fs.existsSync(baseDir)) {
             fs.mkdirSync(baseDir, { recursive: true });
@@ -180,7 +181,8 @@ exports.getHistory = (req, res) => {
 exports.getReportHtml = (req, res) => {
     try {
         const { service, filename } = req.params;
-        const baseDir = path.join(__dirname, '../../data/monitoring', service.toLowerCase());
+        const mappedService = normalizeServiceId(service);
+        const baseDir = path.join(__dirname, '../../data/monitoring', mappedService.toLowerCase());
         
         let filePath;
         if (filename === 'latest') {
