@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Script automatizado para monitoreo mensual de Active Directory
 .DESCRIPTION
@@ -110,13 +110,23 @@ function Get-DCStatus {
             
             # Verificar servicios críticos
             $services = @('NTDS','DNS','KDC','W32Time','Netlogon','DFSR')
+            $localName = $env:COMPUTERNAME
+            
             foreach ($service in $services) {
                 try {
-                    $svc = Get-Service -ComputerName $dc -Name $service -ErrorAction SilentlyContinue
-                    $status = if ($svc) { $svc.Status } else { "NotFound" }
+                    $svc = $null
+                    if ($dc -eq $localName -or $dc -eq "localhost") {
+                        $svc = Get-Service -Name $service -ErrorAction SilentlyContinue
+                    } else {
+                        $svc = Get-Service -ComputerName $dc -Name $service -ErrorAction SilentlyContinue
+                    }
+                    
+                    $status = if ($svc) { $svc.Status.ToString() } else { "NotFound" }
                     $dcInfo.Services += "$service - $status"
                     
-                    if ($status -ne "Running") {
+                    if ($status -eq "Running") {
+                        # Todo OK
+                    } else {
                         $dcInfo.ServiceIssues += $service
                         $issues += "El servicio $service en $dc está en estado - $status"
                     }

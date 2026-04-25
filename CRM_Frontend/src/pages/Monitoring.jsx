@@ -233,7 +233,7 @@ export default function Monitoring() {
     // Conectar WebSocket para Ping Heartbeat
     const socket = io(SOCKET_URL);
     socket.on('monitoring:heartbeat', (data) => {
-      setPingData(data);
+      setPingData(prev => ({ ...prev, [data.host]: data }));
     });
 
     return () => {
