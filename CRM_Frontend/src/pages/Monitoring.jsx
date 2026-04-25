@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { io } from "socket.io-client";
 import { 
   Server, 
@@ -70,8 +70,10 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
                    isHealthy ? 'bg-emerald-500/60 shadow-[0_0_10px_rgba(16,185,129,0.4)]' : 
                    'bg-slate-600';
 
-  const pulseStyle = (pingStatus && pingStatus.status === 'UP') ? {
-    animation: 'glow-pulse 1.5s ease-in-out infinite'
+  const pulseStyle = isOffline ? {
+    animation: 'breathe-red 2s ease-in-out infinite'
+  } : (pingStatus && pingStatus.status === 'UP') || isHealthy ? {
+    animation: 'breathe 3s ease-in-out infinite'
   } : {};
 
   return (
@@ -80,14 +82,24 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
       className={`bg-background/60 border ${!pingStatus ? 'border-border/50' : displayHealthy ? 'border-border' : 'border-rose-500/40'} ${isOffline ? 'bg-rose-500/5' : ''} rounded-xl p-5 transition-all hover:bg-background/80 flex flex-col ${onClick ? 'cursor-pointer hover:border-primary/50' : ''}`}
     >
       <style>{`
-        @keyframes glow-pulse {
+        @keyframes breathe {
           0%, 100% { 
-            filter: brightness(1.2) drop-shadow(0 0 8px rgba(52,211,153,0.8)); 
-            transform: scale(1);
+            opacity: 1; 
+            filter: brightness(1.2) drop-shadow(0 0 10px rgba(52,211,153,0.8)); 
           }
           50% { 
-            filter: brightness(1.5) drop-shadow(0 0 18px rgba(52,211,153,1)); 
-            transform: scale(1.15); 
+            opacity: 0.5; 
+            filter: brightness(0.8) drop-shadow(0 0 4px rgba(52,211,153,0.4)); 
+          }
+        }
+        @keyframes breathe-red {
+          0%, 100% { 
+            opacity: 1; 
+            filter: brightness(1.2) drop-shadow(0 0 12px rgba(244,63,94,0.9)); 
+          }
+          50% { 
+            opacity: 0.4; 
+            filter: brightness(0.7) drop-shadow(0 0 5px rgba(244,63,94,0.5)); 
           }
         }
       `}</style>
@@ -101,13 +113,13 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
               {title}
               {isOffline && <span className="px-1.5 py-0.5 rounded text-[9px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
               {!isOffline && latency && <span className="text-[10px] text-emerald-400 font-normal">{latency}</span>}
-              {!pingStatus && !isHealthy && <span className="text-[10px] text-muted-foreground animate-pulse">Iniciando...</span>}
+              {!pingStatus && !isHealthy && <span className="text-[10px] text-muted-foreground animate-pulse text-[8px]">SIN DATOS</span>}
             </h3>
             <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">{role}</span>
           </div>
         </div>
         <div 
-          className={`w-3 h-3 rounded-full transition-all duration-500 ${ledColor}`}
+          className={`w-3 h-3 rounded-full transition-all duration-1000 ${ledColor}`}
           style={pulseStyle}
         ></div>
       </div>
@@ -260,11 +272,12 @@ export default function Monitoring() {
               <div>
                 <h2 className="text-lg font-bold flex items-center gap-2">
                   ANFIGANE
-                  <div className={`w-2.5 h-2.5 rounded-full ${
-                    !pingData['AD-HOST'] ? 'bg-slate-400' :
-                    pingData['AD-HOST'].status === 'UP' ? 'bg-emerald-500 animate-pulse-subtle shadow-[0_0_15px_rgba(16,185,129,0.7)]' :
-                    'bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.8)]'
-                  }`}></div>
+                  <div 
+                    className={`w-3 h-3 rounded-full ${!pingData['AD-HOST'] ? 'bg-slate-600' : pingData['AD-HOST'].status === 'UP' ? 'bg-emerald-400' : 'bg-rose-500'}`}
+                    style={{
+                      animation: !pingData['AD-HOST'] ? 'none' : pingData['AD-HOST'].status === 'UP' ? 'breathe 3s ease-in-out infinite' : 'breathe-red 2s ease-in-out infinite'
+                    }}
+                  ></div>
                   {pingData['AD-HOST']?.status === 'DOWN' && <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
                   {pingData['AD-HOST']?.status === 'UP' && <span className="text-xs text-emerald-400 font-normal">{Math.round(pingData['AD-HOST'].time)}ms</span>}
                 </h2>
@@ -296,17 +309,11 @@ export default function Monitoring() {
                 <DCCard 
                   title="AD01" 
                   role="MASTER DC"
-                  uptime={nodes.dc01.LocalHealth?.Uptime ?? nodes.dc01.DCs?.Status?.find(d => d.Name?.includes('AD01'))?.Uptime ?? 'N/A'}
-                  servicesOk={
-                    Array.isArray(nodes.dc01.LocalHealth?.Services) 
-                      ? nodes.dc01.LocalHealth.Services.filter(s => s?.toString().includes('Running') || s?.Status === 'Running').length
-                      : (nodes.dc01.LocalHealth?.Services ? Object.values(nodes.dc01.LocalHealth.Services).filter(s => s === 'Running' || s === 'OK').length : 0)
-                    || nodes.dc01.DCs?.Status?.find(d => d.Name?.includes('AD01'))?.Services?.filter(s => s.includes('Running')).length
-                    || 0
-                  }
                   uptime={nodes.dc01?.DCs?.Status?.find(d => d.DC === 'AD01')?.Uptime ?? 'N/A'}
                   servicesOk={
-                    nodes.dc01?.DCs?.Status?.find(d => d.DC === 'AD01')?.Services?.filter(s => !s.includes('Error')).length ?? 0
+                    nodes.dc01?.DCs?.Status?.find(d => d.DC === 'AD01')?.Services?.filter(s => 
+                      s.toLowerCase().includes('ok') || s.toLowerCase().includes('running')
+                    ).length ?? 0
                   }
                   servicesTotal={nodes.dc01?.DCs?.Status?.find(d => d.DC === 'AD01')?.Services?.length ?? 6}
                   diskSpace={nodes.dc01?.Disk?.Disks?.find(d => d.DC === 'AD01')}
@@ -331,7 +338,9 @@ export default function Monitoring() {
                   role="SECUNDARIO BDC"
                   uptime={nodes.dc01?.DCs?.Status?.find(d => d.DC === 'DA02' || d.DC === 'AD02')?.Uptime ?? 'N/A'}
                   servicesOk={
-                    nodes.dc01?.DCs?.Status?.find(d => d.DC === 'DA02' || d.DC === 'AD02')?.Services?.filter(s => !s.includes('Error')).length ?? 0
+                    nodes.dc01?.DCs?.Status?.find(d => d.DC === 'DA02' || d.DC === 'AD02')?.Services?.filter(s => 
+                      s.toLowerCase().includes('ok') || s.toLowerCase().includes('running')
+                    ).length ?? 0
                   }
                   servicesTotal={nodes.dc01?.DCs?.Status?.find(d => d.DC === 'DA02' || d.DC === 'AD02')?.Services?.length ?? 6}
                   diskSpace={nodes.dc01?.Disk?.Disks?.find(d => d.DC === 'DA02' || d.DC === 'AD02')}
@@ -361,11 +370,12 @@ export default function Monitoring() {
               <div>
                 <h2 className="text-lg font-bold flex items-center gap-2">
                   ANFI-SEG13798
-                  <div className={`w-2.5 h-2.5 rounded-full ${
-                    !pingData['ANFI-SEG'] ? 'bg-slate-400' :
-                    pingData['ANFI-SEG'].status === 'UP' ? 'bg-emerald-500 animate-pulse-subtle shadow-[0_0_15px_rgba(16,185,129,0.7)]' :
-                    'bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.8)]'
-                  }`}></div>
+                  <div 
+                    className={`w-3 h-3 rounded-full ${!pingData['ANFI-SEG'] ? 'bg-slate-600' : pingData['ANFI-SEG'].status === 'UP' ? 'bg-emerald-400' : 'bg-rose-500'}`}
+                    style={{
+                      animation: !pingData['ANFI-SEG'] ? 'none' : pingData['ANFI-SEG'].status === 'UP' ? 'breathe 3s ease-in-out infinite' : 'breathe-red 2s ease-in-out infinite'
+                    }}
+                  ></div>
                   {pingData['ANFI-SEG']?.status === 'DOWN' && <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
                   {pingData['ANFI-SEG']?.status === 'UP' && <span className="text-xs text-emerald-400 font-normal">{Math.round(pingData['ANFI-SEG'].time)}ms</span>}
                 </h2>
@@ -435,11 +445,12 @@ export default function Monitoring() {
                       <p className="text-[9px] text-muted-foreground uppercase tracking-wider">192.168.8.42</p>
                     </div>
                   </div>
-                  <div className={`w-2 h-2 rounded-full ${
-                    !pingData['SERV-KSC'] ? 'bg-slate-500' :
-                    pingData['SERV-KSC'].status === 'UP' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]' :
-                    'bg-rose-500 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.8)]'
-                  }`}></div>
+                  <div 
+                    className={`w-2 h-2 rounded-full ${!pingData['SERV-KSC'] ? 'bg-slate-600' : pingData['SERV-KSC'].status === 'UP' ? 'bg-emerald-400' : 'bg-rose-500'}`}
+                    style={{
+                      animation: !pingData['SERV-KSC'] ? 'none' : pingData['SERV-KSC'].status === 'UP' ? 'breathe 3s ease-in-out infinite' : 'breathe-red 2s ease-in-out infinite'
+                    }}
+                  ></div>
                 </div>
                 <div className="flex-1 flex flex-col items-center justify-center py-2 gap-1">
                   {nodes.ksc ? (
