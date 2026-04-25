@@ -247,8 +247,11 @@ export default function Monitoring() {
     fetchData();
     const interval = setInterval(fetchData, 60000); // Actualizar cada minuto
 
-    // Conectar WebSocket para Ping Heartbeat
-    const socket = io(SOCKET_URL);
+    // Conectar WebSocket para Ping Heartbeat con Token de Autenticación
+    const token = localStorage.getItem('token');
+    const socket = io(SOCKET_URL, {
+      auth: { token }
+    });
     
     socket.on('connect', () => {
       console.log("✅ [SOCKET] Conectado al servidor de monitoreo");
