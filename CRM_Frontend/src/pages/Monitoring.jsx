@@ -66,15 +66,25 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
   const displayHealthy = isOffline ? false : (isHealthy || (pingStatus && pingStatus.status === 'UP'));
   
   const ledColor = isOffline ? 'bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.8)]' :
-                   (pingStatus && pingStatus.status === 'UP') ? 'bg-emerald-500 animate-pulse-subtle shadow-[0_0_15px_rgba(16,185,129,0.7)]' :
+                   (pingStatus && pingStatus.status === 'UP') ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.7)]' :
                    isHealthy ? 'bg-emerald-500/80 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : // Datos frescos pero sin ping
                    'bg-slate-500'; // Realmente sin datos ni ping
+
+  const pulseStyle = (pingStatus && pingStatus.status === 'UP') ? {
+    animation: 'pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+  } : {};
 
   return (
     <div 
       onClick={onClick}
       className={`bg-background/60 border ${!pingStatus ? 'border-border/50' : displayHealthy ? 'border-border' : 'border-rose-500/40'} ${isOffline ? 'bg-rose-500/5' : ''} rounded-xl p-5 transition-all hover:bg-background/80 flex flex-col ${onClick ? 'cursor-pointer hover:border-primary/50' : ''}`}
     >
+      <style>{`
+        @keyframes pulse-subtle {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(1.15); }
+        }
+      `}</style>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-[#0078D4]/10 rounded-lg text-[#0078D4]">
@@ -90,7 +100,10 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
             <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">{role}</span>
           </div>
         </div>
-        <div className={`w-2.5 h-2.5 rounded-full transition-colors duration-500 ${ledColor}`}></div>
+        <div 
+          className={`w-2.5 h-2.5 rounded-full transition-colors duration-500 ${ledColor}`}
+          style={pulseStyle}
+        ></div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 text-xs mb-3 flex-1">
@@ -285,21 +298,19 @@ export default function Monitoring() {
                     || nodes.dc01.DCs?.Status?.find(d => d.Name?.includes('AD01'))?.Services?.filter(s => s.includes('Running')).length
                     || 0
                   }
-                  servicesTotal={
-                    Array.isArray(nodes.dc01.LocalHealth?.Services) ? nodes.dc01.LocalHealth.Services.length :
-                    (nodes.dc01.LocalHealth?.Services ? Object.keys(nodes.dc01.LocalHealth.Services).length : 0)
-                    || nodes.dc01.DCs?.Status?.find(d => d.Name?.includes('AD01'))?.Services?.length
-                    || 6
+                  uptime={nodes.dc01?.DCs?.Status?.find(d => d.DC === 'AD01')?.Uptime ?? 'N/A'}
+                  servicesOk={
+                    nodes.dc01?.DCs?.Status?.find(d => d.DC === 'AD01')?.Services?.filter(s => !s.includes('Error')).length ?? 0
                   }
-                  diskSpace={
-                    nodes.dc01.LocalHealth?.Storage?.find(d => d.Drive?.includes('C')) ?? 
-                    nodes.dc01.Disk?.Disks?.find(d => d.Drive?.includes('C')) ??
-                    nodes.dc01.LocalHealth?.Disk?.[0]
+                  servicesTotal={nodes.dc01?.DCs?.Status?.find(d => d.DC === 'AD01')?.Services?.length ?? 6}
+                  diskSpace={nodes.dc01?.Disk?.Disks?.find(d => d.DC === 'AD01')}
+                  lastBackup={
+                    nodes.dc01?.Backups?.Backups?.find(b => b.Ruta?.includes('AD01'))?.UltimoBackup ?? 
+                    'Desconocido'
                   }
-                  lastBackup={nodes.dc01.Backups?.Status?.AD01 ?? nodes.dc01.Backups?.LastBackupDate ?? 'Desconocido'}
                   replication={nodes.dc01.Replication?.Status ?? 'OK'}
                   securityEvents={nodes.dc01.Security}
-                  isHealthy={true}
+                  isHealthy={!!nodes.dc01}
                   pingStatus={pingData['AD-DC01']}
                   onClick={() => { setAdData(nodes.dc01); setIsADModalOpen(true); }}
                   icon={<WindowsADIcon />} 
@@ -312,26 +323,19 @@ export default function Monitoring() {
                 <DCCard 
                   title="AD02" 
                   role="SECUNDARIO BDC"
-                  uptime={nodes.dc02.LocalHealth?.Uptime ?? nodes.dc02.Uptime ?? 'N/A'}
+                  uptime={nodes.dc01?.DCs?.Status?.find(d => d.DC === 'DA02' || d.DC === 'AD02')?.Uptime ?? 'N/A'}
                   servicesOk={
-                    nodes.dc02.LocalHealth?.Services?.filter(s => s.Status === 'Running' || s.Status === 'OK' || s.Status === 4).length ?? 
-                    nodes.dc02.DCs?.Status?.find(d => d.Name?.includes('AD02') || d.Name?.includes('DA02'))?.Services?.filter(s => s.includes('Running')).length ?? 0
+                    nodes.dc01?.DCs?.Status?.find(d => d.DC === 'DA02' || d.DC === 'AD02')?.Services?.filter(s => !s.includes('Error')).length ?? 0
                   }
-                  servicesTotal={nodes.dc02.LocalHealth?.Services?.length ?? 4}
-                  diskSpace={
-                    nodes.dc02.LocalHealth?.Storage?.find(d => d.Drive?.includes('C')) ?? 
-                    nodes.dc02.Disk?.Disks?.find(d => d.Drive?.includes('C')) ??
-                    nodes.dc02.LocalHealth?.Disk?.[0]
-                  }
+                  servicesTotal={nodes.dc01?.DCs?.Status?.find(d => d.DC === 'DA02' || d.DC === 'AD02')?.Services?.length ?? 6}
+                  diskSpace={nodes.dc01?.Disk?.Disks?.find(d => d.DC === 'DA02' || d.DC === 'AD02')}
                   lastBackup={
-                    nodes.dc01.Backups?.Status?.AD02 ?? 
-                    nodes.dc02.LocalHealth?.Backup ?? 
-                    nodes.dc01.BackupStatus?.AD02 ?? 
+                    nodes.dc01?.Backups?.Backups?.find(b => b.Ruta?.includes('AD02'))?.UltimoBackup ?? 
                     'Desconocido'
                   }
                   replication={nodes.dc01?.Replication?.Status}
-                  updates={nodes.dc02.LocalHealth?.Updates}
-                  isHealthy={true}
+                  updates={nodes.dc01?.Updates}
+                  isHealthy={!!nodes.dc02}
                   pingStatus={pingData['AD-DC02']}
                   icon={<WindowsADIcon />} 
                 />
