@@ -58,7 +58,7 @@ $reportData = @{
 
 # Enviar al Backend
 $payload = @{
-    service = "AD-HOST"
+    service = "ANFIGANE"
     data = $reportData
 }
 

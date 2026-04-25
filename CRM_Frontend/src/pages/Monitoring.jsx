@@ -204,7 +204,7 @@ export default function Monitoring() {
     // No ponemos loading=true aquí para evitar parpadeos en el autorefresh
     try {
       const [host1, host2, dc01, dc02, ksc] = await Promise.all([
-        monitoringService.getLatestStatus('AD-HOST'),   // ANFIGANE
+        monitoringService.getLatestStatus('ANFIGANE'),  // ANFIGANE (Antes AD-HOST)
         monitoringService.getLatestStatus('ANFI-SEG'),  // Host 2
         monitoringService.getLatestStatus('AD'),        // AD01
         monitoringService.getLatestStatus('AD-DC02'),   // AD02
@@ -214,9 +214,26 @@ export default function Monitoring() {
       setNodes({ host1, host2, dc01, dc02, ksc });
       setAdData(dc01);
       
-      // Historial opcional para el modal
-      const hist = await monitoringService.getHistory("AD-DC01");
-      setHistory(hist.files || []);
+      // 2. Historial unificado de todos los servicios
+      const services = ['ANFIGANE', 'ANFI-SEG', 'AD', 'AD-DC02', 'KSC'];
+      const historyPromises = services.map(s => monitoringService.getHistory(s));
+      const historyResults = await Promise.all(historyPromises);
+      
+      // Combinar y ordenar por fecha (el nombre del archivo contiene el timestamp)
+      const allFiles = [];
+      historyResults.forEach((res, index) => {
+        if (res.files) {
+          res.files.forEach(file => {
+            allFiles.push({
+              name: file,
+              service: services[index]
+            });
+          });
+        }
+      });
+      
+      // Ordenar por fecha descendente (más recientes primero)
+      setHistory(allFiles.sort((a, b) => b.name.localeCompare(a.name)));
       
       setLastUpdate(new Date());
     } catch (error) {
@@ -724,19 +741,23 @@ export default function Monitoring() {
             </thead>
             <tbody className="divide-y divide-border/50">
               {history.length > 0 ? (
-                history.map((file, idx) => (
+                history.map((item, idx) => (
                   <tr key={idx} className="hover:bg-muted/30 transition-colors">
                     <td className="px-6 py-4 font-medium">
-                      {file.split('_').slice(1, 3).join(' ').replace('.json', '').replace('-', '/').replace('-', '/')}
+                      {item.name.split('_').slice(1, 3).join(' ').replace('.json', '').replace('-', '/').replace('-', '/')}
                     </td>
-                    <td className="px-6 py-4">Active Directory</td>
-                    <td className="px-6 py-4 font-mono text-[11px] opacity-70">{file}</td>
                     <td className="px-6 py-4">
-                      <StatusBadge status="success" label="OK" />
+                      <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-[10px] font-bold uppercase">
+                        {item.service === 'AD' ? 'AD01' : item.service === 'AD-DC02' ? 'AD02' : item.service}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 font-mono text-[11px] opacity-70">{item.name}</td>
+                    <td className="px-6 py-4">
+                      <StatusBadge status="success" label="EJECUTADO" />
                     </td>
                     <td className="px-6 py-4 text-right">
                       <a 
-                        href={monitoringService.getReportHtmlUrl("AD", file.replace('.json', ''))} 
+                        href={monitoringService.getReportHtmlUrl(item.service, item.name.replace('.json', ''))} 
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary hover:underline text-xs font-medium"
