@@ -273,9 +273,9 @@ export default function Monitoring() {
                 <h2 className="text-lg font-bold flex items-center gap-2">
                   ANFIGANE
                   <div 
-                    className={`w-3 h-3 rounded-full ${!pingData['AD-HOST'] ? 'bg-slate-600' : pingData['AD-HOST'].status === 'UP' ? 'bg-emerald-400' : 'bg-rose-500'}`}
+                    className={`w-3 h-3 rounded-full ${(!pingData['AD-HOST'] && !pingData['ANFIGANE']) ? 'bg-slate-600' : (pingData['AD-HOST']?.status === 'UP' || pingData['ANFIGANE']?.status === 'UP') ? 'bg-emerald-400' : 'bg-rose-500'}`}
                     style={{
-                      animation: !pingData['AD-HOST'] ? 'none' : pingData['AD-HOST'].status === 'UP' ? 'breathe 3s ease-in-out infinite' : 'breathe-red 2s ease-in-out infinite'
+                      animation: (!pingData['AD-HOST'] && !pingData['ANFIGANE']) ? 'none' : (pingData['AD-HOST']?.status === 'UP' || pingData['ANFIGANE']?.status === 'UP') ? 'breathe 3s ease-in-out infinite' : 'breathe-red 2s ease-in-out infinite'
                     }}
                   ></div>
                   {pingData['AD-HOST']?.status === 'DOWN' && <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
@@ -336,22 +336,23 @@ export default function Monitoring() {
                 <DCCard 
                   title="AD02" 
                   role="SECUNDARIO BDC"
-                  uptime={nodes.dc01?.DCs?.Status?.find(d => d.DC === 'DA02' || d.DC === 'AD02')?.Uptime ?? 'N/A'}
+                  uptime={nodes.dc02?.Uptime ?? nodes.dc01?.DCs?.Status?.find(d => d.DC === 'DA02' || d.DC === 'AD02')?.Uptime ?? 'N/A'}
                   servicesOk={
+                    nodes.dc02?.LocalHealth?.Services?.filter(s => s.Status === 'Running' || s.Status === 4 || s.Status === 'OK').length ??
                     nodes.dc01?.DCs?.Status?.find(d => d.DC === 'DA02' || d.DC === 'AD02')?.Services?.filter(s => 
                       s.toLowerCase().includes('ok') || s.toLowerCase().includes('running')
                     ).length ?? 0
                   }
-                  servicesTotal={nodes.dc01?.DCs?.Status?.find(d => d.DC === 'DA02' || d.DC === 'AD02')?.Services?.length ?? 6}
-                  diskSpace={nodes.dc01?.Disk?.Disks?.find(d => d.DC === 'DA02' || d.DC === 'AD02')}
+                  servicesTotal={nodes.dc02?.LocalHealth?.Services?.length ?? 6}
+                  diskSpace={nodes.dc02?.LocalHealth?.Disk?.[0] ?? nodes.dc01?.Disk?.Disks?.find(d => d.DC === 'DA02' || d.DC === 'AD02')}
                   lastBackup={
                     nodes.dc01?.Backups?.Backups?.find(b => b.Ruta?.includes('AD02'))?.UltimoBackup ?? 
                     'Desconocido'
                   }
-                  replication={nodes.dc01?.Replication?.Status}
-                  updates={nodes.dc01?.Updates}
-                  isHealthy={!!nodes.dc02}
-                  pingStatus={pingData['AD-DC02']}
+                  replication={nodes.dc02?.LocalHealth?.Replication ?? nodes.dc01?.Replication?.Status}
+                  updates={nodes.dc02?.LocalHealth?.Updates ?? nodes.dc01?.Updates}
+                  isHealthy={!!nodes.dc02 || !!nodes.dc01}
+                  pingStatus={pingData['AD-DC02'] || pingData['DA02']}
                   icon={<WindowsADIcon />} 
                 />
               ) : (
@@ -371,9 +372,9 @@ export default function Monitoring() {
                 <h2 className="text-lg font-bold flex items-center gap-2">
                   ANFI-SEG13798
                   <div 
-                    className={`w-3 h-3 rounded-full ${!pingData['ANFI-SEG'] ? 'bg-slate-600' : pingData['ANFI-SEG'].status === 'UP' ? 'bg-emerald-400' : 'bg-rose-500'}`}
+                    className={`w-3 h-3 rounded-full ${(!pingData['ANFI-SEG'] && !pingData['ANFI-SEG13798']) ? 'bg-slate-600' : (pingData['ANFI-SEG']?.status === 'UP' || pingData['ANFI-SEG13798']?.status === 'UP') ? 'bg-emerald-400' : 'bg-rose-500'}`}
                     style={{
-                      animation: !pingData['ANFI-SEG'] ? 'none' : pingData['ANFI-SEG'].status === 'UP' ? 'breathe 3s ease-in-out infinite' : 'breathe-red 2s ease-in-out infinite'
+                      animation: (!pingData['ANFI-SEG'] && !pingData['ANFI-SEG13798']) ? 'none' : (pingData['ANFI-SEG']?.status === 'UP' || pingData['ANFI-SEG13798']?.status === 'UP') ? 'breathe 3s ease-in-out infinite' : 'breathe-red 2s ease-in-out infinite'
                     }}
                   ></div>
                   {pingData['ANFI-SEG']?.status === 'DOWN' && <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
@@ -446,9 +447,9 @@ export default function Monitoring() {
                     </div>
                   </div>
                   <div 
-                    className={`w-2 h-2 rounded-full ${!pingData['SERV-KSC'] ? 'bg-slate-600' : pingData['SERV-KSC'].status === 'UP' ? 'bg-emerald-400' : 'bg-rose-500'}`}
+                    className={`w-2 h-2 rounded-full ${(!pingData['SERV-KSC'] && !pingData['ksc'] && !pingData['192.168.8.42']) ? 'bg-slate-600' : (pingData['SERV-KSC']?.status === 'UP' || pingData['ksc']?.status === 'UP' || pingData['192.168.8.42']?.status === 'UP') ? 'bg-emerald-400' : 'bg-rose-500'}`}
                     style={{
-                      animation: !pingData['SERV-KSC'] ? 'none' : pingData['SERV-KSC'].status === 'UP' ? 'breathe 3s ease-in-out infinite' : 'breathe-red 2s ease-in-out infinite'
+                      animation: (!pingData['SERV-KSC'] && !pingData['ksc'] && !pingData['192.168.8.42']) ? 'none' : (pingData['SERV-KSC']?.status === 'UP' || pingData['ksc']?.status === 'UP' || pingData['192.168.8.42']?.status === 'UP') ? 'breathe 3s ease-in-out infinite' : 'breathe-red 2s ease-in-out infinite'
                     }}
                   ></div>
                 </div>
