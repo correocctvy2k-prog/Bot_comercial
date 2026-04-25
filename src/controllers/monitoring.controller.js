@@ -117,13 +117,12 @@ function generateHtmlReport(service, data) {
 function normalizeServiceId(service) {
     if (!service) return '';
     const s = service.toLowerCase();
-    if (s.includes('ksc')) return 'ksc';
-    if (s.includes('zk')) return 'zk';
-    if (s.includes('ad01') || s === 'ad') return 'ad';
-    if (s.includes('ad02') || s === 'ad-dc02') return 'ad-dc02';
-    if (s.includes('ad03') || s === 'ad-dc03') return 'ad-dc03';
-    if (s.includes('host1') || s.includes('anfigane')) return 'ad-host';
-    if (s.includes('host2') || s.includes('anfi-seg')) return 'anfi-seg';
+    if (s === 'ksc' || s.includes('kaspersky')) return 'ksc';
+    if (s === 'zk') return 'zk';
+    if (s === 'ad' || s.includes('ad01')) return 'ad';
+    if (s === 'ad-dc02' || s.includes('ad02')) return 'ad-dc02';
+    if (s === 'anfigane' || s.includes('host1')) return 'ad-host';
+    if (s === 'anfi-seg' || s.includes('host2')) return 'anfi-seg';
     return s;
 }
 

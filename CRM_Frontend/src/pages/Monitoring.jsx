@@ -250,7 +250,7 @@ export default function Monitoring() {
     // Conectar WebSocket para Ping Heartbeat
     const socket = io(SOCKET_URL);
     socket.on('monitoring:heartbeat', (data) => {
-      setPingData(prev => ({ ...prev, [data.host]: data }));
+      setPingData(data);
     });
 
     return () => {
@@ -341,7 +341,7 @@ export default function Monitoring() {
                   replication={nodes.dc01.Replication?.Status ?? 'OK'}
                   securityEvents={nodes.dc01.Security}
                   isHealthy={!!nodes.dc01}
-                  pingStatus={pingData['AD-DC01']}
+                  pingStatus={pingData['AD']}
                   onClick={() => { setAdData(nodes.dc01); setIsADModalOpen(true); }}
                   icon={<WindowsADIcon />} 
                 />
