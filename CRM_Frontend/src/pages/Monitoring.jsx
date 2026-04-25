@@ -248,7 +248,21 @@ export default function Monitoring() {
     const interval = setInterval(fetchData, 60000); // Actualizar cada minuto
 
     // Conectar WebSocket para Ping Heartbeat con Token de Autenticación
-    const token = localStorage.getItem('token');
+    // Extracción inteligente del Token de Supabase
+    const getSupabaseToken = () => {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.includes('-auth-token')) {
+          try {
+            const session = JSON.parse(localStorage.getItem(key));
+            return session?.access_token;
+          } catch (e) { return null; }
+        }
+      }
+      return null;
+    };
+
+    const token = getSupabaseToken();
     const socket = io(SOCKET_URL, {
       auth: { token }
     });
