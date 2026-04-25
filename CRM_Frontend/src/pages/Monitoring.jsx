@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { io } from "socket.io-client";
 import { 
   Server, 
@@ -65,13 +65,13 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
   // Si no hay ping, pero isHealthy es true (datos recientes), lo damos por válido.
   const displayHealthy = isOffline ? false : (isHealthy || (pingStatus && pingStatus.status === 'UP'));
   
-  const ledColor = isOffline ? 'bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.8)]' :
-                   (pingStatus && pingStatus.status === 'UP') ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.7)]' :
-                   isHealthy ? 'bg-emerald-500/80 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : // Datos frescos pero sin ping
-                   'bg-slate-500'; // Realmente sin datos ni ping
+  const ledColor = isOffline ? 'bg-rose-500 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.9)]' :
+                   (pingStatus && pingStatus.status === 'UP') ? 'bg-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.8)]' :
+                   isHealthy ? 'bg-emerald-500/60 shadow-[0_0_10px_rgba(16,185,129,0.4)]' : 
+                   'bg-slate-600';
 
   const pulseStyle = (pingStatus && pingStatus.status === 'UP') ? {
-    animation: 'pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+    animation: 'glow-pulse 1.5s ease-in-out infinite'
   } : {};
 
   return (
@@ -80,9 +80,15 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
       className={`bg-background/60 border ${!pingStatus ? 'border-border/50' : displayHealthy ? 'border-border' : 'border-rose-500/40'} ${isOffline ? 'bg-rose-500/5' : ''} rounded-xl p-5 transition-all hover:bg-background/80 flex flex-col ${onClick ? 'cursor-pointer hover:border-primary/50' : ''}`}
     >
       <style>{`
-        @keyframes pulse-subtle {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.6; transform: scale(1.15); }
+        @keyframes glow-pulse {
+          0%, 100% { 
+            filter: brightness(1.2) drop-shadow(0 0 8px rgba(52,211,153,0.8)); 
+            transform: scale(1);
+          }
+          50% { 
+            filter: brightness(1.5) drop-shadow(0 0 18px rgba(52,211,153,1)); 
+            transform: scale(1.15); 
+          }
         }
       `}</style>
       <div className="flex items-center justify-between mb-4">
@@ -101,7 +107,7 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
           </div>
         </div>
         <div 
-          className={`w-2.5 h-2.5 rounded-full transition-colors duration-500 ${ledColor}`}
+          className={`w-3 h-3 rounded-full transition-all duration-500 ${ledColor}`}
           style={pulseStyle}
         ></div>
       </div>
@@ -114,7 +120,7 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
          <div className="flex flex-col gap-1">
            <span className="text-muted-foreground flex items-center gap-1.5"><Activity className="w-3 h-3" /> Servicios</span>
            <span className={`font-bold pl-4 ${displayHealthy ? 'text-emerald-400' : 'text-rose-400'}`}>
-             {isOffline ? 'SIN CONEXIÓN' : `${servicesOk} de ${servicesTotal} OK`}
+             {isOffline ? 'SIN RED' : servicesOk < servicesTotal ? `${servicesTotal - servicesOk} CON FALLA` : "SISTEMA OK"}
            </span>
          </div>
          <div className="flex flex-col gap-1">
@@ -531,12 +537,12 @@ export default function Monitoring() {
                         <Server className="w-4 h-4" /> Estado de Controladores de Dominio
                       </h4>
                       <div className="space-y-2">
-                        {adData.DCs.Status.map((dc, i) => (
+                        {(adData.DCs?.Status || []).map((dc, i) => (
                           <div key={i} className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs border border-border/30 rounded-lg p-3 bg-background/60">
-                            <div><p className="text-muted-foreground">Nombre</p><p className="font-bold">{dc.Name}</p></div>
+                            <div><p className="text-muted-foreground">Nombre</p><p className="font-bold text-sky-400">{dc.DC}</p></div>
                             <div><p className="text-muted-foreground">Uptime</p><p className="font-medium">{dc.Uptime || 'N/A'}</p></div>
-                            <div><p className="text-muted-foreground">Ping</p><p className={`font-bold ${dc.Ping === 'OK' ? 'text-emerald-400' : 'text-rose-400'}`}>{dc.Ping || 'N/A'}</p></div>
-                            <div><p className="text-muted-foreground">Sitio AD</p><p className="font-medium">{dc.Site || 'N/A'}</p></div>
+                            <div><p className="text-muted-foreground">Ping</p><p className={`font-bold ${dc.Pingable ? 'text-emerald-400' : 'text-rose-400'}`}>{dc.Pingable ? 'OK' : 'FAIL'}</p></div>
+                            <div><p className="text-muted-foreground">Sitio AD</p><p className="font-medium">{dc.Site || 'Default-First-Site'}</p></div>
                           </div>
                         ))}
                       </div>
@@ -564,21 +570,25 @@ export default function Monitoring() {
                     )}
 
                     {/* Backups */}
-                    {adData.Backups?.Status && (
-                      <div className="bg-background border border-border rounded-lg p-4">
-                        <h4 className="text-sm font-semibold mb-3 border-b border-border/50 pb-2 flex items-center gap-2">
-                          <Database className="w-4 h-4" /> Estado de Backups
-                        </h4>
-                        <div className="space-y-2">
-                          {Object.entries(adData.Backups.Status).map(([dc, date]) => (
-                            <div key={dc} className="flex justify-between text-xs border border-border/30 rounded p-2">
-                              <span className="font-bold">{dc}</span>
-                              <span className="text-muted-foreground">Último: <span className="text-foreground font-medium">{date}</span></span>
+                    <div className="bg-background border border-border rounded-lg p-4">
+                      <h4 className="text-sm font-semibold mb-3 border-b border-border/50 pb-2 flex items-center gap-2">
+                        <Database className="w-4 h-4 text-sky-400" /> Estado de Backups
+                      </h4>
+                      <div className="space-y-2">
+                        {(adData.Backups?.Backups || []).map((backup, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-xs border border-border/30 rounded p-2 bg-background/40">
+                            <div className="flex flex-col">
+                              <span className="font-bold text-sky-400">{backup.Ruta?.split('\\').pop() || 'Backup'}</span>
+                              <span className="text-[9px] text-muted-foreground">{backup.TamañoTotal || '?'} GB</span>
                             </div>
-                          ))}
-                        </div>
+                            <div className="text-right">
+                              <span className="text-[10px] text-muted-foreground block">Último:</span>
+                              <span className="text-emerald-400 font-bold">{backup.UltimoBackup || 'N/A'}</span>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    )}
+                    </div>
                   </div>
 
                   {/* Eventos de Seguridad */}
