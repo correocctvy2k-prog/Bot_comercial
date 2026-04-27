@@ -16,7 +16,8 @@ import {
   History,
   ExternalLink,
   Cpu,
-  Activity
+  Activity,
+  Trash2
 } from "lucide-react";
 import { monitoringService } from "@/services/monitoring.service";
 import { formatDistanceToNow } from "date-fns";
