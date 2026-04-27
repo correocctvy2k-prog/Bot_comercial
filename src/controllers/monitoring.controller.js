@@ -167,14 +167,50 @@ exports.getHistory = (req, res) => {
         }
 
         const files = fs.readdirSync(baseDir)
-            .filter(f => f.startsWith('report_'))
+            .filter(f => f.startsWith('report_') && f.endsWith('.json'))
             .sort()
-            .reverse()
-            .slice(0, 20); // Últimos 20
+            .reverse();
 
         res.json({ files });
     } catch (error) {
         res.status(500).json({ error: 'Error al obtener el historial' });
+    }
+};
+
+/**
+ * Elimina un registro del historial
+ */
+exports.deleteHistory = (req, res) => {
+    try {
+        const { service, filename } = req.params;
+        const mappedService = normalizeServiceId(service);
+        const baseDir = path.join(__dirname, '../../data/monitoring', mappedService.toLowerCase());
+        
+        // El nombre de archivo viene sin extensión o con ella (report_...)
+        const jsonFile = filename.endsWith('.json') ? filename : `${filename}.json`;
+        const htmlFile = jsonFile.replace('.json', '.html');
+
+        const jsonPath = path.join(baseDir, jsonFile);
+        const htmlPath = path.join(baseDir, htmlFile);
+
+        let deleted = false;
+        if (fs.existsSync(jsonPath)) {
+            fs.unlinkSync(jsonPath);
+            deleted = true;
+        }
+        if (fs.existsSync(htmlPath)) {
+            fs.unlinkSync(htmlPath);
+            deleted = true;
+        }
+
+        if (!deleted) {
+            return res.status(404).json({ error: 'No se encontró el reporte para eliminar' });
+        }
+
+        res.json({ message: 'Reporte eliminado correctamente' });
+    } catch (error) {
+        console.error('[DELETE HISTORY ERROR]', error);
+        res.status(500).json({ error: 'Error al eliminar el reporte' });
     }
 };
 

@@ -1997,9 +1997,5 @@ Write-Host "📋 GPOs: $($reportData.GPOs.Total) total, $($reportData.GPOs.Empty
 Write-Host "🔐 Política Contraseña: $(if($reportData.PasswordPolicy.DomainPolicy.MinPasswordLength -ge 12){"✓ Conforme"}else{"⚠ Revisar"})" -ForegroundColor $(if($reportData.PasswordPolicy.DomainPolicy.MinPasswordLength -ge 12){"Green"}else{"Yellow"})
 Write-Host "🔒 Eventos Seguridad: $($reportData.Security.FailedLogins) intentos fallidos" -ForegroundColor $(if($reportData.Security.FailedLogins -gt 100){"Red"}else{"Green"})
 
-Write-Host "`n✓ Presiona Enter para abrir el reporte..." -ForegroundColor Cyan
-Read-Host
-
-Start-Process $htmlPath
-
-Write-Host "`n✓ Script completado exitosamente" -ForegroundColor Green
+Write-Host "`n✓ Script completado exitosamente." -ForegroundColor Green
+# No se requiere pausa ni apertura de navegador para tareas programadas
