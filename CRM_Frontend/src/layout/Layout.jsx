@@ -293,9 +293,9 @@ export default function Layout({ children }) {
                 {location.pathname !== '/command-center' && (
                     <header className="h-[80px] border-b border-border/60 bg-background/80 backdrop-blur-xl flex items-center justify-between px-10 z-10 shrink-0 shadow-sm">
                         <div className="flex items-center gap-4 animate-in fade-in slide-in-from-left-4 duration-500">
-                            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 shadow-inner">
-                                <CurrentIcon size={20} strokeWidth={2.5} />
-                            </div>
+                        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 text-primary border border-primary/20 shadow-inner">
+                            <CurrentIcon size={20} strokeWidth={2.5} />
+                        </div>
                             <div>
                                 <h2 className="text-xl font-bold tracking-tight text-foreground">{currentTitle}</h2>
                                 {profile && isSidebarOpen && (
