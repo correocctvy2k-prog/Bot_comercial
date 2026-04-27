@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bot, MapPin, Users, Settings, LogOut, Cable, Terminal, PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, PieChart, Sparkles, Building2, ShieldCheck, User, Image, Mail, UserCircle, Loader2, Camera, X } from 'lucide-react';
+import { Bot, MapPin, Users, Settings, LogOut, Cable, Terminal, PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, PieChart, Sparkles, Building2, ShieldCheck, User, Image, Mail, UserCircle, Loader2, Camera, X, Activity } from 'lucide-react';
 import SkylabBot from '../components/SkylabBot';
 import { ModeToggle } from "@/components/mode-toggle";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -43,7 +43,7 @@ const MENU_ITEMS_RAW = [
         section: "Sistema Operativo",
         items: [
             { to: '/command-center', icon: Terminal, label: 'Centro de Mando', module: 'command-center' },
-            { to: '/monitoring', icon: ShieldCheck, label: 'Monitoreo IT', module: 'bot-activity' }, // Usamos bot-activity temporalmente como permiso
+            { to: '/monitoring', icon: Activity, label: 'Monitoreo IT', module: 'bot-activity' }, // Usamos bot-activity temporalmente como permiso
             {
                 label: 'Configuraciones',
                 icon: Settings,
@@ -176,6 +176,7 @@ export default function Layout({ children }) {
             } else {
                 if (location.pathname === item.to) {
                     currentTitle = item.label;
+                    CurrentIcon = item.icon;
                 }
             }
         });
