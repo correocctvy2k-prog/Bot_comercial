@@ -199,6 +199,7 @@ export default function Monitoring() {
   });
   const [pingData, setPingData] = useState({});
   const [isADModalOpen, setIsADModalOpen] = useState(false);
+  const [showAllHistory, setShowAllHistory] = useState(false); // Nuevo: control de filtro de fecha
 
   const fetchData = async () => {
     // No ponemos loading=true aquí para evitar parpadeos en el autorefresh
@@ -242,6 +243,25 @@ export default function Monitoring() {
       setLoading(false);
     }
   };
+
+  const handleDeleteHistory = async (service, filename) => {
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar el reporte ${filename}?`)) return;
+    
+    const success = await monitoringService.deleteHistory(service, filename);
+    if (success) {
+      toast.success('Reporte eliminado correctamente');
+      fetchData(); // Refrescar lista
+    } else {
+      toast.error('Error al eliminar el reporte');
+    }
+  };
+
+  const filteredHistory = showAllHistory 
+    ? history 
+    : history.filter(item => {
+        const today = new Date().toISOString().split('T')[0];
+        return item.name.includes(today);
+      });
 
   useEffect(() => {
     fetchData();
@@ -760,11 +780,30 @@ export default function Monitoring() {
 
       {/* History Table */}
       <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl overflow-hidden">
-        <div className="p-6 border-b border-border">
+        <div className="p-6 border-b border-border flex justify-between items-center">
           <h3 className="text-base font-semibold flex items-center gap-2">
             <History className="w-4 h-4 text-primary" />
             Historial de Ejecuciones Local
           </h3>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg border border-border">
+              <button
+                onClick={() => setShowAllHistory(false)}
+                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${!showAllHistory ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Solo Hoy
+              </button>
+              <button
+                onClick={() => setShowAllHistory(true)}
+                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${showAllHistory ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Todo
+              </button>
+            </div>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
+              {filteredHistory.length} registros
+            </span>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
@@ -778,33 +817,54 @@ export default function Monitoring() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
-              {history.length > 0 ? (
-                history.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-6 py-4 font-medium">
-                      {item.name.split('_').slice(1, 3).join(' ').replace('.json', '').replace('-', '/').replace('-', '/')}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-[10px] font-bold uppercase">
-                        {item.service === 'AD' ? 'AD01' : item.service === 'AD-DC02' ? 'AD02' : item.service}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-mono text-[11px] opacity-70">{item.name}</td>
-                    <td className="px-6 py-4">
-                      <StatusBadge status="success" label="EJECUTADO" />
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <a 
-                        href={monitoringService.getReportHtmlUrl(item.service, item.name.replace('.json', ''))} 
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline text-xs font-medium"
-                      >
-                        Ver Reporte
-                      </a>
-                    </td>
-                  </tr>
-                ))
+              {filteredHistory.length > 0 ? (
+                filteredHistory.map((item, idx) => {
+                  // Extraer fecha y hora del nombre: report_YYYY-MM-DDTHH-mm-ss...
+                  const timestampMatch = item.name.match(/report_(\d{4}-\d{2}-\d{2})T(\d{2}-\d{2}-\d{2})/);
+                  let displayDate = item.name;
+                  if (timestampMatch) {
+                    const date = timestampMatch[1].split('-').reverse().join('/');
+                    const time = timestampMatch[2].replace(/-/g, ':');
+                    displayDate = `${date} ${time}`;
+                  }
+
+                  return (
+                    <tr key={idx} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-6 py-4 font-medium tabular-nums">
+                        {displayDate}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-[10px] font-bold uppercase">
+                          {item.service === 'AD' ? 'AD01' : item.service === 'AD-DC02' ? 'AD02' : item.service}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 font-mono text-[11px] opacity-70">{item.name.replace('.json', '')}</td>
+                      <td className="px-6 py-4">
+                        <StatusBadge status="success" label="EJECUTADO" />
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <a 
+                            href={monitoringService.getReportHtmlUrl(item.service, item.name.replace('.json', ''))} 
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 hover:bg-primary/20 text-primary rounded-lg transition-colors"
+                            title="Ver Reporte HTML"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                          <button
+                            onClick={() => handleDeleteHistory(item.service, item.name)}
+                            className="p-1.5 hover:bg-rose-500/20 text-rose-500 rounded-lg transition-colors"
+                            title="Eliminar Registro"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan="5" className="px-6 py-10 text-center text-muted-foreground italic">

@@ -37,5 +37,20 @@ export const monitoringService = {
      */
     getReportHtmlUrl(service, filename = 'latest') {
         return `${API_URL}/api/monitoring/html/${service}/${filename}`;
+    },
+
+    /**
+     * Elimina un reporte del historial
+     */
+    async deleteHistory(service, filename) {
+        try {
+            const response = await fetch(`${API_URL}/api/monitoring/history/${service}/${filename}`, {
+                method: 'DELETE'
+            });
+            return response.ok;
+        } catch (error) {
+            console.error(`[MONITORING SERVICE] Error al eliminar ${filename}:`, error);
+            return false;
+        }
     }
 };
