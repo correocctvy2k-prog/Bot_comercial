@@ -23,7 +23,7 @@ export const monitoringService = {
      */
     async getHistory(service) {
         try {
-            const response = await fetch(`${API_URL}/api/monitoring/history/${service}`);
+            const response = await fetch(`${API_URL}/api/monitoring/history/${service}`, { cache: 'no-store' });
             if (!response.ok) return { files: [] };
             return await response.json();
         } catch (error) {
@@ -45,7 +45,8 @@ export const monitoringService = {
     async deleteHistory(service, filename) {
         try {
             const response = await fetch(`${API_URL}/api/monitoring/history/${service}/${filename}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                cache: 'no-store'
             });
             return response.ok;
         } catch (error) {

@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
+import { Toaster } from "sonner";
 
 // Pages
 import Dashboard from './pages/Dashboard'
@@ -25,6 +26,7 @@ function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <QueryClientProvider client={queryClient}>
+        <Toaster position="top-right" richColors />
         <AuthProvider>
           <BrowserRouter>
             <Routes>
