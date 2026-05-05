@@ -16,8 +16,9 @@
 # Configuración inicial
 $ErrorActionPreference = "Continue"
 $OutputPath = "C:\AD_Reports"
-$BackupPath = "\\ganepalmir\dpto.informatica\Johnathan.Beltran\OTROS\Chequeos\Active Directory"
-$BackendUrl = "http://192.168.8.65:3001/api/monitoring/upload" # IP del servidor donde corre el Bot Comercial / Monitoring API
+$BackupPath = "C:\AD_Reports\Backup" # Cambio a ruta LOCAL para evitar errores de permisos SYSTEM con red
+$NetworkBackup = "\\ganepalmir\dpto.informatica\Johnathan.Beltran\OTROS\Chequeos\Active Directory" # Ruta de red opcional
+$BackendUrl = "http://192.168.8.65:3001/api/monitoring/upload" 
 $ReportDate = Get-Date -Format "yyyy-MM-dd_HHmm"
 $ReportName = "Informe_AD_$ReportDate"
 
@@ -26,9 +27,8 @@ foreach ($path in @($OutputPath, $BackupPath)) {
     if (-not (Test-Path $path)) {
         try {
             New-Item -ItemType Directory -Path $path -Force | Out-Null
-            Write-Host "✓ Directorio creado: $path" -ForegroundColor Green
         } catch {
-            Write-Host "⚠ No se pudo crear/acceder: $path" -ForegroundColor Yellow
+            Write-Host "⚠ No se pudo crear: $path" -ForegroundColor Yellow
         }
     }
 }
@@ -226,7 +226,8 @@ function Get-ReplicationStatus {
     }
     
     try {
-        $replErrors = repadmin /showrepl * /errorsonly 2>&1
+        # repadmin puede fallar si no hay permisos de admin de dominio (SYSTEM es local)
+        $replErrors = & repadmin /showrepl * /errorsonly 2>&1
         $hasErrors = $replErrors -match "error|fail"
         
         if ($hasErrors) {
@@ -236,15 +237,20 @@ function Get-ReplicationStatus {
         } else {
             $replStatus.Errors = "No se encontraron errores de replicación"
         }
+    } catch {
+        $replStatus.Errors = "No se pudo ejecutar repadmin (posible falta de permisos)"
+        $replStatus.Status = "WARNING"
+    }
+
+    try {
+        $dc1Objects = (Get-ADObject -Server "AD01" -Filter * -ErrorAction SilentlyContinue).Count
+        $dc2Objects = (Get-ADObject -Server "DA02" -Filter * -ErrorAction SilentlyContinue).Count
         
-        try {
-            $dc1Objects = (Get-ADObject -Server "AD01" -Filter *).Count
-            $dc2Objects = (Get-ADObject -Server "DA02" -Filter *).Count
+        if ($dc1Objects -and $dc2Objects) {
             $difference = [Math]::Abs($dc1Objects - $dc2Objects)
-            
             $replStatus.ObjectCount = @(
                 "AD01 - $dc1Objects objetos",
-                "AD02 - $dc2Objects objetos",
+                "DA02 - $dc2Objects objetos",
                 "Diferencia - $difference objetos"
             )
             
@@ -252,13 +258,9 @@ function Get-ReplicationStatus {
                 $replStatus.Status = "WARNING"
                 $replStatus.Recommendation += " ISO 27002 5.23: Diferencia significativa ($difference objetos)"
             }
-        } catch {
-            $replStatus.ObjectCount = @("Error al comparar objetos entre DCs")
         }
-        
     } catch {
-        $replStatus.Summary = "Error al verificar replicación: $($_.Exception.Message)"
-        $replStatus.Status = "ERROR"
+        $replStatus.ObjectCount = @("Error al comparar objetos entre DCs")
     }
     
     return $replStatus
@@ -708,6 +710,29 @@ function Get-PasswordPolicyCompliance {
     }
     
     return $policyCompliance
+}
+
+function Get-UpdateStatus {
+    $rebootPending = $false
+    if (Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired") { $rebootPending = $true }
+    if (Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending") { $rebootPending = $true }
+    
+    $pendingCount = 0
+    try {
+        $updateSession = New-Object -ComObject Microsoft.Update.Session
+        $updateSearcher = $updateSession.CreateUpdateSearcher()
+        $searchResult = $updateSearcher.Search("IsInstalled=0 and Type='Software' and IsHidden=0")
+        $pendingCount = $searchResult.Updates.Count
+    } catch { }
+
+    $lastUpdate = Get-HotFix -ErrorAction SilentlyContinue | Sort-Object InstalledOn -Descending | Select-Object -First 1
+    
+    return @{
+        RebootRequired = $rebootPending
+        PendingCount = $pendingCount
+        LastInstalled = if ($lastUpdate.InstalledOn) { $lastUpdate.InstalledOn.ToString("yyyy-MM-dd") } else { "Desconocido" }
+        Status = if ($rebootPending) { "Reinicio Requerido" } elseif ($pendingCount -gt 0) { "$pendingCount Pendientes" } else { "OK" }
+    }
 }
 
 # ==================== RECOPILACIÓN DE DATOS ====================

@@ -130,7 +130,11 @@ Write-Host ""
 
 # ── Registrar la tarea ───────────────────────────────────────────────────
 try {
-    # Eliminar si ya existe para actualización limpia
+    # LIMPIEZA: Eliminar tarea antigua con nombre genérico si existe
+    Get-ScheduledTask -TaskName "Skylab_Infrastructure_Monitoring" -ErrorAction SilentlyContinue |
+        Unregister-ScheduledTask -Confirm:$false
+
+    # Eliminar si ya existe la tarea actual para actualización limpia
     Get-ScheduledTask -TaskName $Config.TaskName -ErrorAction SilentlyContinue |
         Unregister-ScheduledTask -Confirm:$false
 
