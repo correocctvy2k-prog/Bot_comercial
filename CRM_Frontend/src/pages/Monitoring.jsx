@@ -22,6 +22,7 @@ import {
 import { monitoringService } from "@/services/monitoring.service";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
+import { toast } from "sonner";
 
 const STATUS_COLORS = {
   success: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
