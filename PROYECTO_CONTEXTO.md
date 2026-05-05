@@ -459,6 +459,15 @@ El sistema utiliza una arquitectura jerárquica de dos niveles:
 | `SERV-KSC` | **KSC** (Kaspersky Center) | `192.168.8.42` | ANFI-SEG13798 |
 | `AD-DC03` | **AD03** (Próximamente) | - | ANFI-SEG13798 |
 
+### Roles y Responsabilidades de Monitoreo
+| Servidor | Rol de Monitoreo | Destino de Datos | Genera Reporte Red (HTML) |
+|---|---|---|---|
+| **AD01** | **Maestro de Monitoreo AD** | Backend (.65) + Red (\\ganepalmir) | **SÍ** (Único responsable) |
+| **DA02** | Nodo de Salud BDC | Backend (.65) | No |
+| **ANFIGANE** | Nodo de Salud Host Master | Backend (.65) | No |
+| **ANFI-SEG** | Nodo de Salud Host Seguridad | Backend (.65) | No |
+| **KSC** | Nodo de Salud Kaspersky | Backend (.65) | No |
+
 ### Flujo de Datos Técnico
 1.  **Agentes PowerShell (`.ps1`):** Corren localmente en cada servidor mediante Tareas Programadas.
 2.  **Upload API:** Envían un POST JSON a `http://192.168.8.65:3001/api/monitoring/upload`.

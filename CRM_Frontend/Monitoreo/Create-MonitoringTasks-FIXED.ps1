@@ -125,7 +125,18 @@ Write-Host ""
 Write-Host "Configurando tarea: $($Config.TaskName)" -ForegroundColor Cyan
 Write-Host "  Script  : $ActionScript"
 Write-Host "  Horario : $($Config.StartTime) — Diario (una vez al día)"
-Write-Host "  Usuario : SYSTEM"
+
+# ── Selección de Usuario ──
+$RunAsUser = "SYSTEM"
+$Password = $null
+
+Write-Host ""
+Write-Host "⚠️  IMPORTANTE: Para guardar reportes en la RED (\\ganepalmir), la cuenta SYSTEM podría fallar." -ForegroundColor Yellow
+$UseAdmin = Read-Host "¿Desea ejecutar la tarea como 'Administrador' para asegurar acceso a red? (S/N)"
+if ($UseAdmin -eq "S" -or $UseAdmin -eq "s") {
+    $RunAsUser = "$env:USERDOMAIN\Administrador"
+    Write-Host "Se solicitará la contraseña para registrar la tarea..." -ForegroundColor Cyan
+}
 Write-Host ""
 
 # ── Registrar la tarea ───────────────────────────────────────────────────
@@ -138,16 +149,29 @@ try {
     Get-ScheduledTask -TaskName $Config.TaskName -ErrorAction SilentlyContinue |
         Unregister-ScheduledTask -Confirm:$false
 
-    Register-ScheduledTask `
-        -Action      $Action `
-        -Trigger     $Trigger `
-        -TaskName    $Config.TaskName `
-        -Description "Skylab Monitoreo ISO 27001 — $Hostname — v2.1 — Diario $($Config.StartTime)" `
-        -User        "SYSTEM" `
-        -Settings    $Settings `
-        -RunLevel    Highest | Out-Null
+    if ($RunAsUser -eq "SYSTEM") {
+        Register-ScheduledTask `
+            -Action      $Action `
+            -Trigger     $Trigger `
+            -TaskName    $Config.TaskName `
+            -Description "Skylab Monitoreo ISO 27001 — $Hostname — v2.2 — Diario $($Config.StartTime)" `
+            -User        "SYSTEM" `
+            -Settings    $Settings `
+            -RunLevel    Highest | Out-Null
+    } else {
+        # Registrar con usuario específico (pedirá contraseña una vez)
+        Register-ScheduledTask `
+            -Action      $Action `
+            -Trigger     $Trigger `
+            -TaskName    $Config.TaskName `
+            -Description "Skylab Monitoreo ISO 27001 — $Hostname — v2.2 — Diario $($Config.StartTime)" `
+            -User        $RunAsUser `
+            -Password    (Read-Host "Ingrese contraseña para $RunAsUser" -AsSecureString) `
+            -Settings    $Settings `
+            -RunLevel    Highest | Out-Null
+    }
 
-    Write-Host "✅ Tarea '$($Config.TaskName)' creada con éxito." -ForegroundColor Green
+    Write-Host "✅ Tarea '$($Config.TaskName)' creada con éxito como $RunAsUser." -ForegroundColor Green
 
 } catch {
     Write-Host "❌ Error al crear la tarea. Asegúrese de ejecutar como Administrador." -ForegroundColor Red

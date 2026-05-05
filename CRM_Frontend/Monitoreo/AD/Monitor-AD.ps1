@@ -16,8 +16,8 @@
 # Configuración inicial
 $ErrorActionPreference = "Continue"
 $OutputPath = "C:\AD_Reports"
-$BackupPath = "C:\AD_Reports\Backup" # Cambio a ruta LOCAL para evitar errores de permisos SYSTEM con red
-$NetworkBackup = "\\ganepalmir\dpto.informatica\Johnathan.Beltran\OTROS\Chequeos\Active Directory" # Ruta de red opcional
+$BackupPath = "\\ganepalmir\dpto.informatica\Johnathan.Beltran\OTROS\Chequeos\Active Directory" # Ruta de red (Maestro AD01)
+$LocalBackup = "C:\AD_Reports\Backup" # Respaldo local
 $BackendUrl = "http://192.168.8.65:3001/api/monitoring/upload" 
 $ReportDate = Get-Date -Format "yyyy-MM-dd_HHmm"
 $ReportName = "Informe_AD_$ReportDate"
