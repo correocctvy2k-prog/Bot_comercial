@@ -14,4 +14,7 @@ router.get('/api/monitoring/history/:service', monitoringController.getHistory);
 // Obtener reporte HTML
 router.get('/api/monitoring/html/:service/:filename', monitoringController.getReportHtml);
 
+// Eliminar historial
+router.delete('/api/monitoring/history/:service/:filename', monitoringController.deleteHistory);
+
 module.exports = router;
