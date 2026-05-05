@@ -5,7 +5,7 @@
     ALCANCE: 3 servidores del Directorio Activo (ANFIGANE, AD01, AD02)
     CORRECCIONES vs v1.0:
     - Nombre de tarea ÚNICO por servidor (evita sobreescritura entre DCs)
-    - Script correcto por hostname (Monitor-AD01.ps1 / Monitor-AD02.ps1)
+    - Script correcto por hostname (Monitor-AD.ps1 / Monitor-AD02.ps1)
     - Sin Read-Host: totalmente desatendido para SYSTEM
     - Ejecucion DIARIA una vez por dia (sin repeticion horaria)
     HORARIO:
@@ -40,6 +40,12 @@ function Find-Script {
         $full = Join-Path $base "$SubDir\$FileName"
         if (Test-Path $full) { return $full }
     }
+    # Fallback: si es AD02 y no existe Monitor-AD02.ps1, intentar Monitor-AD.ps1
+    if ($FileName -eq "Monitor-AD02.ps1") {
+        Write-Host "⚠ Monitor-AD02.ps1 no encontrado. Usando Monitor-AD.ps1 como fallback." -ForegroundColor Yellow
+        Write-Host "  (Recomendado: copiar Monitor-AD02.ps1 a este servidor para monitoreo específico de DC secundario)" -ForegroundColor Gray
+        return Find-Script -SubDir $SubDir -FileName "Monitor-AD.ps1"
+    }
     return $null
 }
 
@@ -60,7 +66,7 @@ $Config = switch ($Hostname) {
         @{
             TaskName   = "Skylab_Monitor_AD01"
             SubDir     = "AD"
-            ScriptFile = "Monitor-AD01.ps1"
+            ScriptFile = "Monitor-AD.ps1"
             StartTime  = "06:05:00"
         }
     }
@@ -69,7 +75,7 @@ $Config = switch ($Hostname) {
         @{
             TaskName   = "Skylab_Monitor_AD02"
             SubDir     = "AD"
-            ScriptFile = "Monitor-AD02.ps1"
+            ScriptFile = "Monitor-AD02.ps1"    # Script ligero exclusivo de AD02
             StartTime  = "06:10:00"
         }
     }
