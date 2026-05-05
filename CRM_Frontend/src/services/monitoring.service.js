@@ -48,6 +48,10 @@ export const monitoringService = {
                 method: 'DELETE',
                 cache: 'no-store'
             });
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`[DELETE_ERROR_BODY] Status: ${response.status}. Body: ${errorText}`);
+            }
             return response.ok;
         } catch (error) {
             console.error(`[MONITORING SERVICE] Error al eliminar ${filename}:`, error);

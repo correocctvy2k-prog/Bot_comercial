@@ -193,18 +193,27 @@ exports.deleteHistory = (req, res) => {
         const jsonPath = path.join(baseDir, jsonFile);
         const htmlPath = path.join(baseDir, htmlFile);
 
+        console.log(`[DELETE_HISTORY_DEBUG] Trying to delete:`);
+        console.log(`[DELETE_HISTORY_DEBUG] jsonPath: ${jsonPath}`);
+        console.log(`[DELETE_HISTORY_DEBUG] jsonPath exists? ${fs.existsSync(jsonPath)}`);
+        console.log(`[DELETE_HISTORY_DEBUG] htmlPath: ${htmlPath}`);
+        console.log(`[DELETE_HISTORY_DEBUG] htmlPath exists? ${fs.existsSync(htmlPath)}`);
+
         let deleted = false;
         if (fs.existsSync(jsonPath)) {
             fs.unlinkSync(jsonPath);
             deleted = true;
+            console.log(`[DELETE_HISTORY_DEBUG] Deleted JSON file`);
         }
         if (fs.existsSync(htmlPath)) {
             fs.unlinkSync(htmlPath);
             deleted = true;
+            console.log(`[DELETE_HISTORY_DEBUG] Deleted HTML file`);
         }
 
         if (!deleted) {
-            return res.status(404).json({ error: 'No se encontró el reporte para eliminar' });
+            console.log(`[DELETE_HISTORY_DEBUG] Failed to find ANY file to delete! Returned 404.`);
+            return res.status(404).json({ error: 'No se encontró el reporte para eliminar', jsonPath, htmlPath });
         }
 
         res.json({ message: 'Reporte eliminado correctamente' });
