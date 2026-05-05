@@ -35,13 +35,23 @@ const SOCKET_URL = import.meta.env.VITE_MONITORING_BACKEND_URL || 'http://localh
 
 const UpdateBadge = ({ updates }) => {
   if (!updates) return null;
-  const isPending = updates.RebootPending;
+  const isPending = updates.RebootRequired || updates.RebootPending || (updates.PendingCount && updates.PendingCount > 0);
+  
+  let statusText = `Updates OK (${updates.LastInstalled || 'N/A'})`;
+  if (updates.Status) {
+    statusText = updates.Status;
+  } else if (updates.RebootRequired || updates.RebootPending) {
+    statusText = 'Reinicio Pendiente';
+  } else if (updates.PendingCount > 0) {
+    statusText = `${updates.PendingCount} Pendientes`;
+  }
+
   return (
     <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border ${
       isPending ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
     }`}>
       {isPending ? <RefreshCw className="w-3 h-3 animate-spin-slow" /> : <CheckCircle2 className="w-3 h-3" />}
-      {isPending ? 'Reinicio Pendiente (Updates)' : `Updates OK (${updates.LastInstalled})`}
+      {statusText}
     </div>
   );
 };
@@ -226,10 +236,13 @@ export default function Monitoring() {
       historyResults.forEach((res, index) => {
         if (res.files) {
           res.files.forEach(file => {
-            allFiles.push({
-              name: file,
-              service: services[index]
-            });
+            // Filtrado preventivo: Solo JSON y archivos que empiecen con report_
+            if (file.toLowerCase().endsWith('.json') && file.startsWith('report_')) {
+              allFiles.push({
+                name: file,
+                service: services[index]
+              });
+            }
           });
         }
       });
@@ -257,12 +270,22 @@ export default function Monitoring() {
     }
   };
 
-  const filteredHistory = showAllHistory 
+  const filteredHistory = (showAllHistory 
     ? history 
     : history.filter(item => {
-        const today = new Date().toISOString().split('T')[0];
-        return item.name.includes(today);
-      });
+        // Para el filtro de "Solo Hoy", usamos la fecha local
+        const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
+        // Extraer la fecha del nombre del archivo (UTC) y convertirla a local para comparar
+        try {
+          const name = item.name.replace('report_', '').replace('.json', '');
+          const parts = name.split('T');
+          const isoStr = parts[0] + 'T' + parts[1].replace(/-/g, ':').replace(/:(\d{3})Z$/, '.$1Z');
+          const fileDate = new Date(isoStr).toLocaleDateString('en-CA');
+          return fileDate === today;
+        } catch (e) {
+          return false;
+        }
+      })).filter(item => item.name.toLowerCase().endsWith('.json')); // Filtrado reforzado e insensible a mayúsculas
 
   useEffect(() => {
     fetchData();
@@ -820,13 +843,27 @@ export default function Monitoring() {
             <tbody className="divide-y divide-border/50">
               {filteredHistory.length > 0 ? (
                 filteredHistory.map((item, idx) => {
-                  // Extraer fecha y hora del nombre: report_YYYY-MM-DDTHH-mm-ss...
-                  const timestampMatch = item.name.match(/report_(\d{4}-\d{2}-\d{2})T(\d{2}-\d{2}-\d{2})/);
                   let displayDate = item.name;
-                  if (timestampMatch) {
-                    const date = timestampMatch[1].split('-').reverse().join('/');
-                    const time = timestampMatch[2].replace(/-/g, ':');
-                    displayDate = `${date} ${time}`;
+                  try {
+                    // El formato es report_YYYY-MM-DDTHH-mm-ss-fffZ.json
+                    const name = item.name.replace('report_', '').replace('.json', '');
+                    const parts = name.split('T');
+                    if (parts.length === 2) {
+                      const datePart = parts[0];
+                      // Convertimos guiones a dos puntos para la parte del tiempo y aseguramos el punto para milisegundos
+                      const timePart = parts[1].replace(/-/g, ':').replace(/:(\d{3})Z$/, '.$1Z');
+                      const dateObj = new Date(`${datePart}T${timePart}`);
+                      
+                      if (!isNaN(dateObj.getTime())) {
+                        displayDate = dateObj.toLocaleString('es-CO', { 
+                          day: '2-digit', month: '2-digit', year: 'numeric',
+                          hour: '2-digit', minute: '2-digit', second: '2-digit',
+                          hour12: true 
+                        });
+                      }
+                    }
+                  } catch (e) {
+                    console.error("Error parsing date:", item.name, e);
                   }
 
                   return (
