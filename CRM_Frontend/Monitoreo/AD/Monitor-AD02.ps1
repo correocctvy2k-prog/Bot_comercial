@@ -1,8 +1,8 @@
 <#
 .SYNOPSIS
-    Monitor AD02 (Secondary Domain Controller)
+    Monitor DA02 (Secondary Domain Controller / BDC)
 .DESCRIPTION
-    Salud Local + Replicación.
+    Salud Local + Replicación. Hostname real del servidor: DA02
 #>
 
 $BackendUrl = "http://192.168.8.65:3001/api/monitoring/upload"
@@ -22,18 +22,27 @@ function Get-UpdateStatus {
     if (Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired") { $rebootPending = $true }
     if (Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending") { $rebootPending = $true }
     
+    $pendingCount = 0
+    try {
+        $updateSession = New-Object -ComObject Microsoft.Update.Session
+        $updateSearcher = $updateSession.CreateUpdateSearcher()
+        $searchResult = $updateSearcher.Search("IsInstalled=0 and Type='Software' and IsHidden=0")
+        $pendingCount = $searchResult.Updates.Count
+    } catch { }
+
     $lastUpdate = Get-HotFix -ErrorAction SilentlyContinue | Sort-Object InstalledOn -Descending | Select-Object -First 1
     
     return @{
-        RebootPending = $rebootPending
+        RebootRequired = $rebootPending
+        PendingCount = $pendingCount
         LastInstalled = if ($lastUpdate.InstalledOn) { $lastUpdate.InstalledOn.ToString("yyyy-MM-dd") } else { "Desconocido" }
-        LastKB = if ($lastUpdate.HotFixID) { $lastUpdate.HotFixID } else { "N/A" }
+        Status = if ($rebootPending) { "Reinicio Requerido" } elseif ($pendingCount -gt 0) { "$pendingCount Pendientes" } else { "OK" }
     }
 }
 $Updates = Get-UpdateStatus
 
 $reportData = @{
-    Node = "AD-DC02"
+    Node = "DA02"        # Hostname real del servidor
     Role = "BDC (Backup Domain Controller)"
     Uptime = "$([math]::Round(((Get-Date) - $OS.LastBootUpTime).TotalDays, 1)) días"
     LocalHealth = @{
@@ -54,7 +63,7 @@ $payload = @{
 try {
     $jsonPayload = $payload | ConvertTo-Json -Depth 10
     Invoke-RestMethod -Uri $BackendUrl -Method Post -Body $jsonPayload -ContentType "application/json"
-    Write-Host "✓ Datos de AD02 enviados" -ForegroundColor Green
+    Write-Host "✓ Datos de DA02 (AD-DC02) enviados correctamente" -ForegroundColor Green
 } catch {
     Write-Host "✗ Error: $($_.Exception.Message)" -ForegroundColor Red
 }

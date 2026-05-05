@@ -454,7 +454,7 @@ El sistema utiliza una arquitectura jerárquica de dos niveles:
 |---|---|---|---|
 | `AD-HOST` | **ANFIGANE** (Master Host) | `192.168.8.43` | ProLiant DL360 |
 | `AD` | **AD01** (Master DC) | `192.168.8.44` | ANFIGANE |
-| `AD-DC02` | **AD02** (Secundario BDC) | `192.168.8.45` | ANFIGANE |
+| `AD-DC02` | **DA02** (Secundario BDC) | `192.168.8.45` | ANFIGANE |
 | `ANFI-SEG` | **ANFI-SEG13798** (Security Host) | `192.168.8.41` | ProLiant DL160 |
 | `SERV-KSC` | **KSC** (Kaspersky Center) | `192.168.8.42` | ANFI-SEG13798 |
 | `AD-DC03` | **AD03** (Próximamente) | - | ANFI-SEG13798 |
@@ -495,3 +495,4 @@ uptime={nodes.dc01.LocalHealth?.Uptime ?? nodes.dc01.DCs?.Status?.find(d => d.Na
 
 ## 🧠 MEMORIA CENTRALIZADA Y APRENDIZAJE AGÉNTICO
 *Consulte `km_agent_memory` en Supabase para detalles técnicos específicos de implementación de controladores.*
+ 

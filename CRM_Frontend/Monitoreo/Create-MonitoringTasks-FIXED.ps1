@@ -11,7 +11,7 @@
     HORARIO:
       ANFIGANE   → 06:00 diario
       AD01       → 06:05 diario
-      AD02       → 06:10 diario
+      DA02       → 06:10 diario  (hostname real del BDC secundario)
 .USAGE
     Ejecutar como Administrador en cada servidor:
     Set-ExecutionPolicy Bypass -Scope Process -Force
@@ -71,18 +71,18 @@ $Config = switch ($Hostname) {
         }
     }
 
-    "AD02" {
+    "DA02" {   # Hostname real del BDC secundario
         @{
-            TaskName   = "Skylab_Monitor_AD02"
+            TaskName   = "Skylab_Monitor_DA02"
             SubDir     = "AD"
-            ScriptFile = "Monitor-AD02.ps1"    # Script ligero exclusivo de AD02
+            ScriptFile = "Monitor-AD02.ps1"    # Script ligero exclusivo de DA02
             StartTime  = "06:10:00"
         }
     }
 
     default {
         Write-Host "❌ Servidor '$Hostname' no está en el alcance actual." -ForegroundColor Red
-        Write-Host "   Servidores soportados en esta fase: ANFIGANE, AD01, AD02" -ForegroundColor Yellow
+        Write-Host "   Servidores soportados en esta fase: ANFIGANE, AD01, DA02" -ForegroundColor Yellow
         exit 1
     }
 }
