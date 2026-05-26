@@ -50,6 +50,13 @@ async function checkNodes() {
         // Emitir estado global a todos los clientes conectados
         // Incluimos un timestamp por nodo (`checkedAt`) para que el cliente pueda
         // confiar en la marca de tiempo del servidor al calcular frescura.
+        // DEBUG: imprimir resultados para diagnóstico en logs del servidor
+        try {
+            console.log('📡 [PING_SVC] hasil ping results:', Object.keys(results).join(', '));
+            console.log('📡 [PING_SVC] AD-DC03 result:', results['AD-DC03'] || results['AD03'] || results['192.168.8.46'] || null);
+        } catch (e) {
+            // no bloquear emisión por fallo de logging
+        }
         io.emit('monitoring:heartbeat', results);
 
     } catch (e) {
