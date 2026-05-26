@@ -353,8 +353,8 @@ export default function Monitoring() {
       const timestamped = Object.fromEntries(
         Object.entries(data).map(([key, value]) => {
           const serverTs = value?.checkedAt;
-          const receivedAt = serverTs || Date.now();
-          return [key, { ...value, receivedAt }];
+          const receivedAt = Date.now(); // use client receipt time as authoritative for freshness
+          return [key, { ...value, receivedAt, checkedAt: serverTs }];
         })
       );
       setPingData(timestamped);
