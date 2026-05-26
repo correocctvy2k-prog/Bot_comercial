@@ -19,6 +19,8 @@ async function checkNodes() {
 
         for (const node of nodesToMonitor) {
             try {
+                // DEBUG: indicar inicio de intento por nodo
+                console.log(`📡 [PING_SVC] pinging ${node.id} @ ${node.ip}`);
                 const res = await ping.promise.probe(node.ip, {
                     timeout: 2,
                     extra: ['-c', '1'] // En Windows se ignora extra o se mapea, pero probe es multi-os
@@ -31,7 +33,10 @@ async function checkNodes() {
                 };
                 // Marcar cuándo fue verificado en el servidor (timestamp ms)
                 results[node.id].checkedAt = Date.now();
+                // DEBUG: log del resultado por nodo
+                try { console.log(`📡 [PING_SVC] result ${node.id}: alive=${res.alive} time=${res.time}`); } catch(e) {}
             } catch (err) {
+                console.error(`📡 [PING_SVC] error pinging ${node.id} (${node.ip}):`, err && err.message ? err.message : err);
                 results[node.id] = { status: 'DOWN', time: null, ip: node.ip };
             }
         }
