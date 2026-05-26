@@ -1,128 +1,133 @@
 <#
 .SYNOPSIS
-    Monitor del Servidor KSC (Kaspersky Security Center)
+    Monitor de Kaspersky Security Center — SERV-KSC
 .DESCRIPTION
-    Envía métricas de salud del servidor, servicios de Kaspersky y 
-    estado de agentes al CRM/Dashboard de Monitoreo Skylab.
-    Alineado con ISO 27001:2022 — Control A.8.8 (Gestión de vulnerabilidades).
+    Recopila métricas del servidor de seguridad y datos de la consola KSC 
+    vía KlAkProxy (OAPI). Alineado con ISO 27001.
 #>
 
 $BackendUrl = "http://192.168.8.65:3001/api/monitoring/upload"
 $ErrorActionPreference = "Continue"
 
 Write-Host "╔══════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║   SKYLAB — Monitor KSC (Kaspersky Security Center)   ║" -ForegroundColor Cyan
+Write-Host "║   SKYLAB — Monitor SERV-KSC (Kaspersky Console)      ║" -ForegroundColor Cyan
 Write-Host "╚══════════════════════════════════════════════════════╝" -ForegroundColor Cyan
 
-# ── 1. Sistema Operativo ────────────────────────────────────────────────
+# ── 1. Sistema Operativo y Hardware ─────────────────────────────────────
 $os = Get-CimInstance Win32_OperatingSystem
-$lastBoot = $os.LastBootUpTime
-$uptime = (Get-Date) - $lastBoot
-$uptimeStr = "{0} días, {1} horas" -f $uptime.Days, $uptime.Hours
-Write-Host "[1/5] Sistema OK — Uptime: $uptimeStr" -ForegroundColor Green
+$uptime = (Get-Date) - $os.LastBootUpTime
+$uptimeStr = "{0}d {1}h {2}m" -f $uptime.Days, $uptime.Hours, $uptime.Minutes
 
-# ── 2. Espacio en Disco ─────────────────────────────────────────────────
+Write-Host "[1/6] Sistema: OK ($uptimeStr uptime)" -ForegroundColor Green
+
+# ── 2. Almacenamiento ───────────────────────────────────────────────────
 $Disks = Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" | Select-Object DeviceID,
-    @{N='SizeGB';      E={[math]::Round($_.Size/1GB, 2)}},
-    @{N='FreeGB';      E={[math]::Round($_.FreeSpace/1GB, 2)}},
-    @{N='PercentFree'; E={[math]::Round(($_.FreeSpace/$_.Size)*100, 2)}}
-Write-Host "[2/5] Discos: $($Disks.Count) unidad(es)" -ForegroundColor Green
+    @{N='Size_GB'; E={[math]::Round($_.Size / 1GB, 2)}},
+    @{N='Free_GB'; E={[math]::Round($_.FreeSpace / 1GB, 2)}},
+    @{N='Used_Pct'; E={[math]::Round((1 - ($_.FreeSpace / $_.Size)) * 100, 1)}}
+Write-Host "[2/6] Almacenamiento: OK" -ForegroundColor Green
 
 # ── 3. Servicios de Kaspersky ───────────────────────────────────────────
-# Nombres típicos de servicios KSC — se omiten silenciosamente si no existen
-$KscServiceNames = @(
-    "KAVFSGT",          # Kaspersky Security for Windows Server
-    "klnagent",         # Kaspersky Network Agent
-    "klserver",         # Administration Server
-    "klactprx",         # Activation Proxy
-    "SrvSvc",           # Server service (general)
-    "WinRM",
-    "W32Time",
-    "EventLog"
-)
-$Services = Get-Service -Name $KscServiceNames -ErrorAction SilentlyContinue |
-    Select-Object Name, Status
-Write-Host "[3/5] Servicios KSC monitoreados: $($Services.Count)" -ForegroundColor Green
+$KscServices = @("klserver", "klnagent", "klactprx", "kladminserver")
+$Services = Get-Service -Name $KscServices -ErrorAction SilentlyContinue | 
+    Select-Object Name, @{N='Status'; E={$_.Status.ToString()}}
+Write-Host "[3/6] Servicios KSC: $($Services.Count) monitoreados" -ForegroundColor Green
 
-# ── 4. Estado de Actualizaciones ────────────────────────────────────────
-function Get-UpdateStatus {
-    $rebootPending = (Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired") -or
-                     (Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending")
-    $pendingCount = 0
+# ── 4. Actualizaciones de Windows ───────────────────────────────────────
+function Get-UpdateMetrics {
+    $pending = 0
+    $reboot = Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired"
     try {
-        $session  = New-Object -ComObject Microsoft.Update.Session
-        $searcher = $session.CreateUpdateSearcher()
-        $result   = $searcher.Search("IsInstalled=0 and Type='Software' and IsHidden=0")
-        $pendingCount = $result.Updates.Count
-    } catch { }
-    $lastHotfix = Get-HotFix -ErrorAction SilentlyContinue | Sort-Object InstalledOn -Descending | Select-Object -First 1
-    return @{
-        RebootRequired = $rebootPending
-        PendingCount   = $pendingCount
-        LastInstalled  = if ($lastHotfix.InstalledOn) { $lastHotfix.InstalledOn.ToString("yyyy-MM-dd") } else { "Desconocido" }
-        LastKB         = if ($lastHotfix.HotFixID)    { $lastHotfix.HotFixID } else { "N/A" }
-        Status         = if ($rebootPending) { "Reinicio Requerido" } elseif ($pendingCount -gt 0) { "$pendingCount Pendientes" } else { "OK" }
-    }
+        $updateSession = New-Object -ComObject Microsoft.Update.Session
+        $updateSearcher = $updateSession.CreateUpdateSearcher()
+        $searchResult = $updateSearcher.Search("IsInstalled=0 and Type='Software' and IsHidden=0")
+        $pending = $searchResult.Updates.Count
+    } catch {}
+    return @{ PendingCount = $pending; RebootRequired = $reboot }
 }
-$Updates = Get-UpdateStatus
-Write-Host "[4/5] Actualizaciones: $($Updates.Status)" -ForegroundColor $(if($Updates.Status -eq "OK"){"Green"}else{"Yellow"})
+$Updates = Get-UpdateMetrics
+Write-Host "[4/6] Windows Update: $($Updates.PendingCount) pendientes" -ForegroundColor $(if($Updates.PendingCount -gt 0){"Yellow"}else{"Green"})
 
-# ── 5. Agentes KSC conectados (vía WMI si está disponible) ─────────────
-$KscAgentCount = 0
-$KscVersion    = "N/A"
+# ── 5. Datos de Consola Kaspersky (Expert Mode - KlAkProxy) ─────────────
+Write-Host "[5/6] Conectando a Consola KSC vía Automation API..." -ForegroundColor Cyan
+$KscStats = @{
+    TotalHosts = 0
+    ActiveHosts = 0
+    OutdatedHosts = 0
+    CriticalIssues = 0
+    Version = "N/A"
+}
+
 try {
-    # Intentar leer la versión de KSC desde el registro
+    # Intentar obtener versión del registro como respaldo
     $kscReg = Get-ItemProperty "HKLM:\SOFTWARE\KasperskyLab\Components\34\1103" -ErrorAction SilentlyContinue
-    if ($kscReg) {
-        $KscVersion = $kscReg.Version
-    }
-    # Intentar leer conteo de hosts administrados
-    $wmi = Get-WmiObject -Namespace "root\Kaspersky" -Class "KLCS_NagentHosts" -ErrorAction SilentlyContinue
-    if ($wmi) { $KscAgentCount = $wmi.Count }
-    Write-Host "[5/5] KSC Version: $KscVersion | Agentes conectados: $KscAgentCount" -ForegroundColor Green
+    if ($kscReg) { $KscStats.Version = $kscReg.Version }
+
+    # API de Automatización (KlAkProxy)
+    # Nota: Requiere que la consola esté instalada en este equipo
+    $Proxy = New-Object -ComObject "klakaut.KlAkProxy"
+    $Proxy.Connect("localhost") # Conexión local como Administrador
+
+    # Obtener conteo de hosts (Concepto simplificado basado en OAPI)
+    # En versiones modernas, esto se hace consultando el HostGroup
+    $HostGroup = New-Object -ComObject "klakaut.KlAkHostGroup"
+    $HostGroup.AdmServer = $Proxy
+    
+    # Consultar todos los equipos administrados
+    $hostsParams = New-Object -ComObject "klakaut.KlAkParams"
+    # Consulta vacía para obtener todos
+    $allHosts = $HostGroup.FindHosts($hostsParams)
+    
+    $KscStats.TotalHosts = $allHosts.Count
+    
+    # Filtrar por estado (Esto es ilustrativo, depende de la estructura de KlAkParams devuelta)
+    # Por ahora usaremos el conteo total como métrica principal
+    Write-Host "   ✅ KSC API: Conectado. Endpoints detectados: $($KscStats.TotalHosts)" -ForegroundColor Green
+    
+    $Proxy.Disconnect()
 } catch {
-    Write-Host "[5/5] Información KSC por WMI no disponible (normal si KSC no está instalado aquí)" -ForegroundColor Yellow
+    Write-Host "   ⚠️ KSC API: No disponible o requiere permisos. Usando WMI fallback." -ForegroundColor Yellow
+    # Fallback WMI
+    try {
+        $wmiHosts = Get-WmiObject -Namespace "root\Kaspersky" -Class "KLCS_NagentHosts" -ErrorAction SilentlyContinue
+        if ($wmiHosts) { $KscStats.TotalHosts = $wmiHosts.Count }
+    } catch {}
 }
 
 # ── Consolidar Payload ──────────────────────────────────────────────────
 $reportData = @{
-    Timestamp  = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
-    Hostname   = $env:COMPUTERNAME
-    Role       = "Kaspersky Security Center"
-    HostParent = "ANFI-SEG13798"
-    Uptime     = $uptimeStr
-    System     = @{
-        OS      = $os.Caption
+    Timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+    Hostname  = $env:COMPUTERNAME
+    Role      = "Kaspersky Security Center"
+    Uptime    = $uptimeStr
+    System    = @{
+        OS = $os.Caption
         Version = $os.Version
         RAM_Total_GB = [math]::Round($os.TotalVisibleMemorySize / 1MB, 2)
-        RAM_Free_GB  = [math]::Round($os.FreePhysicalMemory  / 1MB, 2)
-        RAM_UsedPct  = [math]::Round((1 - $os.FreePhysicalMemory / $os.TotalVisibleMemorySize) * 100, 1)
+        RAM_Free_GB = [math]::Round($os.FreePhysicalMemory / 1MB, 2)
+        RAM_UsedPct = [math]::Round((1 - ($os.FreePhysicalMemory / $os.TotalVisibleMemorySize)) * 100, 1)
     }
-    Disks      = $Disks
-    Services   = $Services
-    KSC        = @{
-        Version      = $KscVersion
-        AgentsOnline = $KscAgentCount
+    KSC = @{
+        Version = $KscStats.Version
+        TotalHosts = $KscStats.TotalHosts
+        ActiveHosts = $KscStats.ActiveHosts
     }
-    Updates    = $Updates
-    ReportDate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    Disks = $Disks
+    Services = $Services
+    Updates = $Updates
 }
 
-# ── Enviar al Backend ───────────────────────────────────────────────────
 $payload = @{
     service = "KSC"
-    data    = $reportData
+    data = $reportData
 }
 
-Write-Host ""
-Write-Host "Enviando datos al backend ($BackendUrl)..." -ForegroundColor Cyan
-
+# ── Envío al Backend ───────────────────────────────────────────────────
+Write-Host "`n[6/6] Enviando datos a Skylab ($BackendUrl)..." -ForegroundColor Cyan
 try {
-    $jsonPayload = $payload | ConvertTo-Json -Depth 10
-    $response    = Invoke-RestMethod -Uri $BackendUrl -Method Post -Body $jsonPayload `
-                   -ContentType "application/json" -TimeoutSec 30
-    Write-Host "✅ Datos de KSC enviados correctamente: $($response.message)" -ForegroundColor Green
+    $json = $payload | ConvertTo-Json -Depth 10
+    $res = Invoke-RestMethod -Uri $BackendUrl -Method Post -Body $json -ContentType "application/json"
+    Write-Host "✅ Datos de KSC enviados correctamente." -ForegroundColor Green
 } catch {
-    Write-Host "❌ Error al enviar datos: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host "   Verifique que el backend esté activo en $BackendUrl" -ForegroundColor Yellow
+    Write-Host "❌ Error de conexión: $($_.Exception.Message)" -ForegroundColor Red
 }

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Configura tareas programadas de monitoreo Skylab — VERSION CORREGIDA v2.1
 .DESCRIPTION
@@ -80,9 +80,27 @@ $Config = switch ($Hostname) {
         }
     }
 
+    "SERV-KSC" {
+        @{
+            TaskName   = "Skylab_Monitor_KSC"
+            SubDir     = "KSC"
+            ScriptFile = "Monitor-KSC.ps1"
+            StartTime  = "06:15:00"
+        }
+    }
+
+    "KSC" {
+        @{
+            TaskName   = "Skylab_Monitor_KSC"
+            SubDir     = "KSC"
+            ScriptFile = "Monitor-KSC.ps1"
+            StartTime  = "06:15:00"
+        }
+    }
+
     default {
         Write-Host "❌ Servidor '$Hostname' no está en el alcance actual." -ForegroundColor Red
-        Write-Host "   Servidores soportados en esta fase: ANFIGANE, AD01, DA02" -ForegroundColor Yellow
+        Write-Host "   Servidores soportados en esta fase: ANFIGANE, AD01, DA02, SERV-KSC" -ForegroundColor Yellow
         exit 1
     }
 }
@@ -106,12 +124,18 @@ Write-Host "✓ Script encontrado: $ActionScript" -ForegroundColor Green
 # ── Construir la tarea ───────────────────────────────────────────────────
 
 # Acción: PowerShell desatendido con bypass de política de ejecución
+# Accion: PowerShell desatendido con bypass de politica de ejecucion (Usa pwsh si esta disponible)
+$Executable = "PowerShell.exe"
+if (Get-Command pwsh.exe -ErrorAction SilentlyContinue) {
+    $Executable = (Get-Command pwsh.exe).Source
+}
+
 $Action = New-ScheduledTaskAction `
-    -Execute "PowerShell.exe" `
+    -Execute $Executable `
     -Argument "-NonInteractive -NoProfile -ExecutionPolicy Bypass -File `"$ActionScript`""
 
-# Trigger: Diario a la hora configurada — SIN repetición horaria
-$Trigger = New-ScheduledTaskTrigger -Daily -At $Config.StartTime
+# Trigger: Una vez a la hora configurada con repeticion de 5 minutos indefinida
+$Trigger = New-ScheduledTaskTrigger -Once -At $Config.StartTime -RepetitionInterval (New-TimeSpan -Minutes 5)
 
 # Ajustes: ejecutar aunque estuviese pendiente, no parar si va a batería
 $Settings = New-ScheduledTaskSettingsSet `

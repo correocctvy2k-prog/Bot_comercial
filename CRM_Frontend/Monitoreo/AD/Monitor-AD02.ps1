@@ -1,8 +1,8 @@
-<#
+﻿<#
 .SYNOPSIS
     Monitor DA02 (Secondary Domain Controller / BDC)
 .DESCRIPTION
-    Salud Local + Replicación. Hostname real del servidor: DA02
+    Salud Local + ReplicaciÃ³n. Hostname real del servidor: DA02
 #>
 
 $BackendUrl = "http://192.168.8.65:3001/api/monitoring/upload"
@@ -12,7 +12,7 @@ $OS = Get-CimInstance Win32_OperatingSystem
 $Disks = Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" | Select-Object DeviceID, 
     @{N='PercentFree';E={[math]::Round(($_.FreeSpace/$_.Size)*100, 2)}}
 
-# --- Replicación (Verificar desde este nodo) ---
+# --- ReplicaciÃ³n (Verificar desde este nodo) ---
 $Replica = repadmin /showrepl /errorsonly 2>&1
 $ReplicaStatus = if ($Replica -match "error|fail") { "ERROR" } else { "OK" }
 
@@ -44,7 +44,7 @@ $Updates = Get-UpdateStatus
 $reportData = @{
     Node = "DA02"        # Hostname real del servidor
     Role = "BDC (Backup Domain Controller)"
-    Uptime = "$([math]::Round(((Get-Date) - $OS.LastBootUpTime).TotalDays, 1)) días"
+    Uptime = "$([math]::Round(((Get-Date) - $OS.LastBootUpTime).TotalDays, 1)) dÃ­as"
     LocalHealth = @{
         Disk = $Disks
         Services = Get-Service -Name "NTDS", "DNS", "KDC", "Netlogon", "DFSR" -ErrorAction SilentlyContinue | Select-Object Name, Status
@@ -63,7 +63,7 @@ $payload = @{
 try {
     $jsonPayload = $payload | ConvertTo-Json -Depth 10
     Invoke-RestMethod -Uri $BackendUrl -Method Post -Body $jsonPayload -ContentType "application/json"
-    Write-Host "✓ Datos de DA02 (AD-DC02) enviados correctamente" -ForegroundColor Green
+    Write-Host "[OK] Datos de DA02 (AD-DC02) enviados correctamente" -ForegroundColor Green
 } catch {
-    Write-Host "✗ Error: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "[ERROR] Error: $($_.Exception.Message)" -ForegroundColor Red
 }

@@ -1,13 +1,13 @@
-<#
+﻿<#
 .SYNOPSIS
-    Monitoreo de Host Físico Hyper-V (ANFIGANE)
+    Monitoreo de Host FÃ­sico Hyper-V (ANFIGANE)
 .DESCRIPTION
-    Envía métricas de salud del hardware y estado de las VMs al CRM.
+    EnvÃ­a mÃ©tricas de salud del hardware y estado de las VMs al CRM.
 #>
 
 $BackendUrl = "http://192.168.8.65:3001/api/monitoring/upload"
 
-# 1. Información del Sistema
+# 1. InformaciÃ³n del Sistema
 $OS = Get-CimInstance Win32_OperatingSystem
 $CS = Get-CimInstance Win32_ComputerSystem
 $Uptime = (Get-Date) - $OS.LastBootUpTime
@@ -21,7 +21,7 @@ $Disks = Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" | Select-Object
     @{N='FreeGB';E={[math]::Round($_.FreeSpace/1GB, 2)}},
     @{N='PercentFree';E={[math]::Round(($_.FreeSpace/$_.Size)*100, 2)}}
 
-# 4. Servicios Críticos del Host
+# 4. Servicios CrÃ­ticos del Host
 $Services = Get-Service -Name "vmms", "vds" -ErrorAction SilentlyContinue | Select-Object Name, Status
 
 # 5. Estado de Actualizaciones
@@ -45,7 +45,7 @@ $Updates = Get-UpdateStatus
 $os = Get-CimInstance Win32_OperatingSystem
 $lastBoot = $os.LastBootUpTime
 $uptime = (Get-Date) - $lastBoot
-$uptimeStr = "{0} días, {1} horas" -f $uptime.Days, $uptime.Hours
+$uptimeStr = "{0} dÃ­as, {1} horas" -f $uptime.Days, $uptime.Hours
 
 $reportData = @{
     Timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
@@ -77,7 +77,7 @@ $payload = @{
 try {
     $jsonPayload = $payload | ConvertTo-Json -Depth 10
     Invoke-RestMethod -Uri $BackendUrl -Method Post -Body $jsonPayload -ContentType "application/json" -TimeoutSec 30
-    Write-Host "✓ Datos de ANFIGANE enviados correctamente" -ForegroundColor Green
+    Write-Host "âœ“ Datos de ANFIGANE enviados correctamente" -ForegroundColor Green
 } catch {
-    Write-Host "✗ Error enviando datos: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "âœ— Error enviando datos: $($_.Exception.Message)" -ForegroundColor Red
 }

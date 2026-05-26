@@ -500,6 +500,10 @@ uptime={nodes.dc01.LocalHealth?.Uptime ?? nodes.dc01.DCs?.Status?.find(d => d.Na
 **Problema:** Cambios en el mapeo del frontend no coinciden con la lógica del backend si no se reinicia el servicio.
 **Regla:** Siempre que se actualice `monitoring.controller.js`, es obligatorio ejecutar `pm2 restart all` en el VPS para activar la auto-generación de reportes HTML.
 
+#### 5. Exportación de HTML (Variable Typo y Fallbacks)
+**Problema:** El reporte de Monitoreo generado por el script maestro de AD (84KB) se visualizaba en el CRM con un diseño "Dark Theme" básico (con datos RAW en JSON) en lugar del diseño estructurado y detallado original.
+**Solución:** El backend en Node.js cuenta con una función de fallback (`generateHtmlReport`) que auto-genera un HTML si recibe el payload vacío. En el script de PowerShell existía un typo crítico (`html = $htmlContent` en lugar de `html = $htmlReport`), lo que provocaba que se descartara el reporte principal. Al enviar la variable correcta, el backend sirve el HTML de 84KB original.
+
 ---
 
 ## 🧠 MEMORIA CENTRALIZADA Y APRENDIZAJE AGÉNTICO

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { io } from "socket.io-client";
 import { 
   Server, 
@@ -480,19 +480,32 @@ export default function Monitoring() {
                   {pingData['ANFI-SEG']?.status === 'DOWN' && <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
                   {pingData['ANFI-SEG']?.status === 'UP' && <span className="text-xs text-emerald-400 font-normal">{Math.round(pingData['ANFI-SEG'].time)}ms</span>}
                 </h2>
-                <p className="text-[10px] text-muted-foreground">HP ProLiant DL160 Gen9 / Hyper-V • 192.168.8.41</p>
+                                <div className="flex flex-col gap-0.5">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">HP ProLiant DL160 Gen9 / Hyper-V • 192.168.8.41</p>
+                  {nodes.host2?.Uptime && (
+                    <span className="text-[11px] text-emerald-400/90 font-bold flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      UPTIME: {nodes.host2.Uptime}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             {nodes.host2 && (
               <div className="flex flex-wrap items-center gap-2 text-[10px]">
                 <div className="flex items-center gap-1 px-2 py-1 bg-background rounded-md border border-border">
                   <Cpu className="w-3 h-3 text-primary" />
-                  <span className="font-mono">{nodes.host2.RAM?.FreeGB}GB / {nodes.host2.RAM?.TotalGB}GB</span>
+                  <span className="font-mono">
+                    {(nodes.host2.data?.System?.RAM_Free_GB || nodes.host2.RAM?.FreeGB || 0)}GB / {(nodes.host2.data?.System?.RAM_Total_GB || nodes.host2.RAM?.TotalGB || 0)}GB
+                  </span>
                 </div>
                 <div className="flex items-center gap-1 px-2 py-1 bg-background rounded-md border border-border">
                   <Activity className="w-3 h-3 text-emerald-400" />
-                  <span className="font-bold text-emerald-400">{nodes.host2.VMs?.filter(v => v.State === 2 || v.State === 'Running').length}/{nodes.host2.VMs?.length} VMs</span>
+                  <span className="font-bold text-emerald-400">
+                    {(nodes.host2.data?.VMs || nodes.host2.VMs)?.filter(v => v.State === 2 || v.State === 'Running' || v.State === 'Operating').length || 0}/{(nodes.host2.data?.VMs || nodes.host2.VMs)?.length || 0} VMs
+                  </span>
                 </div>
+                <UpdateBadge updates={nodes.host2.data?.Updates || nodes.host2.Updates} />
               </div>
             )}
           </div>
@@ -557,20 +570,24 @@ export default function Monitoring() {
                   {nodes.ksc ? (
                     <div className="w-full space-y-2">
                       <div className="flex justify-between items-center bg-emerald-500/5 border border-emerald-500/20 px-2.5 py-1 rounded-md">
-                        <span className="text-[9px] text-emerald-400 font-bold uppercase">Estado</span>
-                        <span className="text-[10px] text-emerald-400 font-bold">ONLINE</span>
+                        <span className="text-[9px] text-emerald-400 font-bold uppercase">Consola KSC</span>
+                        <UpdateBadge updates={nodes.ksc.data?.Updates} />
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div className="bg-background/40 border border-border/50 rounded-lg p-2">
                            <p className="text-[8px] text-muted-foreground uppercase">Endpoints</p>
-                           <p className="text-xs font-bold text-foreground">{nodes.ksc.Endpoints?.Active ?? 0} / {nodes.ksc.Endpoints?.Total ?? 0}</p>
+                           <p className="text-xs font-bold text-foreground">
+                             {(nodes.ksc.data?.KSC?.TotalHosts || nodes.ksc.Endpoints?.Total || 0)} Equipos
+                           </p>
                         </div>
                         <div className="bg-background/40 border border-border/50 rounded-lg p-2">
                            <p className="text-[8px] text-muted-foreground uppercase">RAM</p>
-                           <p className="text-xs font-bold text-foreground">{nodes.ksc.RAM?.FreeGB ?? 'N/A'} GB</p>
+                           <p className="text-xs font-bold text-foreground">
+                             {(nodes.ksc.data?.System?.RAM_Free_GB || nodes.ksc.RAM?.FreeGB || 'N/A')} GB
+                           </p>
                         </div>
                       </div>
-                      <p className="text-[9px] text-muted-foreground text-center italic">Uptime: {nodes.ksc.Uptime || 'N/A'}</p>
+                      <p className="text-[9px] text-muted-foreground text-center italic">Uptime: {(nodes.ksc.data?.Uptime || nodes.ksc.Uptime || 'N/A')}</p>
                     </div>
                   ) : (
                     <>
@@ -883,15 +900,17 @@ export default function Monitoring() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2">
-                          <a 
-                            href={monitoringService.getReportHtmlUrl(item.service, item.name.replace('.json', ''))} 
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1.5 hover:bg-primary/20 text-primary rounded-lg transition-colors"
-                            title="Ver Reporte HTML"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
+                          {item.service !== 'ANFI-SEG' && item.service !== 'KSC' && (
+                            <a 
+                              href={monitoringService.getReportHtmlUrl(item.service, item.name.replace('.json', ''))} 
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 hover:bg-primary/20 text-primary rounded-lg transition-colors"
+                              title="Ver Reporte HTML"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                          )}
                           <button
                             onClick={() => handleDeleteHistory(item.service, item.name)}
                             className="p-1.5 hover:bg-rose-500/20 text-rose-500 rounded-lg transition-colors"
