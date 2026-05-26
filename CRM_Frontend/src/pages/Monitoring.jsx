@@ -34,25 +34,46 @@ const STATUS_COLORS = {
 
 const SOCKET_URL = import.meta.env.VITE_MONITORING_BACKEND_URL || 'http://localhost:3001';
 
+const normalizeText = (text) => {
+  if (text == null) return text;
+  return String(text)
+    .replace(/Ã¡/g, 'á')
+    .replace(/Ã©/g, 'é')
+    .replace(/Ã­/g, 'í')
+    .replace(/Ã³/g, 'ó')
+    .replace(/Ãº/g, 'ú')
+    .replace(/Ã±/g, 'ñ')
+    .replace(/Â°/g, '°')
+    .replace(/Â/g, '')
+    .trim();
+};
+
+const formatUptime = (uptime) => {
+  const normalized = normalizeText(uptime);
+  if (!normalized) return 'N/A';
+  return normalized.replace(/\s+dÃ­as/i, ' días');
+};
+
 const UpdateBadge = ({ updates }) => {
   if (!updates) return null;
   const isPending = updates.RebootRequired || updates.RebootPending || (updates.PendingCount && updates.PendingCount > 0);
   
-  let statusText = `Updates OK (${updates.LastInstalled || 'N/A'})`;
-  if (updates.Status) {
-    statusText = updates.Status;
-  } else if (updates.RebootRequired || updates.RebootPending) {
-    statusText = 'Reinicio Pendiente';
+  let statusText = 'SO actualizado';
+  if (updates.RebootRequired || updates.RebootPending) {
+    statusText = 'Reinicio pendiente';
   } else if (updates.PendingCount > 0) {
-    statusText = `${updates.PendingCount} Pendientes`;
+    statusText = `${updates.PendingCount} actualizaciones pendientes`;
+  } else if (updates.Status) {
+    statusText = updates.Status === 'OK' ? 'SO actualizado' : normalizeText(updates.Status);
   }
+  const details = updates.LastInstalled ? ` · Última instalación: ${normalizeText(updates.LastInstalled)}` : '';
 
   return (
     <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border ${
       isPending ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
     }`}>
       {isPending ? <RefreshCw className="w-3 h-3 animate-spin-slow" /> : <CheckCircle2 className="w-3 h-3" />}
-      {statusText}
+      {statusText}{details}
     </div>
   );
 };
@@ -139,7 +160,7 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
       <div className="grid grid-cols-2 gap-3 text-xs mb-3 flex-1">
          <div className="flex flex-col gap-1">
            <span className="text-muted-foreground flex items-center gap-1.5"><Clock className="w-3 h-3" /> Uptime</span>
-           <span className="font-medium pl-4">{uptime}</span>
+           <span className="font-medium pl-4">{formatUptime(uptime)}</span>
          </div>
          <div className="flex flex-col gap-1">
            <span className="text-muted-foreground flex items-center gap-1.5"><Activity className="w-3 h-3" /> Servicios</span>
@@ -445,7 +466,11 @@ export default function Monitoring() {
                     ).length ?? 0
                   }
                   servicesTotal={nodes.dc02?.LocalHealth?.Services?.length ?? 6}
-                  diskSpace={nodes.dc02?.LocalHealth?.Disk?.[0] ?? nodes.dc01?.Disk?.Disks?.find(d => d.DC === 'DA02' || d.DC === 'AD02')}
+                  diskSpace={
+                    nodes.dc02?.LocalHealth?.Disk?.[0] ??
+                    nodes.dc02?.LocalHealth?.Storage?.find(d => d.Drive === 'C:' || d.Drive === 'C:\\') ??
+                    nodes.dc01?.Disk?.Disks?.find(d => d.DC === 'DA02' || d.DC === 'AD02')
+                  }
                   lastBackup={
                     nodes.dc01?.Backups?.Backups?.find(b => b.Ruta?.includes('AD02'))?.UltimoBackup ?? 
                     'Desconocido'
@@ -453,7 +478,7 @@ export default function Monitoring() {
                   replication={nodes.dc02?.LocalHealth?.Replication ?? nodes.dc01?.Replication?.Status}
                   updates={nodes.dc02?.LocalHealth?.Updates ?? nodes.dc01?.Updates}
                   isHealthy={!!nodes.dc02 || !!nodes.dc01}
-                  pingStatus={pingData['AD-DC02'] || pingData['DA02']}
+                  pingStatus={pingData['AD-DC02'] || pingData['DA02'] || pingData['AD02'] || pingData['192.168.8.45']}
                   icon={<WindowsADIcon />} 
                 />
               ) : (
@@ -525,8 +550,10 @@ export default function Monitoring() {
                   servicesOk={nodes.dc03?.LocalHealth?.Services?.filter?.(s => s.Status === 'Running' || s.Status === 4 || s.Status === 'OK')?.length ?? nodes.dc03?.data?.LocalHealth?.Services?.filter?.(s => s.Status === 'Running' || s.Status === 4 || s.Status === 'OK')?.length ?? 0}
                   servicesTotal={nodes.dc03?.LocalHealth?.Services?.length ?? nodes.dc03?.data?.LocalHealth?.Services?.length ?? 4}
                   diskSpace={
-                    nodes.dc03?.LocalHealth?.Storage?.find?.(d => d.Drive === 'C:\\') ?? nodes.dc03?.LocalHealth?.Disk?.[0] ??
-                    nodes.dc03?.data?.LocalHealth?.Storage?.find?.(d => d.Drive === 'C:\\') ?? nodes.dc03?.data?.LocalHealth?.Disk?.[0]
+                    nodes.dc03?.LocalHealth?.Storage?.find?.(d => d.Drive === 'C:' || d.Drive === 'C:\\') ??
+                    nodes.dc03?.LocalHealth?.Disk?.[0] ??
+                    nodes.dc03?.data?.LocalHealth?.Storage?.find?.(d => d.Drive === 'C:' || d.Drive === 'C:\\') ??
+                    nodes.dc03?.data?.LocalHealth?.Disk?.[0]
                   }
                   lastBackup={
                     nodes.dc01?.Backups?.Status?.AD03 ??
@@ -535,8 +562,8 @@ export default function Monitoring() {
                   }
                   replication={nodes.dc03?.LocalHealth?.Replication ?? nodes.dc03?.data?.LocalHealth?.Replication ?? nodes.dc01?.Replication?.Status}
                   updates={nodes.dc03?.LocalHealth?.Updates ?? nodes.dc03?.data?.LocalHealth?.Updates}
-                  isHealthy={!!nodes.dc03 || pingData['AD-DC03']?.status === 'UP' || pingData['AD03']?.status === 'UP'}
-                  pingStatus={pingData['AD-DC03'] || pingData['AD03'] || pingData['DA03']}
+                  isHealthy={!!nodes.dc03 || pingData['AD-DC03']?.status === 'UP' || pingData['AD03']?.status === 'UP' || pingData['192.168.8.46']?.status === 'UP'}
+                  pingStatus={pingData['AD-DC03'] || pingData['AD03'] || pingData['DA03'] || pingData['192.168.8.46']}
                   icon={<WindowsADIcon />} 
                 />
               ) : (
