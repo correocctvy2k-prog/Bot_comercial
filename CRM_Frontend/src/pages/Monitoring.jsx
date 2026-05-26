@@ -91,16 +91,18 @@ const AzureADIcon = () => (
 );
 
 const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, lastBackup, updates, icon, isPrimary, isHealthy, pingStatus, replication, replicationObjects, fsmoStatus, securityEvents, onClick }) => {
-  const isOffline = pingStatus && pingStatus.status === 'DOWN';
-  const latency = pingStatus && pingStatus.status === 'UP' ? `${Math.round(pingStatus.time)}ms` : '';
+  const isPingFresh = pingStatus && pingStatus.receivedAt && (Date.now() - pingStatus.receivedAt < 30000);
+  const freshPing = isPingFresh ? pingStatus : null;
+  const isOffline = freshPing && freshPing.status === 'DOWN';
+  const latency = freshPing && freshPing.status === 'UP' ? `${Math.round(freshPing.time)}ms` : '';
   
-  // Lógica de salud: si el ping es UP es saludable. 
-  // Si no hay ping, pero isHealthy es true (datos recientes), lo damos por válido.
-  const displayHealthy = isOffline ? false : (isHealthy || (pingStatus && pingStatus.status === 'UP'));
+  // Lógica de salud: si el ping es UP es saludable.
+  // Si el ping es antiguo o no existe, no asumimos salud solo por datos previos.
+  const displayHealthy = isOffline ? false : ((freshPing && freshPing.status === 'UP') || (isHealthy && freshPing));
   
   const ledColor = isOffline ? 'bg-rose-500 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.9)]' :
-                   (pingStatus && pingStatus.status === 'UP') ? 'bg-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.8)]' :
-                   isHealthy ? 'bg-emerald-500/60 shadow-[0_0_10px_rgba(16,185,129,0.4)]' : 
+                   (freshPing && freshPing.status === 'UP') ? 'bg-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.8)]' :
+                   displayHealthy ? 'bg-emerald-500/60 shadow-[0_0_10px_rgba(16,185,129,0.4)]' :
                    'bg-slate-600';
 
   const pulseStyle = isOffline ? {
@@ -146,7 +148,7 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
               {title}
               {isOffline && <span className="px-1.5 py-0.5 rounded text-[9px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
               {!isOffline && latency && <span className="text-[10px] text-emerald-400 font-normal">{latency}</span>}
-              {!pingStatus && !isHealthy && <span className="text-[10px] text-muted-foreground animate-pulse text-[8px]">SIN DATOS</span>}
+              {(!freshPing && !isHealthy) && <span className="text-[10px] text-muted-foreground animate-pulse text-[8px]">SIN DATOS</span>}
             </h3>
             <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">{role}</span>
           </div>
@@ -231,6 +233,7 @@ export default function Monitoring() {
     ksc: null
   });
   const [pingData, setPingData] = useState({});
+  const [pingTick, setPingTick] = useState(Date.now());
   const [isADModalOpen, setIsADModalOpen] = useState(false);
   const [showAllHistory, setShowAllHistory] = useState(false); // Nuevo: control de filtro de fecha
 
@@ -340,7 +343,10 @@ export default function Monitoring() {
 
     socket.on('monitoring:heartbeat', (data) => {
       console.log("📡 [HEARTBEAT] Datos de ping recibidos:", data);
-      setPingData(data);
+      const timestamped = Object.fromEntries(
+        Object.entries(data).map(([key, value]) => [key, { ...value, receivedAt: Date.now() }])
+      );
+      setPingData(timestamped);
     });
 
     socket.on('connect_error', (error) => {
@@ -351,6 +357,14 @@ export default function Monitoring() {
       clearInterval(interval);
       socket.disconnect();
     };
+  }, []);
+
+  useEffect(() => {
+    const pingInterval = setInterval(() => {
+      setPingTick(Date.now());
+    }, 5000);
+
+    return () => clearInterval(pingInterval);
   }, []);
 
   return (
