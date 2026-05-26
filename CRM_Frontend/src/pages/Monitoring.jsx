@@ -91,10 +91,15 @@ const AzureADIcon = () => (
 );
 
 const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, lastBackup, updates, icon, isPrimary, isHealthy, pingStatus, replication, replicationObjects, fsmoStatus, securityEvents, onClick }) => {
-  const isPingFresh = pingStatus && pingStatus.receivedAt && (Date.now() - pingStatus.receivedAt < 30000);
+  const PING_FRESH_MS = 45000; // ms to consider a ping "fresh"
+  const PING_STALE_MS = 120000; // ms to consider a ping stale (old)
+
+  const lastSeen = pingStatus?.receivedAt || pingStatus?.checkedAt || null;
+  const isPingFresh = lastSeen && (Date.now() - lastSeen < PING_FRESH_MS);
+  const isPingStale = lastSeen && (Date.now() - lastSeen >= PING_FRESH_MS && Date.now() - lastSeen < PING_STALE_MS);
   const freshPing = isPingFresh ? pingStatus : null;
   const statusUp = freshPing?.status === 'UP';
-  const isOffline = freshPing && !statusUp;
+  const isOffline = isPingFresh && !statusUp; // only consider offline when we have a fresh DOWN
   const latency = statusUp ? `${Math.round(freshPing.time)}ms` : '';
   
   // Lógica de salud: solo consideramos saludable un ping fresco con status UP.
@@ -102,13 +107,15 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
   
   const ledColor = isOffline ? 'bg-rose-500 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.9)]' :
                    statusUp ? 'bg-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.8)]' :
-                   displayHealthy ? 'bg-emerald-500/60 shadow-[0_0_10px_rgba(16,185,129,0.4)]' :
+                   isPingStale ? 'bg-amber-400 shadow-[0_0_10px_rgba(249,115,22,0.25)]' :
                    'bg-slate-600';
 
   const pulseStyle = isOffline ? {
     animation: 'breathe-red 2s ease-in-out infinite'
   } : statusUp ? {
     animation: 'breathe 3s ease-in-out infinite'
+  } : isPingStale ? {
+    animation: 'breathe 4s ease-in-out infinite'
   } : {};
 
   return (
@@ -344,7 +351,11 @@ export default function Monitoring() {
     socket.on('monitoring:heartbeat', (data) => {
       console.log("📡 [HEARTBEAT] Datos de ping recibidos:", data);
       const timestamped = Object.fromEntries(
-        Object.entries(data).map(([key, value]) => [key, { ...value, receivedAt: Date.now() }])
+        Object.entries(data).map(([key, value]) => {
+          const serverTs = value?.checkedAt;
+          const receivedAt = serverTs || Date.now();
+          return [key, { ...value, receivedAt }];
+        })
       );
       setPingData(timestamped);
     });

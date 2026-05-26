@@ -29,6 +29,8 @@ async function checkNodes() {
                     time: res.time, // Latencia en ms
                     ip: node.ip
                 };
+                // Marcar cuándo fue verificado en el servidor (timestamp ms)
+                results[node.id].checkedAt = Date.now();
             } catch (err) {
                 results[node.id] = { status: 'DOWN', time: null, ip: node.ip };
             }
@@ -46,6 +48,8 @@ async function checkNodes() {
         }
 
         // Emitir estado global a todos los clientes conectados
+        // Incluimos un timestamp por nodo (`checkedAt`) para que el cliente pueda
+        // confiar en la marca de tiempo del servidor al calcular frescura.
         io.emit('monitoring:heartbeat', results);
 
     } catch (e) {
