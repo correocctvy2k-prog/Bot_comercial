@@ -79,6 +79,10 @@ $reportData = @{
         RAM_Free_GB = [math]::Round($os.FreePhysicalMemory / 1MB, 2)
         RAM_UsedPct = [math]::Round((1 - ($os.FreePhysicalMemory / $os.TotalVisibleMemorySize)) * 100, 1)
     }
+    RAM = @{
+        TotalGB = [math]::Round($os.TotalVisibleMemorySize / 1MB, 2)
+        FreeGB = [math]::Round($os.FreePhysicalMemory / 1MB, 2)
+    }
     VMs = $VMs
     Disks = $Disks
     Services = $Services
@@ -99,3 +103,4 @@ try {
 } catch {
     Write-Host "âŒ Error: $($_.Exception.Message)" -ForegroundColor Red
 }
+
