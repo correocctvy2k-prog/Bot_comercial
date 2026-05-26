@@ -21,3 +21,7 @@ dist/
 build/
 .vscode/
 .agents/
+
+# Monitoring runtime artifacts and server scripts
+/data/monitoring/
+CRM_Frontend/Monitoreo/AD/

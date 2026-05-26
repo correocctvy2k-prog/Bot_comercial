@@ -521,14 +521,22 @@ export default function Monitoring() {
                 <DCCard 
                   title="AD03" 
                   role="SECUNDARIO BDC"
-                  uptime={nodes.dc03.LocalHealth?.Uptime ?? 'N/A'}
-                  servicesOk={nodes.dc03.LocalHealth?.Services?.filter?.(s => s.Status === 'Running' || s.Status === 4 || s.Status === 'OK')?.length ?? 0}
-                  servicesTotal={nodes.dc03.LocalHealth?.Services?.length ?? 4}
-                  diskSpace={nodes.dc03.LocalHealth?.Storage?.find?.(d => d.Drive === 'C:\\') ?? nodes.dc03.LocalHealth?.Disk?.[0]}
-                  lastBackup={nodes.dc01?.Backups?.Status?.AD03 ?? 'Desconocido'}
-                  replication={nodes.dc01?.Replication?.Status}
-                  isHealthy={pingData['AD-DC03']?.status === 'UP'}
-                  pingStatus={pingData['AD-DC03']}
+                  uptime={nodes.dc03?.Uptime ?? nodes.dc03?.LocalHealth?.Uptime ?? nodes.dc03?.data?.LocalHealth?.Uptime ?? 'N/A'}
+                  servicesOk={nodes.dc03?.LocalHealth?.Services?.filter?.(s => s.Status === 'Running' || s.Status === 4 || s.Status === 'OK')?.length ?? nodes.dc03?.data?.LocalHealth?.Services?.filter?.(s => s.Status === 'Running' || s.Status === 4 || s.Status === 'OK')?.length ?? 0}
+                  servicesTotal={nodes.dc03?.LocalHealth?.Services?.length ?? nodes.dc03?.data?.LocalHealth?.Services?.length ?? 4}
+                  diskSpace={
+                    nodes.dc03?.LocalHealth?.Storage?.find?.(d => d.Drive === 'C:\\') ?? nodes.dc03?.LocalHealth?.Disk?.[0] ??
+                    nodes.dc03?.data?.LocalHealth?.Storage?.find?.(d => d.Drive === 'C:\\') ?? nodes.dc03?.data?.LocalHealth?.Disk?.[0]
+                  }
+                  lastBackup={
+                    nodes.dc01?.Backups?.Status?.AD03 ??
+                    nodes.dc01?.Backups?.Backups?.find(b => b.Ruta?.includes('AD03'))?.UltimoBackup ??
+                    'Desconocido'
+                  }
+                  replication={nodes.dc03?.LocalHealth?.Replication ?? nodes.dc03?.data?.LocalHealth?.Replication ?? nodes.dc01?.Replication?.Status}
+                  updates={nodes.dc03?.LocalHealth?.Updates ?? nodes.dc03?.data?.LocalHealth?.Updates}
+                  isHealthy={!!nodes.dc03 || pingData['AD-DC03']?.status === 'UP' || pingData['AD03']?.status === 'UP'}
+                  pingStatus={pingData['AD-DC03'] || pingData['AD03'] || pingData['DA03']}
                   icon={<WindowsADIcon />} 
                 />
               ) : (
