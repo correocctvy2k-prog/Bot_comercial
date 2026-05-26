@@ -93,21 +93,21 @@ const AzureADIcon = () => (
 const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, lastBackup, updates, icon, isPrimary, isHealthy, pingStatus, replication, replicationObjects, fsmoStatus, securityEvents, onClick }) => {
   const isPingFresh = pingStatus && pingStatus.receivedAt && (Date.now() - pingStatus.receivedAt < 30000);
   const freshPing = isPingFresh ? pingStatus : null;
-  const isOffline = freshPing && freshPing.status === 'DOWN';
-  const latency = freshPing && freshPing.status === 'UP' ? `${Math.round(freshPing.time)}ms` : '';
+  const statusUp = freshPing?.status === 'UP';
+  const isOffline = freshPing && !statusUp;
+  const latency = statusUp ? `${Math.round(freshPing.time)}ms` : '';
   
-  // Lógica de salud: si el ping es UP es saludable.
-  // Si el ping es antiguo o no existe, no asumimos salud solo por datos previos.
-  const displayHealthy = isOffline ? false : ((freshPing && freshPing.status === 'UP') || (isHealthy && freshPing));
+  // Lógica de salud: solo consideramos saludable un ping fresco con status UP.
+  const displayHealthy = statusUp;
   
   const ledColor = isOffline ? 'bg-rose-500 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.9)]' :
-                   (freshPing && freshPing.status === 'UP') ? 'bg-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.8)]' :
+                   statusUp ? 'bg-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.8)]' :
                    displayHealthy ? 'bg-emerald-500/60 shadow-[0_0_10px_rgba(16,185,129,0.4)]' :
                    'bg-slate-600';
 
   const pulseStyle = isOffline ? {
     animation: 'breathe-red 2s ease-in-out infinite'
-  } : (pingStatus && pingStatus.status === 'UP') || isHealthy ? {
+  } : statusUp ? {
     animation: 'breathe 3s ease-in-out infinite'
   } : {};
 
@@ -166,8 +166,8 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
          </div>
          <div className="flex flex-col gap-1">
            <span className="text-muted-foreground flex items-center gap-1.5"><Activity className="w-3 h-3" /> Servicios</span>
-           <span className={`font-bold pl-4 ${displayHealthy ? 'text-emerald-400' : 'text-rose-400'}`}>
-             {isOffline ? 'SIN RED' : servicesOk < servicesTotal ? `${servicesTotal - servicesOk} CON FALLA` : "SISTEMA OK"}
+           <span className={`font-bold pl-4 ${isOffline ? 'text-rose-400' : !freshPing ? 'text-amber-400' : servicesOk < servicesTotal ? 'text-rose-400' : 'text-emerald-400'}`}>
+             {isOffline ? 'SIN RED' : !freshPing ? 'SIN DATOS' : servicesOk < servicesTotal ? `${servicesTotal - servicesOk} CON FALLA` : "SISTEMA OK"}
            </span>
          </div>
          <div className="flex flex-col gap-1">

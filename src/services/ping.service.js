@@ -34,6 +34,17 @@ async function checkNodes() {
             }
         }
 
+        // Agregar alias útiles para la UI
+        if (results['AD-DC02']) {
+            results['AD02'] = results['AD-DC02'];
+            results['192.168.8.45'] = results['AD-DC02'];
+        }
+        if (results['AD-DC03']) {
+            results['AD03'] = results['AD-DC03'];
+            results['DA03'] = results['AD-DC03'];
+            results['192.168.8.46'] = results['AD-DC03'];
+        }
+
         // Emitir estado global a todos los clientes conectados
         io.emit('monitoring:heartbeat', results);
 
