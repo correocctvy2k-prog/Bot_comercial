@@ -216,19 +216,20 @@ export default function Monitoring() {
   const fetchData = async () => {
     // No ponemos loading=true aquí para evitar parpadeos en el autorefresh
     try {
-      const [host1, host2, dc01, dc02, ksc] = await Promise.all([
+      const [host1, host2, dc01, dc02, dc03, ksc] = await Promise.all([
         monitoringService.getLatestStatus('ANFIGANE'),  // ANFIGANE (Antes AD-HOST)
         monitoringService.getLatestStatus('ANFI-SEG'),  // Host 2
         monitoringService.getLatestStatus('AD'),        // AD01
         monitoringService.getLatestStatus('AD-DC02'),   // AD02
+        monitoringService.getLatestStatus('AD-DC03'),   // AD03
         monitoringService.getLatestStatus('KSC')        // Kaspersky
       ]);
       
-      setNodes({ host1, host2, dc01, dc02, ksc });
+      setNodes({ host1, host2, dc01, dc02, dc03, ksc });
       setAdData(dc01);
       
       // 2. Historial unificado de todos los servicios
-      const services = ['ANFIGANE', 'ANFI-SEG', 'AD', 'AD-DC02', 'KSC'];
+      const services = ['ANFIGANE', 'ANFI-SEG', 'AD', 'AD-DC02', 'AD-DC03', 'KSC'];
       const historyPromises = services.map(s => monitoringService.getHistory(s));
       const historyResults = await Promise.all(historyPromises);
       
@@ -891,7 +892,7 @@ export default function Monitoring() {
                       </td>
                       <td className="px-6 py-4">
                         <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-[10px] font-bold uppercase">
-                          {item.service === 'AD' ? 'AD01' : item.service === 'AD-DC02' ? 'AD02' : item.service}
+                          {item.service === 'AD' ? 'AD01' : item.service === 'AD-DC02' ? 'AD02' : item.service === 'AD-DC03' ? 'AD03' : item.service}
                         </span>
                       </td>
                       <td className="px-6 py-4 font-mono text-[11px] opacity-70">{item.name.replace('.json', '')}</td>

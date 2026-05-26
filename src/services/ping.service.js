@@ -5,6 +5,7 @@ const nodesToMonitor = [
     { id: 'ANFIGANE', ip: '192.168.8.43', name: 'ANFIGANE (Host 1)' },
     { id: 'AD',       ip: '192.168.8.44', name: 'AD01 Master' },
     { id: 'AD-DC02',  ip: '192.168.8.45', name: 'AD02 Secundario' },
+    { id: 'AD-DC03',  ip: '192.168.8.46', name: 'AD03 Secundario' },
     { id: 'ANFI-SEG', ip: '192.168.8.41', name: 'ANFI-SEG13798 (Host 2)' },
     { id: 'KSC',      ip: '192.168.8.42', name: 'Kaspersky Security Center' }
 ];

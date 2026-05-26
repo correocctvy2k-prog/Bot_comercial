@@ -124,6 +124,7 @@ function normalizeServiceId(service) {
     if (s === 'anfigane' || s === 'ad-host' || s === 'host1') return 'ad-host';
     if (s === 'ad' || s === 'ad01' || s === 'ad-dc01') return 'ad';
     if (s === 'ad-dc02' || s === 'ad02') return 'ad-dc02';
+    if (s === 'ad-dc03' || s === 'ad03') return 'ad-dc03';
     if (s === 'anfi-seg' || s === 'host2' || s === 'anfi-seg13798') return 'anfi-seg';
     if (s === 'ksc' || s === 'serv-ksc') return 'ksc';
     
