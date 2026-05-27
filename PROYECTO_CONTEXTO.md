@@ -492,6 +492,184 @@ CRM_Frontend/src/pages/Monitoring.jsx
 
 ---
 
+## 🔧 MONITOR-AD.PS1 — AUTOMATIZACIÓN MENSUAL DE INFORMES AD (2026-05-27)
+
+### Objetivo
+Script automatizado que se ejecuta mensualmente en **AD01** (vía Scheduled Task con usuario SYSTEM) para generar reportes de auditoría AD en formato TXT, HTML y PDF, cumpliendo ISO 27001:2022 e ISO 27002:2022.
+
+### Cambios Realizados (Sesión 2026-05-27)
+**Problema Principal:** Script estaba configurado solo para 2 controladores (AD01 + DA02); faltaba AD03 (192.168.8.46), y SYSTEM user no podía acceder a rutas de backup en `\\ganepalmi\Backup\...`.
+
+**Soluciones Implementadas:**
+
+#### 1. Configuración de Credenciales (Líneas 29-31)
+Se agregó una sección de configuración para credenciales de acceso a rutas de red:
+```powershell
+# === CREDENCIALES PARA ACCESO A BACKUPS ===
+$BackupCredUsername = "GANEPAL\Administrator"  # O: "GANEPAL\AD01$"
+$BackupCredPassword = ""                       # Vacío por defecto (usar SYSTEM)
+$BackupUseCredentials = $false                 # Cambiar a $true si falla acceso sin credenciales
+```
+**Uso:** Si SYSTEM falla accediendo `\\ganepalmi\Backup\...`, cambiar `$BackupUseCredentials = $true` e inyectar la contraseña del Administrador en `$BackupCredPassword`.
+
+#### 2. Actualización de listas `dcList` para incluir AD03
+Se actualizaron 2 funciones que iteran sobre controladores:
+- **Get-DCStatus()** (línea 100): `$dcList = @("AD01", "DA02", "AD03")`  
+  - Verifica estado NTDS, DNS, KDC, W32Time, Netlogon, DFSR para cada DC
+  - Captura Uptime, OS Version, Last Reboot, FSMO roles
+  
+- **Get-DiskSpace()** (línea 576): `$dcList = @("AD01", "DA02", "AD03")`  
+  - Verifica espacio en disco en cada controlador
+  - Alerta si disco < 15% libre (ISO 27001 A.8.6)
+
+#### 3. Agregación de datos por DC (Get-ReplicationStatus)
+Se agregó recolección de AD object count para AD03:
+- Línea 256: `$dc3Objects = (Get-ADObject -Server "AD03" -Filter * ...)`
+- Línea 265: Muestra "AD03 - $dc3Objects objetos" en reporte
+
+#### 4. Rutas de Backup Actualizadas (Get-BackupStatus)
+Se agregó AD03 a la lista de rutas:
+```powershell
+$rutas = @(
+    "\\ganepalmi\Backup\ActiveBackupData\VM-BACKUP AD01",
+    "\\ganepalmi\Backup\ActiveBackupData\VM-BACKUP AD02",
+    "\\ganepalmi\Backup\ActiveBackupData\VM-BACKUP AD03"  # ← Nueva
+)
+```
+
+#### 5. Fallback de Credenciales para Acceso a Rutas (Get-BackupStatus, líneas 306-312)
+Lógica de acceso con reintentos:
+```powershell
+if ($BackupUseCredentials -and $BackupCredPassword) {
+    $cred = New-Object PSCredential($BackupCredUsername, (ConvertTo-SecureString $BackupCredPassword -AsPlainText -Force))
+    $testPath = Test-Path $ruta -Credential $cred -ErrorAction SilentlyContinue
+} else {
+    $testPath = Test-Path $ruta  # Usa SYSTEM por defecto
+}
+```
+**Efecto:** Primero intenta con SYSTEM; si falla y está habilitado, usa credenciales Administrator.
+
+### Reportes HTML Generados
+El script genera un reporte HTML **dinámico** que incluye automáticamente todos los DCs de la lista:
+- 3 tablas principales: Controladores, Replicación, Disco
+- Estadísticas de usuarios (habilitados, deshabilitados, inactivos)
+- Estado de backups
+- Estado de GPOs
+- Eventos de seguridad
+- Cumplimiento ISO 27001
+
+**Ubicaciones de salida:**
+- Local: `C:\AD_Reports\Informe_AD_YYYY-MM-DD_HHMM.html`
+- Red: `\\ganepalmir\dpto.informatica\Johnathan.Beltran\OTROS\Chequeos\Active Directory\` (si SYSTEM tiene acceso)
+
+### Commits (Sesión 2026-05-27)
+| Commit | Descripción |
+|---|---|
+| `6fae773` | Fix: Add AD03 to Get-DiskSpace function dcList (line 576) |
+
+### Próximos Pasos (Si es Necesario)
+1. **Prueba manual:** Ejecutar en AD01: `.\Monitor-AD.ps1` desde PowerShell como Administrador
+2. **Verificar HTML:** Abrir el archivo generado en `C:\AD_Reports\` para confirmar que incluye datos de los 3 DCs
+3. **Habilitar credenciales** (si es necesario): Si el acceso a backups falla en la ejecución via Scheduled Task:
+   - Cambiar `$BackupUseCredentials = $true`
+   - Inyectar contraseña: `$BackupCredPassword = "ContraseñaReal"`
+   - Volver a ejecutar la Scheduled Task
+
+---
+
+### Al modificar CRM_Frontend:
+- [ ] Hacer los cambios localmente
+- [ ] Verificar en `http://localhost:5173`
+- [ ] `git add . && git commit -m "descripción" && git push`
+- [ ] (Sincronizar en VPS): Ejecutar `sudo docker compose up -d --build crm-frontend`
+
+---
+
+## 🔧 MONITOR-AD.PS1 — AUTOMATIZACIÓN MENSUAL DE INFORMES AD (2026-05-27)
+
+### Objetivo
+Script automatizado que se ejecuta mensualmente en **AD01** (vía Scheduled Task con usuario SYSTEM) para generar reportes de auditoría AD en formato TXT, HTML y PDF, cumpliendo ISO 27001:2022 e ISO 27002:2022.
+
+### Cambios Realizados (Sesión 2026-05-27)
+**Problema Principal:** Script estaba configurado solo para 2 controladores (AD01 + DA02); faltaba AD03 (192.168.8.46), y SYSTEM user no podía acceder a rutas de backup en `\\ganepalmi\Backup\...`.
+
+**Soluciones Implementadas:**
+
+#### 1. Configuración de Credenciales (Líneas 29-31)
+Se agregó una sección de configuración para credenciales de acceso a rutas de red:
+```powershell
+# === CREDENCIALES PARA ACCESO A BACKUPS ===
+$BackupCredUsername = "GANEPAL\Administrator"  # O: "GANEPAL\AD01$"
+$BackupCredPassword = ""                       # Vacío por defecto (usar SYSTEM)
+$BackupUseCredentials = $false                 # Cambiar a $true si falla acceso sin credenciales
+```
+**Uso:** Si SYSTEM falla accediendo `\\ganepalmi\Backup\...`, cambiar `$BackupUseCredentials = $true` e inyectar la contraseña del Administrador en `$BackupCredPassword`.
+
+#### 2. Actualización de listas `dcList` para incluir AD03
+Se actualizaron 2 funciones que iteran sobre controladores:
+- **Get-DCStatus()** (línea 100): `$dcList = @("AD01", "DA02", "AD03")`  
+  - Verifica estado NTDS, DNS, KDC, W32Time, Netlogon, DFSR para cada DC
+  - Captura Uptime, OS Version, Last Reboot, FSMO roles
+  
+- **Get-DiskSpace()** (línea 576): `$dcList = @("AD01", "DA02", "AD03")`  
+  - Verifica espacio en disco en cada controlador
+  - Alerta si disco < 15% libre (ISO 27001 A.8.6)
+
+#### 3. Agregación de datos por DC (Get-ReplicationStatus)
+Se agregó recolección de AD object count para AD03:
+- Línea 256: `$dc3Objects = (Get-ADObject -Server "AD03" -Filter * ...)`
+- Línea 265: Muestra "AD03 - $dc3Objects objetos" en reporte
+
+#### 4. Rutas de Backup Actualizadas (Get-BackupStatus)
+Se agregó AD03 a la lista de rutas:
+```powershell
+$rutas = @(
+    "\\ganepalmi\Backup\ActiveBackupData\VM-BACKUP AD01",
+    "\\ganepalmi\Backup\ActiveBackupData\VM-BACKUP AD02",
+    "\\ganepalmi\Backup\ActiveBackupData\VM-BACKUP AD03"  # ← Nueva
+)
+```
+
+#### 5. Fallback de Credenciales para Acceso a Rutas (Get-BackupStatus, líneas 306-312)
+Lógica de acceso con reintentos:
+```powershell
+if ($BackupUseCredentials -and $BackupCredPassword) {
+    $cred = New-Object PSCredential($BackupCredUsername, (ConvertTo-SecureString $BackupCredPassword -AsPlainText -Force))
+    $testPath = Test-Path $ruta -Credential $cred -ErrorAction SilentlyContinue
+} else {
+    $testPath = Test-Path $ruta  # Usa SYSTEM por defecto
+}
+```
+**Efecto:** Primero intenta con SYSTEM; si falla y está habilitado, usa credenciales Administrator.
+
+### Reportes HTML Generados
+El script genera un reporte HTML **dinámico** que incluye automáticamente todos los DCs de la lista:
+- 3 tablas principales: Controladores, Replicación, Disco
+- Estadísticas de usuarios (habilitados, deshabilitados, inactivos)
+- Estado de backups
+- Estado de GPOs
+- Eventos de seguridad
+- Cumplimiento ISO 27001
+
+**Ubicaciones de salida:**
+- Local: `C:\AD_Reports\Informe_AD_YYYY-MM-DD_HHMM.html`
+- Red: `\\ganepalmir\dpto.informatica\Johnathan.Beltran\OTROS\Chequeos\Active Directory\` (si SYSTEM tiene acceso)
+
+### Commits (Sesión 2026-05-27)
+| Commit | Descripción |
+|---|---|
+| `6fae773` | Fix: Add AD03 to Get-DiskSpace function dcList (line 576) |
+
+### Próximos Pasos (Si es Necesario)
+1. **Prueba manual:** Ejecutar en AD01: `.\Monitor-AD.ps1` desde PowerShell como Administrador
+2. **Verificar HTML:** Abrir el archivo generado en `C:\AD_Reports\` para confirmar que incluye datos de los 3 DCs
+3. **Habilitar credenciales** (si es necesario): Si el acceso a backups falla en la ejecución via Scheduled Task:
+   - Cambiar `$BackupUseCredentials = $true`
+   - Inyectar contraseña: `$BackupCredPassword = "ContraseñaReal"`
+   - Volver a ejecutar la Scheduled Task
+
+---
+
 ## 📅 HISTORIAL DE CAMBIOS IMPORTANTES
 
 | Fecha | Cambio |
