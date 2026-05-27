@@ -22,6 +22,14 @@ $BackendUrl = "http://192.168.8.65:3001/api/monitoring/upload"
 $ReportDate = Get-Date -Format "yyyy-MM-dd_HHmm"
 $ReportName = "Informe_AD_$ReportDate"
 
+# === CREDENCIALES PARA ACCESO A BACKUPS ===
+# NOTA: Se usa cuenta administrador para acceder a rutas de backup si SYSTEM falla
+# Especificar credenciales: usuario y contraseña para acceso a \\ganepalmi\Backup
+# Si deja vacío, usará credenciales locales (SYSTEM del AD01)
+$BackupCredUsername = "GANEPAL\Administrator"  # O: "GANEPAL\AD01$" (cuenta máquina)
+$BackupCredPassword = "" # Reemplazar con la contraseña real si es necesario
+$BackupUseCredentials = $false # Cambiar a $true si falla acceso sin credenciales
+
 # Crear directorios si no existen
 foreach ($path in @($OutputPath, $BackupPath)) {
     if (-not (Test-Path $path)) {
@@ -89,7 +97,7 @@ function Get-ISO27001Control {
 function Get-DCStatus {
     Write-Host "`n[1/9] Verificando estado de controladores de dominio..." -ForegroundColor Cyan
     
-    $dcList = @("AD01", "DA02")
+    $dcList = @("AD01", "DA02", "AD03")
     $dcStatus = @()
     $issues = @()
     
@@ -245,13 +253,17 @@ function Get-ReplicationStatus {
     try {
         $dc1Objects = (Get-ADObject -Server "AD01" -Filter * -ErrorAction SilentlyContinue).Count
         $dc2Objects = (Get-ADObject -Server "DA02" -Filter * -ErrorAction SilentlyContinue).Count
+        $dc3Objects = (Get-ADObject -Server "AD03" -Filter * -ErrorAction SilentlyContinue).Count
         
-        if ($dc1Objects -and $dc2Objects) {
-            $difference = [Math]::Abs($dc1Objects - $dc2Objects)
+        if ($dc1Objects -and $dc2Objects -and $dc3Objects) {
+            $maxObjects = [Math]::Max($dc1Objects, [Math]::Max($dc2Objects, $dc3Objects))
+            $minObjects = [Math]::Min($dc1Objects, [Math]::Min($dc2Objects, $dc3Objects))
+            $difference = [Math]::Abs($maxObjects - $minObjects)
             $replStatus.ObjectCount = @(
                 "AD01 - $dc1Objects objetos",
                 "DA02 - $dc2Objects objetos",
-                "Diferencia - $difference objetos"
+                "AD03 - $dc3Objects objetos",
+                "Diferencia máxima - $difference objetos"
             )
             
             if ($difference -gt 10) {
@@ -273,7 +285,8 @@ function Get-BackupStatus {
     $issues = @()
     $rutas = @(
         "\\ganepalmi\Backup\ActiveBackupData\VM-BACKUP AD01",
-        "\\ganepalmi\Backup\ActiveBackupData\VM-BACKUP AD02"
+        "\\ganepalmi\Backup\ActiveBackupData\VM-BACKUP AD02",
+        "\\ganepalmi\Backup\ActiveBackupData\VM-BACKUP AD03"
     )
     
     $limite = (Get-Date).AddDays(-1)
@@ -288,7 +301,21 @@ function Get-BackupStatus {
             TamañoTotal = 0
         }
         
-        if (Test-Path $ruta) {
+        # Intentar acceso con credenciales si está habilitado
+        $testPath = $false
+        if ($BackupUseCredentials -and $BackupCredPassword) {
+            try {
+                $cred = New-Object System.Management.Automation.PSCredential($BackupCredUsername, (ConvertTo-SecureString $BackupCredPassword -AsPlainText -Force))
+                $testPath = Test-Path $ruta -Credential $cred -ErrorAction SilentlyContinue
+            } catch {
+                Write-Host "⚠ Error al usar credenciales para $ruta" -ForegroundColor Yellow
+                $testPath = $false
+            }
+        } else {
+            $testPath = Test-Path $ruta
+        }
+        
+        if ($testPath) {
             $backupInfo.Accesible = $true
             $archivosRecientes = Get-ChildItem -Path $ruta -Recurse -ErrorAction SilentlyContinue | 
                 Where-Object { $_.LastWriteTime -gt $limite }
@@ -546,7 +573,7 @@ function Get-GPOStatus {
 function Get-DiskSpace {
     Write-Host "[7/9] Verificando espacio en disco..." -ForegroundColor Cyan
     
-    $dcList = @("AD01", "DA02")
+    $dcList = @("AD01", "DA02", "AD03")
     $diskInfo = @()
     $issues = @()
     
