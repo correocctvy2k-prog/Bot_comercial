@@ -1,5 +1,5 @@
 # 📋 CONTEXTO MAESTRO DEL ECOSISTEMA SKYLAB
-> **Última actualización:** 2026-04-24  
+> **Última actualización:** 2026-05-27  
 > **Propósito:** Referencia rápida para el asistente IA antes de cualquier intervención en los proyectos. Actualizar al finalizar cada sesión de trabajo.
 
 ---
@@ -412,6 +412,75 @@ Bypass hardcodeado para `573162892244` (acceso de emergencia).
 - [ ] Probar localmente si es posible
 - [ ] `git add . && git commit -m "descripción" && git push`
 - [ ] Notificar al usuario para que ejecute `git pull` en el VPS
+
+---
+
+## 🖥️ INFRAESTRUCTURE MONITORING (CRM_Frontend/Monitoreo)
+
+### Propósito
+Dashboard en tiempo real para monitorear 6 nodos de infraestructura (servidores AD, hosts Hyper-V, KSC):
+- **ANFIGANE** (192.168.8.43) — Host Hyper-V 1
+- **ANFI-SEG13798** (192.168.8.41) — Host Hyper-V 2
+- **AD01** (192.168.8.44) — Master Domain Controller
+- **AD02** (192.168.8.45) — Secondary BDC
+- **AD03** (192.168.8.46) — Secondary BDC (añadido 2026-05-26)
+- **KSC** (192.168.8.42) — Kaspersky Security Center
+
+### Arquitectura de Heartbeat
+```
+Backend (src/services/ping.service.js):
+  ├─ Cada 10s: ping a los 6 nodos (icmp probe con timeout 2s)
+  ├─ Resultado: {status: 'UP'|'DOWN', time: <ms>, ip: <ip>, checkedAt: Date.now()}
+  └─ Emit Socket.io: io.emit('monitoring:heartbeat', {AD: {...}, AD-DC02: {...}, ...})
+
+Frontend (CRM_Frontend/src/pages/Monitoring.jsx):
+  ├─ Socket connect a URL del backend
+  ├─ On 'monitoring:heartbeat': actualiza estado con receivedAt: Date.now()
+  └─ Calcula frescura: FRESH (< 45s) | STALE (45-120s) | STALE_EXPIRED (> 120s)
+        ├─ Verde (emerald) = fresh + UP
+        ├─ Rojo (rose) = fresh + DOWN
+        ├─ Ámbar (amber) = stale (> 45s sin actualización)
+        └─ Gris (slate) = sin datos
+```
+
+### Commits Recientes (Sesión 2026-05-26/27)
+| Commit | Descripción |
+|---|---|
+| `0c1ed3e` | Debug(ping): per-node logs to diagnose missing AD-DC03 |
+| `bbee9ca` | Debug: log ping results and AD-DC03 for diagnosis |
+| `6cecb26` | Use client receive time for heartbeat freshness; preserve server checkedAt |
+| `f5faa5d` | Improve heartbeat freshness: server timestamps, stale state, and frontend handling |
+| `19c3be1` | Validate monitoring heartbeat logic and push final changes |
+
+### Estado Actual (2026-05-27)
+**Problema:** LED de AD03 permanece gris aunque el servidor está encendido
+
+**Investigación:**
+- ✓ AD03 agregado a `nodesToMonitor` en backend
+- ✓ Backend emite `checkedAt` para cada nodo
+- ✓ Frontend calcula frescura correctamente
+- ⚠️ AD-DC03 NO aparece en objeto de heartbeat recibido (falta diagnóstico)
+
+**Próximos pasos:**
+1. Reiniciar contenedor `comercial-bot` en VPS: `sudo docker restart comercial-bot`
+2. Capturar logs del backend: `sudo docker logs -f comercial-bot 2>&1 | grep 'PING_SVC'`
+3. Verificar si aparecen líneas: `pinging AD-DC03 @ 192.168.8.46` y `result AD-DC03: ...`
+4. Si falta: revisar por qué no está en la lista de nodos
+5. Si hay error: implementar fallback TCP probe (puertos 389/445 en lugar de ICMP)
+
+### Archivos Modificados
+```
+src/services/ping.service.js
+  - nodesToMonitor: + AD-DC03 @ 192.168.8.46
+  - Per-node logging (pinging, result, error)
+  - Alias keys: AD02/AD03 + IP + alt names
+  - checkedAt timestamp por nodo
+
+CRM_Frontend/src/pages/Monitoring.jsx
+  - Thresholds: PING_FRESH_MS = 45s, PING_STALE_MS = 120s
+  - LED states: green/red/amber/gray
+  - Socket heartbeat handler: receivedAt + checkedAt preservation
+```
 - [ ] Reiniciar el(los) contenedor(es) afectado(s)
 - [ ] Verificar logs para confirmar que no hay errores
 
