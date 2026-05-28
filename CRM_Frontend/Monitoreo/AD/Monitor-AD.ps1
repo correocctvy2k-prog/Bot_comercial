@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Script automatizado para monitoreo mensual de Active Directory
 .DESCRIPTION
@@ -24,11 +24,11 @@ $ReportName = "Informe_AD_$ReportDate"
 
 # === CREDENCIALES PARA ACCESO A BACKUPS ===
 # NOTA: Se usa cuenta administrador para acceder a rutas de backup si SYSTEM falla
-# Especificar credenciales: usuario y contraseña para acceso a \\ganepalmi\Backup
+# Especificar credenciales: usuario y contrasena para acceso a \\ganepalmi\Backup
 # Si deja vacío, usará credenciales locales (SYSTEM del AD01)
 $BackupCredUsername = "GANEPAL\Administrator"  # O: "GANEPAL\AD01$" (cuenta máquina)
-$BackupCredPassword = "" # Reemplazar con la contraseña real si es necesario
-$BackupUseCredentials = $false # Cambiar a $true si falla acceso sin credenciales
+$BackupCredPassword = "<eC#n*t1q&Le>" # Reemplazar con la contrasena real si es necesario
+$BackupUseCredentials = $true # Cambiar a $true si falla acceso sin credenciales
 
 # Crear directorios si no existen
 foreach ($path in @($OutputPath, $BackupPath)) {
@@ -182,18 +182,18 @@ function Get-DCStatus {
             # Obtener información del sistema con credenciales si es necesario
             Write-Host "    [SO] " -NoNewline -ForegroundColor DarkGray
             try {
-                $cimParams = @{
+                $wmiParams = @{
                     ComputerName = $dc
-                    ClassName = 'Win32_OperatingSystem'
+                    Class = 'Win32_OperatingSystem'
                     ErrorAction = 'SilentlyContinue'
                 }
                 
                 $cred = Get-RemoteCredential -ComputerName $dc
                 if ($cred) {
-                    $cimParams['Credential'] = $cred
+                    $wmiParams['Credential'] = $cred
                 }
                 
-                $os = Get-CimInstance @cimParams
+                $os = Get-WmiObject @wmiParams
                 
                 if ($os) {
                     $lastBoot = [datetime]$os.LastBootUpTime
@@ -326,7 +326,7 @@ function Get-ReplicationStatus {
             
             if ($difference -gt 10) {
                 $replStatus.Status = "WARNING"
-                $replStatus.Recommendation += " ISO 27002 5.23: Diferencia significativa ($difference objetos)"
+                $replStatus.Recommendation += " ISO 27002 5.23: Diferencia significativa ($($difference)) objetos"
             }
         }
     } catch {
@@ -358,7 +358,7 @@ function Get-BackupStatus {
             UltimoBackup = "N/A"
             ArchivosRecientes = 0
             Status = "ERROR"
-            TamañoTotal = 0
+            TamanoTotal = 0
         }
         
         # Intentar acceso con credenciales si está habilitado
@@ -392,18 +392,20 @@ function Get-BackupStatus {
                 
                 if ($archivosRecientes) {
                     $backupInfo.ArchivosRecientes = $archivosRecientes.Count
-                    $backupInfo.TamañoTotal = [math]::Round(($archivosRecientes | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
+                    $backupInfo.TamanoTotal = [math]::Round(($archivosRecientes | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
                     $backupInfo.UltimoBackup = ($archivosRecientes | Sort-Object LastWriteTime -Descending | 
                         Select-Object -First 1).LastWriteTime.ToString("yyyy-MM-dd HH:mm")
                     $backupInfo.Status = "OK"
-                    Write-Host "    → Archivos: $($backupInfo.ArchivosRecientes), Tamaño: $($backupInfo.TamañoTotal) GB" -ForegroundColor DarkGray
+                    Write-Host "    → Archivos: $($backupInfo.ArchivosRecientes), Tamaño: $($backupInfo.TamanoTotal) GB" -ForegroundColor DarkGray
                 } else {
                     $backupInfo.Status = "WARNING"
                     $issues += "ISO 27001 A.8.13: Sin backups recientes en $ruta"
                     Write-Host "    ⚠ No hay backups en últimas 24h" -ForegroundColor Yellow
                 }
             } catch {
-                Write-Host "    ⚠ Error al leer: $($_.Exception.Message.Substring(0, 30))..." -ForegroundColor Yellow
+                $errMsg = $_.Exception.Message
+                $errMsg = if ($errMsg.Length -gt 30) { $errMsg.Substring(0, 30) + "..." } else { $errMsg }
+                Write-Host "    ⚠ Error al leer: $errMsg" -ForegroundColor Yellow
                 $backupInfo.Status = "WARNING"
             }
         } else {
@@ -546,7 +548,7 @@ function Get-UserStatistics {
         }
         
         if ($userStats.NonExpiringPwd -gt 5) {
-            $userStats.Issues += "ISO 27002 5.17: $($userStats.NonExpiringPwd) cuentas con contraseñas no expirables"
+            $userStats.Issues += "ISO 27002 5.17: $($userStats.NonExpiringPwd) cuentas con contrasenas no expirables"
         }
         
     } catch {
@@ -684,10 +686,10 @@ function Get-DiskSpace {
                         PercentFree = $percentFree
                     }
                     
-                    Write-Host "    → $($disk.DeviceID): $($diskData.FreeGB) GB libres ($percentFree%)" -ForegroundColor DarkGray
+                    Write-Host "    → $($disk.DeviceID): $($diskData.FreeGB) GB libres ($($percentFree)%)" -ForegroundColor DarkGray
                     
                     if ($percentFree -lt 15) {
-                        $issues += "ISO 27001 A.8.6: $dc - Disco $($disk.DeviceID) con solo $percentFree% libre"
+                        $issues += "ISO 27001 A.8.6: $dc - Disco $($disk.DeviceID) con solo $($percentFree)% libre"
                         Write-Host "      ⚠ CRÍTICO: Menos del 15% libre" -ForegroundColor Red
                     } elseif ($percentFree -lt 25) {
                         $issues += "Advertencia: $dc - Disco $($disk.DeviceID) con $percentFree% libre"
@@ -700,7 +702,9 @@ function Get-DiskSpace {
                 Write-Host "Sin datos (posible fallo de conexión)" -ForegroundColor Yellow
             }
         } catch {
-            Write-Host "Error: $($_.Exception.Message.Substring(0, 40))..." -ForegroundColor Red
+            $errMsg = $_.Exception.Message
+            $errMsg = if ($errMsg.Length -gt 40) { $errMsg.Substring(0, 40) + "..." } else { $errMsg }
+            Write-Host "Error: $errMsg" -ForegroundColor Red
             $diskInfo += [PSCustomObject]@{
                 DC = $dc
                 Drive = "Error"
@@ -778,7 +782,7 @@ function Get-SecurityEvents {
 }
 
 function Get-PasswordPolicyCompliance {
-    Write-Host "[9/9] Verificando cumplimiento de políticas de contraseña..." -ForegroundColor Cyan
+    Write-Host "[9/9] Verificando cumplimiento de políticas de contrasena..." -ForegroundColor Cyan
     
     $policyCompliance = @{
         DomainPolicy = $null
@@ -802,16 +806,16 @@ function Get-PasswordPolicyCompliance {
         
         # Análisis de cumplimiento ISO 27002
         if ($defaultPolicy.MinPasswordLength -lt 12) {
-            $policyCompliance.Issues += "ISO 27002 5.17: Longitud mínima de contraseña insuficiente ($($defaultPolicy.MinPasswordLength) caracteres)"
+            $policyCompliance.Issues += "ISO 27002 5.17: Longitud mínima de contrasena insuficiente ($($defaultPolicy.MinPasswordLength) caracteres)"
             $policyCompliance.Recommendations += "ISO 27002 recomienda mínimo 12 caracteres"
         }
         
         if (-not $defaultPolicy.ComplexityEnabled) {
-            $policyCompliance.Issues += "ISO 27002 5.17: Complejidad de contraseña no habilitada"
+            $policyCompliance.Issues += "ISO 27002 5.17: Complejidad de contrasena no habilitada"
         }
         
         if ($defaultPolicy.MaxPasswordAge.Days -gt 90) {
-            $policyCompliance.Issues += "ISO 27002 5.17: Edad máxima de contraseña excede 90 días"
+            $policyCompliance.Issues += "ISO 27002 5.17: Edad máxima de contrasena excede 90 días"
         }
         
         if ($defaultPolicy.LockoutThreshold -eq 0 -or $defaultPolicy.LockoutThreshold -gt 5) {
@@ -819,7 +823,7 @@ function Get-PasswordPolicyCompliance {
             $policyCompliance.Recommendations += "Configure entre 3-5 intentos fallidos"
         }
         
-        # Políticas de contraseña de grano fino (Fine-Grained Password Policies)
+        # Políticas de contrasena de grano fino (Fine-Grained Password Policies)
         $fineGrainedPolicies = Get-ADFineGrainedPasswordPolicy -Filter * -ErrorAction SilentlyContinue
         if ($fineGrainedPolicies) {
             foreach ($fgpp in $fineGrainedPolicies) {
@@ -834,7 +838,7 @@ function Get-PasswordPolicyCompliance {
         }
         
     } catch {
-        $policyCompliance.Issues += "Error al verificar políticas de contraseña: $($_.Exception.Message)"
+        $policyCompliance.Issues += "Error al verificar políticas de contrasena: $($_.Exception.Message)"
     }
     
     return $policyCompliance
@@ -1536,7 +1540,7 @@ foreach ($backup in $reportData.Backups.Backups) {
                             <td>$accessBadge</td>
                             <td>$($backup.UltimoBackup)</td>
                             <td>$($backup.ArchivosRecientes)</td>
-                            <td>$($backup.TamañoTotal) GB</td>
+                            <td>$($backup.TamanoTotal) GB</td>
                         </tr>
 "@
 }
@@ -1682,7 +1686,7 @@ $htmlReport += @"
                     "<h3>💡 Recomendaciones ISO 27001/27002</h3><ul>" +
                     ($reportData.Users.Recommendations | ForEach-Object { "<li>$_</li>" }) -join "" +
                     "<li>Revise mensualmente las cuentas inactivas y deshabilítelas</li>" +
-                    "<li>Implemente rotación de contraseñas para cuentas administrativas</li>" +
+                    "<li>Implemente rotación de contrasenas para cuentas administrativas</li>" +
                     "<li>Use - <code>Search-ADAccount -AccountInactive -TimeSpan 90</code></li>" +
                     "<li>Considere implementar Privileged Access Management (PAM)</li>" +
                     "<li>Documente la matriz de accesos y permisos</li>" +
@@ -1788,11 +1792,11 @@ $htmlReport += @"
                 })
             </section>
 
-            <!-- SECCIÓN 7: POLÍTICAS DE CONTRASEÑA -->
+            <!-- SECCIÓN 7: POLÍTICAS DE CONTRasena -->
             <section id="passwords" class="section">
                 <div class="section-header">
                     <div class="section-icon">🔐</div>
-                    <h2>Políticas de Contraseña</h2>
+                    <h2>Políticas de Contrasena</h2>
                     <span class="iso-control-badge">ISO 27002 5.17</span>
                 </div>
 
@@ -1813,7 +1817,7 @@ $htmlReport += @"
                     </div>
                     <div class="stat-card">
                         <div class="stat-card-label">Historial</div>
-                        <div class="stat-card-value">$($reportData.PasswordPolicy.DomainPolicy.PasswordHistoryCount) contraseñas</div>
+                        <div class="stat-card-value">$($reportData.PasswordPolicy.DomainPolicy.PasswordHistoryCount) contrasenas</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-card-label">Umbral Bloqueo</div>
@@ -1854,7 +1858,7 @@ $htmlReport += @"
                     "</ul></div></div>"
                 } else {
                     "<div class='alert alert-success' style='margin-top: 24px;'>" +
-                    "<div><strong>✓ Políticas de Contraseña Conformes</strong>" +
+                    "<div><strong>✓ Políticas de Contrasena Conformes</strong>" +
                     "<p>Las políticas cumplen con las recomendaciones de ISO 27002:2022</p></div></div>"
                 })
 
@@ -1953,7 +1957,7 @@ $htmlReport += @"
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-card-label">Cambios Contraseña</div>
+                        <div class="stat-card-label">Cambios Contrasena</div>
                         <div class="stat-card-value">$($reportData.Security.PasswordChanges)</div>
                     </div>
                     <div class="stat-card">
@@ -2147,7 +2151,7 @@ Write-Host "   - Inactivos 90+ días: $($reportData.Users.Inactive90)" -Foregrou
 Write-Host "   - Deshabilitados: $($reportData.Users.Disabled)" -ForegroundColor Gray
 Write-Host "   - Bloqueados: $($reportData.Users.Locked)" -ForegroundColor $(if($reportData.Users.Locked -gt 0){"Red"}else{"Green"})
 Write-Host "📋 GPOs: $($reportData.GPOs.Total) total, $($reportData.GPOs.Empty) vacías" -ForegroundColor White
-Write-Host "🔐 Política Contraseña: $(if($reportData.PasswordPolicy.DomainPolicy.MinPasswordLength -ge 12){"✓ Conforme"}else{"⚠ Revisar"})" -ForegroundColor $(if($reportData.PasswordPolicy.DomainPolicy.MinPasswordLength -ge 12){"Green"}else{"Yellow"})
+Write-Host "🔐 Política Contrasena: $(if($reportData.PasswordPolicy.DomainPolicy.MinPasswordLength -ge 12){"✓ Conforme"}else{"⚠ Revisar"})" -ForegroundColor $(if($reportData.PasswordPolicy.DomainPolicy.MinPasswordLength -ge 12){"Green"}else{"Yellow"})
 Write-Host "🔒 Eventos Seguridad: $($reportData.Security.FailedLogins) intentos fallidos" -ForegroundColor $(if($reportData.Security.FailedLogins -gt 100){"Red"}else{"Green"})
 
 Write-Host "`n✓ Script completado exitosamente." -ForegroundColor Green
