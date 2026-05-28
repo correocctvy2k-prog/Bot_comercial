@@ -41,6 +41,32 @@ foreach ($path in @($OutputPath, $BackupPath)) {
     }
 }
 
+# === HELPER: OBTENER CREDENCIALES PARA CONSULTAS REMOTAS ===
+function Get-RemoteCredential {
+    <#
+    .SYNOPSIS
+        Crea un objeto PSCredential para consultas remotas (CIM/WMI)
+        Intenta sin credenciales primero; si falla, usa las credenciales configuradas
+    #>
+    param(
+        [string]$ComputerName,
+        [bool]$UseCredentials = $BackupUseCredentials
+    )
+    
+    if ($UseCredentials -and $BackupCredPassword) {
+        try {
+            $securePassword = ConvertTo-SecureString $BackupCredPassword -AsPlainText -Force
+            $cred = New-Object System.Management.Automation.PSCredential($BackupCredUsername, $securePassword)
+            Write-Host "  → Usando credenciales para $ComputerName ($BackupCredUsername)" -ForegroundColor DarkCyan
+            return $cred
+        } catch {
+            Write-Host "  ⚠ Error al crear credenciales: $($_.Exception.Message)" -ForegroundColor Yellow
+            return $null
+        }
+    }
+    return $null
+}
+
 # --- Importar Módulos ---
 Import-Module ActiveDirectory
 if (Get-Module -ListAvailable GroupPolicy) { Import-Module GroupPolicy }
@@ -102,6 +128,8 @@ function Get-DCStatus {
     $issues = @()
     
     foreach ($dc in $dcList) {
+        Write-Host "  → Consultando $dc..." -ForegroundColor DarkCyan
+        
         $dcInfo = [PSCustomObject]@{
             DC = $dc
             Pingable = $false
@@ -113,13 +141,17 @@ function Get-DCStatus {
             OSVersion = ""
         }
         
-        if (Test-Connection -ComputerName $dc -Count 2 -Quiet) {
+        # Intentar ping
+        Write-Host "    [Ping] Enviando... " -NoNewline -ForegroundColor DarkGray
+        if (Test-Connection -ComputerName $dc -Count 2 -Quiet -ErrorAction SilentlyContinue) {
+            Write-Host "OK" -ForegroundColor Green
             $dcInfo.Pingable = $true
             
             # Verificar servicios críticos
             $services = @('NTDS','DNS','KDC','W32Time','Netlogon','DFSR')
             $localName = $env:COMPUTERNAME
             
+            Write-Host "    [Servicios] " -NoNewline -ForegroundColor DarkGray
             foreach ($service in $services) {
                 try {
                     $svc = $null
@@ -137,29 +169,55 @@ function Get-DCStatus {
                     } else {
                         $dcInfo.ServiceIssues += $service
                         $issues += "El servicio $service en $dc está en estado - $status"
+                        Write-Host "$service($status) " -NoNewline -ForegroundColor Yellow
                     }
                 } catch {
                     $dcInfo.Services += "$service - Error"
                     $dcInfo.ServiceIssues += $service
+                    Write-Host "$service(E) " -NoNewline -ForegroundColor Red
                 }
             }
+            Write-Host ""
             
-            # Obtener información del sistema
+            # Obtener información del sistema con credenciales si es necesario
+            Write-Host "    [SO] " -NoNewline -ForegroundColor DarkGray
             try {
-                $os = Get-CimInstance -ComputerName $dc -ClassName Win32_OperatingSystem -ErrorAction SilentlyContinue
-                $lastBoot = [datetime]$os.LastBootUpTime
-                $uptime = (Get-Date) - $lastBoot
-                $dcInfo.Uptime = "$($uptime.Days) días, $($uptime.Hours) horas"
-                $dcInfo.LastReboot = $lastBoot.ToString("yyyy-MM-dd HH:mm:ss")
-                $dcInfo.OSVersion = $os.Caption
+                $cimParams = @{
+                    ComputerName = $dc
+                    ClassName = 'Win32_OperatingSystem'
+                    ErrorAction = 'SilentlyContinue'
+                }
                 
-                if ($uptime.Days -lt 1) {
-                    $issues += "ISO 27001 A.8.15: El controlador $dc fue reiniciado recientemente (menos de 24 horas)"
+                $cred = Get-RemoteCredential -ComputerName $dc
+                if ($cred) {
+                    $cimParams['Credential'] = $cred
+                }
+                
+                $os = Get-CimInstance @cimParams
+                
+                if ($os) {
+                    $lastBoot = [datetime]$os.LastBootUpTime
+                    $uptime = (Get-Date) - $lastBoot
+                    $dcInfo.Uptime = "$($uptime.Days) días, $($uptime.Hours) horas"
+                    $dcInfo.LastReboot = $lastBoot.ToString("yyyy-MM-dd HH:mm:ss")
+                    $dcInfo.OSVersion = $os.Caption
+                    Write-Host "$($os.Caption) - Uptime: $($uptime.Days)d " -ForegroundColor Green
+                    
+                    if ($uptime.Days -lt 1) {
+                        $issues += "ISO 27001 A.8.15: El controlador $dc fue reiniciado recientemente (menos de 24 horas)"
+                    }
+                } else {
+                    Write-Host "Sin datos " -ForegroundColor Yellow
+                    $dcInfo.Uptime = "No disponible"
+                    $dcInfo.OSVersion = "No disponible"
                 }
             } catch {
+                Write-Host "Error: $($_.Exception.Message.Substring(0, 30))... " -ForegroundColor Red
                 $dcInfo.Uptime = "No disponible"
+                $dcInfo.OSVersion = "Error"
             }
         } else {
+            Write-Host "FALLÓ" -ForegroundColor Red
             $issues += "ISO 27001 A.8.2: El controlador $dc no responde - Disponibilidad comprometida"
         }
         
@@ -292,6 +350,8 @@ function Get-BackupStatus {
     $limite = (Get-Date).AddDays(-1)
     
     foreach ($ruta in $rutas) {
+        Write-Host "  → Accediendo: $ruta... " -NoNewline -ForegroundColor DarkCyan
+        
         $backupInfo = [PSCustomObject]@{
             Ruta = $ruta
             Accesible = $false
@@ -305,32 +365,49 @@ function Get-BackupStatus {
         $testPath = $false
         if ($BackupUseCredentials -and $BackupCredPassword) {
             try {
+                Write-Host "(con credenciales) " -NoNewline -ForegroundColor DarkGray
                 $cred = New-Object System.Management.Automation.PSCredential($BackupCredUsername, (ConvertTo-SecureString $BackupCredPassword -AsPlainText -Force))
                 $testPath = Test-Path $ruta -Credential $cred -ErrorAction SilentlyContinue
             } catch {
-                Write-Host "⚠ Error al usar credenciales para $ruta" -ForegroundColor Yellow
+                Write-Host "⚠ Error de credenciales " -NoNewline -ForegroundColor Yellow
                 $testPath = $false
             }
         } else {
-            $testPath = Test-Path $ruta
+            $testPath = Test-Path $ruta -ErrorAction SilentlyContinue
         }
         
         if ($testPath) {
+            Write-Host "OK" -ForegroundColor Green
             $backupInfo.Accesible = $true
-            $archivosRecientes = Get-ChildItem -Path $ruta -Recurse -ErrorAction SilentlyContinue | 
-                Where-Object { $_.LastWriteTime -gt $limite }
             
-            if ($archivosRecientes) {
-                $backupInfo.ArchivosRecientes = $archivosRecientes.Count
-                $backupInfo.TamañoTotal = [math]::Round(($archivosRecientes | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
-                $backupInfo.UltimoBackup = ($archivosRecientes | Sort-Object LastWriteTime -Descending | 
-                    Select-Object -First 1).LastWriteTime.ToString("yyyy-MM-dd HH:mm")
-                $backupInfo.Status = "OK"
-            } else {
+            try {
+                if ($BackupUseCredentials -and $BackupCredPassword) {
+                    $cred = New-Object System.Management.Automation.PSCredential($BackupCredUsername, (ConvertTo-SecureString $BackupCredPassword -AsPlainText -Force))
+                    $archivosRecientes = Get-ChildItem -Path $ruta -Recurse -ErrorAction SilentlyContinue -Credential $cred | 
+                        Where-Object { $_.LastWriteTime -gt $limite }
+                } else {
+                    $archivosRecientes = Get-ChildItem -Path $ruta -Recurse -ErrorAction SilentlyContinue | 
+                        Where-Object { $_.LastWriteTime -gt $limite }
+                }
+                
+                if ($archivosRecientes) {
+                    $backupInfo.ArchivosRecientes = $archivosRecientes.Count
+                    $backupInfo.TamañoTotal = [math]::Round(($archivosRecientes | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
+                    $backupInfo.UltimoBackup = ($archivosRecientes | Sort-Object LastWriteTime -Descending | 
+                        Select-Object -First 1).LastWriteTime.ToString("yyyy-MM-dd HH:mm")
+                    $backupInfo.Status = "OK"
+                    Write-Host "    → Archivos: $($backupInfo.ArchivosRecientes), Tamaño: $($backupInfo.TamañoTotal) GB" -ForegroundColor DarkGray
+                } else {
+                    $backupInfo.Status = "WARNING"
+                    $issues += "ISO 27001 A.8.13: Sin backups recientes en $ruta"
+                    Write-Host "    ⚠ No hay backups en últimas 24h" -ForegroundColor Yellow
+                }
+            } catch {
+                Write-Host "    ⚠ Error al leer: $($_.Exception.Message.Substring(0, 30))..." -ForegroundColor Yellow
                 $backupInfo.Status = "WARNING"
-                $issues += "ISO 27001 A.8.13: Sin backups recientes en $ruta"
             }
         } else {
+            Write-Host "NO ACCESIBLE" -ForegroundColor Red
             $issues += "ISO 27001 A.8.13: No se puede acceder a $ruta"
         }
         
@@ -578,28 +655,52 @@ function Get-DiskSpace {
     $issues = @()
     
     foreach ($dc in $dcList) {
+        Write-Host "  → Consultando discos en $dc... " -NoNewline -ForegroundColor DarkCyan
         try {
-            $disks = Get-WmiObject -Class Win32_LogicalDisk -ComputerName $dc -Filter "DriveType=3" -ErrorAction SilentlyContinue
-            foreach ($disk in $disks) {
-                $percentFree = [math]::Round(($disk.FreeSpace/$disk.Size)*100, 2)
-                
-                $diskData = [PSCustomObject]@{
-                    DC = $dc
-                    Drive = $disk.DeviceID
-                    SizeGB = [math]::Round($disk.Size/1GB, 2)
-                    FreeGB = [math]::Round($disk.FreeSpace/1GB, 2)
-                    PercentFree = $percentFree
+            $wmiParams = @{
+                Class = 'Win32_LogicalDisk'
+                ComputerName = $dc
+                Filter = "DriveType=3"
+                ErrorAction = 'SilentlyContinue'
+            }
+            
+            $cred = Get-RemoteCredential -ComputerName $dc
+            if ($cred) {
+                $wmiParams['Credential'] = $cred
+            }
+            
+            $disks = Get-WmiObject @wmiParams
+            
+            if ($disks) {
+                Write-Host "OK" -ForegroundColor Green
+                foreach ($disk in $disks) {
+                    $percentFree = [math]::Round(($disk.FreeSpace/$disk.Size)*100, 2)
+                    
+                    $diskData = [PSCustomObject]@{
+                        DC = $dc
+                        Drive = $disk.DeviceID
+                        SizeGB = [math]::Round($disk.Size/1GB, 2)
+                        FreeGB = [math]::Round($disk.FreeSpace/1GB, 2)
+                        PercentFree = $percentFree
+                    }
+                    
+                    Write-Host "    → $($disk.DeviceID): $($diskData.FreeGB) GB libres ($percentFree%)" -ForegroundColor DarkGray
+                    
+                    if ($percentFree -lt 15) {
+                        $issues += "ISO 27001 A.8.6: $dc - Disco $($disk.DeviceID) con solo $percentFree% libre"
+                        Write-Host "      ⚠ CRÍTICO: Menos del 15% libre" -ForegroundColor Red
+                    } elseif ($percentFree -lt 25) {
+                        $issues += "Advertencia: $dc - Disco $($disk.DeviceID) con $percentFree% libre"
+                        Write-Host "      ⚠ Advertencia: Menos del 25% libre" -ForegroundColor Yellow
+                    }
+                    
+                    $diskInfo += $diskData
                 }
-                
-                if ($percentFree -lt 15) {
-                    $issues += "ISO 27001 A.8.6: $dc - Disco $($disk.DeviceID) con solo $percentFree% libre"
-                } elseif ($percentFree -lt 25) {
-                    $issues += "Advertencia: $dc - Disco $($disk.DeviceID) con $percentFree% libre"
-                }
-                
-                $diskInfo += $diskData
+            } else {
+                Write-Host "Sin datos (posible fallo de conexión)" -ForegroundColor Yellow
             }
         } catch {
+            Write-Host "Error: $($_.Exception.Message.Substring(0, 40))..." -ForegroundColor Red
             $diskInfo += [PSCustomObject]@{
                 DC = $dc
                 Drive = "Error"
