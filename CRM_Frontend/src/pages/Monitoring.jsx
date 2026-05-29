@@ -634,60 +634,80 @@ export default function Monitoring() {
                 </div>
               )}
 
-              {/* SERV-KSC — Kaspersky Security Center */}
-              <div className={`bg-background/30 border border-dashed rounded-xl p-4 flex flex-col gap-3 min-h-[180px] ${pingData['SERV-KSC']?.status === 'DOWN' ? 'border-rose-500/30' : 'border-emerald-500/20'}`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className={`p-1.5 rounded-lg ${pingData['SERV-KSC']?.status === 'DOWN' ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
-                      <ShieldCheck className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold flex items-center gap-1.5">
-                        SERV-KSC
-                        {pingData['SERV-KSC']?.status === 'UP' && <span className="text-[9px] text-emerald-400 font-normal">{Math.round(pingData['SERV-KSC'].time)}ms</span>}
-                        {pingData['SERV-KSC']?.status === 'DOWN' && <span className="px-1 py-0.5 rounded text-[8px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
-                      </p>
-                      <p className="text-[9px] text-muted-foreground uppercase tracking-wider">192.168.8.42</p>
-                    </div>
-                  </div>
-                  <div 
-                    className={`w-2 h-2 rounded-full ${(!pingData['SERV-KSC'] && !pingData['ksc'] && !pingData['192.168.8.42']) ? 'bg-slate-600' : (pingData['SERV-KSC']?.status === 'UP' || pingData['ksc']?.status === 'UP' || pingData['192.168.8.42']?.status === 'UP') ? 'bg-emerald-400' : 'bg-rose-500'}`}
-                    style={{
-                      animation: (!pingData['SERV-KSC'] && !pingData['ksc'] && !pingData['192.168.8.42']) ? 'none' : (pingData['SERV-KSC']?.status === 'UP' || pingData['ksc']?.status === 'UP' || pingData['192.168.8.42']?.status === 'UP') ? 'breathe 3s ease-in-out infinite' : 'breathe-red 2s ease-in-out infinite'
-                    }}
-                  ></div>
+              {/* SERV-KSC — split: machine health (left) + KSC consolidated (right) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Left: SERV-KSC machine health using DCCard-like mapping */}
+                <div>
+                  <DCCard
+                    title="SERV-KSC"
+                    role="KSC SERVER"
+                    uptime={nodes.ksc?.Uptime ?? nodes.ksc?.data?.Uptime ?? 'N/A'}
+                    servicesOk={nodes.ksc?.data?.Services?.filter(s => s.Status === 'Running' || s.Status === 'OK').length ?? nodes.ksc?.Services?.filter(s => s.toLowerCase().includes('running') || s.toLowerCase().includes('ok')).length ?? 0}
+                    servicesTotal={nodes.ksc?.data?.Services?.length ?? nodes.ksc?.Services?.length ?? 6}
+                    diskSpace={
+                      nodes.ksc?.LocalHealth?.Disk?.[0] ??
+                      nodes.ksc?.Disk?.Disks?.find(d => d.Drive === 'C:' ) ??
+                      null
+                    }
+                    lastBackup={nodes.dc01?.Backups?.Backups?.find(b => b.Ruta?.includes('KSC') || b.Ruta?.includes('SERV-KSC'))?.UltimoBackup ?? 'N/A'}
+                    replication={nodes.ksc?.LocalHealth?.Replication ?? nodes.dc01?.Replication?.Status}
+                    updates={nodes.ksc?.data?.Updates ?? nodes.dc01?.Updates}
+                    isHealthy={!!nodes.ksc}
+                    pingStatus={pingData['SERV-KSC'] || pingData['ksc'] || pingData['192.168.8.42']}
+                    icon={<ShieldCheck />}
+                  />
                 </div>
-                <div className="flex-1 flex flex-col items-center justify-center py-2 gap-1">
-                  {nodes.ksc ? (
-                    <div className="w-full space-y-2">
-                      <div className="flex justify-between items-center bg-emerald-500/5 border border-emerald-500/20 px-2.5 py-1 rounded-md">
-                        <span className="text-[9px] text-emerald-400 font-bold uppercase">Consola KSC</span>
-                        <UpdateBadge updates={nodes.ksc.data?.Updates} />
+
+                {/* Right: KSC consolidated summary (from nodes.ksc.data / HTML report) */}
+                <div className={`bg-background/30 border rounded-xl p-4 flex flex-col gap-3 min-h-[180px] ${pingData['ksc']?.status === 'DOWN' ? 'border-rose-500/30' : 'border-emerald-500/20'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`p-1.5 rounded-lg ${pingData['ksc']?.status === 'DOWN' ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                        <ShieldCheck className="w-4 h-4" />
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="bg-background/40 border border-border/50 rounded-lg p-2">
-                           <p className="text-[8px] text-muted-foreground uppercase">Endpoints</p>
-                           <p className="text-xs font-bold text-foreground">
-                             {(nodes.ksc.data?.KSC?.TotalHosts || nodes.ksc.Endpoints?.Total || 0)} Equipos
-                           </p>
-                        </div>
-                        <div className="bg-background/40 border border-border/50 rounded-lg p-2">
-                           <p className="text-[8px] text-muted-foreground uppercase">RAM</p>
-                           <p className="text-xs font-bold text-foreground">
-                             {(nodes.ksc.data?.System?.RAM_Free_GB || nodes.ksc.RAM?.FreeGB || 'N/A')} GB
-                           </p>
-                        </div>
+                      <div>
+                        <p className="text-sm font-bold">Kaspersky KSC (Consolidado)</p>
+                        <p className="text-[9px] text-muted-foreground">Servidor de administración y monitorización</p>
                       </div>
-                      <p className="text-[9px] text-muted-foreground text-center italic">Uptime: {(nodes.ksc.data?.Uptime || nodes.ksc.Uptime || 'N/A')}</p>
                     </div>
-                  ) : (
-                    <>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/10 text-slate-400 border border-slate-500/20">
-                        {pingData['SERV-KSC']?.status === 'UP' ? 'ESPERANDO AGENTE' : 'SIN DATOS'}
-                      </span>
-                      <p className="text-[10px] text-muted-foreground text-center mt-1 uppercase tracking-tighter">Kaspersky Sec. Center</p>
-                    </>
-                  )}
+                    <UpdateBadge updates={nodes.ksc?.data?.Updates} />
+                  </div>
+
+                  <div className="flex-1">
+                    {nodes.ksc ? (
+                      <div className="w-full space-y-2">
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="bg-background/40 border border-border/50 rounded-lg p-2">
+                            <p className="text-[8px] text-muted-foreground uppercase">Endpoints</p>
+                            <p className="text-xs font-bold text-foreground">{nodes.ksc.data?.KSC?.TotalHosts ?? nodes.ksc.Endpoints?.Total ?? 0} Equipos</p>
+                          </div>
+                          <div className="bg-background/40 border border-border/50 rounded-lg p-2">
+                            <p className="text-[8px] text-muted-foreground uppercase">Agentes OK</p>
+                            <p className="text-xs font-bold text-foreground">{nodes.ksc.data?.KSC?.HealthyHosts ?? nodes.ksc.Endpoints?.Healthy ?? 'N/A'}</p>
+                          </div>
+                          <div className="bg-background/40 border border-border/50 rounded-lg p-2">
+                            <p className="text-[8px] text-muted-foreground uppercase">RAM libre</p>
+                            <p className="text-xs font-bold text-foreground">{nodes.ksc.data?.System?.RAM_Free_GB ?? nodes.ksc.RAM?.FreeGB ?? 'N/A'} GB</p>
+                          </div>
+                        </div>
+
+                        <div className="mt-2">
+                          <p className="text-[9px] text-muted-foreground">Servicios</p>
+                          <div className="grid grid-cols-2 gap-2 mt-1">
+                            {(nodes.ksc.data?.Services || nodes.ksc.Services || []).slice(0,6).map((s, idx) => (
+                              <div key={idx} className="bg-background/40 border border-border/50 rounded-lg p-2 text-xs">
+                                <div className="flex justify-between"><span className="truncate">{s.Name ?? s.Service}</span><span className={`font-bold ${((s.Status || s).toString().toLowerCase().includes('run') || (s.Status || s).toString().toLowerCase().includes('ok')) ? 'text-emerald-400' : 'text-rose-400'}`}>{s.Status ?? s}</span></div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <p className="text-[9px] text-muted-foreground text-center italic">Uptime: {nodes.ksc.data?.Uptime ?? nodes.ksc.Uptime ?? 'N/A'}</p>
+                      </div>
+                    ) : (
+                      <div className="text-center text-sm text-muted-foreground">Sin datos consolidados de KSC</div>
+                    )}
+                  </div>
                 </div>
               </div>
 
