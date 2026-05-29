@@ -524,37 +524,7 @@ export default function Monitoring() {
                 <div className="bg-background/40 border border-border/50 rounded-lg p-4 animate-pulse h-[200px]"></div>
               )}
 
-              { /* AD03 removed here — only AD01 and AD02 belong under ANFIGANE */ }
-              {nodes.dc03 ? (
-                <DCCard
-                  title="AD03"
-                  role="SECUNDARIO BDC"
-                  uptime={nodes.dc03?.Uptime ?? nodes.dc01?.DCs?.Status?.find(d => d.DC === 'AD03' || d.DC === 'DA03')?.Uptime ?? 'N/A'}
-                  servicesOk={
-                    nodes.dc03?.LocalHealth?.Services?.filter(s => s.Status === 'Running' || s.Status === 4 || s.Status === 'OK').length ??
-                    nodes.dc01?.DCs?.Status?.find(d => d.DC === 'AD03' || d.DC === 'DA03')?.Services?.filter(s => 
-                      s.toLowerCase().includes('ok') || s.toLowerCase().includes('running')
-                    ).length ?? 0
-                  }
-                  servicesTotal={nodes.dc03?.LocalHealth?.Services?.length ?? 6}
-                  diskSpace={
-                    nodes.dc03?.LocalHealth?.Disk?.[0] ??
-                    nodes.dc03?.LocalHealth?.Storage?.find(d => d.Drive === 'C:' || d.Drive === 'C:\\') ??
-                    nodes.dc01?.Disk?.Disks?.find(d => d.DC === 'AD03' || d.DC === 'DA03')
-                  }
-                  lastBackup={
-                    nodes.dc01?.Backups?.Backups?.find(b => b.Ruta?.includes('AD03'))?.UltimoBackup ??
-                    'Desconocido'
-                  }
-                  replication={nodes.dc03?.LocalHealth?.Replication ?? nodes.dc01?.Replication?.Status}
-                  updates={nodes.dc03?.LocalHealth?.Updates ?? nodes.dc01?.Updates}
-                  isHealthy={!!nodes.dc03 || !!nodes.dc01}
-                  pingStatus={pingData['AD-DC03'] || pingData['DA03'] || pingData['AD03'] || pingData['192.168.8.46']}
-                  icon={<WindowsADIcon />}
-                />
-              ) : (
-                <div className="bg-background/40 border border-border/50 rounded-lg p-4 animate-pulse h-[200px]"></div>
-              )}
+              {/* AD03 intentionally omitted from ANFIGANE — belongs under ANFI-SEG */}
             </div>
           </div>
         </div>
@@ -833,69 +803,7 @@ export default function Monitoring() {
           </div>
         </div>
       )}
-      {/* Modulos Secundarios */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Kaspersky Card */}
-        <div className={`bg-card/40 backdrop-blur-sm border rounded-xl p-6 flex flex-col transition-all duration-300 ${nodes.ksc ? 'border-emerald-500/30' : 'opacity-60 grayscale hover:grayscale-0 hover:opacity-100 border-border'}`}>
-           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className={`p-2.5 rounded-lg ${nodes.ksc ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-400'}`}>
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-lg">Kaspersky KSC</h3>
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Security Center</span>
-              </div>
-            </div>
-            <StatusBadge status={nodes.ksc ? "success" : "gray"} label={nodes.ksc ? "Activo" : "Desconectado"} />
-          </div>
-          
-          {nodes.ksc ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <MetricSmall label="Endpoints Protegidos" value={nodes.ksc.Endpoints?.Active ?? 0} icon={<ShieldCheck className="w-3 h-3" />} color="text-emerald-400" />
-                <MetricSmall label="Licencias Usadas" value={`${nodes.ksc.Licenses?.Used ?? 0} / ${nodes.ksc.Licenses?.Total ?? 0}`} icon={<Users className="w-3 h-3" />} />
-              </div>
-              <div className="bg-background/40 border border-border/50 rounded-lg p-3">
-                <div className="flex justify-between items-center text-xs mb-2">
-                  <span className="text-muted-foreground">Vencimiento Licencia</span>
-                  <span className="font-bold">{nodes.ksc.Licenses?.Expiry ?? 'N/A'}</span>
-                </div>
-                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-500 w-[75%]"></div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center py-10 text-center">
-              <p className="text-sm font-medium">Módulo en Desarrollo</p>
-              <p className="text-xs mt-1 text-muted-foreground">Próximamente: Inventario detallado de endpoints y alertas de virus</p>
-            </div>
-          )}
-        </div>
-
-        {/* ZKBioSecurity Card */}
-        <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6 flex flex-col opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-300">
-           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-rose-500/20 text-rose-400">
-                <Lock className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-lg">ZKBioSecurity</h3>
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Acceso Biométrico</span>
-              </div>
-            </div>
-            <StatusBadge status="gray" label="Desconectado" />
-          </div>
-          <div className="flex-1 flex flex-col items-center justify-center py-10">
-            <p className="text-sm font-medium">Módulo en Desarrollo</p>
-            <p className="text-xs mt-1 text-center">Próximamente: Estado de Dispositivos y Servicios</p>
-          </div>
-        </div>
-
-      </div>
+      {/* Modulos Secundarios (reserved) - no KSC card here to avoid duplication */}
 
       {/* History Table */}
       <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl overflow-hidden">
