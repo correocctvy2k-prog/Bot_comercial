@@ -610,32 +610,35 @@ export default function Monitoring() {
                 </div>
               )}
 
-              {/* SERV-KSC — split: machine health (left) + KSC consolidated (right) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Left: SERV-KSC machine health using DCCard-like mapping */}
-                <div>
-                  <DCCard
-                    title="SERV-KSC"
-                    role="KSC SERVER"
-                    uptime={nodes.ksc?.Uptime ?? nodes.ksc?.data?.Uptime ?? 'N/A'}
-                    servicesOk={nodes.ksc?.data?.Services?.filter(s => s.Status === 'Running' || s.Status === 'OK').length ?? nodes.ksc?.Services?.filter(s => s.toLowerCase().includes('running') || s.toLowerCase().includes('ok')).length ?? 0}
-                    servicesTotal={nodes.ksc?.data?.Services?.length ?? nodes.ksc?.Services?.length ?? 6}
-                    diskSpace={
-                      nodes.ksc?.LocalHealth?.Disk?.[0] ??
-                      nodes.ksc?.Disk?.Disks?.find(d => d.Drive === 'C:' ) ??
-                      null
-                    }
-                    lastBackup={nodes.dc01?.Backups?.Backups?.find(b => b.Ruta?.includes('KSC') || b.Ruta?.includes('SERV-KSC'))?.UltimoBackup ?? 'N/A'}
-                    replication={nodes.ksc?.LocalHealth?.Replication ?? nodes.dc01?.Replication?.Status}
-                    updates={nodes.ksc?.data?.Updates ?? nodes.dc01?.Updates}
-                    isHealthy={!!nodes.ksc}
-                    pingStatus={pingData['SERV-KSC'] || pingData['ksc'] || pingData['192.168.8.42']}
-                    icon={<ShieldCheck />}
-                  />
+              {/* SERV-KSC card: occupy second column alongside AD03, show ping to 192.168.8.42 and KSC payload */}
+              {nodes.ksc ? (
+                <DCCard
+                  title="SERV-KSC"
+                  role="KSC SERVER"
+                  uptime={nodes.ksc?.Uptime ?? nodes.ksc?.data?.Uptime ?? 'N/A'}
+                  servicesOk={nodes.ksc?.data?.Services?.filter?.(s => s.Status === 'Running' || s.Status === 'OK')?.length ?? nodes.ksc?.Services?.filter?.(s => s.toLowerCase().includes('running') || s.toLowerCase().includes('ok'))?.length ?? 0}
+                  servicesTotal={nodes.ksc?.data?.Services?.length ?? nodes.ksc?.Services?.length ?? 6}
+                  diskSpace={nodes.ksc?.LocalHealth?.Disk?.[0] ?? nodes.ksc?.Disk?.Disks?.find?.(d => d.Drive === 'C:') ?? null}
+                  lastBackup={nodes.dc01?.Backups?.Backups?.find(b => b.Ruta?.includes('KSC') || b.Ruta?.includes('SERV-KSC'))?.UltimoBackup ?? 'N/A'}
+                  replication={nodes.ksc?.LocalHealth?.Replication ?? nodes.dc01?.Replication?.Status}
+                  updates={nodes.ksc?.data?.Updates ?? nodes.dc01?.Updates}
+                  isHealthy={!!nodes.ksc}
+                  pingStatus={pingData['192.168.8.42'] || pingData['SERV-KSC'] || pingData['ksc']}
+                  icon={<ShieldCheck />}
+                  onClick={() => { setAdData(nodes.ksc); setIsADModalOpen(true); }}
+                />
+              ) : (
+                <div className="bg-background/30 border border-dashed border-border/40 rounded-xl p-5 flex flex-col items-center justify-center gap-3 opacity-50 hover:opacity-80 transition-opacity min-h-[180px]">
+                  <div className="p-2 bg-slate-500/10 rounded-lg text-slate-400">
+                    <ShieldCheck />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-slate-400">SERV-KSC</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">KSC SERVER</p>
+                  </div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-slate-600"></div>
                 </div>
-
-                {/* KSC consolidated card moved below (full-width) */}
-              </div>
+              )}
 
             </div>
           </div>
