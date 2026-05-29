@@ -9,6 +9,12 @@ if (typeof window !== 'undefined') {
   window.pingData = window.pingData || {};
 }
 
+// Some legacy/embedded widgets expect a global `nodes` object. Provide
+// a safe fallback to avoid ReferenceError during early script execution.
+if (typeof window !== 'undefined') {
+  window.nodes = window.nodes || {};
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <App />
