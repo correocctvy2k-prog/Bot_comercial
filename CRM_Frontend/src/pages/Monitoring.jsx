@@ -166,50 +166,7 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
         ></div>
       </div>
 
-      {/* Kaspersky KSC consolidated card - full width below main columns */}
-      <div className="grid grid-cols-1 gap-6 mb-8">
-        <div className={`bg-card/40 backdrop-blur-sm border rounded-xl p-5 ${pingData['ksc']?.status === 'DOWN' ? 'border-rose-500/40' : 'border-border'}`}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-xl ${pingData['ksc']?.status === 'DOWN' ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                <ShieldCheck className="w-6 h-6" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold">Kaspersky KSC</h2>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Security Center</p>
-              </div>
-            </div>
-            <UpdateBadge updates={nodes.ksc?.data?.Updates} />
-          </div>
-
-          <div className="border-t border-border/30 pt-4">
-            {nodes.ksc ? (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-background/40 border border-border/50 rounded-lg p-4">
-                  <p className="text-[9px] text-muted-foreground uppercase">ENDPOINTS PROTEGIDOS</p>
-                  <p className="text-xl font-bold mt-2">{nodes.ksc.data?.KSC?.TotalHosts ?? nodes.ksc.Endpoints?.Total ?? 0}</p>
-                </div>
-                <div className="bg-background/40 border border-border/50 rounded-lg p-4">
-                  <p className="text-[9px] text-muted-foreground uppercase">LICENCIAS USADAS</p>
-                  <p className="text-xl font-bold mt-2">{nodes.ksc.data?.Licenses?.Used ?? '0'} / {nodes.ksc.data?.Licenses?.Total ?? '0'}</p>
-                </div>
-                <div className="bg-background/40 border border-border/50 rounded-lg p-4">
-                  <p className="text-[9px] text-muted-foreground uppercase">RAM LIBRE</p>
-                  <p className="text-xl font-bold mt-2">{nodes.ksc.data?.System?.RAM_Free_GB ?? nodes.ksc.RAM?.FreeGB ?? 'N/A'} GB</p>
-                </div>
-                <div className="col-span-3 mt-2">
-                  <p className="text-[9px] text-muted-foreground uppercase">Vencimiento Licencia</p>
-                  <div className="w-full bg-background/60 rounded-full h-3 mt-2">
-                    <div className="bg-emerald-400 h-3 rounded-full" style={{ width: nodes.ksc.data?.Licenses?.PercentUsed ? `${nodes.ksc.data.Licenses.PercentUsed}%` : '0%' }}></div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center text-sm text-muted-foreground">No hay datos consolidados de KSC disponibles</div>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* consolidated KSC card is rendered once at top-level (outside DCCard) */}
 
       <div className="grid grid-cols-2 gap-3 text-xs mb-3 flex-1">
          <div className="flex flex-col gap-1">
@@ -519,6 +476,39 @@ export default function Monitoring() {
                   pingStatus={pingData['AD']}
                   onClick={() => { setAdData(nodes.dc01); setIsADModalOpen(true); }}
                   icon={<WindowsADIcon />} 
+                />
+              ) : (
+                <div className="bg-background/40 border border-border/50 rounded-lg p-4 animate-pulse h-[200px]"></div>
+              )}
+
+              {/* AD02 card (secondary) — restored under ANFIGANE */}
+              {nodes.dc02 ? (
+                <DCCard
+                  title="AD02"
+                  role="SECUNDARIO BDC"
+                  uptime={nodes.dc02?.Uptime ?? nodes.dc01?.DCs?.Status?.find(d => d.DC === 'AD02' || d.DC === 'DA02')?.Uptime ?? 'N/A'}
+                  servicesOk={
+                    nodes.dc02?.LocalHealth?.Services?.filter?.(s => s.Status === 'Running' || s.Status === 4 || s.Status === 'OK')?.length ??
+                    nodes.dc01?.DCs?.Status?.find(d => d.DC === 'AD02' || d.DC === 'DA02')?.Services?.filter(s => 
+                      s.toLowerCase().includes('ok') || s.toLowerCase().includes('running')
+                    ).length ?? 0
+                  }
+                  servicesTotal={nodes.dc02?.LocalHealth?.Services?.length ?? 6}
+                  diskSpace={
+                    nodes.dc02?.LocalHealth?.Disk?.[0] ??
+                    nodes.dc02?.LocalHealth?.Storage?.find?.(d => d.Drive === 'C:' || d.Drive === 'C:\\') ??
+                    nodes.dc01?.Disk?.Disks?.find(d => d.DC === 'AD02' || d.DC === 'DA02')
+                  }
+                  lastBackup={
+                    nodes.dc01?.Backups?.Backups?.find(b => b.Ruta?.includes('AD02'))?.UltimoBackup ??
+                    'Desconocido'
+                  }
+                  replication={nodes.dc02?.LocalHealth?.Replication ?? nodes.dc01?.Replication?.Status}
+                  updates={nodes.dc02?.LocalHealth?.Updates ?? nodes.dc01?.Updates}
+                  isHealthy={!!nodes.dc02 || !!nodes.dc01}
+                  pingStatus={pingData['AD-DC02'] || pingData['DA02'] || pingData['AD02']}
+                  icon={<WindowsADIcon />}
+                  onClick={() => { setAdData(nodes.dc02); setIsADModalOpen(true); }}
                 />
               ) : (
                 <div className="bg-background/40 border border-border/50 rounded-lg p-4 animate-pulse h-[200px]"></div>
