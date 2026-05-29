@@ -623,7 +623,7 @@ export default function Monitoring() {
                   replication={nodes.ksc?.LocalHealth?.Replication ?? nodes.dc01?.Replication?.Status}
                   updates={nodes.ksc?.data?.Updates ?? nodes.dc01?.Updates}
                   isHealthy={!!nodes.ksc}
-                  pingStatus={pingData['192.168.8.42'] || pingData['SERV-KSC'] || pingData['ksc']}
+                  pingStatus={pingData['192.168.8.42'] || pingData['SERV-KSC'] || pingData['KSC'] || pingData['ksc']}
                   icon={<ShieldCheck />}
                   onClick={() => { setAdData(nodes.ksc); setIsADModalOpen(true); }}
                 />
