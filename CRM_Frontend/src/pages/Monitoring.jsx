@@ -509,6 +509,36 @@ export default function Monitoring() {
               ) : (
                 <div className="bg-background/40 border border-border/50 rounded-lg p-4 animate-pulse h-[200px]"></div>
               )}
+              {nodes.dc03 ? (
+                <DCCard
+                  title="AD03"
+                  role="SECUNDARIO BDC"
+                  uptime={nodes.dc03?.Uptime ?? nodes.dc01?.DCs?.Status?.find(d => d.DC === 'AD03' || d.DC === 'DA03')?.Uptime ?? 'N/A'}
+                  servicesOk={
+                    nodes.dc03?.LocalHealth?.Services?.filter(s => s.Status === 'Running' || s.Status === 4 || s.Status === 'OK').length ??
+                    nodes.dc01?.DCs?.Status?.find(d => d.DC === 'AD03' || d.DC === 'DA03')?.Services?.filter(s => 
+                      s.toLowerCase().includes('ok') || s.toLowerCase().includes('running')
+                    ).length ?? 0
+                  }
+                  servicesTotal={nodes.dc03?.LocalHealth?.Services?.length ?? 6}
+                  diskSpace={
+                    nodes.dc03?.LocalHealth?.Disk?.[0] ??
+                    nodes.dc03?.LocalHealth?.Storage?.find(d => d.Drive === 'C:' || d.Drive === 'C:\\') ??
+                    nodes.dc01?.Disk?.Disks?.find(d => d.DC === 'AD03' || d.DC === 'DA03')
+                  }
+                  lastBackup={
+                    nodes.dc01?.Backups?.Backups?.find(b => b.Ruta?.includes('AD03'))?.UltimoBackup ??
+                    'Desconocido'
+                  }
+                  replication={nodes.dc03?.LocalHealth?.Replication ?? nodes.dc01?.Replication?.Status}
+                  updates={nodes.dc03?.LocalHealth?.Updates ?? nodes.dc01?.Updates}
+                  isHealthy={!!nodes.dc03 || !!nodes.dc01}
+                  pingStatus={pingData['AD-DC03'] || pingData['DA03'] || pingData['AD03'] || pingData['192.168.8.46']}
+                  icon={<WindowsADIcon />}
+                />
+              ) : (
+                <div className="bg-background/40 border border-border/50 rounded-lg p-4 animate-pulse h-[200px]"></div>
+              )}
             </div>
           </div>
         </div>
