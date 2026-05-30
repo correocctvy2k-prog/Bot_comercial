@@ -388,24 +388,40 @@ export default function Monitoring() {
 
   const kscServicesArray = kscLocal?.Services || kscKasp?.Services || rawK.Services || [];
 
-  const kscServicesOk = Array.isArray(kscServicesArray) ? kscServicesArray.filter(s => {
+  let kscServicesOk = Array.isArray(kscServicesArray) ? kscServicesArray.filter(s => {
     try {
       const text = (typeof s === 'string' ? s : (s.Status || s.Name || s.State || s.name || '')).toString().toLowerCase();
       return text.includes('running') || text.includes('ok') || text.includes('activo');
     } catch (e) { return false; }
   }).length : 0;
 
-  const kscServicesTotal = Array.isArray(kscServicesArray) ? kscServicesArray.length : (kscKasp?.Services?.length || 6);
+  let kscServicesTotal = Array.isArray(kscServicesArray) ? kscServicesArray.length : (kscKasp?.Services?.length || 6);
 
-  const kscDisk = kscLocal?.Disk?.[0] || rawK.Disk?.Disks?.find?.(d => d.Drive === 'C:') || null;
+  // Si el payload es simple (ej. Monitor envía Endpoints / Licenses), derivar métricas útiles
+  if (rawK?.Endpoints) {
+    const tot = rawK.Endpoints.Total ?? rawK.Endpoints.total ?? rawK.Endpoints.TotalEndpoints ?? null;
+    const act = rawK.Endpoints.Active ?? rawK.Endpoints.active ?? rawK.Endpoints.ActiveEndpoints ?? null;
+    if (typeof tot === 'number' || typeof act === 'number') {
+      kscServicesTotal = typeof tot === 'number' ? tot : kscServicesTotal;
+      kscServicesOk = typeof act === 'number' ? act : kscServicesOk;
+    }
+  }
 
+  // Mapear campos comunes: disco, uptime, backup
+  let kscDisk = kscLocal?.Disk?.[0] || rawK.Disk?.Disks?.find?.(d => d.Drive === 'C:') || null;
   const kscUptime = rawK?.Uptime || kscLocal?.Uptime || kscLocal?.System?.Uptime || 'N/A';
 
-  const kscLastBackup =
+  let kscLastBackup =
     rawK?.Backups?.Status?.KSC ||
     (rawK?.Backups?.Backups?.find?.(b => b.Ruta?.includes('KSC') || b.Ruta?.includes('SERV-KSC'))?.UltimoBackup) ||
     (nodes.dc01?.Backups?.Backups?.find?.(b => b.Ruta?.includes('KSC') || b.Ruta?.includes('SERV-KSC'))?.UltimoBackup) ||
     'N/A';
+
+  // Si el payload trae Licenses o RAM, podemos mostrar algunos valores alternativos
+  if (!kscDisk && rawK?.RAM && rawK.RAM.FreeGB) {
+    // No hay disco en payload simple, pero mostramos RAM en el lugar de disco de forma legible
+    kscDisk = { FreeGB: rawK.RAM.FreeGB, TotalGB: rawK.RAM.TotalGB ?? null, PercentFree: rawK.RAM.PercentFree ?? 0 };
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
