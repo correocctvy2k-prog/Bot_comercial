@@ -577,23 +577,53 @@ export default function Monitoring() {
                 <DCCard 
                   title="AD03" 
                   role="SECUNDARIO BDC"
-                  uptime={nodes.dc03?.Uptime ?? nodes.dc03?.LocalHealth?.Uptime ?? nodes.dc03?.data?.LocalHealth?.Uptime ?? 'N/A'}
-                  servicesOk={nodes.dc03?.LocalHealth?.Services?.filter?.(s => s.Status === 'Running' || s.Status === 4 || s.Status === 'OK')?.length ?? nodes.dc03?.data?.LocalHealth?.Services?.filter?.(s => s.Status === 'Running' || s.Status === 4 || s.Status === 'OK')?.length ?? 0}
-                  servicesTotal={nodes.dc03?.LocalHealth?.Services?.length ?? nodes.dc03?.data?.LocalHealth?.Services?.length ?? 4}
+                  uptime={
+                    nodes.dc03?.Uptime ||
+                    nodes.dc03?.LocalHealth?.Uptime ||
+                    nodes.dc03?.data?.LocalHealth?.Uptime ||
+                    nodes.dc01?.DCs?.Status?.find(d => d.DC === 'AD03' || d.DC === 'DA03')?.Uptime ||
+                    'N/A'
+                  }
+                  servicesOk={
+                    nodes.dc03?.LocalHealth?.Services?.filter?.(s => s.Status === 'Running' || s.Status === 4 || s.Status === 'OK')?.length ||
+                    nodes.dc03?.data?.LocalHealth?.Services?.filter?.(s => s.Status === 'Running' || s.Status === 4 || s.Status === 'OK')?.length ||
+                    nodes.dc01?.DCs?.Status?.find(d => d.DC === 'AD03' || d.DC === 'DA03')?.Services?.filter?.(s => String(s).toLowerCase().includes('ok') || String(s).toLowerCase().includes('running'))?.length ||
+                    0
+                  }
+                  servicesTotal={
+                    nodes.dc03?.LocalHealth?.Services?.length ||
+                    nodes.dc03?.data?.LocalHealth?.Services?.length ||
+                    nodes.dc01?.DCs?.Status?.find(d => d.DC === 'AD03' || d.DC === 'DA03')?.Services?.length ||
+                    4
+                  }
                   diskSpace={
-                    nodes.dc03?.LocalHealth?.Storage?.find?.(d => d.Drive === 'C:' || d.Drive === 'C:\\') ??
-                    nodes.dc03?.LocalHealth?.Disk?.[0] ??
-                    nodes.dc03?.data?.LocalHealth?.Storage?.find?.(d => d.Drive === 'C:' || d.Drive === 'C:\\') ??
-                    nodes.dc03?.data?.LocalHealth?.Disk?.[0]
+                    nodes.dc03?.LocalHealth?.Storage?.find?.(d => d.Drive === 'C:' || d.Drive === 'C:\\') ||
+                    nodes.dc03?.LocalHealth?.Disk?.[0] ||
+                    nodes.dc03?.data?.LocalHealth?.Storage?.find?.(d => d.Drive === 'C:' || d.Drive === 'C:\\') ||
+                    nodes.dc03?.data?.LocalHealth?.Disk?.[0] ||
+                    nodes.dc01?.Disk?.Disks?.find(d => d.DC === 'AD03' || d.DC === 'DA03') ||
+                    null
                   }
                   lastBackup={
-                    nodes.dc01?.Backups?.Status?.AD03 ??
-                    nodes.dc01?.Backups?.Backups?.find(b => b.Ruta?.includes('AD03'))?.UltimoBackup ??
+                    nodes.dc03?.Backups?.Status?.AD03 ||
+                    nodes.dc03?.Backups?.Backups?.find?.(b => b.Ruta?.includes('AD03'))?.UltimoBackup ||
+                    nodes.dc01?.Backups?.Status?.AD03 ||
+                    nodes.dc01?.Backups?.Backups?.find?.(b => b.Ruta?.includes('AD03'))?.UltimoBackup ||
                     'Desconocido'
                   }
-                  replication={nodes.dc03?.LocalHealth?.Replication ?? nodes.dc03?.data?.LocalHealth?.Replication ?? nodes.dc01?.Replication?.Status}
-                  updates={nodes.dc03?.LocalHealth?.Updates ?? nodes.dc03?.data?.LocalHealth?.Updates}
-                  isHealthy={!!nodes.dc03 || pingData['AD-DC03']?.status === 'UP' || pingData['AD03']?.status === 'UP' || pingData['192.168.8.46']?.status === 'UP'}
+                  replication={
+                    nodes.dc03?.LocalHealth?.Replication ||
+                    nodes.dc03?.data?.LocalHealth?.Replication ||
+                    nodes.dc01?.Replication?.Status ||
+                    'N/A'
+                  }
+                  updates={nodes.dc03?.LocalHealth?.Updates || nodes.dc03?.data?.LocalHealth?.Updates || nodes.dc01?.Updates}
+                  isHealthy={
+                    !!nodes.dc03 ||
+                    pingData['AD-DC03']?.status === 'UP' ||
+                    pingData['AD03']?.status === 'UP' ||
+                    pingData['192.168.8.46']?.status === 'UP'
+                  }
                   pingStatus={pingData['AD-DC03'] || pingData['AD03'] || pingData['DA03'] || pingData['192.168.8.46']}
                   icon={<WindowsADIcon />} 
                 />
@@ -615,13 +645,36 @@ export default function Monitoring() {
                 <DCCard
                   title="SERV-KSC"
                   role="KSC SERVER"
-                  uptime={nodes.ksc?.Uptime ?? nodes.ksc?.data?.Uptime ?? 'N/A'}
-                  servicesOk={nodes.ksc?.data?.Services?.filter?.(s => s.Status === 'Running' || s.Status === 'OK')?.length ?? nodes.ksc?.Services?.filter?.(s => s.toLowerCase().includes('running') || s.toLowerCase().includes('ok'))?.length ?? 0}
-                  servicesTotal={nodes.ksc?.data?.Services?.length ?? nodes.ksc?.Services?.length ?? 6}
-                  diskSpace={nodes.ksc?.LocalHealth?.Disk?.[0] ?? nodes.ksc?.Disk?.Disks?.find?.(d => d.Drive === 'C:') ?? null}
-                  lastBackup={nodes.dc01?.Backups?.Backups?.find(b => b.Ruta?.includes('KSC') || b.Ruta?.includes('SERV-KSC'))?.UltimoBackup ?? 'N/A'}
-                  replication={nodes.ksc?.LocalHealth?.Replication ?? nodes.dc01?.Replication?.Status}
-                  updates={nodes.ksc?.data?.Updates ?? nodes.dc01?.Updates}
+                  uptime={
+                    nodes.ksc?.Uptime ||
+                    nodes.ksc?.data?.Uptime ||
+                    nodes.ksc?.data?.System?.Uptime ||
+                    'N/A'
+                  }
+                  servicesOk={
+                    nodes.ksc?.data?.Services?.filter?.(s => s.Status === 'Running' || s.Status === 'OK')?.length ||
+                    nodes.ksc?.Services?.filter?.(s => String(s).toLowerCase().includes('running') || String(s).toLowerCase().includes('ok'))?.length ||
+                    0
+                  }
+                  servicesTotal={
+                    nodes.ksc?.data?.Services?.length ||
+                    nodes.ksc?.Services?.length ||
+                    6
+                  }
+                  diskSpace={
+                    nodes.ksc?.LocalHealth?.Disk?.[0] ||
+                    nodes.ksc?.data?.System?.Disk?.[0] ||
+                    nodes.ksc?.Disk?.Disks?.find?.(d => d.Drive === 'C:') ||
+                    null
+                  }
+                  lastBackup={
+                    nodes.ksc?.Backups?.Status?.KSC ||
+                    nodes.ksc?.Backups?.Backups?.find?.(b => b.Ruta?.includes('KSC') || b.Ruta?.includes('SERV-KSC'))?.UltimoBackup ||
+                    nodes.dc01?.Backups?.Backups?.find?.(b => b.Ruta?.includes('KSC') || b.Ruta?.includes('SERV-KSC'))?.UltimoBackup ||
+                    'N/A'
+                  }
+                  replication={nodes.ksc?.LocalHealth?.Replication || nodes.dc01?.Replication?.Status}
+                  updates={nodes.ksc?.data?.Updates || nodes.ksc?.Updates || nodes.dc01?.Updates}
                   isHealthy={!!nodes.ksc}
                   pingStatus={pingData['192.168.8.42'] || pingData['SERV-KSC'] || pingData['KSC'] || pingData['ksc']}
                   icon={<ShieldCheck />}
