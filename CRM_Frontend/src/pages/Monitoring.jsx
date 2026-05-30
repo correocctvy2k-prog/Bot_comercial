@@ -381,15 +381,12 @@ export default function Monitoring() {
   }, []);
 
   // Precompute KSC-friendly fallbacks to normalize different report shapes
-  const kscNode = nodes.ksc || {};
-  const kscData = kscNode.data || {};
-  const kscServicesArray = (
-    kscData.Services ||
-    kscNode.LocalHealth?.Services ||
-    kscData?.KSC?.Services ||
-    kscNode.Services ||
-    []
-  );
+  const rawK = nodes.ksc || {};
+  // Monitor-SERV-KSC.ps1 stores payload as: { Node, Role, ReportDate, LocalHealth, Kaspersky }
+  const kscLocal = rawK.LocalHealth || rawK.data?.LocalHealth || {};
+  const kscKasp  = rawK.Kaspersky || rawK.data?.Kaspersky || {};
+
+  const kscServicesArray = kscLocal?.Services || kscKasp?.Services || rawK.Services || [];
 
   const kscServicesOk = Array.isArray(kscServicesArray) ? kscServicesArray.filter(s => {
     try {
@@ -398,16 +395,16 @@ export default function Monitoring() {
     } catch (e) { return false; }
   }).length : 0;
 
-  const kscServicesTotal = Array.isArray(kscServicesArray) ? kscServicesArray.length : (kscData?.KSC?.Services?.length || 6);
+  const kscServicesTotal = Array.isArray(kscServicesArray) ? kscServicesArray.length : (kscKasp?.Services?.length || 6);
 
-  const kscDisk = kscNode.LocalHealth?.Disk?.[0] || kscData?.System?.Disk?.[0] || kscNode.Disk?.Disks?.find?.(d => d.Drive === 'C:') || null;
+  const kscDisk = kscLocal?.Disk?.[0] || rawK.Disk?.Disks?.find?.(d => d.Drive === 'C:') || null;
 
-  const kscUptime = kscNode?.Uptime || kscData?.Uptime || kscData?.System?.Uptime || 'N/A';
+  const kscUptime = rawK?.Uptime || kscLocal?.Uptime || kscLocal?.System?.Uptime || 'N/A';
 
   const kscLastBackup =
-    kscNode?.Backups?.Status?.KSC ||
-    kscNode?.Backups?.Backups?.find?.(b => b.Ruta?.includes('KSC') || b.Ruta?.includes('SERV-KSC'))?.UltimoBackup ||
-    nodes.dc01?.Backups?.Backups?.find?.(b => b.Ruta?.includes('KSC') || b.Ruta?.includes('SERV-KSC'))?.UltimoBackup ||
+    rawK?.Backups?.Status?.KSC ||
+    (rawK?.Backups?.Backups?.find?.(b => b.Ruta?.includes('KSC') || b.Ruta?.includes('SERV-KSC'))?.UltimoBackup) ||
+    (nodes.dc01?.Backups?.Backups?.find?.(b => b.Ruta?.includes('KSC') || b.Ruta?.includes('SERV-KSC'))?.UltimoBackup) ||
     'N/A';
 
   return (
