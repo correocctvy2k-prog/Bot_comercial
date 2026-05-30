@@ -380,6 +380,36 @@ export default function Monitoring() {
     return () => clearInterval(pingInterval);
   }, []);
 
+  // Precompute KSC-friendly fallbacks to normalize different report shapes
+  const kscNode = nodes.ksc || {};
+  const kscData = kscNode.data || {};
+  const kscServicesArray = (
+    kscData.Services ||
+    kscNode.LocalHealth?.Services ||
+    kscData?.KSC?.Services ||
+    kscNode.Services ||
+    []
+  );
+
+  const kscServicesOk = Array.isArray(kscServicesArray) ? kscServicesArray.filter(s => {
+    try {
+      const text = (typeof s === 'string' ? s : (s.Status || s.Name || s.State || s.name || '')).toString().toLowerCase();
+      return text.includes('running') || text.includes('ok') || text.includes('activo');
+    } catch (e) { return false; }
+  }).length : 0;
+
+  const kscServicesTotal = Array.isArray(kscServicesArray) ? kscServicesArray.length : (kscData?.KSC?.Services?.length || 6);
+
+  const kscDisk = kscNode.LocalHealth?.Disk?.[0] || kscData?.System?.Disk?.[0] || kscNode.Disk?.Disks?.find?.(d => d.Drive === 'C:') || null;
+
+  const kscUptime = kscNode?.Uptime || kscData?.Uptime || kscData?.System?.Uptime || 'N/A';
+
+  const kscLastBackup =
+    kscNode?.Backups?.Status?.KSC ||
+    kscNode?.Backups?.Backups?.find?.(b => b.Ruta?.includes('KSC') || b.Ruta?.includes('SERV-KSC'))?.UltimoBackup ||
+    nodes.dc01?.Backups?.Backups?.find?.(b => b.Ruta?.includes('KSC') || b.Ruta?.includes('SERV-KSC'))?.UltimoBackup ||
+    'N/A';
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Header */}
@@ -645,34 +675,11 @@ export default function Monitoring() {
                 <DCCard
                   title="SERV-KSC"
                   role="KSC SERVER"
-                  uptime={
-                    nodes.ksc?.Uptime ||
-                    nodes.ksc?.data?.Uptime ||
-                    nodes.ksc?.data?.System?.Uptime ||
-                    'N/A'
-                  }
-                  servicesOk={
-                    nodes.ksc?.data?.Services?.filter?.(s => s.Status === 'Running' || s.Status === 'OK')?.length ||
-                    nodes.ksc?.Services?.filter?.(s => String(s).toLowerCase().includes('running') || String(s).toLowerCase().includes('ok'))?.length ||
-                    0
-                  }
-                  servicesTotal={
-                    nodes.ksc?.data?.Services?.length ||
-                    nodes.ksc?.Services?.length ||
-                    6
-                  }
-                  diskSpace={
-                    nodes.ksc?.LocalHealth?.Disk?.[0] ||
-                    nodes.ksc?.data?.System?.Disk?.[0] ||
-                    nodes.ksc?.Disk?.Disks?.find?.(d => d.Drive === 'C:') ||
-                    null
-                  }
-                  lastBackup={
-                    nodes.ksc?.Backups?.Status?.KSC ||
-                    nodes.ksc?.Backups?.Backups?.find?.(b => b.Ruta?.includes('KSC') || b.Ruta?.includes('SERV-KSC'))?.UltimoBackup ||
-                    nodes.dc01?.Backups?.Backups?.find?.(b => b.Ruta?.includes('KSC') || b.Ruta?.includes('SERV-KSC'))?.UltimoBackup ||
-                    'N/A'
-                  }
+                  uptime={kscUptime}
+                  servicesOk={kscServicesOk}
+                  servicesTotal={kscServicesTotal}
+                  diskSpace={kscDisk}
+                  lastBackup={kscLastBackup}
                   replication={nodes.ksc?.LocalHealth?.Replication || nodes.dc01?.Replication?.Status}
                   updates={nodes.ksc?.data?.Updates || nodes.ksc?.Updates || nodes.dc01?.Updates}
                   isHealthy={!!nodes.ksc}
