@@ -1,0 +1,3384 @@
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+  <head>
+    <META http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Informe de uso de las bases de datos antivirus</title>
+    <META HTTP-EQUIV="Cache-Control" CONTENT="no-cache">
+    <meta http-equiv="X-UA-Compatible" content="IE=9">
+    <style type="text/css">
+
+            body {
+            background-color: #fff;
+            margin: 0;
+            padding: 0;
+            font-family: Segoe UI, Arial, Helvetica, sans-serif;
+            color: #54585a;
+            cursor: default;
+            zoom:1.00;
+            }
+
+            .outer {
+            padding: 20px;
+            height: 100%;
+            }
+
+            table {
+            border-collapse: collapse;
+            width: 100%
+            }
+            table td {
+            padding: 0;
+            vertical-align: top;
+            }
+            .SUBHEADER_TABLE {
+            }
+            .SUBHEADER ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            text-align: right;
+            }
+            .SUBHEADER li {
+            list-style: none;
+            padding: 0 0 2px;
+            margin: 0;
+            white-space: nowrap;
+            }
+            .SUBHEADER a {
+            font-size: 13px;
+            color: #006a52;
+            }
+            .SUBHEADER a:hover {
+            font-size: 13px;
+            color: #006a52;
+            text-decoration: none;
+            }
+            .SUBHEADER_LOGO {
+            vertical-align: middle;
+            }
+            .SUBHEADER_CUSTOM_TEXT {
+            vertical-align: middle;
+            padding: 0 0 12px;
+            font-size: 20px;
+            color: #333;
+            }
+            .SUBHEADER_LOGO_WRAPPER {
+            width: 1%;
+            padding: 0 0 12px;
+            vertical-align: middle;
+            }
+            .SUBHEADER_SEPARATOR {
+            border-top: 1px solid #cdd8d6;
+            height: 16px;
+            }
+            .chart {
+            margin: 16px 0;
+            }
+            .button_print {
+            margin-top: 14px;
+            padding: 6px 8px 4px;
+            background: #dfe9e8;
+            border: 1px solid #a3aeb6;
+            position: relative;
+            overflow: visible;
+            }
+            .button_print .top_line{
+            position: absolute;
+            top: -1px;
+            left: -1px;
+            right: -1px;
+            height: 1px;
+            background: #fff;
+            }
+            .button_print .print_icon {
+            display: inline-block;
+            width: 20px;
+            height: 12px;
+            position: relative;
+            top: -1px;
+            background: url('data:image/gif;base64,R0lGODlhDAAMAIABAHOCjP///yH/C1hNUCBEYXRhWE1QPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMwMTQgNzkuMTU2Nzk3LCAyMDE0LzA4LzIwLTA5OjUzOjAyICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdFJlZj0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlUmVmIyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxNCAoV2luZG93cykiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6OUQ0RDdERkNGNDE2MTFFNDgzNTNFRkVFMzZCOTM2OUUiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6OUQ0RDdERkRGNDE2MTFFNDgzNTNFRkVFMzZCOTM2OUUiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDo5RDREN0RGQUY0MTYxMUU0ODM1M0VGRUUzNkI5MzY5RSIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDo5RDREN0RGQkY0MTYxMUU0ODM1M0VGRUUzNkI5MzY5RSIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/PgH//v38+/r5+Pf29fTz8vHw7+7t7Ovq6ejn5uXk4+Lh4N/e3dzb2tnY19bV1NPS0dDPzs3My8rJyMfGxcTDwsHAv769vLu6ubi3trW0s7KxsK+urayrqqmop6alpKOioaCfnp2cm5qZmJeWlZSTkpGQj46NjIuKiYiHhoWEg4KBgH9+fXx7enl4d3Z1dHNycXBvbm1sa2ppaGdmZWRjYmFgX15dXFtaWVhXVlVUU1JRUE9OTUxLSklIR0ZFRENCQUA/Pj08Ozo5ODc2NTQzMjEwLy4tLCsqKSgnJiUkIyIhIB8eHRwbGhkYFxYVFBMSERAPDg0MCwoJCAcGBQQDAgEAACH5BAEAAAEALAAAAAAMAAwAAAIXTICJZqp8AFyRNmcr3pzPHWkPM3okGBQAOw==') no-repeat;
+            }
+            .HEADER_REP {
+            font-size: 16px;
+            font-weight: 600;
+            font-family: Segoe UI Light, Segoe UI, Arial, Helvetica, sans-serif;
+            color: #333;
+            line-height: 1.2;
+            vertical-align: top;
+            padding: 0 0 8px;
+            }
+            .HEADER_REP_DESCR {
+            font-size: 13px;
+            padding-top: 8px;
+            }
+            .HEADER_DATE {
+            font-size: 13px;
+            font-style: italic;
+            }
+            .HEADER_PERIOD {
+            margin-top: 8px;
+            font-size: 13px;
+            font-style: italic;
+            }
+            .COL_BG_GREEN {
+            background-color: #0E6D6A;
+            }
+
+            .table_floatcaption_wrap {
+            position: fixed;
+            top: 0;
+            left: 20px;
+            right: 20px;
+            width: 100px;
+            z-index: 111;
+            display: none;
+            }
+
+            .table_floatcaption_wrap.active {
+            display: block;
+            }
+
+            .table_floatcaption {
+            border: 1px solid #cdd8d6;
+            border-bottom-width: 0;
+            color: #000;
+            table-layout: fixed;
+            background: #fff;
+            position: relative;
+            z-index: 121;
+            }
+
+            .table_floatcaption td {
+            background: #fff;
+            padding: 6px 8px 8px;
+            }
+
+            .DATA_TABLE {
+            border: 1px solid #cdd8d6;
+            border-bottom-width: 0;
+            color: #000;
+            position: relative;
+            z-index: 1;
+            table-layout: auto;
+            }
+
+            .DATA_TABLE_WO_TOTAL {
+            border: 1px solid #cdd8d6;
+            }
+
+            .DATA_TABLE td {
+            background: #fff;
+            max-width: 35em;
+            padding: 4px 1px 5px 2px;
+            border-bottom: 1px solid #eee;
+            border-left: 1px solid #eee;
+            word-wrap:break-word; /*old browsers*/
+            overflow-wrap:break-word;
+            }
+
+            .PAGE_BORDER {
+            vertical-align: top;
+            padding: 20px;
+            }
+            .TABLE_ACT_CAP {
+            text-decoration: underline;
+            color: #006a52;
+            }
+            .TABLE_CAP {
+            font-size: 16px;
+            font-weight: 600;
+            font-family: Segoe UI Light, Segoe UI, Arial, Helvetica, sans-serif;
+            color: #333;
+            padding: 16px 0 12px;
+            color: inherit;
+            }
+            .TABLE_COL {
+            border: 1px solid #cdd8d6;
+            color: #000;
+            font-size: 13px;
+            text-decoration: none;
+            }
+            .TABLE_COL_TITLE {
+            display: inline-block;
+            }
+            .TABLE_COL.SORTABLE span {
+            cursor: pointer;
+            }
+
+            .SORTABLE .TABLE_COL_TITLE {
+            background: #fff url('data:image/gif;base64,R0lGODlhCgAKAIABAM3Y1v///yH/C1hNUCBEYXRhWE1QPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMwMTQgNzkuMTU2Nzk3LCAyMDE0LzA4LzIwLTA5OjUzOjAyICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdFJlZj0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlUmVmIyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxNCAoV2luZG93cykiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6QzFERjE0NjlGNDA5MTFFNEExNDhBMEU2MjcxMDYyQTEiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6QzFERjE0NkFGNDA5MTFFNEExNDhBMEU2MjcxMDYyQTEiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDpDMURGMTQ2N0Y0MDkxMUU0QTE0OEEwRTYyNzEwNjJBMSIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDpDMURGMTQ2OEY0MDkxMUU0QTE0OEEwRTYyNzEwNjJBMSIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/PgH//v38+/r5+Pf29fTz8vHw7+7t7Ovq6ejn5uXk4+Lh4N/e3dzb2tnY19bV1NPS0dDPzs3My8rJyMfGxcTDwsHAv769vLu6ubi3trW0s7KxsK+urayrqqmop6alpKOioaCfnp2cm5qZmJeWlZSTkpGQj46NjIuKiYiHhoWEg4KBgH9+fXx7enl4d3Z1dHNycXBvbm1sa2ppaGdmZWRjYmFgX15dXFtaWVhXVlVUU1JRUE9OTUxLSklIR0ZFRENCQUA/Pj08Ozo5ODc2NTQzMjEwLy4tLCsqKSgnJiUkIyIhIB8eHRwbGhkYFxYVFBMSERAPDg0MCwoJCAcGBQQDAgEAACH5BAEAAAEALAAAAAAKAAoAAAIRjI8IkLabYJCTHUivbbz7XgAAOw==') no-repeat right 5px;
+            padding-right: 14px;
+            }
+
+            .SORTABLE .TABLE_COL_TITLE.UP {
+            background-image: url('data:image/gif;base64,R0lGODlhCgAKAIABAFRYWv///yH/C1hNUCBEYXRhWE1QPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMwMTQgNzkuMTU2Nzk3LCAyMDE0LzA4LzIwLTA5OjUzOjAyICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdFJlZj0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlUmVmIyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxNCAoV2luZG93cykiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6QUZGMTY5MTFGNDA5MTFFNEE0QzQ5N0VEMjQzRDAwODIiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6QUZGMTY5MTJGNDA5MTFFNEE0QzQ5N0VEMjQzRDAwODIiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDpBRkYxNjkwRkY0MDkxMUU0QTRDNDk3RUQyNDNEMDA4MiIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDpBRkYxNjkxMEY0MDkxMUU0QTRDNDk3RUQyNDNEMDA4MiIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/PgH//v38+/r5+Pf29fTz8vHw7+7t7Ovq6ejn5uXk4+Lh4N/e3dzb2tnY19bV1NPS0dDPzs3My8rJyMfGxcTDwsHAv769vLu6ubi3trW0s7KxsK+urayrqqmop6alpKOioaCfnp2cm5qZmJeWlZSTkpGQj46NjIuKiYiHhoWEg4KBgH9+fXx7enl4d3Z1dHNycXBvbm1sa2ppaGdmZWRjYmFgX15dXFtaWVhXVlVUU1JRUE9OTUxLSklIR0ZFRENCQUA/Pj08Ozo5ODc2NTQzMjEwLy4tLCsqKSgnJiUkIyIhIB8eHRwbGhkYFxYVFBMSERAPDg0MCwoJCAcGBQQDAgEAACH5BAEAAAEALAAAAAAKAAoAAAIRjI8IkLabYJCTHUivbbz7XgAAOw==');
+            }
+
+            .SORTABLE .TABLE_COL_TITLE.DOWN {
+            background-image: url('data:image/gif;base64,R0lGODlhCgAKAIABAFRYWv///yH/C1hNUCBEYXRhWE1QPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMwMTQgNzkuMTU2Nzk3LCAyMDE0LzA4LzIwLTA5OjUzOjAyICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdFJlZj0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlUmVmIyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxNCAoV2luZG93cykiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6QkFFQTE1RDJGNDA5MTFFNEI1QzdBQzg1QjVDMDYxM0IiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6QkFFQTE1RDNGNDA5MTFFNEI1QzdBQzg1QjVDMDYxM0IiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDpCQUVBMTVEMEY0MDkxMUU0QjVDN0FDODVCNUMwNjEzQiIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDpCQUVBMTVEMUY0MDkxMUU0QjVDN0FDODVCNUMwNjEzQiIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/PgH//v38+/r5+Pf29fTz8vHw7+7t7Ovq6ejn5uXk4+Lh4N/e3dzb2tnY19bV1NPS0dDPzs3My8rJyMfGxcTDwsHAv769vLu6ubi3trW0s7KxsK+urayrqqmop6alpKOioaCfnp2cm5qZmJeWlZSTkpGQj46NjIuKiYiHhoWEg4KBgH9+fXx7enl4d3Z1dHNycXBvbm1sa2ppaGdmZWRjYmFgX15dXFtaWVhXVlVUU1JRUE9OTUxLSklIR0ZFRENCQUA/Pj08Ozo5ODc2NTQzMjEwLy4tLCsqKSgnJiUkIyIhIB8eHRwbGhkYFxYVFBMSERAPDg0MCwoJCAcGBQQDAgEAACH5BAEAAAEALAAAAAAKAAoAAAIRjI8AaBp+4FuTKZko27x7XgAAOw==');
+            }
+
+            .FL {
+            cursor: pointer;
+            color: #006a52;
+            text-decoration: underline;
+            }
+            .FL:hover {
+            text-decoration: none;
+            }
+            .sD {
+            font-size: 11px;
+            font-weight: normal;
+            background: #fff !important;
+            }
+            .sDo {
+            font-size: 11px;
+            font-weight: normal;
+            background: #f6f9fb !important;
+            }
+            .sD a,
+            .sDo a {
+            color: #006a52;
+            text-decoration: underline;
+            }
+            .sD a:hover,
+            .sDo a:hover {
+            text-decoration: none;
+            }
+            .sT {
+            display: inline-block;
+            font-size: 13px;
+            padding: 6px 40px 6px 4px;
+            }
+            .TOTAL {
+            border: 1px solid #cdd8d6;
+            background: #eff3f5;
+            color: #000;
+            position: relative;
+            z-index: 0;
+            }
+            .DIVIDER {
+            height: 16px
+            }
+            .TABLE_DIVIDER {
+            background: #fff;
+            border: solid #cdd8d6;
+            border-width: 0 1px;
+            height: 4px;
+            font-size: 0;
+            }
+
+            .ACTIONS {
+            padding: 0 0 0 20px;
+            }
+
+            @media print {
+            body {
+            color: #000;
+            }
+            .PAGE_BORDER {
+            padding: 0;
+            }
+
+            .FL {
+            color: #000 !important;
+            text-decoration: none !important;
+            }
+
+            .ACTIONS {
+            display: none;
+            }
+
+            .DATA_TABLE td a {
+            word-break: break-all;
+            }
+
+            .DATA_TABLE td:first-child {
+            border-left-width: 0;
+            }
+            .TABLE_COL,
+
+            .sT {
+            font-size: 11px;
+            background: none !important;
+            }
+
+            .TABLE_COL {
+            border-color: #eee;
+            }
+
+            .TOTAL {
+            border-top-width: 0;
+            border-color: #eee;
+            }
+
+            .sT {
+            padding: 6px 40px 6px 4px;
+            }
+
+            .SORTABLE .TABLE_COL_TITLE {
+            background: none;
+            padding: 0;
+            }
+
+            .URL {
+            word-break: break-all;
+            }
+            }
+
+        </style><script language="JavaScript" type="text/javascript">
+
+          function GetNode() { return external.SnapinScopeObject(); }
+
+          var node;
+  var tables = [];
+  
+  var floatCaptionBox = document.createElement("DIV");
+var classHideCaption = "table_floatcaption_wrap";
+var classShowCaption = "table_floatcaption_wrap active";
+floatCaptionBox.className = classHideCaption;
+floatCaptionBox.id = "floatCaptionBox";
+
+          function OnLoad() {
+
+  try {
+  node = GetNode();
+  cmd1.innerText = node.GetCounter("cmd1");
+  cmd2.innerText = node.GetCounter("cmd2");
+  cmd3.innerText = node.GetCounter("cmd3");
+  cmd4.innerText = node.GetCounter("cmd4");
+  cmd5.innerText = node.GetCounter("cmd5");
+  } catch(err) {}
+
+  try { EventsRetranslator.ConnectTo(GetNode()) }
+  catch(err) {}
+  
+  
+    document.body.appendChild(floatCaptionBox);
+            getTablesArr();
+
+
+            window.onscroll = function() {
+                renderFloatCaption();
+            }
+
+            window.onresize = function() {
+                getTablesArr();
+                renderFloatCaption();
+            }
+  
+  
+          }
+  
+  
+  
+function getTablesArr() {
+var allTables = document.getElementsByTagName("TABLE");
+
+tables = [];
+
+for(var i=0, length = allTables.length; i < length; i++) {
+
+if (allTables[i].className.indexOf("DATA_TABLE") != -1) {
+var tableObj = {};
+
+var originalCaptionTR = allTables[i].getElementsByTagName("TR")[0];
+var originalCaptionTD_arr = originalCaptionTR.getElementsByTagName("TD");
+
+var floatCaptionTable = document.createElement("TABLE");
+var cloneTR = originalCaptionTR.cloneNode(true);
+
+for (var y = 0, length_clone = cloneTR.getElementsByTagName("TD").length; y < length_clone; y++) {
+if (originalCaptionTD_arr[y].offsetWidth > 0) {
+cloneTR.getElementsByTagName("TD")[y].style.width = originalCaptionTD_arr[y].offsetWidth - 17 + "px";
+}
+}
+
+floatCaptionTable.className = "table_floatcaption";
+floatCaptionTable.appendChild(cloneTR);
+
+tableObj.el = allTables[i];
+tableObj.height = allTables[i].offsetHeight;
+tableObj.fixedCaption = floatCaptionTable;
+tables.push(tableObj);
+
+
+function resolveData(attr) {
+
+var event = event || window.event
+var target = event.target || event.srcElement;
+
+if(typeof target === "undefined") {
+return false;
+}
+
+var targetAttr = target.getAttribute(attr);
+result = targetAttr ? targetAttr : '';
+return result;
+}
+
+allTables[i].onclick = function tableClick(event) {
+
+switch (resolveData('data-function')) {
+
+  case 'f':
+  
+F(
+resolveData('data-df_name'),
+resolveData('data-arg_val'),
+resolveData('data-hst'),
+resolveData('data-srvInst'),
+resolveData('data-srvName')
+);
+
+break;
+
+
+  case 'sort':
+  
+
+
+Sort(
+resolveData('data-issum') == "true" ? true : false, 
+resolveData('data-name'), 
+resolveData('data-order')
+);
+
+break;  
+}
+}
+}
+}
+}
+
+
+function renderFloatCaption() {
+var floatCaptionBox = document.getElementById("floatCaptionBox");
+var obj = determineCurrentTable();
+
+
+if (obj) {
+if(floatCaptionBox.children[0] && (floatCaptionBox.children[0].tagName == "TABLE")) {
+floatCaptionBox.removeChild(floatCaptionBox.children[0]);
+}
+floatCaptionBox.appendChild(obj.fixedCaption);
+showFloatCaption();
+correctLeftPos();
+}
+else {
+hideFloatCaption();
+}
+}
+
+function showFloatCaption() {
+floatCaptionBox.className = classShowCaption;
+}
+
+function hideFloatCaption() {
+floatCaptionBox.className = classHideCaption;
+}
+
+function correctLeftPos() {
+var scrollLeft = document.documentElement ? document.documentElement.scrollLeft : document.body.scrollLeft;
+floatCaptionBox.style.left = (-1 * (scrollLeft - 20)) + "px";
+}
+
+function determineCurrentTable() {
+for (var i = 0, length = tables.length; i < length; i++) {
+var coordinates = tables[i].el.getBoundingClientRect();
+
+if ((coordinates.top < 0) && (0 < (coordinates.top + tables[i].height))) {
+return tables[i];
+}
+}
+hideFloatCaption();
+return null;
+}
+
+
+
+
+
+  
+
+
+          function Print() {
+          document.execCommand('Print')
+          }
+
+          function Sort(isSummary, columnName, curOrder) {
+          var order = "a";
+          if (curOrder > 0) order = "d";
+  
+          node.ExecuteCommand2(isSummary?"SortSum":"SortDet", columnName, order);
+          }
+
+          function F(sFieldName, sValue, hosts, srvinst, srvname) 
+  {
+  var cmdName = "InteractiveFilter";
+  switch(hosts){
+case "0": cmdName = "InteractiveFilter"; break;
+case "1": cmdName = "InteractiveQuery"; break;
+case "2": cmdName = "AdaptiveSecurityDetects"; break;
+  }
+
+  if (srvinst == "")
+node.ExecuteCommand2(cmdName, sFieldName, sValue);
+  else
+node.ExecuteCommand4(cmdName, sFieldName, sValue, srvinst, srvname);
+          }
+
+          var g_bShowMaster = true;
+
+          function ToggleMaster() {
+          g_bShowMaster = !g_bShowMaster;
+
+          if (g_bShowMaster)
+          document.getElementById("Master").style.display = "inline";
+          else
+          document.getElementById("Master").style.display = "none";
+          }
+
+          var g_bShowSlaves = true;
+
+          function ToggleSlaves() {
+          g_bShowSlaves = !g_bShowSlaves;
+
+          if (g_bShowSlaves)
+          document.getElementById("Slaves").style.display = "inline";
+          else
+          document.getElementById("Slaves").style.display = "none";
+          }
+
+          var g_bShowDetails = false;
+
+          function ToggleDetails() {
+          g_bShowDetails = !g_bShowDetails;
+
+          if (g_bShowDetails)
+          document.getElementById("Details").style.display = "inline";
+          else
+          document.getElementById("Details").style.display = "none";
+          }
+
+          function ToggleSlaveDetails(table) {
+          if (document.getElementById(table).style.display == "inline")
+          document.getElementById(table).style.display = "none";
+          else
+          document.getElementById(table).style.display = "inline";
+          }
+
+          function OnNavigate(page) {
+          window.navigate(page);
+          }
+
+          function OnUnload() {
+          try {
+          EventsRetranslator.DisconnectFrom(GetNode());
+          } catch(err){}
+          }
+
+          window.onload = OnLoad;
+          window.onunload = OnUnload;
+
+        </script><style type="text/css">
+
+            .DETAILS {
+              border-collapse: collapse;
+              display: none
+            }
+
+          </style>
+  </head>
+  <body>
+    <div class="outer">
+      <table class="SUBHEADER_TABLE">
+        <tr>
+          <td class="SUBHEADER_CUSTOM_TEXT">Kaspersky Security Center 15.1</td>
+          <td class="SUBHEADER_LOGO_WRAPPER"><img class="SUBHEADER_LOGO" name="align" src="217427b7-3140-4323-a9cb-aec306c8b7f8.hdr.png"/></td>
+        </tr>
+      </table>
+      <table class="SUBHEADER_TABLE">
+        <tr>
+          <td class="SUBHEADER_SEPARATOR"></td>
+        </tr>
+      </table>
+      <table>
+        <tr>
+          <td class="SUBHEADER">
+            <table class="SUBHEADER_TABLE">
+              <tr>
+                <td>
+                  <div class="HEADER_REP">Informe de uso de las bases de datos antivirus</div>
+                  <div class="HEADER_DATE">mayo 30, 2026 08:49:30 a. m.</div>
+                  <div class="HEADER_REP_DESCR">Este informe proporciona información sobre el uso de las bases de datos antivirus de Kaspersky. El presente informe comprende un único grupo: "Dispositivos administrados"</div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td class="SUBHEADER CHARTS">
+            <table>
+              <tr>
+                <td><img id="chartPic" class="chart" src="217427b7-3140-4323-a9cb-aec306c8b7f8.png" alt=""></td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+      <table>
+        <tr>
+          <td class="DIVIDER"></td>
+        </tr>
+      </table>
+      <table>
+        <tr>
+          <td>
+            <table>
+              <tr>
+                <td nowrap class="TABLE_CAP">Resumen:</td>
+              </tr>
+              <tr>
+                <td>
+                  <table class="DATA_TABLE">
+                    <tr>
+                      <td class="TABLE_COL"><span>Fecha de las bases de datos</span></td>
+                      <td class="TABLE_COL"><span>Estado de actualización</span></td>
+                      <td class="TABLE_COL"><span>Número de dispositivos</span></td>
+                      <td class="TABLE_COL"><span>Número de grupos</span></td>
+                    </tr>
+                    <tr>
+                      <td class="sD">julio 15, 2024 02:50:00 p. m.</td>
+                      <td class="sD">Actualizadas hace más de una semana</td>
+                      <td class="sD">1</td>
+                      <td class="sD">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">agosto 27, 2024 03:02:00 a. m.</td>
+                      <td class="sDo">Actualizadas hace más de una semana</td>
+                      <td class="sDo">1</td>
+                      <td class="sDo">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">julio 17, 2025 09:27:00 a. m.</td>
+                      <td class="sD">Actualizadas hace más de una semana</td>
+                      <td class="sD">1</td>
+                      <td class="sD">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">diciembre  6, 2025 08:59:00 a. m.</td>
+                      <td class="sDo">Actualizadas hace más de una semana</td>
+                      <td class="sDo">1</td>
+                      <td class="sDo">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">diciembre 17, 2025 12:16:00 p. m.</td>
+                      <td class="sD">Actualizadas hace más de una semana</td>
+                      <td class="sD">1</td>
+                      <td class="sD">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">enero 15, 2026 05:56:00 p. m.</td>
+                      <td class="sDo">Actualizadas hace más de una semana</td>
+                      <td class="sDo">1</td>
+                      <td class="sDo">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">marzo  3, 2026 10:14:00 a. m.</td>
+                      <td class="sD">Actualizadas hace más de una semana</td>
+                      <td class="sD">1</td>
+                      <td class="sD">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">marzo 27, 2026 12:44:00 p. m.</td>
+                      <td class="sDo">Actualizadas hace más de una semana</td>
+                      <td class="sDo">1</td>
+                      <td class="sDo">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">abril  1, 2026 09:07:00 p. m.</td>
+                      <td class="sD">Actualizadas hace más de una semana</td>
+                      <td class="sD">1</td>
+                      <td class="sD">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">abril  4, 2026 06:30:00 a. m.</td>
+                      <td class="sDo">Actualizadas hace más de una semana</td>
+                      <td class="sDo">1</td>
+                      <td class="sDo">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">abril  6, 2026 12:16:00 p. m.</td>
+                      <td class="sD">Actualizadas hace más de una semana</td>
+                      <td class="sD">1</td>
+                      <td class="sD">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">abril  7, 2026 07:45:00 a. m.</td>
+                      <td class="sDo">Actualizadas hace más de una semana</td>
+                      <td class="sDo">1</td>
+                      <td class="sDo">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">abril 18, 2026 05:09:00 a. m.</td>
+                      <td class="sD">Actualizadas hace más de una semana</td>
+                      <td class="sD">1</td>
+                      <td class="sD">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">abril 22, 2026 04:24:00 p. m.</td>
+                      <td class="sDo">Actualizadas hace más de una semana</td>
+                      <td class="sDo">1</td>
+                      <td class="sDo">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">abril 24, 2026 04:19:00 a. m.</td>
+                      <td class="sD">Actualizadas hace más de una semana</td>
+                      <td class="sD">1</td>
+                      <td class="sD">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">abril 30, 2026 05:50:00 a. m.</td>
+                      <td class="sDo">Actualizadas hace más de una semana</td>
+                      <td class="sDo">1</td>
+                      <td class="sDo">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">mayo  6, 2026 02:35:00 p. m.</td>
+                      <td class="sD">Actualizadas hace más de una semana</td>
+                      <td class="sD">1</td>
+                      <td class="sD">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">mayo  9, 2026 08:05:00 a. m.</td>
+                      <td class="sDo">Actualizadas hace más de una semana</td>
+                      <td class="sDo">1</td>
+                      <td class="sDo">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">mayo 12, 2026 01:17:00 a. m.</td>
+                      <td class="sD">Actualizadas hace más de una semana</td>
+                      <td class="sD">1</td>
+                      <td class="sD">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">mayo 13, 2026 03:45:00 a. m.</td>
+                      <td class="sDo">Actualizadas hace más de una semana</td>
+                      <td class="sDo">1</td>
+                      <td class="sDo">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">mayo 15, 2026 09:50:00 a. m.</td>
+                      <td class="sD">Actualizadas hace más de una semana</td>
+                      <td class="sD">1</td>
+                      <td class="sD">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">mayo 15, 2026 01:30:00 p. m.</td>
+                      <td class="sDo">Actualizadas hace más de una semana</td>
+                      <td class="sDo">1</td>
+                      <td class="sDo">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">mayo 20, 2026 09:44:00 a. m.</td>
+                      <td class="sD">Actualizadas hace más de una semana</td>
+                      <td class="sD">1</td>
+                      <td class="sD">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">mayo 20, 2026 12:12:00 p. m.</td>
+                      <td class="sDo">Actualizadas hace más de una semana</td>
+                      <td class="sDo">1</td>
+                      <td class="sDo">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">mayo 21, 2026 04:09:00 a. m.</td>
+                      <td class="sD">Actualizadas hace más de una semana</td>
+                      <td class="sD">1</td>
+                      <td class="sD">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">mayo 21, 2026 11:55:00 a. m.</td>
+                      <td class="sDo">Actualizadas hace más de una semana</td>
+                      <td class="sDo">2</td>
+                      <td class="sDo">2</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">mayo 22, 2026 10:28:00 a. m.</td>
+                      <td class="sD">Actualizadas hace más de una semana</td>
+                      <td class="sD">1</td>
+                      <td class="sD">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">mayo 23, 2026 05:21:00 a. m.</td>
+                      <td class="sDo">Actualizadas hace más de una semana</td>
+                      <td class="sDo">1</td>
+                      <td class="sDo">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">mayo 23, 2026 09:06:00 a. m.</td>
+                      <td class="sD">Actualizadas en los últimos 7 días</td>
+                      <td class="sD">1</td>
+                      <td class="sD">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">mayo 25, 2026 12:48:00 p. m.</td>
+                      <td class="sDo">Actualizadas en los últimos 7 días</td>
+                      <td class="sDo">2</td>
+                      <td class="sDo">2</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">mayo 25, 2026 03:14:00 p. m.</td>
+                      <td class="sD">Actualizadas en los últimos 7 días</td>
+                      <td class="sD">1</td>
+                      <td class="sD">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">mayo 26, 2026 07:53:00 a. m.</td>
+                      <td class="sDo">Actualizadas en los últimos 7 días</td>
+                      <td class="sDo">1</td>
+                      <td class="sDo">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">mayo 26, 2026 11:15:00 a. m.</td>
+                      <td class="sD">Actualizadas en los últimos 7 días</td>
+                      <td class="sD">1</td>
+                      <td class="sD">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">mayo 26, 2026 02:21:00 p. m.</td>
+                      <td class="sDo">Actualizadas en los últimos 7 días</td>
+                      <td class="sDo">1</td>
+                      <td class="sDo">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">mayo 27, 2026 10:49:00 a. m.</td>
+                      <td class="sD">Actualizadas en los últimos 3 días</td>
+                      <td class="sD">1</td>
+                      <td class="sD">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">mayo 27, 2026 01:19:00 p. m.</td>
+                      <td class="sDo">Actualizadas en los últimos 3 días</td>
+                      <td class="sDo">2</td>
+                      <td class="sDo">2</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">mayo 28, 2026 03:49:00 a. m.</td>
+                      <td class="sD">Actualizadas en los últimos 3 días</td>
+                      <td class="sD">1</td>
+                      <td class="sD">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">mayo 28, 2026 09:42:00 a. m.</td>
+                      <td class="sDo">Actualizadas en los últimos 3 días</td>
+                      <td class="sDo">1</td>
+                      <td class="sDo">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">mayo 28, 2026 03:19:00 p. m.</td>
+                      <td class="sD">Actualizadas en los últimos 3 días</td>
+                      <td class="sD">3</td>
+                      <td class="sD">2</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">mayo 29, 2026 05:24:00 a. m.</td>
+                      <td class="sDo">Actualizadas en los últimos 3 días</td>
+                      <td class="sDo">3</td>
+                      <td class="sDo">3</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">mayo 29, 2026 07:41:00 a. m.</td>
+                      <td class="sD">Actualizadas en las últimas 24 horas</td>
+                      <td class="sD">3</td>
+                      <td class="sD">3</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">mayo 29, 2026 11:14:00 a. m.</td>
+                      <td class="sDo">Actualizadas en las últimas 24 horas</td>
+                      <td class="sDo">3</td>
+                      <td class="sDo">3</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">mayo 29, 2026 02:19:00 p. m.</td>
+                      <td class="sD">Actualizadas en las últimas 24 horas</td>
+                      <td class="sD">17</td>
+                      <td class="sD">9</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">mayo 29, 2026 04:40:00 p. m.</td>
+                      <td class="sDo">Actualizadas en las últimas 24 horas</td>
+                      <td class="sDo">2</td>
+                      <td class="sDo">2</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">mayo 29, 2026 08:25:00 p. m.</td>
+                      <td class="sD">Actualizadas en las últimas 24 horas</td>
+                      <td class="sD">3</td>
+                      <td class="sD">2</td>
+                    </tr>
+                    <tr>
+                      <td class="sDo">mayo 29, 2026 11:25:00 p. m.</td>
+                      <td class="sDo">Actualizadas en las últimas 24 horas</td>
+                      <td class="sDo">1</td>
+                      <td class="sDo">1</td>
+                    </tr>
+                    <tr>
+                      <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                      <td class="sD">Al día</td>
+                      <td class="sD">95</td>
+                      <td class="sD">18</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td class="COL_BG_LTGREEN">
+                  <table class="TOTAL">
+                    <tr>
+                      <td>
+                        <div><span class="sT">Total de conjuntos de bases de datos utilizados:
+                                      171</span><span class="sT">Al día:
+                                      95</span><span class="sT">Actualizadas en las últimas 24 horas:
+                                      29</span><span class="sT">Actualizadas en los últimos 3 días:
+                                      11</span><span class="sT">Actualizadas en los últimos 7 días:
+                                      7</span><span class="sT">Actualizadas hace más de una semana:
+                                      29</span></div>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+      <table>
+        <tr>
+          <td class="DIVIDER"></td>
+        </tr>
+      </table>
+      <table>
+        <tr>
+          <td nowrap class="TABLE_CAP"><a href="javascript:ToggleDetails()" class="TABLE_ACT_CAP">Detalles (171 de 171)
+                        </a></td>
+        </tr>
+        <tr>
+          <td>
+            <table id="Details" class="DATA_TABLE DATA_TABLE_WO_TOTAL">
+              <tr>
+                <td class="TABLE_COL"><span>Servidor de administración virtual</span></td>
+                <td class="TABLE_COL"><span>Grupo</span></td>
+                <td class="TABLE_COL"><span>Dispositivo</span></td>
+                <td class="TABLE_COL"><span>Aplicación</span></td>
+                <td class="TABLE_COL"><span>Número de versión</span></td>
+                <td class="TABLE_COL"><span>Fecha de las bases de datos</span></td>
+                <td class="TABLE_COL"><span>Estado de actualización</span></td>
+                <td class="TABLE_COL"><span>Dirección IP:</span></td>
+                <td class="TABLE_COL"><span>Nombre NetBIOS</span></td>
+                <td class="TABLE_COL"><span>Dominio de Windows</span></td>
+                <td class="TABLE_COL"><span>Dirección IPv6</span></td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Amaime</td>
+                <td class="sD">12923-ADMAMAIME</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 29, 2026 02:19:00 p. m.</td>
+                <td class="sD">Actualizadas en las últimas 24 horas</td>
+                <td class="sD">192.168.12.16</td>
+                <td class="sD">12923-ADMAMAIME</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Amaime</td>
+                <td class="sDo">DESKTOP-6OH2G4E</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">192.168.12.13</td>
+                <td class="sDo">DESKTOP-6OH2G4E</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Auditoria-Gerencia</td>
+                <td class="sD">019543-SEC-GER</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.4.2</td>
+                <td class="sD">019543-SEC-GER</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Auditoria-Gerencia</td>
+                <td class="sDo">021127AUX-AUDIT</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.14.12</td>
+                <td class="sDo">021127AUX-AUDIT</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Auditoria-Gerencia</td>
+                <td class="sD">021129-AUXAUDIT</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.14.8</td>
+                <td class="sD">021129-AUXAUDIT</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Auditoria-Gerencia</td>
+                <td class="sDo">021293-COORD-AU</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 29, 2026 02:19:00 p. m.</td>
+                <td class="sDo">Actualizadas en las últimas 24 horas</td>
+                <td class="sDo">10.2.14.2</td>
+                <td class="sDo">021293-COORD-AU</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Auditoria-Gerencia</td>
+                <td class="sD">21377-AUDIT</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.14.10</td>
+                <td class="sD">21377-AUDIT</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Auditoria-Gerencia</td>
+                <td class="sDo">ASIS_JUDIRICO21</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.14.17</td>
+                <td class="sDo">ASIS_JUDIRICO21</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Auditoria-Gerencia</td>
+                <td class="sD">AUXAUDIT-020344</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 29, 2026 05:24:00 a. m.</td>
+                <td class="sD">Actualizadas en los últimos 3 días</td>
+                <td class="sD">10.2.14.9</td>
+                <td class="sD">AUXAUDIT-020344</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Auditoria-Gerencia</td>
+                <td class="sDo">FONDO-EMPLEADOS</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.14.11</td>
+                <td class="sDo">FONDO-EMPLEADOS</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Auditoria-Gerencia</td>
+                <td class="sD">PAUDIPLAY</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 29, 2026 11:14:00 a. m.</td>
+                <td class="sD">Actualizadas en las últimas 24 horas</td>
+                <td class="sD">10.2.14.13</td>
+                <td class="sD">PAUDIPLAY</td>
+                <td class="sD">WORKGROUP</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">CAJAS</td>
+                <td class="sDo">018597CAJA2BOLI</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">192.168.36.41</td>
+                <td class="sDo">018597CAJA2BOLI</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">CAJAS</td>
+                <td class="sD">019279-SUP-COM</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.12.9</td>
+                <td class="sD">019279-SUP-COM</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">CAJAS</td>
+                <td class="sDo">020348_COMZAM4</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 25, 2026 12:48:00 p. m.</td>
+                <td class="sDo">Actualizadas en los últimos 7 días</td>
+                <td class="sDo">192.168.15.47</td>
+                <td class="sDo">020348_COMZAM4</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">CAJAS</td>
+                <td class="sD">12922CAJA-ROZO</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">192.168.19.7</td>
+                <td class="sD">12922CAJA-ROZO</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">CAJAS</td>
+                <td class="sDo">17238-TIENDANUE</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.6.0.438</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">192.168.22.29</td>
+                <td class="sDo">17238-TIENDANUE</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">CAJAS</td>
+                <td class="sD">19493CAJA2PRADE</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">192.168.25.24</td>
+                <td class="sD">19493CAJA2PRADE</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">CAJAS</td>
+                <td class="sDo">19916-CAJA4PRAD</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">192.168.25.28</td>
+                <td class="sDo">19916-CAJA4PRAD</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">CAJAS</td>
+                <td class="sD">CAJA_OFI_19CON3</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 13, 2026 03:45:00 a. m.</td>
+                <td class="sD">Actualizadas hace más de una semana</td>
+                <td class="sD">192.168.44.103</td>
+                <td class="sD">CAJA_OFI_19CON3</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">CAJAS</td>
+                <td class="sDo">CAJA1-CANDE</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 29, 2026 02:19:00 p. m.</td>
+                <td class="sDo">Actualizadas en las últimas 24 horas</td>
+                <td class="sDo">192.168.28.114</td>
+                <td class="sDo">CAJA1-CANDE</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">CAJAS</td>
+                <td class="sD">CAJA2-CANDE</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">192.168.28.116</td>
+                <td class="sD">CAJA2-CANDE</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">CAJAS</td>
+                <td class="sDo">CAJA3PALMIRA_18</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 29, 2026 02:19:00 p. m.</td>
+                <td class="sDo">Actualizadas en las últimas 24 horas</td>
+                <td class="sDo">10.2.10.5</td>
+                <td class="sDo">CAJA3PALMIRA_18</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">CAJAS</td>
+                <td class="sD">CAJA3PRA19277</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">192.168.25.25</td>
+                <td class="sD">CAJA3PRA19277</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">CAJAS</td>
+                <td class="sDo">CAJA-AMAURY</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">192.168.32.15</td>
+                <td class="sDo">CAJA-AMAURY</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">CAJAS</td>
+                <td class="sD">CAJABOLIVAR-133</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.11.0.637</td>
+                <td class="sD">marzo  3, 2026 10:14:00 a. m.</td>
+                <td class="sD">Actualizadas hace más de una semana</td>
+                <td class="sD">192.168.36.44</td>
+                <td class="sD">CAJABOLIVAR-133</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">CAJAS</td>
+                <td class="sDo">CAJABOLIVAR-199</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 15, 2026 01:30:00 p. m.</td>
+                <td class="sDo">Actualizadas hace más de una semana</td>
+                <td class="sDo">192.168.36.40</td>
+                <td class="sDo">CAJABOLIVAR-199</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">CAJAS</td>
+                <td class="sD">CAJAGORGONA-134</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">192.168.40.11</td>
+                <td class="sD">CAJAGORGONA-134</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">CAJAS</td>
+                <td class="sDo">CAJA-MARA</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">192.168.32.11</td>
+                <td class="sDo">CAJA-MARA</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">CAJAS</td>
+                <td class="sD">CAJAS19069</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.10.4</td>
+                <td class="sD">CAJAS19069</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">CAJAS</td>
+                <td class="sDo">CAJAS-ROZO-2050</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">192.168.19.6</td>
+                <td class="sDo">CAJAS-ROZO-2050</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">CAJAS</td>
+                <td class="sD">FLO_CAJA_2</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 29, 2026 02:19:00 p. m.</td>
+                <td class="sD">Actualizadas en las últimas 24 horas</td>
+                <td class="sD">192.168.32.18</td>
+                <td class="sD">FLO_CAJA_2</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">CAJAS</td>
+                <td class="sDo">FLOCAJA3013274</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 29, 2026 02:19:00 p. m.</td>
+                <td class="sDo">Actualizadas en las últimas 24 horas</td>
+                <td class="sDo">192.168.32.21</td>
+                <td class="sDo">FLOCAJA3013274</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">CAJAS</td>
+                <td class="sD">SERVICAJA-19280</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.10.3</td>
+                <td class="sD">SERVICAJA-19280</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">CAJAS</td>
+                <td class="sDo">SERVICAJA19675</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 26, 2026 02:21:00 p. m.</td>
+                <td class="sDo">Actualizadas en los últimos 7 días</td>
+                <td class="sDo">10.2.10.2</td>
+                <td class="sDo">SERVICAJA19675</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Candelaria</td>
+                <td class="sD">12925-PPALPOBLA</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">192.168.40.10</td>
+                <td class="sD">12925-PPALPOBLA</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Candelaria</td>
+                <td class="sDo">13137-ADMINISTR</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">192.168.40.54</td>
+                <td class="sDo">13137-ADMINISTR</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Candelaria</td>
+                <td class="sD">20345-ADMINCAND</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 29, 2026 02:19:00 p. m.</td>
+                <td class="sD">Actualizadas en las últimas 24 horas</td>
+                <td class="sD">192.168.28.109</td>
+                <td class="sD">20345-ADMINCAND</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Candelaria</td>
+                <td class="sDo">20346-CANDELA</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">192.168.42.23</td>
+                <td class="sDo">20346-CANDELA</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Candelaria</td>
+                <td class="sD">ADM-CAVASA-1327</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 29, 2026 11:14:00 a. m.</td>
+                <td class="sD">Actualizadas en las últimas 24 horas</td>
+                <td class="sD">192.168.40.141</td>
+                <td class="sD">ADM-CAVASA-1327</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Candelaria</td>
+                <td class="sDo">ADMIN-CARMELO-1</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">192.168.40.12</td>
+                <td class="sDo">ADMIN-CARMELO-1</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Candelaria</td>
+                <td class="sD">ASISTCANDE</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">192.168.28.108</td>
+                <td class="sD">ASISTCANDE</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Candelaria</td>
+                <td class="sDo">CABUYAL1</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">192.168.40.77</td>
+                <td class="sDo">CABUYAL1</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Candelaria</td>
+                <td class="sD">SOPOCANDE12143</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">192.168.28.110</td>
+                <td class="sD">SOPOCANDE12143</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Comercial</td>
+                <td class="sDo">018993-GUSTAVOH</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 29, 2026 02:19:00 p. m.</td>
+                <td class="sDo">Actualizadas en las últimas 24 horas</td>
+                <td class="sDo">10.2.12.15</td>
+                <td class="sDo">018993-GUSTAVOH</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Comercial</td>
+                <td class="sD">019490-ADMPAL</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.6.0.438</td>
+                <td class="sD">julio 15, 2024 02:50:00 p. m.</td>
+                <td class="sD">Actualizadas hace más de una semana</td>
+                <td class="sD">10.2.12.23</td>
+                <td class="sD">019490-ADMPAL</td>
+                <td class="sD">WORKGROUP</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Comercial</td>
+                <td class="sDo">13518-ANDINAP1</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.11.0.637</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.12.18</td>
+                <td class="sDo">13518-ANDINAP1</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Comercial</td>
+                <td class="sD">18409-AUXCOMERC</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 29, 2026 02:19:00 p. m.</td>
+                <td class="sD">Actualizadas en las últimas 24 horas</td>
+                <td class="sD">10.2.12.12</td>
+                <td class="sD">18409-AUXCOMERC</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Comercial</td>
+                <td class="sDo">18410-ASISCOMER</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 28, 2026 03:19:00 p. m.</td>
+                <td class="sDo">Actualizadas en los últimos 3 días</td>
+                <td class="sDo">10.2.12.6</td>
+                <td class="sDo">18410-ASISCOMER</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Comercial</td>
+                <td class="sD">18534-SECRECOME</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.12.4</td>
+                <td class="sD">18534-SECRECOME</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Comercial</td>
+                <td class="sDo">18536-SOATCOME</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 29, 2026 02:19:00 p. m.</td>
+                <td class="sDo">Actualizadas en las últimas 24 horas</td>
+                <td class="sDo">10.2.12.5</td>
+                <td class="sDo">18536-SOATCOME</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Comercial</td>
+                <td class="sD">18992-CARTERA</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.12.14</td>
+                <td class="sD">18992-CARTERA</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Comercial</td>
+                <td class="sDo">20107-AUXCOMERC</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.8.0.505</td>
+                <td class="sDo">mayo 23, 2026 05:21:00 a. m.</td>
+                <td class="sDo">Actualizadas hace más de una semana</td>
+                <td class="sDo">192.168.44.195</td>
+                <td class="sDo">20107-AUXCOMERC</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Comercial</td>
+                <td class="sD">20112-DrogPrado</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 25, 2026 03:14:00 p. m.</td>
+                <td class="sD">Actualizadas en los últimos 7 días</td>
+                <td class="sD">192.168.45.216</td>
+                <td class="sD">20112-AUX-COMER</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Comercial</td>
+                <td class="sDo">20703-AUXCOMERC</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.12.13</td>
+                <td class="sDo">20703-AUXCOMERC</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Comercial</td>
+                <td class="sD">ADM-ZAMO-7460</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">192.168.15.67</td>
+                <td class="sD">ADM-ZAMO-7460</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Comercial</td>
+                <td class="sDo">ARCHIVO11257</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 29, 2026 02:19:00 p. m.</td>
+                <td class="sDo">Actualizadas en las últimas 24 horas</td>
+                <td class="sDo">192.168.44.204</td>
+                <td class="sDo">ARCHIVO11257</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Comercial</td>
+                <td class="sD">AUXCOMERCIAL-16</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 29, 2026 07:41:00 a. m.</td>
+                <td class="sD">Actualizadas en las últimas 24 horas</td>
+                <td class="sD">192.168.20.195</td>
+                <td class="sD">AUXCOMERCIAL-16</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Comercial</td>
+                <td class="sDo">AUX-COMERCIAL-2</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 28, 2026 03:19:00 p. m.</td>
+                <td class="sDo">Actualizadas en los últimos 3 días</td>
+                <td class="sDo">192.168.20.60</td>
+                <td class="sDo">AUX-COMERCIAL-2</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Comercial</td>
+                <td class="sD">AUX-COMERCIAL-4</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">192.168.34.52</td>
+                <td class="sD">AUX-COMERCIAL-4</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Conteo</td>
+                <td class="sDo">13793-CONTEO1</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.10.10</td>
+                <td class="sDo">13793-CONTEO1</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Conteo</td>
+                <td class="sD">20704-CONTEO</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.10.11</td>
+                <td class="sD">20704-CONTEO</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Conteo</td>
+                <td class="sDo">CONTEO-13792</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.10.19</td>
+                <td class="sDo">CONTEO-13792</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Conteo</td>
+                <td class="sD">CONTEO-18411</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.10.12</td>
+                <td class="sD">CONTEO-18411</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Conteo</td>
+                <td class="sDo">CONTEO3_18995</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.10.14</td>
+                <td class="sDo">CONTEO3_18995</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Directores</td>
+                <td class="sD">019070-SUBGEREN</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 29, 2026 02:19:00 p. m.</td>
+                <td class="sD">Actualizadas en las últimas 24 horas</td>
+                <td class="sD">10.2.12.2</td>
+                <td class="sD">019070-SUBGEREN</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Directores</td>
+                <td class="sDo">019698-DIR-COME</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.12.8</td>
+                <td class="sDo">019698-DIR-COME</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Directores</td>
+                <td class="sD">020347-GERENTE</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.11.0.637</td>
+                <td class="sD">marzo 27, 2026 12:44:00 p. m.</td>
+                <td class="sD">Actualizadas hace más de una semana</td>
+                <td class="sD">10.2.4.3</td>
+                <td class="sD">020347-GERENTE</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Directores</td>
+                <td class="sDo">021281-DIRRIESG</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.14.3</td>
+                <td class="sDo">021281-DIRRIESG</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Directores</td>
+                <td class="sD">021296-DIRFINAN</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.13.3</td>
+                <td class="sD">021296-DIRFINAN</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Directores</td>
+                <td class="sDo">021374-GERENCIA</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 29, 2026 02:19:00 p. m.</td>
+                <td class="sDo">Actualizadas en las últimas 24 horas</td>
+                <td class="sDo">10.2.4.3</td>
+                <td class="sDo">021374-GERENCIA</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Directores</td>
+                <td class="sD">20106-DIRTESORE</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.10.7</td>
+                <td class="sD">20106-DIRTESORE</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Directores</td>
+                <td class="sDo">21376-DIRGHUMAN</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 27, 2026 01:19:00 p. m.</td>
+                <td class="sDo">Actualizadas en los últimos 3 días</td>
+                <td class="sDo">10.2.5.3</td>
+                <td class="sDo">21376-DIRGHUMAN</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Directores</td>
+                <td class="sD">DIRECTOR-TI</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.6.13</td>
+                <td class="sD">DIRECTOR-TI</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Financiero</td>
+                <td class="sDo">018408-AUX-FINA</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 20, 2026 12:12:00 p. m.</td>
+                <td class="sDo">Actualizadas hace más de una semana</td>
+                <td class="sDo">10.2.13.4</td>
+                <td class="sDo">018408-AUX-FINA</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Financiero</td>
+                <td class="sD">021128-ASIS-FIN</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.13.8</td>
+                <td class="sD">021128-ASIS-FIN</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Financiero</td>
+                <td class="sDo">18412-FINANCIER</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.11.0.637</td>
+                <td class="sDo">enero 15, 2026 05:56:00 p. m.</td>
+                <td class="sDo">Actualizadas hace más de una semana</td>
+                <td class="sDo">10.2.13.7</td>
+                <td class="sDo">18412-FINANCIER</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Financiero</td>
+                <td class="sD">19674-AUXFINANC</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.13.10</td>
+                <td class="sD">19674-AUXFINANC</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Financiero</td>
+                <td class="sDo">21126-AUXFINANC</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.13.6</td>
+                <td class="sDo">21126-AUXFINANC</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Financiero</td>
+                <td class="sD">AUXFINAN-019697</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.13.2</td>
+                <td class="sD">AUXFINAN-019697</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Financiero</td>
+                <td class="sDo">IMPRESORA-FINAN</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.13.5</td>
+                <td class="sDo">IMPRESORA-FINAN</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Florida</td>
+                <td class="sD">ADMIN_FLORIDA-2</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">192.168.32.14</td>
+                <td class="sD">ADMIN_FLORIDA-2</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Florida</td>
+                <td class="sDo">ADMIN_FLORIDA-6</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 29, 2026 02:19:00 p. m.</td>
+                <td class="sDo">Actualizadas en las últimas 24 horas</td>
+                <td class="sDo">192.168.32.16</td>
+                <td class="sDo">ADMIN_FLORIDA-6</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Florida</td>
+                <td class="sD">AUX-FLORIDA</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.11.0.637</td>
+                <td class="sD">mayo 29, 2026 07:41:00 a. m.</td>
+                <td class="sD">Actualizadas en las últimas 24 horas</td>
+                <td class="sD">192.168.32.58</td>
+                <td class="sD">AUX-FLORIDA</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Florida</td>
+                <td class="sDo">AUXILIAR-FLORID</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.0.0.465</td>
+                <td class="sDo">mayo 20, 2026 09:44:00 a. m.</td>
+                <td class="sDo">Actualizadas hace más de una semana</td>
+                <td class="sDo">192.168.32.157</td>
+                <td class="sDo">AUXILIAR-FLORID</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Florida</td>
+                <td class="sD">CAJA-SOPORTE</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.6.0.438</td>
+                <td class="sD">julio 17, 2025 09:27:00 a. m.</td>
+                <td class="sD">Actualizadas hace más de una semana</td>
+                <td class="sD">192.168.32.246</td>
+                <td class="sD">CAJA-SOPORTE</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Florida</td>
+                <td class="sDo">SAN-ANTO</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">192.168.32.13</td>
+                <td class="sDo">SAN-ANTO</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Florida</td>
+                <td class="sD">TECNICO-FLORIDA</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">192.168.32.23</td>
+                <td class="sD">TECNICO-FLORIDA</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Gestion Humana</td>
+                <td class="sDo">018589-OPERACIO</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 29, 2026 08:25:00 p. m.</td>
+                <td class="sDo">Actualizadas en las últimas 24 horas</td>
+                <td class="sDo">10.2.14.4</td>
+                <td class="sDo">018589-OPERACIO</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Gestion Humana</td>
+                <td class="sD">018590-OPERACR</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">192.168.21.173</td>
+                <td class="sD">018590-OPERACR</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Gestion Humana</td>
+                <td class="sDo">019068-AUX-GH</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.11.0.637</td>
+                <td class="sDo">abril  7, 2026 07:45:00 a. m.</td>
+                <td class="sDo">Actualizadas hace más de una semana</td>
+                <td class="sDo">10.2.5.5</td>
+                <td class="sDo">019068-AUX-GH</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Gestion Humana</td>
+                <td class="sD">18596-AUXGHUMAN</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.5.6</td>
+                <td class="sD">18596-AUXGHUMAN</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Gestion Humana</td>
+                <td class="sDo">20988-ANALISTA-</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.12.3</td>
+                <td class="sDo">20988-ANALISTA-</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Gestion Humana</td>
+                <td class="sD">GESTHUMA-18991</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.5.2</td>
+                <td class="sD">GESTHUMA-18991</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Gestion Humana</td>
+                <td class="sDo">PSICOLOGA19071</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.5.4</td>
+                <td class="sDo">PSICOLOGA19071</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Informatica</td>
+                <td class="sD">017512-AUXDESAR</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.7.6</td>
+                <td class="sD">017512-AUXDESAR</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Informatica</td>
+                <td class="sDo">020105-AUX-PORT</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.6.15</td>
+                <td class="sDo">020105-AUX-PORT</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Informatica</td>
+                <td class="sD">020335-ASISDESA</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.7.3</td>
+                <td class="sD">020335-ASISDESA</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Informatica</td>
+                <td class="sDo">020960-SUPERTI</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.6.34</td>
+                <td class="sDo">020960-SUPERTI</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Informatica</td>
+                <td class="sD">14720-MONI-DESA</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.2.121</td>
+                <td class="sD">14720-MONI-DESA</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Informatica</td>
+                <td class="sDo">19282-AUX-DESAR</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.7.4</td>
+                <td class="sDo">19282-AUX-DESAR</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Informatica</td>
+                <td class="sD">19283-AUXDESA</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.7.5</td>
+                <td class="sD">19283-AUXDESA</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Informatica</td>
+                <td class="sDo">20103-SOPORTETI</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.6.49</td>
+                <td class="sDo">20103-SOPORTETI</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Informatica</td>
+                <td class="sD">20958-ADMSERVIC</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo  6, 2026 02:35:00 p. m.</td>
+                <td class="sD">Actualizadas hace más de una semana</td>
+                <td class="sD">10.2.6.8</td>
+                <td class="sD">20958-ADMSERVIC</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Informatica</td>
+                <td class="sDo">20959_ASIS_INFO</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.6.10</td>
+                <td class="sDo">20959_ASIS_INFO</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Informatica</td>
+                <td class="sD">ADMINISTRADORTI</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.7.2</td>
+                <td class="sD">ADMINISTRADORTI</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Informatica</td>
+                <td class="sDo">ASISTNETE_REDES</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.6.17</td>
+                <td class="sDo">ASISTNETE_REDES</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Informatica</td>
+                <td class="sD">ASISTSEG20334</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.6.35</td>
+                <td class="sD">ASISTSEG20334</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Informatica</td>
+                <td class="sDo">AUXDESA1-21802</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.7.7</td>
+                <td class="sDo">AUXDESA1-21802</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Informatica</td>
+                <td class="sD">AUXREDES-20701</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 29, 2026 05:24:00 a. m.</td>
+                <td class="sD">Actualizadas en los últimos 3 días</td>
+                <td class="sD">10.2.6.19</td>
+                <td class="sD">AUXREDES-20701</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Informatica</td>
+                <td class="sDo">AUXSEG21292</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 29, 2026 02:19:00 p. m.</td>
+                <td class="sDo">Actualizadas en las últimas 24 horas</td>
+                <td class="sDo">10.2.6.45</td>
+                <td class="sDo">AUXSEG21292</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Informatica</td>
+                <td class="sD">COOR_REDES19814</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.6.18</td>
+                <td class="sD">COOR_REDES19814</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Informatica</td>
+                <td class="sDo">COORD-SEG-17728</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.6.31</td>
+                <td class="sDo">COORD-SEG-17728</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Informatica</td>
+                <td class="sD">SOPORTETI-21294</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.6.16</td>
+                <td class="sD">SOPORTETI-21294</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Informatica</td>
+                <td class="sDo">SOPORTETI21295</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.6.46</td>
+                <td class="sDo">SOPORTETI21295</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Informatica</td>
+                <td class="sD">TV-MONITOREO213</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.2.238</td>
+                <td class="sD">TV-MONITOREO213</td>
+                <td class="sD">WORKGROUP</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Mercadeo</td>
+                <td class="sDo">018835-PUBLICIS</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.15.7</td>
+                <td class="sDo">018835-PUBLICIS</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Mercadeo</td>
+                <td class="sD">019489-COORMERC</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.15.3</td>
+                <td class="sD">019489-COORMERC</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Mercadeo</td>
+                <td class="sDo">019491-AUXMERCA</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.2.15.9</td>
+                <td class="sDo">019491-AUXMERCA</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Mercadeo</td>
+                <td class="sD">019492L-PRODUCT</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">10.2.15.8</td>
+                <td class="sD">019492L-PRODUCT</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Mercadeo</td>
+                <td class="sDo">18595-MERCADEO</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.11.0.637</td>
+                <td class="sDo">diciembre  6, 2025 08:59:00 a. m.</td>
+                <td class="sDo">Actualizadas hace más de una semana</td>
+                <td class="sDo">10.2.15.2</td>
+                <td class="sDo">18595-MERCADEO</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Mercadeo</td>
+                <td class="sD">CALLCENTER-1899</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 21, 2026 11:55:00 a. m.</td>
+                <td class="sD">Actualizadas hace más de una semana</td>
+                <td class="sD">10.2.15.4</td>
+                <td class="sD">CALLCENTER-1899</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Mercadeo</td>
+                <td class="sDo">LIDERBETPLAY018</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">abril 24, 2026 04:19:00 a. m.</td>
+                <td class="sDo">Actualizadas hace más de una semana</td>
+                <td class="sDo">10.50.5.23</td>
+                <td class="sDo">LIDERBETPLAY018</td>
+                <td class="sDo">WORKGROUP</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Mercadeo</td>
+                <td class="sD">PGAMER-18570</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.5.0.539</td>
+                <td class="sD">agosto 27, 2024 03:02:00 a. m.</td>
+                <td class="sD">Actualizadas hace más de una semana</td>
+                <td class="sD">10.50.5.17</td>
+                <td class="sD">PGAMER-18570</td>
+                <td class="sD">WORKGROUP</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Portatiles</td>
+                <td class="sDo">18816PAUX-MERCA</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 22, 2026 10:28:00 a. m.</td>
+                <td class="sDo">Actualizadas hace más de una semana</td>
+                <td class="sDo">10.50.4.6</td>
+                <td class="sDo">18816PAUX-MERCA</td>
+                <td class="sDo">WORKGROUP</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Portatiles</td>
+                <td class="sD">19121-DIRECTORT</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 29, 2026 08:25:00 p. m.</td>
+                <td class="sD">Actualizadas en las últimas 24 horas</td>
+                <td class="sD">10.212.135.200</td>
+                <td class="sD">19121-DIRECTORT</td>
+                <td class="sD">WORKGROUP</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Portatiles</td>
+                <td class="sDo">19485-PORTAUDIT</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.6.0.438</td>
+                <td class="sDo">mayo 27, 2026 01:19:00 p. m.</td>
+                <td class="sDo">Actualizadas en los últimos 3 días</td>
+                <td class="sDo">10.50.3.31</td>
+                <td class="sDo">19485-PORTAUDIT</td>
+                <td class="sDo">GANEPALMIRA</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Portatiles</td>
+                <td class="sD">AUXGHUMANA</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 21, 2026 11:55:00 a. m.</td>
+                <td class="sD">Actualizadas hace más de una semana</td>
+                <td class="sD">10.50.9.19</td>
+                <td class="sD">AUXGHUMANA</td>
+                <td class="sD">WORKGROUP</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Portatiles</td>
+                <td class="sDo">AUX-SGSST-20828</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">10.50.9.22</td>
+                <td class="sDo">AUX-SGSST-20828</td>
+                <td class="sDo">WORKGROUP</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Portatiles</td>
+                <td class="sD">COORD-AUDITORIA</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 27, 2026 10:49:00 a. m.</td>
+                <td class="sD">Actualizadas en los últimos 3 días</td>
+                <td class="sD">10.50.3.38</td>
+                <td class="sD">COORD-AUDITORIA</td>
+                <td class="sD">WORKGROUP</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Portatiles</td>
+                <td class="sDo">COORDINADORREDE</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 25, 2026 12:48:00 p. m.</td>
+                <td class="sDo">Actualizadas en los últimos 7 días</td>
+                <td class="sDo">10.212.135.200</td>
+                <td class="sDo">COORDINADORREDE</td>
+                <td class="sDo">WORKGROUP</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Portatiles</td>
+                <td class="sD">DIRECTOR_TESORE</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 28, 2026 03:49:00 a. m.</td>
+                <td class="sD">Actualizadas en los últimos 3 días</td>
+                <td class="sD">10.50.5.30</td>
+                <td class="sD">DIRECTOR_TESORE</td>
+                <td class="sD">GANEPALMIRA</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Portatiles</td>
+                <td class="sDo">FABIANSAAVEDRA</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 29, 2026 02:19:00 p. m.</td>
+                <td class="sDo">Actualizadas en las últimas 24 horas</td>
+                <td class="sDo">10.50.9.21</td>
+                <td class="sDo">FABIANSAAVEDRA</td>
+                <td class="sDo">WORKGROUP</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Portatiles</td>
+                <td class="sD">GERENTE-SSOV</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 29, 2026 05:24:00 a. m.</td>
+                <td class="sD">Actualizadas en los últimos 3 días</td>
+                <td class="sD">10.50.3.39</td>
+                <td class="sD">GERENTE-SSOV</td>
+                <td class="sD">WORKGROUP</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Portatiles</td>
+                <td class="sDo">IMPLEMENTADOR</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 12, 2026 01:17:00 a. m.</td>
+                <td class="sDo">Actualizadas hace más de una semana</td>
+                <td class="sDo">10.50.5.12</td>
+                <td class="sDo">IMPLEMENTADOR</td>
+                <td class="sDo">WORKGROUP</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Portatiles</td>
+                <td class="sD">MERCADEO-COMERC</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.11.0.637</td>
+                <td class="sD">abril  1, 2026 09:07:00 p. m.</td>
+                <td class="sD">Actualizadas hace más de una semana</td>
+                <td class="sD">10.50.4.39</td>
+                <td class="sD">MERCADEO-COMERC</td>
+                <td class="sD">WORKGROUP</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Portatiles</td>
+                <td class="sDo">PADMSERV-TI</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">abril  4, 2026 06:30:00 a. m.</td>
+                <td class="sDo">Actualizadas hace más de una semana</td>
+                <td class="sDo">10.50.8.2</td>
+                <td class="sDo">PADMSERV-TI</td>
+                <td class="sDo">WORKGROUP</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Portatiles</td>
+                <td class="sD">PADM-TI</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 28, 2026 03:19:00 p. m.</td>
+                <td class="sD">Actualizadas en los últimos 3 días</td>
+                <td class="sD">10.50.8.39</td>
+                <td class="sD">PADM-TI</td>
+                <td class="sD">WORKGROUP</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Portatiles</td>
+                <td class="sDo">PASIS-COM13957</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.11.0.637</td>
+                <td class="sDo">mayo 28, 2026 09:42:00 a. m.</td>
+                <td class="sDo">Actualizadas en los últimos 3 días</td>
+                <td class="sDo">10.50.1.49</td>
+                <td class="sDo">PASIS-COM13957</td>
+                <td class="sDo">WORKGROUP</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Portatiles</td>
+                <td class="sD">PASIST-DESA</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 26, 2026 07:53:00 a. m.</td>
+                <td class="sD">Actualizadas en los últimos 7 días</td>
+                <td class="sD">10.50.8.2</td>
+                <td class="sD">PASIST-DESA</td>
+                <td class="sD">WORKGROUP</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Portatiles</td>
+                <td class="sDo">PASIST-GHUMANA</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 29, 2026 02:19:00 p. m.</td>
+                <td class="sDo">Actualizadas en las últimas 24 horas</td>
+                <td class="sDo">10.50.9.14</td>
+                <td class="sDo">PASIST-GHUMANA</td>
+                <td class="sDo">GANEPALMIRA</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Portatiles</td>
+                <td class="sD">PCGONZALOA</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.11.0.637</td>
+                <td class="sD">abril  6, 2026 12:16:00 p. m.</td>
+                <td class="sD">Actualizadas hace más de una semana</td>
+                <td class="sD">10.50.8.16</td>
+                <td class="sD">PCGONZALOA</td>
+                <td class="sD">WORKGROUP</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Portatiles</td>
+                <td class="sDo">PCOMUNIC-21413</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 29, 2026 04:40:00 p. m.</td>
+                <td class="sDo">Actualizadas en las últimas 24 horas</td>
+                <td class="sDo">10.212.135.200</td>
+                <td class="sDo">PCOMUNIC-21413</td>
+                <td class="sDo">WORKGROUP</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Portatiles</td>
+                <td class="sD">PCSEGURIDAD-213</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 21, 2026 04:09:00 a. m.</td>
+                <td class="sD">Actualizadas hace más de una semana</td>
+                <td class="sD">10.50.8.6</td>
+                <td class="sD">PCSEGURIDAD-213</td>
+                <td class="sD">WORKGROUP</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Portatiles</td>
+                <td class="sDo">PDESAFRROLLO124</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.10.0.466</td>
+                <td class="sDo">abril 22, 2026 04:24:00 p. m.</td>
+                <td class="sDo">Actualizadas hace más de una semana</td>
+                <td class="sDo">10.50.8.5</td>
+                <td class="sDo">PDESAFRROLLO124</td>
+                <td class="sDo">WORKGROUP</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Portatiles</td>
+                <td class="sD">PDIR-COMERCIAL</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 23, 2026 09:06:00 a. m.</td>
+                <td class="sD">Actualizadas en los últimos 7 días</td>
+                <td class="sD">10.50.9.2</td>
+                <td class="sD">PDIR-COMERCIAL</td>
+                <td class="sD">WORKGROUP</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Portatiles</td>
+                <td class="sDo">PDIR-COMERCIAL~~624</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.11.0.637</td>
+                <td class="sDo">mayo 29, 2026 07:41:00 a. m.</td>
+                <td class="sDo">Actualizadas en las últimas 24 horas</td>
+                <td class="sDo">10.50.5.16</td>
+                <td class="sDo">PDIR-COMERCIAL</td>
+                <td class="sDo">WORKGROUP</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Portatiles</td>
+                <td class="sD">PDIR-FINANCIERO</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 29, 2026 11:14:00 a. m.</td>
+                <td class="sD">Actualizadas en las últimas 24 horas</td>
+                <td class="sD">10.50.4.22</td>
+                <td class="sD">PDIR-FINANCIERO</td>
+                <td class="sD">WORKGROUP</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Portatiles</td>
+                <td class="sDo">PDIR-RIESGOS191</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 29, 2026 11:25:00 p. m.</td>
+                <td class="sDo">Actualizadas en las últimas 24 horas</td>
+                <td class="sDo">10.50.3.18</td>
+                <td class="sDo">PDIR-RIESGOS191</td>
+                <td class="sDo">WORKGROUP</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Portatiles</td>
+                <td class="sD">PFINANCIERO</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 15, 2026 09:50:00 a. m.</td>
+                <td class="sD">Actualizadas hace más de una semana</td>
+                <td class="sD">10.50.4.51</td>
+                <td class="sD">PFINANCIERO</td>
+                <td class="sD">WORKGROUP</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Portatiles</td>
+                <td class="sDo">PSEC-GERENCIA</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.10.0.466</td>
+                <td class="sDo">diciembre 17, 2025 12:16:00 p. m.</td>
+                <td class="sDo">Actualizadas hace más de una semana</td>
+                <td class="sDo">10.50.3.26</td>
+                <td class="sDo">PSEC-GERENCIA</td>
+                <td class="sDo">WORKGROUP</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Portatiles</td>
+                <td class="sD">PSEGURIDAD12747</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">abril 30, 2026 05:50:00 a. m.</td>
+                <td class="sD">Actualizadas hace más de una semana</td>
+                <td class="sD">10.50.8.2</td>
+                <td class="sD">PSEGURIDAD12747</td>
+                <td class="sD">WORKGROUP</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Portatiles</td>
+                <td class="sDo">SALA_JUNTASSOV</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 29, 2026 08:25:00 p. m.</td>
+                <td class="sDo">Actualizadas en las últimas 24 horas</td>
+                <td class="sDo">10.50.9.12</td>
+                <td class="sDo">SALA_JUNTASSOV</td>
+                <td class="sDo">WORKGROUP</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Portatiles</td>
+                <td class="sD">SOPORTE</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo  9, 2026 08:05:00 a. m.</td>
+                <td class="sD">Actualizadas hace más de una semana</td>
+                <td class="sD">192.168.20.59</td>
+                <td class="sD">SOPORTE</td>
+                <td class="sD">WORKGROUP</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Pradera</td>
+                <td class="sDo">19278BCP</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">abril 18, 2026 05:09:00 a. m.</td>
+                <td class="sDo">Actualizadas hace más de una semana</td>
+                <td class="sDo">192.168.25.44</td>
+                <td class="sDo">19278BCP</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Pradera</td>
+                <td class="sD">ADMINPRADERA</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">192.168.25.22</td>
+                <td class="sD">ADMINPRADERA</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Pradera</td>
+                <td class="sDo">TECPRADERA14504</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">192.168.25.27</td>
+                <td class="sDo">TECPRADERA14504</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Rozo</td>
+                <td class="sD">12142ADMROZO</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">192.168.19.8</td>
+                <td class="sD">12142ADMROZO</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Tesoreria</td>
+                <td class="sDo">13543-TESORERIA</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 26, 2026 11:15:00 a. m.</td>
+                <td class="sDo">Actualizadas en los últimos 7 días</td>
+                <td class="sDo">10.2.10.18</td>
+                <td class="sDo">13543-TESORERIA</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Tesoreria</td>
+                <td class="sD">180258-ARCHIVO2</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">192.168.44.207</td>
+                <td class="sD">180258-ARCHIVO2</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Tesoreria</td>
+                <td class="sDo">18535-ASISTESO</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 29, 2026 04:40:00 p. m.</td>
+                <td class="sDo">Actualizadas en las últimas 24 horas</td>
+                <td class="sDo">10.2.10.6</td>
+                <td class="sDo">18535-ASISTESO</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Windows 10</td>
+                <td class="sD">CAJASMANAGER</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.10.0.466</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">192.168.8.13</td>
+                <td class="sD">CAJASMANAGER</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Windows 10</td>
+                <td class="sDo">SERV-CANDELARIA</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">192.168.28.20</td>
+                <td class="sDo">SERV-CANDELARIA</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Windows 10</td>
+                <td class="sD">SERVIDOR-FLORID</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">192.168.32.20</td>
+                <td class="sD">SERVIDOR-FLORID</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Windows 10</td>
+                <td class="sDo">SERVIDOR-PRADER</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.10.0.466</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">192.168.25.30</td>
+                <td class="sDo">SERVIDOR-PRADER</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Windows 10</td>
+                <td class="sD">SERVZKBIO</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">192.168.8.112</td>
+                <td class="sD">SERVZKBIO</td>
+                <td class="sD">SEGURIDAD</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Windows 10</td>
+                <td class="sDo">WINRPA</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">192.168.8.62</td>
+                <td class="sDo">WINRPA</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Windows Server</td>
+                <td class="sD">AD01</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">192.168.8.44</td>
+                <td class="sD">AD01</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Windows Server</td>
+                <td class="sDo">AD03</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">12.12.0.522</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">192.168.8.46</td>
+                <td class="sDo">AD03</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Windows Server</td>
+                <td class="sD">ANFI-SEG13798</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.12.0.522</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">192.168.8.41</td>
+                <td class="sD">ANFI-SEG13798</td>
+                <td class="sD">SEGURIDAD</td>
+                <td class="sD">N/D</td>
+              </tr>
+              <tr>
+                <td class="sDo">
+                </td>
+                <td class="sDo">Windows Server</td>
+                <td class="sDo">DA02</td>
+                <td class="sDo">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sDo">14.0.0.504</td>
+                <td class="sDo">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sDo">Al día</td>
+                <td class="sDo">192.168.8.45</td>
+                <td class="sDo">DA02</td>
+                <td class="sDo">GANEPAL</td>
+                <td class="sDo">N/D</td>
+              </tr>
+              <tr>
+                <td class="sD">
+                </td>
+                <td class="sD">Windows Server</td>
+                <td class="sD">SERV-KSC</td>
+                <td class="sD">Kaspersky Endpoint Security para Windows (14.0.0)</td>
+                <td class="sD">12.8.0.505</td>
+                <td class="sD">mayo 30, 2026 05:38:00 a. m.</td>
+                <td class="sD">Al día</td>
+                <td class="sD">127.0.0.1</td>
+                <td class="sD">SERV-KSC</td>
+                <td class="sD">GANEPAL</td>
+                <td class="sD">N/D</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

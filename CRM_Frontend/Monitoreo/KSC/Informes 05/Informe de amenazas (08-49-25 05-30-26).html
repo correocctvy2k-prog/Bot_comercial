@@ -1,0 +1,668 @@
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+  <head>
+    <META http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Informe de amenazas</title>
+    <META HTTP-EQUIV="Cache-Control" CONTENT="no-cache">
+    <meta http-equiv="X-UA-Compatible" content="IE=9">
+    <style type="text/css">
+
+            body {
+            background-color: #fff;
+            margin: 0;
+            padding: 0;
+            font-family: Segoe UI, Arial, Helvetica, sans-serif;
+            color: #54585a;
+            cursor: default;
+            zoom:1.00;
+            }
+
+            .outer {
+            padding: 20px;
+            height: 100%;
+            }
+
+            table {
+            border-collapse: collapse;
+            width: 100%
+            }
+            table td {
+            padding: 0;
+            vertical-align: top;
+            }
+            .SUBHEADER_TABLE {
+            }
+            .SUBHEADER ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            text-align: right;
+            }
+            .SUBHEADER li {
+            list-style: none;
+            padding: 0 0 2px;
+            margin: 0;
+            white-space: nowrap;
+            }
+            .SUBHEADER a {
+            font-size: 13px;
+            color: #006a52;
+            }
+            .SUBHEADER a:hover {
+            font-size: 13px;
+            color: #006a52;
+            text-decoration: none;
+            }
+            .SUBHEADER_LOGO {
+            vertical-align: middle;
+            }
+            .SUBHEADER_CUSTOM_TEXT {
+            vertical-align: middle;
+            padding: 0 0 12px;
+            font-size: 20px;
+            color: #333;
+            }
+            .SUBHEADER_LOGO_WRAPPER {
+            width: 1%;
+            padding: 0 0 12px;
+            vertical-align: middle;
+            }
+            .SUBHEADER_SEPARATOR {
+            border-top: 1px solid #cdd8d6;
+            height: 16px;
+            }
+            .chart {
+            margin: 16px 0;
+            }
+            .button_print {
+            margin-top: 14px;
+            padding: 6px 8px 4px;
+            background: #dfe9e8;
+            border: 1px solid #a3aeb6;
+            position: relative;
+            overflow: visible;
+            }
+            .button_print .top_line{
+            position: absolute;
+            top: -1px;
+            left: -1px;
+            right: -1px;
+            height: 1px;
+            background: #fff;
+            }
+            .button_print .print_icon {
+            display: inline-block;
+            width: 20px;
+            height: 12px;
+            position: relative;
+            top: -1px;
+            background: url('data:image/gif;base64,R0lGODlhDAAMAIABAHOCjP///yH/C1hNUCBEYXRhWE1QPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMwMTQgNzkuMTU2Nzk3LCAyMDE0LzA4LzIwLTA5OjUzOjAyICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdFJlZj0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlUmVmIyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxNCAoV2luZG93cykiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6OUQ0RDdERkNGNDE2MTFFNDgzNTNFRkVFMzZCOTM2OUUiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6OUQ0RDdERkRGNDE2MTFFNDgzNTNFRkVFMzZCOTM2OUUiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDo5RDREN0RGQUY0MTYxMUU0ODM1M0VGRUUzNkI5MzY5RSIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDo5RDREN0RGQkY0MTYxMUU0ODM1M0VGRUUzNkI5MzY5RSIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/PgH//v38+/r5+Pf29fTz8vHw7+7t7Ovq6ejn5uXk4+Lh4N/e3dzb2tnY19bV1NPS0dDPzs3My8rJyMfGxcTDwsHAv769vLu6ubi3trW0s7KxsK+urayrqqmop6alpKOioaCfnp2cm5qZmJeWlZSTkpGQj46NjIuKiYiHhoWEg4KBgH9+fXx7enl4d3Z1dHNycXBvbm1sa2ppaGdmZWRjYmFgX15dXFtaWVhXVlVUU1JRUE9OTUxLSklIR0ZFRENCQUA/Pj08Ozo5ODc2NTQzMjEwLy4tLCsqKSgnJiUkIyIhIB8eHRwbGhkYFxYVFBMSERAPDg0MCwoJCAcGBQQDAgEAACH5BAEAAAEALAAAAAAMAAwAAAIXTICJZqp8AFyRNmcr3pzPHWkPM3okGBQAOw==') no-repeat;
+            }
+            .HEADER_REP {
+            font-size: 16px;
+            font-weight: 600;
+            font-family: Segoe UI Light, Segoe UI, Arial, Helvetica, sans-serif;
+            color: #333;
+            line-height: 1.2;
+            vertical-align: top;
+            padding: 0 0 8px;
+            }
+            .HEADER_REP_DESCR {
+            font-size: 13px;
+            padding-top: 8px;
+            }
+            .HEADER_DATE {
+            font-size: 13px;
+            font-style: italic;
+            }
+            .HEADER_PERIOD {
+            margin-top: 8px;
+            font-size: 13px;
+            font-style: italic;
+            }
+            .COL_BG_GREEN {
+            background-color: #0E6D6A;
+            }
+
+            .table_floatcaption_wrap {
+            position: fixed;
+            top: 0;
+            left: 20px;
+            right: 20px;
+            width: 100px;
+            z-index: 111;
+            display: none;
+            }
+
+            .table_floatcaption_wrap.active {
+            display: block;
+            }
+
+            .table_floatcaption {
+            border: 1px solid #cdd8d6;
+            border-bottom-width: 0;
+            color: #000;
+            table-layout: fixed;
+            background: #fff;
+            position: relative;
+            z-index: 121;
+            }
+
+            .table_floatcaption td {
+            background: #fff;
+            padding: 6px 8px 8px;
+            }
+
+            .DATA_TABLE {
+            border: 1px solid #cdd8d6;
+            border-bottom-width: 0;
+            color: #000;
+            position: relative;
+            z-index: 1;
+            table-layout: auto;
+            }
+
+            .DATA_TABLE_WO_TOTAL {
+            border: 1px solid #cdd8d6;
+            }
+
+            .DATA_TABLE td {
+            background: #fff;
+            max-width: 35em;
+            padding: 4px 1px 5px 2px;
+            border-bottom: 1px solid #eee;
+            border-left: 1px solid #eee;
+            word-wrap:break-word; /*old browsers*/
+            overflow-wrap:break-word;
+            }
+
+            .PAGE_BORDER {
+            vertical-align: top;
+            padding: 20px;
+            }
+            .TABLE_ACT_CAP {
+            text-decoration: underline;
+            color: #006a52;
+            }
+            .TABLE_CAP {
+            font-size: 16px;
+            font-weight: 600;
+            font-family: Segoe UI Light, Segoe UI, Arial, Helvetica, sans-serif;
+            color: #333;
+            padding: 16px 0 12px;
+            color: inherit;
+            }
+            .TABLE_COL {
+            border: 1px solid #cdd8d6;
+            color: #000;
+            font-size: 13px;
+            text-decoration: none;
+            }
+            .TABLE_COL_TITLE {
+            display: inline-block;
+            }
+            .TABLE_COL.SORTABLE span {
+            cursor: pointer;
+            }
+
+            .SORTABLE .TABLE_COL_TITLE {
+            background: #fff url('data:image/gif;base64,R0lGODlhCgAKAIABAM3Y1v///yH/C1hNUCBEYXRhWE1QPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMwMTQgNzkuMTU2Nzk3LCAyMDE0LzA4LzIwLTA5OjUzOjAyICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdFJlZj0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlUmVmIyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxNCAoV2luZG93cykiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6QzFERjE0NjlGNDA5MTFFNEExNDhBMEU2MjcxMDYyQTEiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6QzFERjE0NkFGNDA5MTFFNEExNDhBMEU2MjcxMDYyQTEiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDpDMURGMTQ2N0Y0MDkxMUU0QTE0OEEwRTYyNzEwNjJBMSIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDpDMURGMTQ2OEY0MDkxMUU0QTE0OEEwRTYyNzEwNjJBMSIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/PgH//v38+/r5+Pf29fTz8vHw7+7t7Ovq6ejn5uXk4+Lh4N/e3dzb2tnY19bV1NPS0dDPzs3My8rJyMfGxcTDwsHAv769vLu6ubi3trW0s7KxsK+urayrqqmop6alpKOioaCfnp2cm5qZmJeWlZSTkpGQj46NjIuKiYiHhoWEg4KBgH9+fXx7enl4d3Z1dHNycXBvbm1sa2ppaGdmZWRjYmFgX15dXFtaWVhXVlVUU1JRUE9OTUxLSklIR0ZFRENCQUA/Pj08Ozo5ODc2NTQzMjEwLy4tLCsqKSgnJiUkIyIhIB8eHRwbGhkYFxYVFBMSERAPDg0MCwoJCAcGBQQDAgEAACH5BAEAAAEALAAAAAAKAAoAAAIRjI8IkLabYJCTHUivbbz7XgAAOw==') no-repeat right 5px;
+            padding-right: 14px;
+            }
+
+            .SORTABLE .TABLE_COL_TITLE.UP {
+            background-image: url('data:image/gif;base64,R0lGODlhCgAKAIABAFRYWv///yH/C1hNUCBEYXRhWE1QPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMwMTQgNzkuMTU2Nzk3LCAyMDE0LzA4LzIwLTA5OjUzOjAyICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdFJlZj0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlUmVmIyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxNCAoV2luZG93cykiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6QUZGMTY5MTFGNDA5MTFFNEE0QzQ5N0VEMjQzRDAwODIiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6QUZGMTY5MTJGNDA5MTFFNEE0QzQ5N0VEMjQzRDAwODIiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDpBRkYxNjkwRkY0MDkxMUU0QTRDNDk3RUQyNDNEMDA4MiIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDpBRkYxNjkxMEY0MDkxMUU0QTRDNDk3RUQyNDNEMDA4MiIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/PgH//v38+/r5+Pf29fTz8vHw7+7t7Ovq6ejn5uXk4+Lh4N/e3dzb2tnY19bV1NPS0dDPzs3My8rJyMfGxcTDwsHAv769vLu6ubi3trW0s7KxsK+urayrqqmop6alpKOioaCfnp2cm5qZmJeWlZSTkpGQj46NjIuKiYiHhoWEg4KBgH9+fXx7enl4d3Z1dHNycXBvbm1sa2ppaGdmZWRjYmFgX15dXFtaWVhXVlVUU1JRUE9OTUxLSklIR0ZFRENCQUA/Pj08Ozo5ODc2NTQzMjEwLy4tLCsqKSgnJiUkIyIhIB8eHRwbGhkYFxYVFBMSERAPDg0MCwoJCAcGBQQDAgEAACH5BAEAAAEALAAAAAAKAAoAAAIRjI8IkLabYJCTHUivbbz7XgAAOw==');
+            }
+
+            .SORTABLE .TABLE_COL_TITLE.DOWN {
+            background-image: url('data:image/gif;base64,R0lGODlhCgAKAIABAFRYWv///yH/C1hNUCBEYXRhWE1QPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMwMTQgNzkuMTU2Nzk3LCAyMDE0LzA4LzIwLTA5OjUzOjAyICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdFJlZj0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlUmVmIyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxNCAoV2luZG93cykiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6QkFFQTE1RDJGNDA5MTFFNEI1QzdBQzg1QjVDMDYxM0IiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6QkFFQTE1RDNGNDA5MTFFNEI1QzdBQzg1QjVDMDYxM0IiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDpCQUVBMTVEMEY0MDkxMUU0QjVDN0FDODVCNUMwNjEzQiIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDpCQUVBMTVEMUY0MDkxMUU0QjVDN0FDODVCNUMwNjEzQiIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/PgH//v38+/r5+Pf29fTz8vHw7+7t7Ovq6ejn5uXk4+Lh4N/e3dzb2tnY19bV1NPS0dDPzs3My8rJyMfGxcTDwsHAv769vLu6ubi3trW0s7KxsK+urayrqqmop6alpKOioaCfnp2cm5qZmJeWlZSTkpGQj46NjIuKiYiHhoWEg4KBgH9+fXx7enl4d3Z1dHNycXBvbm1sa2ppaGdmZWRjYmFgX15dXFtaWVhXVlVUU1JRUE9OTUxLSklIR0ZFRENCQUA/Pj08Ozo5ODc2NTQzMjEwLy4tLCsqKSgnJiUkIyIhIB8eHRwbGhkYFxYVFBMSERAPDg0MCwoJCAcGBQQDAgEAACH5BAEAAAEALAAAAAAKAAoAAAIRjI8AaBp+4FuTKZko27x7XgAAOw==');
+            }
+
+            .FL {
+            cursor: pointer;
+            color: #006a52;
+            text-decoration: underline;
+            }
+            .FL:hover {
+            text-decoration: none;
+            }
+            .sD {
+            font-size: 11px;
+            font-weight: normal;
+            background: #fff !important;
+            }
+            .sDo {
+            font-size: 11px;
+            font-weight: normal;
+            background: #f6f9fb !important;
+            }
+            .sD a,
+            .sDo a {
+            color: #006a52;
+            text-decoration: underline;
+            }
+            .sD a:hover,
+            .sDo a:hover {
+            text-decoration: none;
+            }
+            .sT {
+            display: inline-block;
+            font-size: 13px;
+            padding: 6px 40px 6px 4px;
+            }
+            .TOTAL {
+            border: 1px solid #cdd8d6;
+            background: #eff3f5;
+            color: #000;
+            position: relative;
+            z-index: 0;
+            }
+            .DIVIDER {
+            height: 16px
+            }
+            .TABLE_DIVIDER {
+            background: #fff;
+            border: solid #cdd8d6;
+            border-width: 0 1px;
+            height: 4px;
+            font-size: 0;
+            }
+
+            .ACTIONS {
+            padding: 0 0 0 20px;
+            }
+
+            @media print {
+            body {
+            color: #000;
+            }
+            .PAGE_BORDER {
+            padding: 0;
+            }
+
+            .FL {
+            color: #000 !important;
+            text-decoration: none !important;
+            }
+
+            .ACTIONS {
+            display: none;
+            }
+
+            .DATA_TABLE td a {
+            word-break: break-all;
+            }
+
+            .DATA_TABLE td:first-child {
+            border-left-width: 0;
+            }
+            .TABLE_COL,
+
+            .sT {
+            font-size: 11px;
+            background: none !important;
+            }
+
+            .TABLE_COL {
+            border-color: #eee;
+            }
+
+            .TOTAL {
+            border-top-width: 0;
+            border-color: #eee;
+            }
+
+            .sT {
+            padding: 6px 40px 6px 4px;
+            }
+
+            .SORTABLE .TABLE_COL_TITLE {
+            background: none;
+            padding: 0;
+            }
+
+            .URL {
+            word-break: break-all;
+            }
+            }
+
+        </style><script language="JavaScript" type="text/javascript">
+
+          function GetNode() { return external.SnapinScopeObject(); }
+
+          var node;
+  var tables = [];
+  
+  var floatCaptionBox = document.createElement("DIV");
+var classHideCaption = "table_floatcaption_wrap";
+var classShowCaption = "table_floatcaption_wrap active";
+floatCaptionBox.className = classHideCaption;
+floatCaptionBox.id = "floatCaptionBox";
+
+          function OnLoad() {
+
+  try {
+  node = GetNode();
+  cmd1.innerText = node.GetCounter("cmd1");
+  cmd2.innerText = node.GetCounter("cmd2");
+  cmd3.innerText = node.GetCounter("cmd3");
+  cmd4.innerText = node.GetCounter("cmd4");
+  cmd5.innerText = node.GetCounter("cmd5");
+  } catch(err) {}
+
+  try { EventsRetranslator.ConnectTo(GetNode()) }
+  catch(err) {}
+  
+  
+    document.body.appendChild(floatCaptionBox);
+            getTablesArr();
+
+
+            window.onscroll = function() {
+                renderFloatCaption();
+            }
+
+            window.onresize = function() {
+                getTablesArr();
+                renderFloatCaption();
+            }
+  
+  
+          }
+  
+  
+  
+function getTablesArr() {
+var allTables = document.getElementsByTagName("TABLE");
+
+tables = [];
+
+for(var i=0, length = allTables.length; i < length; i++) {
+
+if (allTables[i].className.indexOf("DATA_TABLE") != -1) {
+var tableObj = {};
+
+var originalCaptionTR = allTables[i].getElementsByTagName("TR")[0];
+var originalCaptionTD_arr = originalCaptionTR.getElementsByTagName("TD");
+
+var floatCaptionTable = document.createElement("TABLE");
+var cloneTR = originalCaptionTR.cloneNode(true);
+
+for (var y = 0, length_clone = cloneTR.getElementsByTagName("TD").length; y < length_clone; y++) {
+if (originalCaptionTD_arr[y].offsetWidth > 0) {
+cloneTR.getElementsByTagName("TD")[y].style.width = originalCaptionTD_arr[y].offsetWidth - 17 + "px";
+}
+}
+
+floatCaptionTable.className = "table_floatcaption";
+floatCaptionTable.appendChild(cloneTR);
+
+tableObj.el = allTables[i];
+tableObj.height = allTables[i].offsetHeight;
+tableObj.fixedCaption = floatCaptionTable;
+tables.push(tableObj);
+
+
+function resolveData(attr) {
+
+var event = event || window.event
+var target = event.target || event.srcElement;
+
+if(typeof target === "undefined") {
+return false;
+}
+
+var targetAttr = target.getAttribute(attr);
+result = targetAttr ? targetAttr : '';
+return result;
+}
+
+allTables[i].onclick = function tableClick(event) {
+
+switch (resolveData('data-function')) {
+
+  case 'f':
+  
+F(
+resolveData('data-df_name'),
+resolveData('data-arg_val'),
+resolveData('data-hst'),
+resolveData('data-srvInst'),
+resolveData('data-srvName')
+);
+
+break;
+
+
+  case 'sort':
+  
+
+
+Sort(
+resolveData('data-issum') == "true" ? true : false, 
+resolveData('data-name'), 
+resolveData('data-order')
+);
+
+break;  
+}
+}
+}
+}
+}
+
+
+function renderFloatCaption() {
+var floatCaptionBox = document.getElementById("floatCaptionBox");
+var obj = determineCurrentTable();
+
+
+if (obj) {
+if(floatCaptionBox.children[0] && (floatCaptionBox.children[0].tagName == "TABLE")) {
+floatCaptionBox.removeChild(floatCaptionBox.children[0]);
+}
+floatCaptionBox.appendChild(obj.fixedCaption);
+showFloatCaption();
+correctLeftPos();
+}
+else {
+hideFloatCaption();
+}
+}
+
+function showFloatCaption() {
+floatCaptionBox.className = classShowCaption;
+}
+
+function hideFloatCaption() {
+floatCaptionBox.className = classHideCaption;
+}
+
+function correctLeftPos() {
+var scrollLeft = document.documentElement ? document.documentElement.scrollLeft : document.body.scrollLeft;
+floatCaptionBox.style.left = (-1 * (scrollLeft - 20)) + "px";
+}
+
+function determineCurrentTable() {
+for (var i = 0, length = tables.length; i < length; i++) {
+var coordinates = tables[i].el.getBoundingClientRect();
+
+if ((coordinates.top < 0) && (0 < (coordinates.top + tables[i].height))) {
+return tables[i];
+}
+}
+hideFloatCaption();
+return null;
+}
+
+
+
+
+
+  
+
+
+          function Print() {
+          document.execCommand('Print')
+          }
+
+          function Sort(isSummary, columnName, curOrder) {
+          var order = "a";
+          if (curOrder > 0) order = "d";
+  
+          node.ExecuteCommand2(isSummary?"SortSum":"SortDet", columnName, order);
+          }
+
+          function F(sFieldName, sValue, hosts, srvinst, srvname) 
+  {
+  var cmdName = "InteractiveFilter";
+  switch(hosts){
+case "0": cmdName = "InteractiveFilter"; break;
+case "1": cmdName = "InteractiveQuery"; break;
+case "2": cmdName = "AdaptiveSecurityDetects"; break;
+  }
+
+  if (srvinst == "")
+node.ExecuteCommand2(cmdName, sFieldName, sValue);
+  else
+node.ExecuteCommand4(cmdName, sFieldName, sValue, srvinst, srvname);
+          }
+
+          var g_bShowMaster = true;
+
+          function ToggleMaster() {
+          g_bShowMaster = !g_bShowMaster;
+
+          if (g_bShowMaster)
+          document.getElementById("Master").style.display = "inline";
+          else
+          document.getElementById("Master").style.display = "none";
+          }
+
+          var g_bShowSlaves = true;
+
+          function ToggleSlaves() {
+          g_bShowSlaves = !g_bShowSlaves;
+
+          if (g_bShowSlaves)
+          document.getElementById("Slaves").style.display = "inline";
+          else
+          document.getElementById("Slaves").style.display = "none";
+          }
+
+          var g_bShowDetails = false;
+
+          function ToggleDetails() {
+          g_bShowDetails = !g_bShowDetails;
+
+          if (g_bShowDetails)
+          document.getElementById("Details").style.display = "inline";
+          else
+          document.getElementById("Details").style.display = "none";
+          }
+
+          function ToggleSlaveDetails(table) {
+          if (document.getElementById(table).style.display == "inline")
+          document.getElementById(table).style.display = "none";
+          else
+          document.getElementById(table).style.display = "inline";
+          }
+
+          function OnNavigate(page) {
+          window.navigate(page);
+          }
+
+          function OnUnload() {
+          try {
+          EventsRetranslator.DisconnectFrom(GetNode());
+          } catch(err){}
+          }
+
+          window.onload = OnLoad;
+          window.onunload = OnUnload;
+
+        </script><style type="text/css">
+
+            .DETAILS {
+              border-collapse: collapse;
+              display: none
+            }
+
+          </style>
+  </head>
+  <body>
+    <div class="outer">
+      <table class="SUBHEADER_TABLE">
+        <tr>
+          <td class="SUBHEADER_CUSTOM_TEXT">Kaspersky Security Center 15.1</td>
+          <td class="SUBHEADER_LOGO_WRAPPER"><img class="SUBHEADER_LOGO" name="align" src="68cef649-6e71-4a73-9490-c6069042adce.hdr.png"/></td>
+        </tr>
+      </table>
+      <table class="SUBHEADER_TABLE">
+        <tr>
+          <td class="SUBHEADER_SEPARATOR"></td>
+        </tr>
+      </table>
+      <table>
+        <tr>
+          <td class="SUBHEADER">
+            <table class="SUBHEADER_TABLE">
+              <tr>
+                <td>
+                  <div class="HEADER_REP">Informe de amenazas</div>
+                  <div class="HEADER_DATE">mayo 30, 2026 08:49:25 a. m.</div>
+                  <div class="HEADER_PERIOD">Periodo: de mayo 29, 2026 a mayo 30, 2026</div>
+                  <div class="HEADER_REP_DESCR">Este informe contiene información sobre las amenazas detectadas en los dispositivos. El presente informe comprende un único grupo: "Dispositivos administrados"</div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td class="SUBHEADER CHARTS">
+            <table>
+              <tr>
+                <td></td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+      <table>
+        <tr>
+          <td class="DIVIDER"></td>
+        </tr>
+      </table>
+      <table>
+        <tr>
+          <td>
+            <table>
+              <tr>
+                <td nowrap class="TABLE_CAP">Resumen:</td>
+              </tr>
+              <tr>
+                <td></td>
+              </tr>
+              <tr>
+                <td class="COL_BG_LTGREEN">
+                  <table class="TOTAL">
+                    <tr>
+                      <td>
+                        <div><span class="sT">Amenazas detectadas:
+                                      0</span><span class="sT">Archivos diferentes:
+                                      0</span><span class="sT">Dispositivos infectados:
+                                      0</span><span class="sT">Grupos infectados:
+                                      0</span></div>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

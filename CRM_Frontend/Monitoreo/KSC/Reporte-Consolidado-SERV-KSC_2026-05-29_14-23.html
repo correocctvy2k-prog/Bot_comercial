@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Monitor SERV-KSC — 2026-05-29 14:23:25</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',Arial,sans-serif;background:#f4f4f2;color:#222;font-size:14px}
+.wrap{min-height:100vh}
+
+/* HEADER */
+.hdr{background:#1d1d1b}
+.hdr-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:16px 24px}
+.hdr-brand{display:flex;align-items:center;gap:14px}
+.hdr-logo{font-size:22px;font-weight:700;color:#00B388;letter-spacing:-0.5px}
+.hdr-sep{width:1px;height:28px;background:#444}
+.hdr-title{color:#fff;font-size:13px;font-weight:600;line-height:1.3}
+.hdr-title span{display:block;color:#888;font-size:11px;font-weight:400;margin-top:2px}
+.hdr-date{color:#888;font-size:11px;text-align:right;line-height:1.7}
+.hdr-date strong{display:block;color:#ccc;font-size:13px;font-weight:600}
+.hdr-accent{height:3px;background:#00B388}
+
+/* BODY */
+.body{max-width:1100px;margin:0 auto;padding:22px 16px}
+
+/* METRIC CARDS */
+.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+.mc{background:#fff;border-radius:6px;padding:16px 18px;border-top:3px solid #00B388}
+.mc.danger{border-top-color:#d9291c}
+.mc.warn{border-top-color:#f5a623}
+.mc.good{border-top-color:#00B388}
+.mc .val{font-size:26px;font-weight:700;color:#1d1d1b;line-height:1;margin-bottom:5px}
+.mc.danger .val{color:#d9291c}
+.mc.good .val{color:#007a5e}
+.mc.warn .val{color:#b86800}
+.mc .lbl{font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.07em;line-height:1.4}
+
+/* SECTION */
+.sec{background:#fff;border-radius:6px;margin-bottom:14px;overflow:hidden}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid #ebebeb}
+.sec-hdr-left{display:flex;align-items:center;gap:10px}
+.sec-icon{width:30px;height:30px;border-radius:6px;background:#e6f9f4;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sec-icon svg{width:15px;height:15px;stroke:#008c6a;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sec-title{font-size:12px;font-weight:700;color:#1d1d1b;text-transform:uppercase;letter-spacing:.06em}
+.sec-sub{font-size:11px;color:#aaa;margin-top:1px}
+.sec-body{padding:14px 18px}
+
+/* BADGE */
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.04em;white-space:nowrap}
+.badge.ok{background:#e6f9f4;color:#006b52}
+.badge.warn{background:#fff4e5;color:#945200}
+.badge.err{background:#fdecea;color:#991010}
+.badge.neutral{background:#f0f0f0;color:#666}
+
+/* DOT */
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:middle;flex-shrink:0}
+.dot-g{background:#00B388}
+.dot-r{background:#d9291c}
+.dot-o{background:#f5a623}
+
+/* TWO COL */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+
+/* KV */
+.kv{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f2f2f0;font-size:13px}
+.kv:last-child{border-bottom:none}
+.kv-l{color:#777}
+.kv-v{font-weight:600;color:#1d1d1b}
+.kv-v.red{color:#d9291c}
+.kv-v.grn{color:#007a5e}
+.kv-v.ora{color:#b86800}
+
+/* TABLE */
+.ktab{width:100%;border-collapse:collapse;font-size:13px}
+.ktab th{background:#f7f7f6;color:#888;font-weight:700;text-align:left;padding:8px 11px;border-bottom:1.5px solid #e8e8e8;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
+.ktab td{padding:8px 11px;border-bottom:1px solid #f2f2f0;vertical-align:middle}
+.ktab tr:last-child td{border-bottom:none}
+.ktab tr:hover td{background:#fafaf8}
+
+/* SECTION LABEL */
+.slbl{font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px}
+
+/* DISK */
+.disk-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f2f2f0;font-size:13px}
+.disk-row:last-child{border-bottom:none}
+.disk-lbl{font-weight:700;width:28px;color:#1d1d1b;font-size:12px}
+.bar-wrap{flex:1;background:#ebebeb;border-radius:3px;height:7px;overflow:hidden}
+.bar-fill{height:7px;border-radius:3px}
+.disk-info{font-size:11px;color:#777;white-space:nowrap;min-width:170px;text-align:right}
+
+/* VULN CARDS */
+.vuln-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+.vc{border-radius:6px;padding:16px;text-align:center}
+.vc .vn{font-size:34px;font-weight:700;line-height:1;margin-bottom:4px}
+.vc .vl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;opacity:.85}
+.vc-crit{background:#d9291c;color:#fff}
+.vc-alto{background:#f5a623;color:#fff}
+.vc-med{background:#f5d800;color:#333}
+.vc-med .vl{color:#555}
+
+/* THREAT TAGS */
+.ttag{display:inline-block;background:#fdecea;color:#a00;border:1px solid #f5c0bc;border-radius:4px;padding:2px 8px;font-size:11px;margin:2px;font-weight:500}
+
+/* TWO HALF SECTIONS */
+.half-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.half-grid .sec{margin-bottom:0}
+
+/* FOOTER */
+.ftr{text-align:center;color:#bbb;font-size:11px;padding:20px 16px;border-top:1px solid #e4e4e4;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="hdr">
+  <div class="hdr-inner">
+    <div class="hdr-brand">
+      <div class="hdr-logo">kaspersky</div>
+      <div class="hdr-sep"></div>
+      <div class="hdr-title">
+        Monitor SERV-KSC
+        <span>Security Center 15.1 — Reporte consolidado</span>
+      </div>
+    </div>
+    <div class="hdr-date">
+      <strong>2026-05-29 14:23:25</strong>
+      Servidor: SERV-KSC
+    </div>
+  </div>
+  <div class="hdr-accent"></div>
+</div>
+
+<div class="body">
+
+  <!-- MÉTRICAS -->
+  <div class="metrics">
+    <div class="mc good">
+      <div class="val">8.2 días</div>
+      <div class="lbl">Uptime del servidor</div>
+    </div>
+    <div class="mc danger">
+      <div class="val">1</div>
+      <div class="lbl">Amenazas detectadas</div>
+    </div>
+    <div class="mc good">
+      <div class="val">0</div>
+      <div class="lbl">Tipos vulns. críticas</div>
+    </div>
+    <div class="mc warn">
+      <div class="val">170</div>
+      <div class="lbl">Actualizaciones &nbsp; <span class='badge err'>ERRORES</span></div>
+    </div>
+    <div class="mc good">
+      <div class="val">3</div>
+      <div class="lbl">Licencias activas &nbsp; <span class='badge ok'>OK</span></div>
+    </div>
+  </div>
+
+  <!-- SALUD LOCAL -->
+  <div class="sec">
+    <div class="sec-hdr">
+      <div class="sec-hdr-left">
+        <div class="sec-icon"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+        <div><div class="sec-title">Salud del servidor</div><div class="sec-sub">SERV-KSC — Windows Server</div></div>
+      </div>
+      <span class="badge ok">Operativo</span>
+    </div>
+    <div class="sec-body">
+      <div class="two">
+        <div>
+          <div class="slbl">Almacenamiento C:</div>
+          <div class='disk-row'>
+  <span class='disk-lbl'>C:</span>
+  <div class='bar-wrap'><div class='bar-fill' style='width:86.11%;background:#f5a623'></div></div>
+  <span class='disk-info'>17.55 GB libres / 126.33 GB &nbsp;&mdash;&nbsp; <strong>13.89% libre</strong></span>
+</div>
+          <div class="slbl" style="margin-top:14px">Servicios Kaspersky</div>
+          <table class="ktab">
+            <tr><th>Servicio</th><th style="text-align:right">Estado</th></tr>
+            <tr><td><span class='dot dot-g'></span>klnagent</td><td style='text-align:right'><span class='badge ok'>Running</span></td></tr><tr><td><span class='dot dot-g'></span>KSCSvcWebConsole</td><td style='text-align:right'><span class='badge ok'>Running</span></td></tr><tr><td><span class='dot dot-g'></span>KSCWebConsole</td><td style='text-align:right'><span class='badge ok'>Running</span></td></tr><tr><td><span class='dot dot-g'></span>KSCWebConsoleManagementService</td><td style='text-align:right'><span class='badge ok'>Running</span></td></tr><tr><td><span class='dot dot-g'></span>KSCWebConsoleMessageQueue</td><td style='text-align:right'><span class='badge ok'>Running</span></td></tr><tr><td><span class='dot dot-g'></span>KSCWebConsolePlugin</td><td style='text-align:right'><span class='badge ok'>Running</span></td></tr>
+          </table>
+        </div>
+        <div>
+          <div class="slbl">Windows Update</div>
+          <div class="kv"><span class="kv-l">Estado</span><span class="kv-v"><span class='badge ok'>OK</span></span></div>
+          <div class="kv"><span class="kv-l">Reinicio requerido</span><span class="kv-v">False</span></div>
+          <div class="kv"><span class="kv-l">Último parche instalado</span><span class="kv-v">2026-05-21</span></div>
+          <div class="kv"><span class="kv-l">Actualizaciones pendientes</span><span class="kv-v">0</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AMENAZAS -->
+  <div class="sec">
+    <div class="sec-hdr">
+      <div class="sec-hdr-left">
+        <div class="sec-icon"><svg viewBox="0 0 24 24"><path d="M12 2l7 4v6c0 5-3.5 9.74-7 11C8.5 21.74 5 17 5 12V6l7-4z"/></svg></div>
+        <div><div class="sec-title">Amenazas detectadas</div><div class="sec-sub">mayo 29, 2026 08:49:25</div></div>
+      </div>
+      <span class='badge err'>1 dispositivo(s) afectado(s)</span>
+    </div>
+    <div class="sec-body">
+      <div class="two" style="margin-bottom:14px">
+        <div>
+          <div class="kv"><span class="kv-l">Amenazas totales</span><span class="kv-v red">1</span></div>
+          <div class="kv"><span class="kv-l">Archivos diferentes</span><span class="kv-v">2</span></div>
+          <div class="kv"><span class="kv-l">Dispositivos infectados</span><span class="kv-v red">1</span></div>
+          <div class="kv"><span class="kv-l">Grupos afectados</span><span class="kv-v">1</span></div>
+        </div>
+        <div>
+          <div class="slbl">Objetos detectados</div>
+          <span class='ttag'>not-a-virus:HEUR:AdWare.Script.Redirect.gen</span>
+        </div>
+      </div>
+      <div class="slbl">Detalle por dispositivo</div>
+      <table class="ktab">
+        <tr><th>Dispositivo</th><th>Amenaza</th><th>Acción</th><th style="text-align:center">Eventos</th></tr>
+        <tr><td colspan='5' style='text-align:center;color:#00B388;font-weight:600;padding:16px'>Sin dispositivos afectados en el período</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- VULNERABILIDADES -->
+  <div class="sec">
+    <div class="sec-hdr">
+      <div class="sec-hdr-left">
+        <div class="sec-icon"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+        <div><div class="sec-title">Vulnerabilidades de software</div><div class="sec-sub">mayo 29, 2026 08:49:32</div></div>
+      </div>
+    </div>
+    <div class="sec-body">
+      <div class="vuln-grid">
+        <div class="vc vc-crit"><div class="vn">0</div><div class="vl">Tipos críticos</div></div>
+        <div class="vc vc-alto"><div class="vn">0</div><div class="vl">Tipos altos</div></div>
+        <div class="vc vc-med"><div class="vn">0</div><div class="vl">Tipos medios</div></div>
+      </div>
+      <div class="slbl">Aplicaciones con más dispositivos afectados</div>
+      <table class="ktab">
+        <tr><th>ID</th><th>Aplicación</th><th style="text-align:center">Dispositivos</th><th>Nivel</th></tr>
+        <tr><td colspan='4' style='text-align:center;color:#888'>Sin detalles disponibles</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- BASES + ACTUALIZACIONES en media página cada una -->
+  <div class="half-grid">
+    <div class="sec">
+      <div class="sec-hdr">
+        <div class="sec-hdr-left">
+          <div class="sec-icon"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
+          <div><div class="sec-title">Bases antivirus</div></div>
+        </div>
+        <span class='badge warn'>ADVERTENCIA</span>
+      </div>
+      <div class="sec-body">
+        <div class="kv"><span class="kv-l">Al día (últimos 7 días)</span><span class="kv-v grn">12</span></div>
+        <div class="kv"><span class="kv-l">Desact. (más de 1 semana)</span><span class="kv-v red">58</span></div>
+        <div class="kv"><span class="kv-l">Sin actualización</span><span class="kv-v red">0</span></div>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="sec-hdr">
+        <div class="sec-hdr-left">
+          <div class="sec-icon"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg></div>
+          <div><div class="sec-title">Actualizaciones de software</div></div>
+        </div>
+        <span class='badge err'>ERRORES</span>
+      </div>
+      <div class="sec-body">
+        <div class="kv"><span class="kv-l">Total en gestión</span><span class="kv-v">170</span></div>
+        <div class="kv"><span class="kv-l">No asignadas</span><span class="kv-v">128</span></div>
+        <div class="kv"><span class="kv-l">Instaladas</span><span class="kv-v grn">38</span></div>
+        <div class="kv"><span class="kv-l">Con error</span><span class="kv-v red">4</span></div>
+        <div class="kv"><span class="kv-l">Requieren reinicio</span><span class="kv-v ora">4</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LICENCIAS -->
+  <div class="sec">
+    <div class="sec-hdr">
+      <div class="sec-hdr-left">
+        <div class="sec-icon"><svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>
+        <div><div class="sec-title">Uso de licencias</div><div class="sec-sub">3 claves registradas</div></div>
+      </div>
+      <span class='badge ok'>OK</span>
+    </div>
+    <div class="sec-body">
+      <div class="two" style="margin-bottom:14px">
+        <div>
+          <div class="kv"><span class="kv-l">Total de claves</span><span class="kv-v">3</span></div>
+          <div class="kv"><span class="kv-l">Con uso crítico (&gt;90%)</span><span class="kv-v grn">0</span></div>
+          <div class="kv"><span class="kv-l">Con restricción excedida</span><span class="kv-v grn">0</span></div>
+        </div>
+      </div>
+      <table class="ktab">
+        <tr><th>Usados / Límite</th><th>Porcentaje de uso</th><th>Vence</th></tr>
+        <tr><td colspan='3' style='text-align:center;color:#888'>Sin datos de licencias</td></tr>
+      </table>
+    </div>
+  </div>
+
+</div>
+<div class="ftr">Generado automáticamente por <strong>Monitor-SERV-KSC.ps1</strong> &nbsp;&middot;&nbsp; 2026-05-29 14:23:25 &nbsp;&middot;&nbsp; Kaspersky Security Center 15.1</div>
+</div>
+</body>
+</html>

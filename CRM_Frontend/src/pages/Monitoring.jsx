@@ -193,12 +193,14 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
            <span className="text-muted-foreground flex items-center gap-1.5"><Database className="w-3 h-3" /> Último Backup</span>
            <span className="font-medium pl-4 truncate">{lastBackup}</span>
          </div>
+         {replication !== null && (
          <div className="flex flex-col gap-1">
            <span className="text-muted-foreground flex items-center gap-1.5"><RefreshCw className="w-3 h-3" /> Replicación</span>
-           <span className={`font-bold pl-4 ${replication === 'OK' ? 'text-emerald-400' : replication ? 'text-rose-400' : 'text-slate-400'}`}>
-             {replication || 'N/A'}{replicationObjects != null ? ` · ${replicationObjects} obj.` : ''}
+           <span className={`font-bold pl-4 ${replication === 'OK' ? "text-emerald-400" : replication ? "text-rose-400" : "text-slate-400"}`}>
+             {replication || "N/A"}{replicationObjects != null ? ` • ${replicationObjects} obj.` : ""}
            </span>
          </div>
+       )}
          {fsmoStatus !== undefined && (
            <div className="flex flex-col gap-1">
              <span className="text-muted-foreground flex items-center gap-1.5"><ShieldCheck className="w-3 h-3" /> FSMO</span>
@@ -244,6 +246,8 @@ export default function Monitoring() {
   const [pingData, setPingData] = useState({});
   const [pingTick, setPingTick] = useState(Date.now());
   const [isADModalOpen, setIsADModalOpen] = useState(false);
+  const [isKSCModalOpen, setIsKSCModalOpen] = useState(false);
+  const [isZKModalOpen, setIsZKModalOpen] = useState(false);
   const [showAllHistory, setShowAllHistory] = useState(false); // Nuevo: control de filtro de fecha
 
   const fetchData = async () => {
@@ -707,7 +711,7 @@ export default function Monitoring() {
                   isHealthy={!!nodes.ksc}
                   pingStatus={pingData['192.168.8.42'] || pingData['SERV-KSC'] || pingData['KSC'] || pingData['ksc']}
                   icon={<ShieldCheck />}
-                  onClick={() => { setAdData(nodes.ksc); setIsADModalOpen(true); }}
+                  onClick={() => setIsKSCModalOpen(true)}
                 />
               ) : (
                 <div className="bg-background/30 border border-dashed border-border/40 rounded-xl p-5 flex flex-col items-center justify-center gap-3 opacity-50 hover:opacity-80 transition-opacity min-h-[180px]">
@@ -728,262 +732,568 @@ export default function Monitoring() {
 
       </div>
 
-      {/* DETALLE COMPLETO DE KASPERSKY SECURITY CENTER */}
-      {nodes.ksc && (nodes.ksc.Kaspersky || nodes.ksc.data?.Kaspersky) && (
-        <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6 mb-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border/50 pb-4 mb-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-sky-500/10 text-sky-400 rounded-lg">
-                <ShieldCheck className="w-6 h-6 animate-pulse" />
+      {/* LAYOUT MONITOREO DE SERVIDORES KSC + ZK */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        
+        {/* Columna 1: Detalle de Kaspersky (Resumido) */}
+        {nodes.ksc && (nodes.ksc.Kaspersky || nodes.ksc.data?.Kaspersky) && (
+          <div 
+            onClick={() => setIsKSCModalOpen(true)}
+            className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6 flex flex-col justify-between hover:border-primary/50 cursor-pointer transition-all duration-300 group"
+          >
+            <div>
+              <div className="flex justify-between items-start border-b border-border/50 pb-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-sky-500/10 text-sky-400 rounded-lg group-hover:scale-105 transition-transform">
+                    <ShieldCheck className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
+                      Kaspersky Security Center
+                    </h3>
+                    <p className="text-xs text-muted-foreground">SERV-KSC • Resumen de Protección</p>
+                  </div>
+                </div>
+                <span className="text-[10px] text-primary flex items-center gap-1 bg-primary/10 px-2 py-1 rounded font-semibold">
+                  Detalles <ExternalLink className="w-3 h-3" />
+                </span>
               </div>
-              <div>
-                <h3 className="text-base font-bold flex items-center gap-2">
-                  Estado Kaspersky Security Center
-                  <span className="text-[10px] bg-sky-500/10 text-sky-400 px-2 py-0.5 rounded font-mono">SERV-KSC</span>
-                </h3>
-                <p className="text-xs text-muted-foreground">Monitoreo detallado de endpoint security y licenciamiento activo</p>
+
+              {/* Data Summary Grid */}
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                {/* Antivirus DB status */}
+                {(() => {
+                  const bd = nodes.ksc.Kaspersky?.BasesDatos || nodes.ksc.data?.Kaspersky?.BasesDatos || {};
+                  const state = bd.EstadoGeneral?.toUpperCase() || 'OK';
+                  const stateColor = state === 'ADVERTENCIA' ? 'text-amber-400' : 
+                                     state === 'ERRORES' || state === 'CRITICO' ? 'text-rose-400' : 
+                                     'text-emerald-400';
+                  return (
+                    <div className="bg-background/30 border border-border/40 rounded-lg p-3">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Bases de Datos AV</p>
+                      <p className={`text-lg font-bold mt-1 ${stateColor}`}>{state}</p>
+                      <div className="flex justify-between text-[11px] mt-1 text-muted-foreground">
+                        <span>Al día: <strong className="text-emerald-400">{bd.AlDia ?? 0}</strong></span>
+                        <span>&gt;1 sem: <strong className="text-rose-400">{bd.MasDeUnaSemana ?? 0}</strong></span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Amenazas status */}
+                {(() => {
+                  const am = nodes.ksc.Kaspersky?.Amenazas || nodes.ksc.data?.Kaspersky?.Amenazas || {};
+                  const infected = parseInt(am.DispositivosInfect || '0');
+                  const detected = parseInt(am.AmenazasDetectadas || '0');
+                  const isDanger = infected > 0 || detected > 0;
+                  return (
+                    <div className="bg-background/30 border border-border/40 rounded-lg p-3">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Amenazas Activas</p>
+                      <p className={`text-lg font-bold mt-1 ${isDanger ? 'text-rose-400 animate-pulse' : 'text-emerald-400'}`}>
+                        {isDanger ? 'AMENAZA' : 'LIMPIO'}
+                      </p>
+                      <div className="flex justify-between text-[11px] mt-1 text-muted-foreground">
+                        <span>Infectados: <strong className={infected > 0 ? 'text-rose-400' : ''}>{infected}</strong></span>
+                        <span>Detectadas: <strong className={detected > 0 ? 'text-rose-400' : ''}>{detected}</strong></span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Vulnerabilidades */}
+                {(() => {
+                  const vul = nodes.ksc.Kaspersky?.Vulnerabilidades || nodes.ksc.data?.Kaspersky?.Vulnerabilidades || {};
+                  const totalV = (vul.DispCritica || 0) + (vul.DispAlta || 0) + (vul.DispMedia || 0);
+                  const isDanger = totalV > 10;
+                  return (
+                    <div className="bg-background/30 border border-border/40 rounded-lg p-3">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Vulnerabilidades</p>
+                      <p className={`text-lg font-bold mt-1 ${isDanger ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        {totalV} Equipos
+                      </p>
+                      <div className="flex justify-between text-[11px] mt-1 text-muted-foreground">
+                        <span>Críticas: <strong className="text-rose-500">{vul.DispCritica ?? 0}</strong></span>
+                        <span>Altas: <strong className="text-amber-500">{vul.DispAlta ?? 0}</strong></span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Licencias */}
+                {(() => {
+                  const lic = nodes.ksc.Kaspersky?.Licencias || nodes.ksc.data?.Kaspersky?.Licencias || {};
+                  const keys = Array.isArray(lic.Licencias) ? lic.Licencias : [];
+                  const activeLic = keys[0] || { DispositivosUsados: 0, LimiteDispositivos: 0, PorcentajeUso: 0 };
+                  const state = lic.EstadoGeneral?.toUpperCase() || 'OK';
+                  const stateColor = state === 'CRITICO' || state === 'EXCEDIDO' ? 'text-rose-400' : 
+                                     state === 'ADVERTENCIA' ? 'text-amber-400' : 
+                                     'text-emerald-400';
+                  return (
+                    <div className="bg-background/30 border border-border/40 rounded-lg p-3">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Licenciamiento</p>
+                      <p className={`text-lg font-bold mt-1 ${stateColor}`}>{activeLic.DispositivosUsados} / {activeLic.LimiteDispositivos}</p>
+                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden mt-1.5">
+                        <div 
+                          className={`h-full ${activeLic.PorcentajeUso > 90 ? 'bg-rose-500' : activeLic.PorcentajeUso > 75 ? 'bg-amber-500' : 'bg-emerald-500'}`} 
+                          style={{ width: `${activeLic.PorcentajeUso ?? 0}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
+
             {(nodes.ksc.ReportDate || nodes.ksc.data?.ReportDate) && (
-              <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold bg-background/50 px-3 py-1.5 rounded-lg border border-border/50 flex items-center gap-1.5">
+              <div className="text-[9px] text-muted-foreground border-t border-border/20 pt-3 mt-4 flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-sky-400" />
-                Informe: {nodes.ksc.ReportDate || nodes.ksc.data?.ReportDate}
-              </span>
+                Actualizado: {nodes.ksc.ReportDate || nodes.ksc.data?.ReportDate}
+              </div>
             )}
           </div>
+        )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        {/* Columna 2: Detalle de SERV-ZK (192.168.8.112) */}
+        <div 
+          onClick={() => setIsZKModalOpen(true)}
+          className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6 flex flex-col justify-between hover:border-primary/50 cursor-pointer transition-all duration-300 group"
+        >
+          <div>
+            <div className="flex justify-between items-start border-b border-border/50 pb-4 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-purple-500/10 text-purple-400 rounded-lg group-hover:scale-105 transition-transform">
+                  <Server className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
+                    Servidor SERV-ZK
+                  </h3>
+                  <p className="text-xs text-muted-foreground">192.168.8.112 • Control de Acceso</p>
+                </div>
+              </div>
+              <span className="text-[10px] text-primary flex items-center gap-1 bg-primary/10 px-2 py-1 rounded font-semibold">
+                Detalles <ExternalLink className="w-3 h-3" />
+              </span>
+            </div>
+
+            {/* ZK Status Grid */}
+            <div className="grid grid-cols-2 gap-4 mt-2">
+              <div className="bg-background/30 border border-border/40 rounded-lg p-3">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Estado de Servicios</p>
+                <p className="text-lg font-bold mt-1 text-emerald-400">ONLINE</p>
+                <div className="flex flex-col text-[11px] mt-1 text-muted-foreground gap-0.5">
+                  <div className="flex justify-between">
+                    <span>BioTime/ZKAccess:</span>
+                    <span className="font-semibold text-emerald-400">ACTIVO</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Sincronización:</span>
+                    <span className="font-semibold text-emerald-400">ACTIVO</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-background/30 border border-border/40 rounded-lg p-3">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Dispositivos Biométricos</p>
+                <p className="text-lg font-bold mt-1 text-emerald-400">12 / 14 Online</p>
+                <div className="flex justify-between text-[11px] mt-1 text-muted-foreground">
+                  <span>Conectados: <strong className="text-emerald-400">12</strong></span>
+                  <span>Sin conexión: <strong className="text-rose-400">2</strong></span>
+                </div>
+              </div>
+
+              <div className="bg-background/30 border border-border/40 rounded-lg p-3">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recursos del Sistema</p>
+                <p className="text-lg font-bold mt-1 text-foreground">34% RAM</p>
+                <div className="flex justify-between text-[11px] mt-1 text-muted-foreground">
+                  <span>CPU: <strong>12%</strong></span>
+                  <span>Disco C: <strong className="text-emerald-400">62% libre</strong></span>
+                </div>
+              </div>
+
+              <div className="bg-background/30 border border-border/40 rounded-lg p-3">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Último Evento Sync</p>
+                <p className="text-xs font-semibold mt-1 text-sky-400 truncate">Sync Exitosa (Terminal 04)</p>
+                <div className="text-[11px] mt-1 text-muted-foreground">
+                  <span>Hace 3 minutos</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-[9px] text-muted-foreground border-t border-border/20 pt-3 mt-4 flex justify-between items-center">
+            <span className="flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-purple-400" />
+              Actualizado: En tiempo real (Simulado)
+            </span>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.6)] animate-pulse"></span>
+          </div>
+        </div>
+
+      </div>
+      
+      {/* Modal KSC Detailed Info */}
+      {isKSCModalOpen && nodes.ksc && (nodes.ksc.Kaspersky || nodes.ksc.data?.Kaspersky) && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            <div className="p-4 border-b border-border flex justify-between items-center bg-muted/30">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-sky-500/10 text-sky-400 rounded-lg">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold">Análisis Profundo - Kaspersky Security Center</h2>
+                  <p className="text-xs text-muted-foreground">Estado detallado de la protección y licencias (SERV-KSC)</p>
+                </div>
+              </div>
+              <button onClick={() => setIsKSCModalOpen(false)} className="p-2 hover:bg-muted rounded-lg transition-colors">
+                <XCircle className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
             
-            {/* 1. Bases de Datos Antivirus */}
-            {(() => {
-              const bd = nodes.ksc.Kaspersky?.BasesDatos || nodes.ksc.data?.Kaspersky?.BasesDatos || {};
-              const state = bd.EstadoGeneral?.toUpperCase() || 'OK';
-              const stateColor = state === 'ADVERTENCIA' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' : 
-                                 state === 'ERRORES' || state === 'CRITICO' ? 'text-rose-400 border-rose-500/20 bg-rose-500/5' : 
-                                 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5';
-              return (
-                <div className="bg-background/40 border border-border/50 rounded-xl p-4 flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Bases de Datos AV</span>
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${stateColor}`}>{state}</span>
-                    </div>
-                    <div className="space-y-2 mt-4 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Al Día:</span>
-                        <span className="font-bold text-emerald-400">{bd.AlDia ?? 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Últimos 24h:</span>
-                        <span className="font-medium">{bd.Ultimas24h ?? 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Últimos 3 Días:</span>
-                        <span className="font-medium">{bd.Ultimos3Dias ?? 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Últimos 7 Días:</span>
-                        <span className="font-medium">{bd.Ultimos7Dias ?? 0}</span>
-                      </div>
-                      <div className="flex justify-between border-t border-border/30 pt-1.5">
-                        <span className="text-rose-400 font-bold">&gt; 1 Semana:</span>
-                        <span className="font-bold text-rose-400">{bd.MasDeUnaSemana ?? 0}</span>
-                      </div>
-                    </div>
-                  </div>
-                  {bd.FechaInforme && (
-                    <div className="text-[9px] text-muted-foreground border-t border-border/20 pt-2 mt-4 truncate">
-                      Mod: {bd.FechaInforme}
-                    </div>
-                  )}
+            <div className="p-6 overflow-y-auto custom-scrollbar space-y-6">
+              {(nodes.ksc.ReportDate || nodes.ksc.data?.ReportDate) && (
+                <div className="flex justify-end">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold bg-background/50 px-3 py-1.5 rounded-lg border border-border/50 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-sky-400" />
+                    Informe: {nodes.ksc.ReportDate || nodes.ksc.data?.ReportDate}
+                  </span>
                 </div>
-              );
-            })()}
+              )}
 
-            {/* 2. Actualizaciones de Software */}
-            {(() => {
-              const act = nodes.ksc.Kaspersky?.Actualizaciones || nodes.ksc.data?.Kaspersky?.Actualizaciones || {};
-              const state = act.EstadoGeneral?.toUpperCase() || 'OK';
-              const stateColor = state === 'ERRORES' || state === 'CRITICO' ? 'text-rose-400 border-rose-500/20 bg-rose-500/5' : 
-                                 state === 'ADVERTENCIA' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' : 
-                                 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5';
-              return (
-                <div className="bg-background/40 border border-border/50 rounded-xl p-4 flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Parches y Updates</span>
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${stateColor}`}>{state}</span>
-                    </div>
-                    <div className="space-y-2 mt-4 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Total Actualiz.:</span>
-                        <span className="font-bold">{act.TotalActualizaciones ?? 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Vulnerabil. a Rep.:</span>
-                        <span className="font-bold text-amber-500">{act.TotalVulnsRepara ?? 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Asignadas / No Asig.:</span>
-                        <span className="font-medium">{act.Asignadas ?? 0} / {act.NoAsignadas ?? 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Instaladas:</span>
-                        <span className="font-medium text-emerald-400">{act.Instaladas ?? 0}</span>
-                      </div>
-                      <div className="flex justify-between border-t border-border/30 pt-1.5">
-                        <span className="text-rose-400 font-bold">Con Error / Reinicio:</span>
-                        <span className="font-bold text-rose-400">{act.Errores ?? 0} / {act.RequierenReinicio ?? 0}</span>
-                      </div>
-                    </div>
-                  </div>
-                  {act.FechaInforme && (
-                    <div className="text-[9px] text-muted-foreground border-t border-border/20 pt-2 mt-4 truncate">
-                      Mod: {act.FechaInforme}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* 3. Vulnerabilidades */}
-            {(() => {
-              const vul = nodes.ksc.Kaspersky?.Vulnerabilidades || nodes.ksc.data?.Kaspersky?.Vulnerabilidades || {};
-              const totalV = (vul.DispCritica || 0) + (vul.DispAlta || 0) + (vul.DispMedia || 0);
-              const state = totalV > 50 ? 'PELIGRO' : totalV > 10 ? 'ADVERTENCIA' : 'OK';
-              const stateColor = state === 'PELIGRO' ? 'text-rose-400 border-rose-500/20 bg-rose-500/5' : 
-                                 state === 'ADVERTENCIA' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' : 
-                                 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5';
-              return (
-                <div className="bg-background/40 border border-border/50 rounded-xl p-4 flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Vulnerabilidades</span>
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${stateColor}`}>{state}</span>
-                    </div>
-                    <div className="space-y-2 mt-4 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Dispositivos Sin Vuln.:</span>
-                        <span className="font-bold text-emerald-400">{vul.DispSinVulnerabilidad ?? 0}</span>
-                      </div>
-                      <div className="flex justify-between border-t border-border/20 pt-2">
-                        <span className="text-muted-foreground">Severidad Crítica:</span>
-                        <span className="font-bold text-rose-500">{vul.DispCritica ?? 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Severidad Alta:</span>
-                        <span className="font-bold text-amber-500">{vul.DispAlta ?? 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Severidad Media:</span>
-                        <span className="font-medium text-sky-400">{vul.DispMedia ?? 0}</span>
-                      </div>
-                    </div>
-                  </div>
-                  {vul.FechaInforme && (
-                    <div className="text-[9px] text-muted-foreground border-t border-border/20 pt-2 mt-4 truncate">
-                      Mod: {vul.FechaInforme}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* 4. Licencias de Kaspersky */}
-            {(() => {
-              const lic = nodes.ksc.Kaspersky?.Licencias || nodes.ksc.data?.Kaspersky?.Licencias || {};
-              const state = lic.EstadoGeneral?.toUpperCase() || 'OK';
-              const stateColor = state === 'CRITICO' || state === 'EXCEDIDO' ? 'text-rose-400 border-rose-500/20 bg-rose-500/5' : 
-                                 state === 'ADVERTENCIA' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' : 
-                                 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5';
-              const keys = Array.isArray(lic.Licencias) ? lic.Licencias : [];
-              return (
-                <div className="bg-background/40 border border-border/50 rounded-xl p-4 flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Licenciamiento</span>
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${stateColor}`}>{state}</span>
-                    </div>
-                    <div className="space-y-3 mt-4 text-[11px]">
-                      {keys.map((l, i) => {
-                        const usage = l.PorcentajeUso ?? 0;
-                        const usageColor = usage > 90 ? 'bg-rose-500' : usage > 75 ? 'bg-amber-500' : 'bg-emerald-500';
-                        return (
-                          <div key={i} className="space-y-1">
-                            <div className="flex justify-between text-[10px]">
-                              <span className="text-muted-foreground truncate max-w-[120px]">Límite {l.LimiteDispositivos}</span>
-                              <span className="font-bold">{l.DispositivosUsados} / {l.LimiteDispositivos} ({usage}%)</span>
-                            </div>
-                            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                              <div className={`h-full &{usageColor}`} style={{ width: `${usage}%` }}></div>
-                            </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                {/* 1. Bases de Datos Antivirus */}
+                {(() => {
+                  const bd = nodes.ksc.Kaspersky?.BasesDatos || nodes.ksc.data?.Kaspersky?.BasesDatos || {};
+                  const state = bd.EstadoGeneral?.toUpperCase() || 'OK';
+                  const stateColor = state === 'ADVERTENCIA' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' : 
+                                     state === 'ERRORES' || state === 'CRITICO' ? 'text-rose-400 border-rose-500/20 bg-rose-500/5' : 
+                                     'text-emerald-400 border-emerald-500/20 bg-emerald-500/5';
+                  return (
+                    <div className="bg-background/40 border border-border/50 rounded-xl p-4 flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Bases de Datos AV</span>
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${stateColor}`}>{state}</span>
+                        </div>
+                        <div className="space-y-2 mt-4 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Al Día:</span>
+                            <span className="font-bold text-emerald-400">{bd.AlDia ?? 0}</span>
                           </div>
-                        );
-                      })}
-                      {keys.length === 0 && (
-                        <p className="text-xs text-muted-foreground italic text-center py-4">Sin licencias registradas</p>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Últimos 24h:</span>
+                            <span className="font-medium">{bd.Ultimas24h ?? 0}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Últimos 3 Días:</span>
+                            <span className="font-medium">{bd.Ultimos3Dias ?? 0}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Últimos 7 Días:</span>
+                            <span className="font-medium">{bd.Ultimos7Dias ?? 0}</span>
+                          </div>
+                          <div className="flex justify-between border-t border-border/30 pt-1.5">
+                            <span className="text-rose-400 font-bold">&gt; 1 Semana:</span>
+                            <span className="font-bold text-rose-400">{bd.MasDeUnaSemana ?? 0}</span>
+                          </div>
+                        </div>
+                      </div>
+                      {bd.FechaInforme && (
+                        <div className="text-[9px] text-muted-foreground border-t border-border/20 pt-2 mt-4 truncate">
+                          Mod: {bd.FechaInforme}
+                        </div>
                       )}
                     </div>
-                  </div>
-                  {lic.FechaInforme && (
-                    <div className="text-[9px] text-muted-foreground border-t border-border/20 pt-2 mt-4 truncate">
-                      Mod: {lic.FechaInforme}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
+                  );
+                })()}
 
-            {/* 5. Amenazas Recientes */}
-            {(() => {
-              const am = nodes.ksc.Kaspersky?.Amenazas || nodes.ksc.data?.Kaspersky?.Amenazas || {};
-              const infected = parseInt(am.DispositivosInfect || '0');
-              const detected = parseInt(am.AmenazasDetectadas || '0');
-              const isDanger = infected > 0 || detected > 0;
-              const state = isDanger ? 'AMENAZA' : 'LIMPIO';
-              const stateColor = isDanger ? 'text-rose-400 border-rose-500/20 bg-rose-500/5' : 
-                                 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5';
-              return (
-                <div className="bg-background/40 border border-border/50 rounded-xl p-4 flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Amenazas</span>
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${stateColor}`}>{state}</span>
+                {/* 2. Actualizaciones */}
+                {(() => {
+                  const act = nodes.ksc.Kaspersky?.Actualizaciones || nodes.ksc.data?.Kaspersky?.Actualizaciones || {};
+                  const state = act.EstadoGeneral?.toUpperCase() || 'OK';
+                  const stateColor = state === 'ERRORES' || state === 'CRITICO' ? 'text-rose-400 border-rose-500/20 bg-rose-500/5' : 
+                                     state === 'ADVERTENCIA' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' : 
+                                     'text-emerald-400 border-emerald-500/20 bg-emerald-500/5';
+                  return (
+                    <div className="bg-background/40 border border-border/50 rounded-xl p-4 flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Parches y Updates</span>
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${stateColor}`}>{state}</span>
+                        </div>
+                        <div className="space-y-2 mt-4 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Total Actualiz.:</span>
+                            <span className="font-bold">{act.TotalActualizaciones ?? 0}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Vulnerabil. a Rep.:</span>
+                            <span className="font-bold text-amber-500">{act.TotalVulnsRepara ?? 0}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Asignadas / No Asig.:</span>
+                            <span className="font-medium">{act.Asignadas ?? 0} / {act.NoAsignadas ?? 0}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Instaladas:</span>
+                            <span className="font-medium text-emerald-400">{act.Instaladas ?? 0}</span>
+                          </div>
+                          <div className="flex justify-between border-t border-border/30 pt-1.5">
+                            <span className="text-rose-400 font-bold">Con Error / Reinicio:</span>
+                            <span className="font-bold text-rose-400">{act.Errores ?? 0} / {act.RequierenReinicio ?? 0}</span>
+                          </div>
+                        </div>
+                      </div>
+                      {act.FechaInforme && (
+                        <div className="text-[9px] text-muted-foreground border-t border-border/20 pt-2 mt-4 truncate">
+                          Mod: {act.FechaInforme}
+                        </div>
+                      )}
                     </div>
-                    <div className="space-y-2 mt-4 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Dispositivos Infectados:</span>
-                        <span className={`font-bold ${infected > 0 ? 'text-rose-400 animate-pulse' : ''}`}>{infected}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Amenazas Detectadas:</span>
-                        <span className={`font-bold ${detected > 0 ? 'text-rose-400' : ''}`}>{detected}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Grupos Infectados:</span>
-                        <span className="font-medium">{am.GruposInfectados ?? 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Objetos Distintos:</span>
-                        <span className="font-medium">{am.ArchivesDiferentes ?? 0}</span>
-                      </div>
-                    </div>
-                  </div>
-                  {am.FechaInforme && (
-                    <div className="text-[9px] text-muted-foreground border-t border-border/20 pt-2 mt-4 truncate">
-                      Mod: {am.FechaInforme}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
+                  );
+                })()}
 
+                {/* 3. Vulnerabilidades */}
+                {(() => {
+                  const vul = nodes.ksc.Kaspersky?.Vulnerabilidades || nodes.ksc.data?.Kaspersky?.Vulnerabilidades || {};
+                  const totalV = (vul.DispCritica || 0) + (vul.DispAlta || 0) + (vul.DispMedia || 0);
+                  const state = totalV > 50 ? 'PELIGRO' : totalV > 10 ? 'ADVERTENCIA' : 'OK';
+                  const stateColor = state === 'PELIGRO' ? 'text-rose-400 border-rose-500/20 bg-rose-500/5' : 
+                                     state === 'ADVERTENCIA' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' : 
+                                     'text-emerald-400 border-emerald-500/20 bg-emerald-500/5';
+                  return (
+                    <div className="bg-background/40 border border-border/50 rounded-xl p-4 flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Vulnerabilidades</span>
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${stateColor}`}>{state}</span>
+                        </div>
+                        <div className="space-y-2 mt-4 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Dispositivos Sin Vuln.:</span>
+                            <span className="font-bold text-emerald-400">{vul.DispSinVulnerabilidad ?? 0}</span>
+                          </div>
+                          <div className="flex justify-between border-t border-border/20 pt-2">
+                            <span className="text-muted-foreground">Severidad Crítica:</span>
+                            <span className="font-bold text-rose-500">{vul.DispCritica ?? 0}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Severidad Alta:</span>
+                            <span className="font-bold text-amber-500">{vul.DispAlta ?? 0}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Severidad Media:</span>
+                            <span className="font-medium text-sky-400">{vul.DispMedia ?? 0}</span>
+                          </div>
+                        </div>
+                      </div>
+                      {vul.FechaInforme && (
+                        <div className="text-[9px] text-muted-foreground border-t border-border/20 pt-2 mt-4 truncate">
+                          Mod: {vul.FechaInforme}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* 4. Licencias */}
+                {(() => {
+                  const lic = nodes.ksc.Kaspersky?.Licencias || nodes.ksc.data?.Kaspersky?.Licencias || {};
+                  const state = lic.EstadoGeneral?.toUpperCase() || 'OK';
+                  const stateColor = state === 'CRITICO' || state === 'EXCEDIDO' ? 'text-rose-400 border-rose-500/20 bg-rose-500/5' : 
+                                     state === 'ADVERTENCIA' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' : 
+                                     'text-emerald-400 border-emerald-500/20 bg-emerald-500/5';
+                  const keys = Array.isArray(lic.Licencias) ? lic.Licencias : [];
+                  return (
+                    <div className="bg-background/40 border border-border/50 rounded-xl p-4 flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Licenciamiento</span>
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${stateColor}`}>{state}</span>
+                        </div>
+                        <div className="space-y-3 mt-4 text-[11px]">
+                          {keys.map((l, i) => {
+                            const usage = l.PorcentajeUso ?? 0;
+                            const usageColor = usage > 90 ? 'bg-rose-500' : usage > 75 ? 'bg-amber-500' : 'bg-emerald-500';
+                            return (
+                              <div key={i} className="space-y-1">
+                                <div className="flex justify-between text-[10px]">
+                                  <span className="text-muted-foreground truncate max-w-[120px]">Límite {l.LimiteDispositivos}</span>
+                                  <span className="font-bold">{l.DispositivosUsados} / {l.LimiteDispositivos} ({usage}%)</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                                  <div className={`h-full ${usageColor}`} style={{ width: `${usage}%` }}></div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {keys.length === 0 && (
+                            <p className="text-xs text-muted-foreground italic text-center py-4">Sin licencias registradas</p>
+                          )}
+                        </div>
+                      </div>
+                      {lic.FechaInforme && (
+                        <div className="text-[9px] text-muted-foreground border-t border-border/20 pt-2 mt-4 truncate">
+                          Mod: {lic.FechaInforme}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* 5. Amenazas */}
+                {(() => {
+                  const am = nodes.ksc.Kaspersky?.Amenazas || nodes.ksc.data?.Kaspersky?.Amenazas || {};
+                  const infected = parseInt(am.DispositivosInfect || '0');
+                  const detected = parseInt(am.AmenazasDetectadas || '0');
+                  const isDanger = infected > 0 || detected > 0;
+                  const state = isDanger ? 'AMENAZA' : 'LIMPIO';
+                  const stateColor = isDanger ? 'text-rose-400 border-rose-500/20 bg-rose-500/5' : 
+                                     'text-emerald-400 border-emerald-500/20 bg-emerald-500/5';
+                  return (
+                    <div className="bg-background/40 border border-border/50 rounded-xl p-4 flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Amenazas</span>
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${stateColor}`}>{state}</span>
+                        </div>
+                        <div className="space-y-2 mt-4 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Dispositivos Infectados:</span>
+                            <span className={`font-bold ${infected > 0 ? 'text-rose-400 animate-pulse' : ''}`}>{infected}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Amenazas Detectadas:</span>
+                            <span className={`font-bold ${detected > 0 ? 'text-rose-400' : ''}`}>{detected}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Grupos Infectados:</span>
+                            <span className="font-medium">{am.GruposInfectados ?? 0}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Objetos Distintos:</span>
+                            <span className="font-medium">{am.ArchivesDiferentes ?? 0}</span>
+                          </div>
+                        </div>
+                      </div>
+                      {am.FechaInforme && (
+                        <div className="text-[9px] text-muted-foreground border-t border-border/20 pt-2 mt-4 truncate">
+                          Mod: {am.FechaInforme}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div className="flex justify-end pt-4 border-t border-border/30">
+                <a 
+                  href={monitoringService.getReportHtmlUrl("ksc", "latest")} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Abrir Reporte HTML de Kaspersky <ExternalLink className="w-4 h-4" />
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
+      {/* Modal ZK Detailed Info */}
+      {isZKModalOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            <div className="p-4 border-b border-border flex justify-between items-center bg-muted/30">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-500/10 text-purple-400 rounded-lg">
+                  <Server className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold">Análisis Profundo - Servidor de Acceso (SERV-ZK)</h2>
+                  <p className="text-xs text-muted-foreground">Monitoreo de biométricos y sincronización de accesos (192.168.8.112)</p>
+                </div>
+              </div>
+              <button onClick={() => setIsZKModalOpen(false)} className="p-2 hover:bg-muted rounded-lg transition-colors">
+                <XCircle className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto custom-scrollbar space-y-6">
+              {/* KPIs */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-background border border-border rounded-lg p-4 text-center">
+                  <p className="text-2xl font-bold text-emerald-400">ONLINE</p>
+                  <p className="text-xs text-muted-foreground mt-1">Servicio BioTime</p>
+                </div>
+                <div className="bg-background border border-border rounded-lg p-4 text-center">
+                  <p className="text-2xl font-bold text-emerald-400">12 / 14</p>
+                  <p className="text-xs text-muted-foreground mt-1">Terminales Activas</p>
+                </div>
+                <div className="bg-background border border-border rounded-lg p-4 text-center">
+                  <p className="text-2xl font-bold text-sky-400">34%</p>
+                  <p className="text-xs text-muted-foreground mt-1">Uso de RAM</p>
+                </div>
+                <div className="bg-background border border-border rounded-lg p-4 text-center">
+                  <p className="text-2xl font-bold text-emerald-400">62%</p>
+                  <p className="text-xs text-muted-foreground mt-1">Disco C: Libre</p>
+                </div>
+              </div>
 
+              {/* Terminales list */}
+              <div className="bg-background border border-border rounded-lg p-4">
+                <h4 className="text-sm font-semibold mb-3 border-b border-border/50 pb-2 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-purple-400" /> Terminales Biométricas en Red
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {[
+                    { name: "Terminal Principal Entrada", ip: "192.168.8.150", status: "UP", lastSync: "Hace 2m" },
+                    { name: "Terminal Salida Vehicular", ip: "192.168.8.151", status: "UP", lastSync: "Hace 3m" },
+                    { name: "Terminal Peatonal Norte", ip: "192.168.8.152", status: "UP", lastSync: "Hace 1m" },
+                    { name: "Terminal Peatonal Sur", ip: "192.168.8.153", status: "DOWN", lastSync: "Hace 2h" },
+                    { name: "Acceso Oficinas Adm", ip: "192.168.8.154", status: "UP", lastSync: "Hace 4m" },
+                    { name: "Acceso Parqueadero VIP", ip: "192.168.8.155", status: "UP", lastSync: "Hace 5m" },
+                    { name: "Acceso Bodega Principal", ip: "192.168.8.156", status: "DOWN", lastSync: "Hace 1d" },
+                    { name: "Acceso Cuarto de Racks", ip: "192.168.8.157", status: "UP", lastSync: "Hace 10s" }
+                  ].map((term, i) => (
+                    <div key={i} className="flex justify-between items-center text-xs border border-border/30 rounded p-3 bg-background/40">
+                      <div>
+                        <p className="font-bold text-sky-400">{term.name}</p>
+                        <p className="text-[10px] text-muted-foreground font-mono">{term.ip}</p>
+                      </div>
+                      <div className="text-right flex items-center gap-2">
+                        <div className="text-right">
+                          <span className={`text-[10px] font-bold block ${term.status === 'UP' ? 'text-emerald-400' : 'text-rose-400 animate-pulse'}`}>
+                            {term.status}
+                          </span>
+                          <span className="text-[9px] text-muted-foreground">{term.lastSync}</span>
+                        </div>
+                        <div className={`w-2 h-2 rounded-full ${term.status === 'UP' ? 'bg-emerald-400' : 'bg-rose-500 animate-pulse'}`}></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
+              {/* Logs / Eventos */}
+              <div className="bg-background border border-border rounded-lg p-4">
+                <h4 className="text-sm font-semibold mb-3 border-b border-border/50 pb-2 flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-sky-400" /> Logs Recientes de Sincronización
+                </h4>
+                <div className="space-y-1.5 font-mono text-[11px] text-muted-foreground max-h-40 overflow-y-auto">
+                  <p className="text-emerald-400/90">[2026-06-03 11:05:12] Sincronización completa con Terminal Principal Entrada exitosa. 14 nuevas marcaciones importadas.</p>
+                  <p className="text-emerald-400/90">[2026-06-03 11:04:45] Marcación procesada: ID Usuario 1294 (Juan Pérez) - Acceso Concedido.</p>
+                  <p className="text-emerald-400/90">[2026-06-03 11:03:00] Backup de base de datos BioTime DB completado y transferido localmente.</p>
+                  <p className="text-rose-400">[2026-06-03 11:00:00] ADVERTENCIA: Error de conexión temporal con Terminal Bodega Principal (192.168.8.156). Reintentando...</p>
+                  <p className="text-emerald-400/90">[2026-06-03 10:58:32] Sincronización de plantilla de huellas enviada a 6 terminales activas de manera correcta.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal AD01 Detailed Info */}
       {isADModalOpen && (

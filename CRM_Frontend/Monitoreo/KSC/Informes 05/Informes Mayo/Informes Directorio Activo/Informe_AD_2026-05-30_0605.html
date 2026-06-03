@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informe AD - ISO 27001/27002 - 2026-05-30_0605</title>
+    <style>
+        :root {
+            --primary-color: #0078d4;
+            --success-color: #107c10;
+            --warning-color: #ffb900;
+            --error-color: #d13438;
+            --bg-gray: #f3f2f1;
+            --border-color: #edebe9;
+            --text-primary: #323130;
+            --text-secondary: #605e5c;
+            --shadow-sm: 0 1.6px 3.6px rgba(0,0,0,.13), 0 0.3px 0.9px rgba(0,0,0,.11);
+            --shadow-md: 0 3.2px 7.2px rgba(0,0,0,.13), 0 0.6px 1.8px rgba(0,0,0,.11);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background: var(--bg-gray);
+        }
+
+        .top-bar {
+            background: #ffffff;
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 0;
+            box-shadow: var(--shadow-sm);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .top-bar-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .iso-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 24px;
+            padding: 24px;
+        }
+
+        .sidebar {
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: var(--shadow-sm);
+            height: fit-content;
+            position: sticky;
+            top: 80px;
+        }
+
+        .sidebar h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .sidebar nav ul {
+            list-style: none;
+        }
+
+        .sidebar nav li {
+            margin-bottom: 4px;
+        }
+
+        .sidebar nav a {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            color: var(--text-primary);
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .sidebar nav a:hover {
+            background: var(--bg-gray);
+            color: var(--primary-color);
+        }
+
+        .content {
+            background: white;
+            padding: 48px;
+            border-radius: 8px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .page-header {
+            margin-bottom: 48px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .page-header h1 {
+            font-size: 42px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        .page-header .meta {
+            display: flex;
+            gap: 24px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .section {
+            margin-bottom: 48px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .section-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .section h2 {
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .iso-control-badge {
+            background: #e1f5fe;
+            color: #014361;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: auto;
+        }
+
+        .alert {
+            padding: 16px 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border-left: 4px solid;
+            display: flex;
+            gap: 12px;
+            align-items: start;
+        }
+
+        .alert-success {
+            background: #dff6dd;
+            border-color: var(--success-color);
+            color: #0e5a0e;
+        }
+
+        .alert-warning {
+            background: #fff4ce;
+            border-color: var(--warning-color);
+            color: #5d4a00;
+        }
+
+        .alert-error {
+            background: #fde7e9;
+            border-color: var(--error-color);
+            color: #6e0811;
+        }
+
+        .alert-info {
+            background: #e1f5fe;
+            border-color: var(--primary-color);
+            color: #014361;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .stat-card {
+            background: var(--bg-gray);
+            padding: 20px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-card-value {
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .stat-card-value.success { color: var(--success-color); }
+        .stat-card-value.warning { color: var(--warning-color); }
+        .stat-card-value.error { color: var(--error-color); }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .data-table thead {
+            background: var(--bg-gray);
+        }
+
+        .data-table th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .data-table td {
+            padding: 12px 16px;
+            border-top: 1px solid var(--border-color);
+            font-size: 14px;
+        }
+
+        .data-table tr:hover {
+            background: var(--bg-gray);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-badge.ok {
+            background: #dff6dd;
+            color: var(--success-color);
+        }
+
+        .status-badge.warning {
+            background: #fff4ce;
+            color: #5d4a00;
+        }
+
+        .status-badge.critical {
+            background: #fde7e9;
+            color: var(--error-color);
+        }
+
+        /* Estilos para desplegables */
+        .collapsible {
+            background: var(--bg-gray);
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 16px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            text-align: left;
+            outline: none;
+            font-size: 15px;
+            font-weight: 600;
+            margin: 12px 0;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .collapsible:hover {
+            background: #e1e1e1;
+        }
+
+        .collapsible:after {
+            content: '▼';
+            font-size: 12px;
+            margin-left: auto;
+            transition: transform 0.3s;
+        }
+
+        .collapsible.active:after {
+            transform: rotate(-180deg);
+        }
+
+        .collapsible-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+        }
+
+        .collapsible-content.active {
+            max-height: 2000px;
+            transition: max-height 0.5s ease-in;
+        }
+
+        .collapsible-inner {
+            padding: 20px;
+        }
+
+        .recommendation-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px;
+            border-radius: 8px;
+            margin: 24px 0;
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #005a9e;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        @media print {
+            .top-bar, .sidebar, .btn { display: none; }
+            .main-container { grid-template-columns: 1fr; }
+            .collapsible-content { max-height: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div class="top-bar-content">
+            <div class="logo">
+                <span>🛡️</span>
+                <span>Active Directory Monitoring</span>
+            </div>
+            <span class="iso-badge">ISO 27001:2022</span>
+            <span class="iso-badge">ISO 27002:2022</span>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <aside class="sidebar">
+            <h3>Contenido</h3>
+            <nav>
+                <ul>
+                    <li><a href="#dc-status">🖥️ Controladores</a></li>
+                    <li><a href="#fsmo">⚙️ Roles FSMO</a></li>
+                    <li><a href="#replication">🔄 Replicación</a></li>
+                    <li><a href="#backups">💾 Backups</a></li>
+                    <li><a href="#users">👥 Usuarios</a></li>
+                    <li><a href="#gpos">📋 GPOs</a></li>
+                    <li><a href="#passwords">🔐 Políticas</a></li>
+                    <li><a href="#disk">💿 Disco</a></li>
+                    <li><a href="#security">🔒 Seguridad</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="content">
+            <div class="page-header">
+                <h1>Informe de Monitoreo Active Directory</h1>
+                <p style="font-size: 16px; color: var(--text-secondary); margin-top: 8px;">
+                    Análisis de cumplimiento ISO/IEC 27001:2022 e ISO/IEC 27002:2022
+                </p>
+                <div class="meta">
+                    <span>📅 30/05/2026 06:05:05</span>
+                    <span>📋 Controles A.5, A.8</span>
+                    <span>🏢 Dominio: GANEPAL.LOCAL</span>
+                </div>
+            </div>
+
+            <button class="btn" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+
+            <!-- SECCIÓN 1: CONTROLADORES DE DOMINIO -->
+            <section id="dc-status" class="section">
+                <div class="section-header">
+                    <div class="section-icon">🖥️</div>
+                    <h2>Controladores de Dominio</h2>
+                    <span class="iso-control-badge">ISO 27001 A.8.2, A.8.15</span>
+                </div>
+
+                <div class="alert alert-ok">
+                    <div>
+                        <strong>Estado General: OK</strong>
+                        <p>Todos los controladores operando normalmente</p>
+                    </div>
+                </div>
+
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Controlador</th>
+                            <th>Estado</th>
+                            <th>Uptime</th>
+                            <th>SO</th>
+                            <th>Último Reinicio</th>
+                        </tr>
+                    </thead>
+                    <tbody>                        <tr>
+                            <td><strong>AD01</strong></td>
+                            <td><span class="status-badge ok">● Online</span></td>
+                            <td>14 días, 16 horas</td>
+                            <td style="font-size: 12px;">Microsoft Windows Server 2022 Standard</td>
+                            <td>2026-05-15 13:10:58</td>
+                        </tr>                        <tr>
+                            <td><strong>DA02</strong></td>
+                            <td><span class="status-badge ok">● Online</span></td>
+                            <td>10 días, 17 horas</td>
+                            <td style="font-size: 12px;">Microsoft Windows Server 2022 Standard</td>
+                            <td>2026-05-19 12:08:10</td>
+                        </tr>                        <tr>
+                            <td><strong>AD03</strong></td>
+                            <td><span class="status-badge ok">● Online</span></td>
+                            <td>3 días, 13 horas</td>
+                            <td style="font-size: 12px;">Microsoft Windows Server 2022 Standard</td>
+                            <td>2026-05-26 17:00:35</td>
+                        </tr>                    </tbody>
+                </table>
+
+                
+            </section>
+
+            <!-- SECCIÓN 2: ROLES FSMO -->
+            <section id="fsmo" class="section">
+                <div class="section-header">
+                    <div class="section-icon">⚙️</div>
+                    <h2>Roles FSMO (Flexible Single Master Operations)</h2>
+                    <span class="iso-control-badge">ISO 27001 A.8.14</span>
+                </div>
+
+                <div class="alert alert-ok">
+                    <div>
+                        <strong>Estado de Roles FSMO - OK</strong>
+                        <p style="margin-top: 8px;">La distribución de roles FSMO es adecuada.</p>
+                    </div>
+                </div>
+
+                <div style="background: var(--bg-gray); padding: 20px; border-radius: 6px; margin: 20px 0;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 12px; font-weight: 600; width: 250px;">PDC Emulator</td>
+                            <td style="padding: 12px;">AD01.GANEPAL.LOCAL</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 12px; font-weight: 600;">RID Master</td>
+                            <td style="padding: 12px;">AD01.GANEPAL.LOCAL</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 12px; font-weight: 600;">Infrastructure Master</td>
+                            <td style="padding: 12px;">DA02.GANEPAL.LOCAL</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 12px; font-weight: 600;">Schema Master</td>
+                            <td style="padding: 12px;">AD01.GANEPAL.LOCAL</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; font-weight: 600;">Domain Naming Master</td>
+                            <td style="padding: 12px;">AD01.GANEPAL.LOCAL</td>
+                        </tr>
+                    </table>
+                </div>
+
+                
+            </section>
+
+            <!-- SECCIÓN 3: REPLICACIÓN -->
+            <section id="replication" class="section">
+                <div class="section-header">
+                    <div class="section-icon">🔄</div>
+                    <h2>Estado de Replicación</h2>
+                    <span class="iso-control-badge">ISO 27001 A.8.12</span>
+                </div>
+
+                <div class="alert alert-ok">
+                    <div>
+                        <strong>Estado de Replicación - OK</strong>
+                        <p style="margin-top: 8px;">No se encontraron errores de replicación</p>
+                    </div>
+                </div>
+
+                <h3 style="margin: 24px 0 12px; font-size: 18px;">Conteo de Objetos entre Controladores</h3>
+                <div style="background: var(--bg-gray); padding: 20px; border-radius: 6px;">
+                    <p style='margin: 8px 0; font-size: 15px;'>AD01 - 850 objetos</p> <p style='margin: 8px 0; font-size: 15px;'>DA02 - 850 objetos</p> <p style='margin: 8px 0; font-size: 15px;'>AD03 - 850 objetos</p> <p style='margin: 8px 0; font-size: 15px;'>Diferencia máxima - 0 objetos</p>
+                </div>
+
+                
+            </section>
+
+            <!-- SECCIÓN 4: BACKUPS -->
+            <section id="backups" class="section">
+                <div class="section-header">
+                    <div class="section-icon">💾</div>
+                    <h2>Estado de Backups</h2>
+                    <span class="iso-control-badge">ISO 27001 A.8.13</span>
+                </div>
+
+                <div class="alert alert-warning">
+                    <div>
+                        <strong>Estado de Backups - WARNING</strong>
+                        <ul style='margin-top: 8px;'><li>ISO 27001 A.8.13: No se puede acceder a \\ganepalmi\Backup\ActiveBackupData\VM-BACKUP AD03</li>
+                    </div>
+                </div>
+
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Ruta de Backup</th>
+                            <th>Accesible</th>
+                            <th>Último Backup</th>
+                            <th>Archivos (24h)</th>
+                            <th>Tamaño Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>                        <tr>
+                            <td style="font-size: 11px;">\\ganepalmi\Backup\ActiveBackupData\VM-BACKUP AD01</td>
+                            <td><span class="status-badge ok">● Accesible</span></td>
+                            <td>2026-05-30 04:02</td>
+                            <td>7</td>
+                            <td>126.98 GB</td>
+                        </tr>                        <tr>
+                            <td style="font-size: 11px;">\\ganepalmi\Backup\ActiveBackupData\VM-BACKUP AD02</td>
+                            <td><span class="status-badge ok">● Accesible</span></td>
+                            <td>2026-05-30 04:33</td>
+                            <td>7</td>
+                            <td>80.29 GB</td>
+                        </tr>                        <tr>
+                            <td style="font-size: 11px;">\\ganepalmi\Backup\ActiveBackupData\VM-BACKUP AD03</td>
+                            <td><span class="status-badge critical">● No Accesible</span></td>
+                            <td>N/A</td>
+                            <td>0</td>
+                            <td>0 GB</td>
+                        </tr>                    </tbody>
+                </table>
+
+                <div class='recommendation-box'><h3>💡 Acciones Requeridas</h3><ul><li>Verifique la conectividad con el NAS y el estado del servicio de backup</li><li>Asegúrese de que las tareas programadas estén activas</li><li>Pruebe la restauración de un backup al menos mensualmente</li><li>Implemente la regla 3-2-1 - 3 copias, 2 tipos de medios, 1 offsite</li><li>Documente el procedimiento de restauración de Active Directory</li></ul></div>
+            </section>
+
+            <!-- SECCIÓN 5: USUARIOS CON DESPLEGABLES -->
+            <section id="users" class="section">
+                <div class="section-header">
+                    <div class="section-icon">👥</div>
+                    <h2>Estadísticas de Usuarios</h2>
+                    <span class="iso-control-badge">ISO 27001 A.5.17, A.5.18</span>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-card-label">Total de Usuarios</div>
+                        <div class="stat-card-value">161</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-label">Habilitados</div>
+                        <div class="stat-card-value success">152</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-label">Deshabilitados</div>
+                        <div class="stat-card-value">9</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-label">Bloqueados</div>
+                        <div class="stat-card-value ">0</div>
+                    </div>
+                </div>
+
+                <!-- Desplegable: Usuarios Inactivos 90+ días -->
+                <button class="collapsible">
+                    ⚠️ Usuarios Inactivos (+90 días): 15 usuarios
+                </button>
+                <div class="collapsible-content">
+                    <div class="collapsible-inner">
+                        <table class='data-table'><thead><tr><th>Usuario</th><th>Nombre</th><th>Último Acceso</th><th>Días Inactivo</th><th>Departamento</th></tr></thead><tbody><tr><td>jose.saldarriaga</td><td>Jose Angel Saldarriaga</td><td>2025-05-19</td><td><strong>375</strong></td><td>Auditoria</td></tr> <tr><td>cajero3.palmira</td><td>cajero3.palmira</td><td>2026-02-25</td><td><strong>93</strong></td><td>Gestion Operativa</td></tr> <tr><td>cajero2.palmira</td><td>cajero2.palmira</td><td>2025-12-09</td><td><strong>171</strong></td><td>Gestion Operativa</td></tr> <tr><td>servidor.florida</td><td>Servidor Florida</td><td>2025-10-21</td><td><strong>220</strong></td><td></td></tr> <tr><td>keiner.murillo</td><td>Keiner Murillo</td><td>2026-01-08</td><td><strong>141</strong></td><td></td></tr> <tr><td>miguel.chicue</td><td>Miguel Angel Chicue</td><td>2025-11-08</td><td><strong>202</strong></td><td></td></tr> <tr><td>servidor.pradera</td><td>Servidor Pradera</td><td>2026-02-12</td><td><strong>106</strong></td><td></td></tr> <tr><td>valentina.bedoya</td><td>Valentina Bedoya Satizabal</td><td>2025-10-20</td><td><strong>221</strong></td><td></td></tr> <tr><td>andres.vivas</td><td>Andres Felipe Vivas Yonda</td><td>2025-07-17</td><td><strong>316</strong></td><td></td></tr> <tr><td>carlos.orejuela</td><td>Carlos Andres Orejuela Tigreros</td><td>2025-03-07</td><td><strong>448</strong></td><td></td></tr> <tr><td>maria.rosero</td><td>María Camila Rosero</td><td>2025-10-01</td><td><strong>240</strong></td><td>Comercial</td></tr> <tr><td>cajero3.pbolivar</td><td>Cajero3 Pbolivar</td><td>2025-11-22</td><td><strong>188</strong></td><td></td></tr> <tr><td>brandon.alvarez</td><td>Brandon Arnaldo Alvarez Medina</td><td>2025-08-05</td><td><strong>297</strong></td><td></td></tr> <tr><td>edison.narvaez</td><td>Edison Narvaez</td><td>2025-08-08</td><td><strong>294</strong></td><td></td></tr> <tr><td>alejandra.rosero</td><td>Alejandra Rosero</td><td>2026-02-05</td><td><strong>113</strong></td><td></td></tr>
+                    </div>
+                </div>
+
+                <!-- Desplegable: Usuarios Deshabilitados -->
+                <button class="collapsible">
+                    🚫 Usuarios Deshabilitados: 9 usuarios
+                </button>
+                <div class="collapsible-content">
+                    <div class="collapsible-inner">
+                        <table class='data-table'><thead><tr><th>Usuario</th><th>Nombre</th><th>Última Modificación</th><th>Departamento</th></tr></thead><tbody><tr><td>Invitado</td><td>Invitado</td><td>2022-09-24 12:20</td><td></td></tr> <tr><td>krbtgt</td><td>krbtgt</td><td>2022-09-24 12:36</td><td></td></tr> <tr><td>adm.candelaria</td><td>Administrador Candelaria</td><td>2025-07-24 09:06</td><td>Comercial</td></tr> <tr><td>nataly.escobar</td><td>Nataly Ximena Escobar Escobar</td><td>2026-05-20 15:17</td><td></td></tr> <tr><td>usuario.prueba</td><td>usuario prueba</td><td>2025-01-31 10:52</td><td></td></tr> <tr><td>rodolfo.lozanoc</td><td>Rodolfo Lozano Canas</td><td>2026-05-06 18:25</td><td>Informatica</td></tr> <tr><td>jaime.penaranda</td><td>Jaime Andres Peñaranda Melo</td><td>2025-11-20 08:46</td><td></td></tr> <tr><td>rodrigo.toro</td><td>Rodrigo Toro Triviño</td><td>2025-10-29 09:42</td><td></td></tr> <tr><td>19con35.caja1</td><td>Caja1 19 con 35</td><td>2026-05-11 09:10</td><td>Gestion Operativa</td></tr>
+                    </div>
+                </div>
+
+                <!-- Desplegable: Usuarios Eliminados -->
+                <button class="collapsible">
+                    🗑️ Usuarios Eliminados (Papelera AD): 34 usuarios
+                </button>
+                <div class="collapsible-content">
+                    <div class="collapsible-inner">
+                        <table class='data-table'><thead><tr><th>Usuario</th><th>Nombre</th><th>Fecha Eliminación</th><th>Última Ubicación</th></tr></thead><tbody><tr><td>martha.benavides</td><td>martha.benavides
+DEL:23d09af7-4e2c-465d-a8ad-28441a0a7292</td><td>2026-05-05 15:28</td><td style='font-size: 11px;'>OU=AgenciaPradera,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>jose.nunez</td><td>jose.nunez
+DEL:021af131-1e7c-4fcc-84d8-bb33eeb8a0a8</td><td>2026-05-05 15:29</td><td style='font-size: 11px;'>OU=Dpto Comercial,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>cajero1.palmira</td><td>cajero1.palmira
+DEL:5994dca9-a4e0-446b-b3e6-f5ca59c01f1d</td><td>2026-05-05 15:31</td><td style='font-size: 11px;'>OU=Cajeros Ofi Ppal Palmira,OU=Dpto Tesoreria Cajeros,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>jose.castro</td><td>jose.castro
+DEL:0463dc1a-e2e9-4d14-a9b6-f49d9a3da2c0</td><td>2026-05-05 15:29</td><td style='font-size: 11px;'>OU=Dpto Comercial,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>villa.gorgona2</td><td>Villa Gorgona2
+DEL:813736f3-eaf3-4940-89af-69ad4c83448b</td><td>2026-01-02 11:42</td><td style='font-size: 11px;'>OU=AgenciaCandelaria,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>ofi.juanchito</td><td>Oficina Juanchito
+DEL:9272c350-5176-4ea4-acd5-6d66ad93f321</td><td>2026-01-02 11:43</td><td style='font-size: 11px;'>OU=AgenciaCandelaria,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>soporte.candelaria</td><td>Soporte Candelaria
+DEL:efa457da-2fba-463c-ba59-07609a958c9e</td><td>2026-05-05 15:30</td><td style='font-size: 11px;'>OU=Dpto Tecnologia Informatica,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>helmer.hernandez</td><td>Helmer Hernandez
+DEL:d1e7f94d-974a-4c42-8e7b-45961320b01e</td><td>2026-05-05 10:23</td><td style='font-size: 11px;'>OU=Directores,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>andres.suarez</td><td>Andres Suarez
+DEL:01edbb5f-670c-4261-afcc-fd5d58360602</td><td>2026-02-05 08:37</td><td style='font-size: 11px;'>OU=Mercadeo,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>juan.lorza</td><td>Juan Felipe Lorza
+DEL:e7e2aa8f-b016-4229-af11-77e485dff1c8</td><td>2026-05-05 15:29</td><td style='font-size: 11px;'>OU=Dpto Auditoria y Gerencia,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>jean.rodriguez</td><td>jean.rodriguez
+DEL:214feea1-04cb-4820-8093-a239dd638f35</td><td>2026-02-05 08:36</td><td style='font-size: 11px;'>OU=Dpto Auditoria y Gerencia,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>conteo1.amaime</td><td>Diana Cierra
+DEL:f7c3e335-10f0-400e-b488-18858ee6f030</td><td>2026-05-05 15:32</td><td style='font-size: 11px;'>OU=AgenciaAmaime,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>sebastian.mosquera</td><td>sebastian.mosquera
+DEL:9acdda5d-b358-4c4a-94a5-aee6f7a55838</td><td>2026-01-02 11:49</td><td style='font-size: 11px;'>OU=Dpto Auditoria y Gerencia,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>alvaro.rodriguez</td><td>alvaro.rodriguez
+DEL:27fec0a3-0f70-494e-b9e3-dc639f5b4d1b</td><td>2026-01-02 11:59</td><td style='font-size: 11px;'>OU=Dpto Comercial,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>david.munoz</td><td>David Stiven Muñoz
+DEL:2039f4db-f690-4076-b4e5-875777e3f6aa</td><td>2026-05-05 15:30</td><td style='font-size: 11px;'>OU=Dpto Tecnologia Informatica,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>auxiliar.carmelo</td><td>Auxiliar Carmelo
+DEL:dc847943-19d3-47ee-8f4d-1e457e1af085</td><td>2026-01-02 11:43</td><td style='font-size: 11px;'>OU=AgenciaCandelaria,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>bcp1.pradera</td><td>BCP 1
+DEL:ea58a4c2-c52b-4dfb-b2c3-a01c355d2509</td><td>2026-01-02 11:45</td><td style='font-size: 11px;'>OU=AgenciaPradera,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>bcp2.pradera</td><td>BCP 2
+DEL:76f5e1d7-7297-4a00-9dca-2b614982cec8</td><td>2026-01-02 11:45</td><td style='font-size: 11px;'>OU=AgenciaPradera,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>bcp3.pradera</td><td>BCP 3
+DEL:405340dc-096c-4dab-a570-939d70d767bc</td><td>2026-01-02 11:45</td><td style='font-size: 11px;'>OU=AgenciaPradera,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>bcp4.pradera</td><td>BCP 4
+DEL:d8949fa5-077b-4a4a-bbe9-027f67b48059</td><td>2026-01-02 11:45</td><td style='font-size: 11px;'>OU=AgenciaPradera,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>bcp5.pradera</td><td>BCP 5
+DEL:2c400670-7e95-4fa8-a8a4-da5e49df8d13</td><td>2026-01-02 11:45</td><td style='font-size: 11px;'>OU=AgenciaPradera,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>auxiliar.comercial3</td><td>Auxiliar Comercial 3
+DEL:6c56ae16-9306-4f01-8569-5bd99f006b21</td><td>2026-01-02 11:59</td><td style='font-size: 11px;'>OU=Dpto Comercial,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>auxiliar.comercial4</td><td>Auxiliar Comercial 4
+DEL:d3548f47-88a2-4f18-a7a0-e0ba1a109380</td><td>2026-01-02 11:59</td><td style='font-size: 11px;'>OU=Dpto Comercial,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>ANFISERV-DSS$</td><td>ANFISERV-DSS
+DEL:a073cd8e-39ac-4a8d-9964-5f7c2ef8bbb1</td><td>2026-05-05 15:31</td><td style='font-size: 11px;'>OU=prueba,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>supernumerario2.pal</td><td>Supernumerario2 Palmira
+DEL:9de5908c-5572-4e1e-a6e1-4c8ae84b0821</td><td>2026-01-02 11:59</td><td style='font-size: 11px;'>OU=Dpto Comercial,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>yesica.ramirez</td><td>Yesica Andrea Ramirez
+DEL:3eab3835-d730-4998-8cdc-3b9d9612d7b5</td><td>2026-01-02 11:44</td><td style='font-size: 11px;'>OU=AgenciaFlorida,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>jorge.guzman</td><td>Jorge Enrique Guzman Benitez
+DEL:b940e94b-fa9e-4475-a812-f193b573215c</td><td>2026-01-02 11:49</td><td style='font-size: 11px;'>OU=Dpto Auditoria y Gerencia,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>yasmin.botero</td><td>Yasmin Botero Jimenez
+DEL:b8c38c37-9315-4471-ac7d-9e1b8a00c693</td><td>2026-05-05 15:30</td><td style='font-size: 11px;'>OU=Dpto Tecnologia Informatica,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>harold.ballesteros</td><td>Harold Ballesteros Marin
+DEL:57e28933-8e6b-431c-8a20-e44b5a20f588</td><td>2026-01-02 11:50</td><td style='font-size: 11px;'>OU=Dpto Auditoria y Gerencia,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>michael.guevara</td><td>Michael Mancilla Guevara
+DEL:82e87634-822c-4ff7-b8f8-1b34b2384a9b</td><td>2026-05-05 15:29</td><td style='font-size: 11px;'>OU=Dpto Comercial,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>john.gonzalez</td><td>John Alexander Gonzalez Castrillon
+DEL:b88917b9-fc76-48ac-9e12-435bd0b12e48</td><td>2026-01-02 11:53</td><td style='font-size: 11px;'>OU=Dpto Comercial,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>jorge.hernandez</td><td>Jorge Hernandez
+DEL:901a6f5f-f16c-433c-a64f-00a43f1aef6c</td><td>2026-01-02 11:42</td><td style='font-size: 11px;'>OU=AgenciaCandelaria,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>adriana.reina</td><td>Adriana Reina Salcedo
+DEL:7f18cf86-df04-41cf-9279-961c8218cfce</td><td>2026-02-05 08:37</td><td style='font-size: 11px;'>OU=Mercadeo,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr> <tr><td>caja1.19con35</td><td>Caja1 19 con 35
+DEL:a8e144c4-e462-4f7f-a5ea-e62619313511</td><td>2026-05-11 09:03</td><td style='font-size: 11px;'>OU=Cajeros 19 con 35,OU=Dpto Tesoreria Cajeros,OU=Palmira,DC=GANEPAL,DC=LOCAL</td></tr>
+                    </div>
+                </div>
+
+                <!-- Desplegable: Usuarios que Nunca Iniciaron Sesión -->
+                <button class="collapsible">
+                    ❓ Nunca Iniciaron Sesión: 5 usuarios
+                </button>
+                <div class="collapsible-content">
+                    <div class="collapsible-inner">
+                        <table class='data-table'><thead><tr><th>Usuario</th><th>Nombre</th><th>Fecha Creación</th><th>Departamento</th></tr></thead><tbody><tr><td>servidor.amaime</td><td>Servidor Amaime</td><td>2022-09-27</td><td>Gestion Operativa</td></tr> <tr><td>monitoreo3</td><td>monitoreo3</td><td>2022-09-27</td><td>Informatica</td></tr> <tr><td>backup</td><td>backup</td><td>2022-09-27</td><td>Informatica</td></tr> <tr><td>conectar</td><td>conectar</td><td>2022-09-27</td><td>Gestion Operativa</td></tr> <tr><td>ligia.castro</td><td>Ligia Elena Castro</td><td>2026-05-19</td><td></td></tr>
+                    </div>
+                </div>
+
+                <div class='alert alert-warning' style='margin-top: 24px;'><div><strong>⚠️ Problemas Detectados</strong><ul style='margin-top: 8px;'><li>ISO 27001 A.5.18: 15 usuarios inactivos >90 días</li>
+
+                <div class='recommendation-box'><h3>💡 Recomendaciones ISO 27001/27002</h3><ul><li>Revisar y deshabilitar cuentas inactivas según política de acceso</li>
+            </section>
+
+            <!-- SECCIÓN 6: GPOs -->
+            <section id="gpos" class="section">
+                <div class="section-header">
+                    <div class="section-icon">📋</div>
+                    <h2>Group Policy Objects (GPOs)</h2>
+                    <span class="iso-control-badge">ISO 27001 A.8.3, A.5.15</span>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-card-label">Total GPOs</div>
+                        <div class="stat-card-value">16</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-label">GPOs Vinculadas</div>
+                        <div class="stat-card-value success">13</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-label">GPOs Sin Vincular</div>
+                        <div class="stat-card-value warning">3</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-label">GPOs Vacías</div>
+                        <div class="stat-card-value warning">1</div>
+                    </div>
+                </div>
+
+                <div class='alert alert-warning'><div><strong>Problemas Detectados en GPOs</strong><ul style='margin-top: 8px;'><li>ISO 27002 5.15: 1 GPO(s) vacías detectadas</li>
+
+                <!-- Desplegable: Todas las GPOs -->
+                <button class='collapsible'>📄 Lista Completa de GPOs (16 políticas)</button><div class='collapsible-content'><div class='collapsible-inner'><table class='data-table'><thead><tr><th>Nombre</th><th>Estado</th><th>Creación</th><th>Última Modificación</th><th>Enlaces</th><th>Vacía</th></tr></thead><tbody><tr><td><strong>Actualizaciones WSUS</strong></td><td>AllSettingsEnabled</td><td>2023-04-01</td><td>2023-04-01 10:18</td><td>1</td><td><span class="status-badge ok">No</span></td></tr> <tr><td><strong>FondodeEscritorio</strong></td><td>AllSettingsEnabled</td><td>2022-09-27</td><td>2022-10-22 12:33</td><td>0</td><td><span class="status-badge ok">No</span></td></tr> <tr><td><strong>Restringir Escritura en Escritorio</strong></td><td>AllSettingsEnabled</td><td>2023-06-30</td><td>2023-07-06 17:26</td><td>1</td><td><span class="status-badge ok">No</span></td></tr> <tr><td><strong>Default Domain Policy</strong></td><td>AllSettingsEnabled</td><td>2022-09-24</td><td>2023-11-02 10:12</td><td>1</td><td><span class="status-badge ok">No</span></td></tr> <tr><td><strong>RestringirConfiguracion_SinCMD</strong></td><td>AllSettingsEnabled</td><td>2023-03-14</td><td>2023-03-14 17:04</td><td>0</td><td><span class="status-badge ok">No</span></td></tr> <tr><td><strong>FondoEscritorio</strong></td><td>AllSettingsEnabled</td><td>2022-10-22</td><td>2025-05-28 17:24</td><td>2</td><td><span class="status-badge ok">No</span></td></tr> <tr><td><strong>Apagado Equipo</strong></td><td>AllSettingsEnabled</td><td>2024-01-25</td><td>2024-01-26 17:37</td><td>2</td><td><span class="status-badge ok">No</span></td></tr> <tr><td><strong>Default Domain Controllers Policy</strong></td><td>AllSettingsEnabled</td><td>2022-09-24</td><td>2024-06-12 16:54</td><td>1</td><td><span class="status-badge ok">No</span></td></tr> <tr><td><strong>BloqueoSesionNA</strong></td><td>AllSettingsEnabled</td><td>2024-02-02</td><td>2024-02-02 12:32</td><td>1</td><td><span class="status-badge ok">No</span></td></tr> <tr><td><strong>BloqueodeSesion</strong></td><td>AllSettingsEnabled</td><td>2022-09-27</td><td>2024-02-02 12:03</td><td>17</td><td><span class="status-badge ok">No</span></td></tr> <tr><td><strong>PruebaManager</strong></td><td>AllSettingsEnabled</td><td>2022-10-05</td><td>2022-10-05 17:36</td><td>0</td><td><span class="status-badge warning">Sí</span></td></tr> <tr><td><strong>GestionUsuariosLocales</strong></td><td>AllSettingsEnabled</td><td>2022-09-29</td><td>2022-09-29 10:57</td><td>1</td><td><span class="status-badge ok">No</span></td></tr> <tr><td><strong>PoliticasGanePalmira</strong></td><td>AllSettingsEnabled</td><td>2022-09-27</td><td>2025-04-02 08:48</td><td>18</td><td><span class="status-badge ok">No</span></td></tr> <tr><td><strong>Acceso a C:</strong></td><td>AllSettingsEnabled</td><td>2023-11-02</td><td>2023-11-02 16:34</td><td>1</td><td><span class="status-badge ok">No</span></td></tr> <tr><td><strong>Biblioteca GANEPALMIR</strong></td><td>AllSettingsEnabled</td><td>2023-10-31</td><td>2024-12-16 15:32</td><td>18</td><td><span class="status-badge ok">No</span></td></tr> <tr><td><strong>RestringirConfiguracion</strong></td><td>AllSettingsEnabled</td><td>2022-09-29</td><td>2023-10-31 10:54</td><td>17</td><td><span class="status-badge ok">No</span></td></tr>
+
+                <!-- Desplegable: GPOs Modificadas Recientemente -->
+                
+
+                <div class='recommendation-box'><h3>💡 Recomendaciones ISO 27002</h3><ul><li>Eliminar GPOs vacías para mantener la higiene del dominio</li>
+            </section>
+
+            <!-- SECCIÓN 7: POLÍTICAS DE CONTRASEÑA -->
+            <section id="passwords" class="section">
+                <div class="section-header">
+                    <div class="section-icon">🔐</div>
+                    <h2>Políticas de Contraseña</h2>
+                    <span class="iso-control-badge">ISO 27002 5.17</span>
+                </div>
+
+                <h3 style="margin-bottom: 16px; font-size: 20px;">Política de Dominio Predeterminada</h3>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-card-label">Longitud Mínima</div>
+                        <div class="stat-card-value warning">
+                            10 caracteres
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-label">Edad Máxima</div>
+                        <div class="stat-card-value success">
+                            45 días
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-label">Historial</div>
+                        <div class="stat-card-value">24 contraseñas</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-label">Umbral Bloqueo</div>
+                        <div class="stat-card-value success">
+                            5 intentos
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-label">Complejidad</div>
+                        <div class="stat-card-value success">
+                            ✓ Habilitada
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-label">Duración Bloqueo</div>
+                        <div class="stat-card-value">5 min</div>
+                    </div>
+                </div>
+
+                
+
+                <div class='alert alert-warning' style='margin-top: 24px;'><div><strong>Incumplimientos ISO 27002 5.17</strong><ul style='margin-top: 8px;'><li>ISO 27002 5.17: Longitud mínima de contraseña insuficiente (10 caracteres)</li>
+
+                <div class='recommendation-box'><h3>💡 Recomendaciones ISO 27002</h3><ul><li>ISO 27002 recomienda mínimo 12 caracteres</li>
+            </section>
+
+            <!-- SECCIÓN 8: ESPACIO EN DISCO -->
+            <section id="disk" class="section">
+                <div class="section-header">
+                    <div class="section-icon">💿</div>
+                    <h2>Espacio en Disco</h2>
+                    <span class="iso-control-badge">ISO 27001 A.8.6</span>
+                </div>
+
+                <div class="alert alert-ok">
+                    <div>
+                        <strong>Estado: OK</strong>
+                        <p>Espacio en disco adecuado en todos los controladores</p>
+                    </div>
+                </div>
+
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Controlador</th>
+                            <th>Unidad</th>
+                            <th>Tamaño Total</th>
+                            <th>Espacio Libre</th>
+                            <th>% Libre</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>                        <tr>
+                            <td><strong>AD01</strong></td>
+                            <td>C:</td>
+                            <td>126.33 GB</td>
+                            <td>85.23 GB</td>
+                            <td><strong>67.46%</strong></td>
+                            <td><span class="status-badge ok">● Saludable</span></td>
+                        </tr>                        <tr>
+                            <td><strong>DA02</strong></td>
+                            <td>C:</td>
+                            <td>255.33 GB</td>
+                            <td>216.8 GB</td>
+                            <td><strong>84.91%</strong></td>
+                            <td><span class="status-badge ok">● Saludable</span></td>
+                        </tr>                        <tr>
+                            <td><strong>AD03</strong></td>
+                            <td>C:</td>
+                            <td>126.33 GB</td>
+                            <td>95.4 GB</td>
+                            <td><strong>75.52%</strong></td>
+                            <td><span class="status-badge ok">● Saludable</span></td>
+                        </tr>                    </tbody>
+                </table>
+            </section>
+
+            <!-- SECCIÓN 9: EVENTOS DE SEGURIDAD -->
+            <section id="security" class="section">
+                <div class="section-header">
+                    <div class="section-icon">🔒</div>
+                    <h2>Eventos de Seguridad (Últimos 7 Días)</h2>
+                    <span class="iso-control-badge">ISO 27001 A.8.15, A.8.16</span>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-card-label">Inicios Fallidos</div>
+                        <div class="stat-card-value ">
+                            12
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-label">Inicios Exitosos</div>
+                        <div class="stat-card-value success">67884</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-label">Bloqueos de Cuenta</div>
+                        <div class="stat-card-value warning">
+                            7
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-label">Cambios Contraseña</div>
+                        <div class="stat-card-value">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-label">Cambios en Políticas</div>
+                        <div class="stat-card-value ">
+                            0
+                        </div>
+                    </div>
+                </div>
+
+                <div class='alert alert-success' style='margin-top: 24px;'><div><strong>✓ Estado de Seguridad Normal</strong><p>No se detectaron patrones anómalos en los últimos 7 días</p></div></div>
+
+                
+            </section>
+
+            <!-- SECCIÓN: RESUMEN ISO 27001 -->
+            <section class="section">
+                <div class="section-header">
+                    <div class="section-icon">📊</div>
+                    <h2>Resumen de Cumplimiento ISO 27001:2022</h2>
+                </div>
+
+                <div class="alert alert-info">
+                    <div>
+                        <strong>Controles Evaluados</strong>
+                        <p style="margin-top: 12px;">Este informe cubre los siguientes controles de ISO/IEC 27001:2022:</p>
+                        <ul style="margin-top: 8px; column-count: 2;">
+                            <li><strong>A.5.1</strong> - Políticas de seguridad</li>
+                            <li><strong>A.5.15</strong> - Control de acceso</li>
+                            <li><strong>A.5.17</strong> - Autenticación</li>
+                            <li><strong>A.5.18</strong> - Derechos de acceso</li>
+                            <li><strong>A.8.2</strong> - Acceso privilegiado</li>
+                            <li><strong>A.8.3</strong> - Restricción de acceso</li>
+                            <li><strong>A.8.6</strong> - Gestión de capacidad</li>
+                            <li><strong>A.8.12</strong> - Prevención de fuga de datos</li>
+                            <li><strong>A.8.13</strong> - Respaldo de información</li>
+                            <li><strong>A.8.14</strong> - Redundancia</li>
+                            <li><strong>A.8.15</strong> - Registro de eventos</li>
+                            <li><strong>A.8.16</strong> - Monitoreo de actividades</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="recommendation-box">
+                    <h3>📋 Próximas Acciones</h3>
+                    <ul>
+                        <li>Revisar y atender todos los problemas marcados como CRÍTICOS</li>
+                        <li>Planificar remediación de advertencias en los próximos 30 días</li>
+                        <li>Documentar cambios realizados para auditorías ISO 27001</li>
+                        <li>Agendar próxima revisión mensual de Active Directory</li>
+                        <li>Actualizar matriz de riesgos de seguridad de la información</li>
+                        <li>Compartir hallazgos con el Comité de Seguridad</li>
+                    </ul>
+                </div>
+            </section>
+
+            <div class="footer" style="text-align: center; padding: 32px; border-top: 1px solid var(--border-color); margin-top: 48px;">
+                <p style="font-weight: 600; margin-bottom: 8px;">Fin del Informe de Monitoreo</p>
+                <p>Generado por Sistema de Monitoreo AD - Seguridad Perimetral</p>
+                <p style="margin-top: 8px;">📋 Cumplimiento: ISO/IEC 27001:2022 e ISO/IEC 27002:2022</p>
+                <p style="margin-top: 16px; color: var(--text-secondary); font-size: 12px;">
+                    ⚠️ CONFIDENCIAL - Distribución restringida al personal autorizado
+                </p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Funcionalidad de desplegables
+        document.addEventListener('DOMContentLoaded', function() {
+            const collapsibles = document.querySelectorAll('.collapsible');
+            
+            collapsibles.forEach(button => {
+                button.addEventListener('click', function() {
+                    this.classList.toggle('active');
+                    const content = this.nextElementSibling;
+                    content.classList.toggle('active');
+                });
+            });
+
+            // Smooth scroll
+            document.querySelectorAll('.sidebar a').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
+            });
+
+            // Resaltar sección activa
+            const observerOptions = {
+                root: null,
+                rootMargin: '-20% 0px -70% 0px',
+                threshold: 0
+            };
+
+            const observer = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        document.querySelectorAll('.sidebar a').forEach(link => {
+                            link.style.background = '';
+                            link.style.color = '';
+                            if (link.getAttribute('href') === '#' + entry.target.id) {
+                                link.style.background = 'var(--bg-gray)';
+                                link.style.color = 'var(--primary-color)';
+                            }
+                        });
+                    }
+                });
+            }, observerOptions);
+
+            document.querySelectorAll('.section').forEach(section => {
+                observer.observe(section);
+            });
+        });
+    </script>
+</body>
+</html>
