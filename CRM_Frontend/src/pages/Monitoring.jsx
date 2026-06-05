@@ -890,85 +890,94 @@ export default function Monitoring() {
           </div>
         )}
 
-        {/* Columna 2: Detalle de SERV-ZK (Proxmox + VM Windows) */}
+        {/* Columna 2: PROXMOX-ZK host with SERV-ZK VM */}
         <div
           onClick={() => setIsZKModalOpen(true)}
-          className={`bg-card/40 backdrop-blur-sm border rounded-xl p-6 flex flex-col justify-between hover:border-primary/50 cursor-pointer transition-all duration-300 group ${zkStatus === 'CRITICAL' || zkVmPing?.status === 'DOWN' ? 'border-rose-500/40' : 'border-border'}`}
+          className={`bg-card/40 backdrop-blur-sm border rounded-xl p-5 hover:border-primary/50 cursor-pointer transition-all duration-300 group ${zkHostPing?.status === 'DOWN' || zkStatus === 'CRITICAL' || zkVmPing?.status === 'DOWN' ? 'border-rose-500/40' : 'border-border'}`}
         >
-          <div>
-            <div className="flex justify-between items-start border-b border-border/50 pb-4 mb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-purple-500/10 text-purple-400 rounded-lg group-hover:scale-105 transition-transform">
-                  <Server className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
-                    SERV-ZK
-                    <span className={`w-2.5 h-2.5 rounded-full ${zkVmPing?.status === 'DOWN' ? 'bg-rose-500 animate-pulse' : zkVmPing?.status === 'UP' ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.6)]' : 'bg-slate-600'}`}></span>
-                    {zkVmPing?.status === 'UP' && <span className="text-[10px] text-emerald-400 font-normal">{Math.round(zkVmPing.time)}ms</span>}
-                  </h3>
-                  <p className="text-xs text-muted-foreground">VM Windows 10 • 192.168.8.112 • ZKBio CVSecurity</p>
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <div className={`p-3 rounded-xl ${zkHostPing?.status === 'DOWN' ? 'bg-rose-500/20 text-rose-400' : 'bg-purple-500/20 text-purple-400'}`}>
+                <Server className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold flex items-center gap-2">
+                  {zkHost.Name || zkVirt.HostName || 'PROXMOX-ZK'}
+                  <div
+                    className={`w-3 h-3 rounded-full ${(!zkHostPing && !zkHost.Status) ? 'bg-slate-600' : (zkHostPing?.status === 'UP' || zkHost.Pingable) ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'bg-rose-500'}`}
+                    style={{
+                      animation: (!zkHostPing && !zkHost.Status) ? 'none' : (zkHostPing?.status === 'UP' || zkHost.Pingable) ? 'breathe 3s ease-in-out infinite' : 'breathe-red 2s ease-in-out infinite'
+                    }}
+                  />
+                  {zkHostPing?.status === 'DOWN' && <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
+                  {zkHostPing?.status === 'UP' && <span className="text-xs text-emerald-400 font-normal">{Math.round(zkHostPing.time)}ms</span>}
+                </h2>
+                <div className="flex flex-col gap-0.5">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Proxmox VE • {zkHost.IP || zkVirt.HostIP || '192.168.8.50'}</p>
+                  <span className={`text-[11px] font-bold flex items-center gap-1.5 ${zkHostStatusColor}`}>
+                    <div className={`w-1.5 h-1.5 rounded-full ${(zkHostPing?.status === 'UP' || zkHost.Pingable) ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
+                    ESTADO HOST: {zkHostStatus}
+                  </span>
                 </div>
               </div>
-              <span className="text-[10px] text-primary flex items-center gap-1 bg-primary/10 px-2 py-1 rounded font-semibold">
-                Detalles <ExternalLink className="w-3 h-3" />
-              </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mt-2">
-              <div className="bg-background/30 border border-border/40 rounded-lg p-3">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Anfitrión Proxmox</p>
-                <p className={`text-lg font-bold mt-1 ${zkHostStatusColor}`}>{zkHostStatus}</p>
-                <div className="flex flex-col text-[11px] mt-1 text-muted-foreground gap-0.5">
-                  <div className="flex justify-between">
-                    <span>{zkHost.Name || zkVirt.HostName || 'PROXMOX-ZK'}</span>
-                    <span className="font-mono">{zkHost.IP || zkVirt.HostIP || '192.168.8.50'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Web UI 8006:</span>
-                    <span className={zkHost.Ports?.WebUI8006 ? 'text-emerald-400 font-semibold' : 'text-amber-400 font-semibold'}>
-                      {zkHost.Ports?.WebUI8006 ? 'OK' : 'N/D'}
-                    </span>
-                  </div>
-                </div>
+            <div className="flex flex-wrap items-center justify-end gap-2 text-[10px]">
+              <div className="flex items-center gap-1 px-2 py-1 bg-background rounded-md border border-border">
+                <Activity className="w-3 h-3 text-purple-400" />
+                <span className="text-muted-foreground">Web UI:</span>
+                <span className={zkHost.Ports?.WebUI8006 ? 'font-bold text-emerald-400' : 'font-bold text-amber-400'}>{zkHost.Ports?.WebUI8006 ? '8006 OK' : 'N/D'}</span>
               </div>
-
-              <div className="bg-background/30 border border-border/40 rounded-lg p-3">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Servicios ZKBio</p>
-                <p className={`text-lg font-bold mt-1 ${zkServices.Status === 'CRITICAL' ? 'text-rose-400' : zkServices.Status === 'WARNING' ? 'text-amber-400' : nodes.zk ? 'text-emerald-400' : 'text-slate-400'}`}>
-                  {nodes.zk ? `${zkRunningServices} / ${zkTotalServices}` : 'SIN DATOS'}
-                </p>
-                <div className="flex justify-between text-[11px] mt-1 text-muted-foreground">
-                  <span>Plataforma: <strong>{zkServices.PlatformServicesFound ?? 0}</strong></span>
-                  <span>Dependencias: <strong>{zkServices.DependencyServicesFound ?? 0}</strong></span>
-                </div>
+              <div className="flex items-center gap-1 px-2 py-1 bg-background rounded-md border border-border">
+                <Lock className="w-3 h-3 text-sky-400" />
+                <span className="text-muted-foreground">SSH:</span>
+                <span className={zkHost.Ports?.SSH22 ? 'font-bold text-emerald-400' : 'font-bold text-amber-400'}>{zkHost.Ports?.SSH22 ? '22 OK' : 'N/D'}</span>
               </div>
-
-              <div className="bg-background/30 border border-border/40 rounded-lg p-3">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recursos VM</p>
-                <p className="text-lg font-bold mt-1 text-foreground">{zkRam.UsedPct ?? 'N/A'}% RAM</p>
-                <div className="flex justify-between text-[11px] mt-1 text-muted-foreground">
-                  <span>CPU: <strong>{zkSystem.CPU_LoadPct ?? 'N/A'}%</strong></span>
-                  <span>Disco C: <strong className={(zkPrimaryDisk?.PercentFree ?? 100) < 25 ? 'text-amber-400' : 'text-emerald-400'}>{zkPrimaryDisk?.PercentFree ?? 'N/A'}% libre</strong></span>
-                </div>
-              </div>
-
-              <div className="bg-background/30 border border-border/40 rounded-lg p-3">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Estado General</p>
-                <p className={`text-lg font-bold mt-1 ${zkStatusColor}`}>{zkStatus}</p>
-                <div className="text-[11px] mt-1 text-muted-foreground truncate">
-                  <span>{zkOverall.Issues?.[0] || zkUpdates.Status || 'Esperando primer reporte del PS1'}</span>
-                </div>
+              <div className="flex items-center gap-1 px-2 py-1 bg-background rounded-md border border-border">
+                <Cpu className="w-3 h-3 text-primary" />
+                <span className="font-bold text-emerald-400">1/1 VMs</span>
               </div>
             </div>
           </div>
 
-          <div className="text-[9px] text-muted-foreground border-t border-border/20 pt-3 mt-4 flex justify-between items-center">
-            <span className="flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-purple-400" />
-              Actualizado: {rawZ.ReportDate || rawZ.data?.ReportDate || 'Sin reporte recibido'}
-            </span>
-            <span className={`w-2.5 h-2.5 rounded-full ${zkVmPing?.status === 'DOWN' ? 'bg-rose-500 animate-pulse' : zkVmPing?.status === 'UP' ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.6)]' : 'bg-slate-600'}`}></span>
+          <div className="border-t border-border/30 pt-4">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <Database className="w-3 h-3" /> Máquinas Virtuales
+            </p>
+            <div className="grid grid-cols-1 gap-4">
+              {nodes.zk ? (
+                <DCCard
+                  title="SERV-ZK"
+                  role="ZKBIO CVSECURITY"
+                  uptime={rawZ.Uptime || rawZ.data?.Uptime || 'N/A'}
+                  servicesOk={zkRunningServices}
+                  servicesTotal={zkTotalServices || 1}
+                  diskSpace={zkPrimaryDisk}
+                  lastBackup="N/A"
+                  replication={null}
+                  updates={zkUpdates}
+                  isHealthy={zkStatus === 'OK' || zkVmPing?.status === 'UP'}
+                  pingStatus={zkVmPing}
+                  icon={<Server className="w-5 h-5" />}
+                  onClick={() => setIsZKModalOpen(true)}
+                />
+              ) : (
+                <div className="bg-background/30 border border-dashed border-border/40 rounded-xl p-5 flex flex-col items-center justify-center gap-3 opacity-70 hover:opacity-90 transition-opacity min-h-[180px]">
+                  <div className="p-2 bg-slate-500/10 rounded-lg text-slate-400">
+                    <Server className="w-5 h-5" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-slate-400">SERV-ZK</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Esperando reporte PS1</p>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <span className={`w-2 h-2 rounded-full ${zkVmPing?.status === 'UP' ? 'bg-emerald-400' : zkVmPing?.status === 'DOWN' ? 'bg-rose-500 animate-pulse' : 'bg-slate-600'}`}></span>
+                    {zkVmPing?.status || 'SIN DATOS'}
+                    {zkVmPing?.status === 'UP' && <span className="text-emerald-400">{Math.round(zkVmPing.time)}ms</span>}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
