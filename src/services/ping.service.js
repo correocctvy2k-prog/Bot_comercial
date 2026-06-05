@@ -7,7 +7,9 @@ const nodesToMonitor = [
     { id: 'AD-DC02',  ip: '192.168.8.45', name: 'AD02 Secundario' },
     { id: 'AD-DC03',  ip: '192.168.8.46', name: 'AD03 Secundario' },
     { id: 'ANFI-SEG', ip: '192.168.8.41', name: 'ANFI-SEG13798 (Host 2)' },
-    { id: 'KSC',      ip: '192.168.8.42', name: 'Kaspersky Security Center' }
+    { id: 'KSC',      ip: '192.168.8.42', name: 'Kaspersky Security Center' },
+    { id: 'PROXMOX-ZK', ip: '192.168.8.50', name: 'Proxmox Host ZK' },
+    { id: 'SERV-ZK',  ip: '192.168.8.112', name: 'ZKBio CVSecurity VM' }
 ];
 
 let pingInterval = null;
@@ -50,6 +52,18 @@ async function checkNodes() {
             results['AD03'] = results['AD-DC03'];
             results['DA03'] = results['AD-DC03'];
             results['192.168.8.46'] = results['AD-DC03'];
+        }
+        if (results['KSC']) {
+            results['SERV-KSC'] = results['KSC'];
+            results['192.168.8.42'] = results['KSC'];
+        }
+        if (results['PROXMOX-ZK']) {
+            results['PROXMOX'] = results['PROXMOX-ZK'];
+            results['192.168.8.50'] = results['PROXMOX-ZK'];
+        }
+        if (results['SERV-ZK']) {
+            results['ZK'] = results['SERV-ZK'];
+            results['192.168.8.112'] = results['SERV-ZK'];
         }
 
         // Emitir estado global a todos los clientes conectados
