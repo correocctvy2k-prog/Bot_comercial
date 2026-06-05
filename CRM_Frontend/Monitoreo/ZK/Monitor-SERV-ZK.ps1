@@ -22,7 +22,8 @@ param(
     [string]$ServiceName = "SERV-ZK",
     [string]$ServerIP = "192.168.8.112",
     [string]$ProxmoxHostName = "PROXMOX-ZK",
-    [string]$ProxmoxHostIP = "192.168.8.50"
+    [string]$ProxmoxHostIP = "192.168.8.50",
+    [string[]]$CriticalZKServices = @("ZKBIOOnline Service")
 )
 
 $ErrorActionPreference = "Continue"
@@ -134,16 +135,49 @@ function Test-TcpPort {
     }
 }
 
+function Test-NodePing {
+    param(
+        [string]$IP,
+        [int]$Count = 2
+    )
+
+    try {
+        $responses = @(Test-Connection -ComputerName $IP -Count $Count -ErrorAction SilentlyContinue)
+        if ($responses.Count -eq 0) {
+            return @{
+                Status = "DOWN"
+                Pingable = $false
+                LatencyMs = $null
+                CheckedAt = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+            }
+        }
+
+        $avg = ($responses | Measure-Object -Property ResponseTime -Average).Average
+        return @{
+            Status = "UP"
+            Pingable = $true
+            LatencyMs = [int][math]::Round($avg, 0)
+            CheckedAt = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+        }
+    } catch {
+        return @{
+            Status = "DOWN"
+            Pingable = $false
+            LatencyMs = $null
+            Error = $_.Exception.Message
+            CheckedAt = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+        }
+    }
+}
+
 function Get-ProxmoxHostHealth {
     param(
         [string]$Name,
         [string]$IP
     )
 
-    $pingable = $false
-    try {
-        $pingable = Test-Connection -ComputerName $IP -Count 2 -Quiet -ErrorAction SilentlyContinue
-    } catch { }
+    $ping = Test-NodePing -IP $IP
+    $pingable = $ping.Pingable
 
     $webUi = Test-TcpPort -ComputerName $IP -Port 8006
     $ssh = Test-TcpPort -ComputerName $IP -Port 22
@@ -172,6 +206,8 @@ function Get-ProxmoxHostHealth {
         Type = "Proxmox VE Host"
         Status = $status
         Pingable = $pingable
+        LatencyMs = $ping.LatencyMs
+        Ping = $ping
         Ports = @{
             WebUI8006 = $webUi
             SSH22 = $ssh
@@ -187,6 +223,8 @@ function Get-ProxmoxHostHealth {
 }
 
 function Get-ZKRelatedServices {
+    param([string[]]$CriticalServices = @("ZKBIOOnline Service"))
+
     $platformPatterns = @(
         "ZK",
         "ZKBio",
@@ -251,6 +289,49 @@ function Get-ZKRelatedServices {
     $services = @($serviceMap.Values | Sort-Object Kind, DisplayName, Name)
     $autoServices = @($services | Where-Object { $_.StartMode -eq "Auto" -or $_.StartMode -eq "Automatic" })
     $failedAuto = @($autoServices | Where-Object { $_.State -ne "Running" })
+    $criticalDetected = @()
+
+    foreach ($critical in $CriticalServices) {
+        $match = $allServices | Where-Object {
+            $_.Name -eq $critical -or
+            $_.DisplayName -eq $critical -or
+            $_.Name -like "*$critical*" -or
+            $_.DisplayName -like "*$critical*"
+        } | Select-Object -First 1
+
+        if ($match) {
+            $criticalItem = @{
+                Name = $match.Name
+                DisplayName = $match.DisplayName
+                Kind = "Critical"
+                State = $match.State
+                Status = $match.Status
+                StartMode = $match.StartMode
+                StartName = $match.StartName
+                PathName = $match.PathName
+                Healthy = ($match.State -eq "Running")
+            }
+            $criticalDetected += $criticalItem
+
+            if (-not $serviceMap.ContainsKey($match.Name)) {
+                $serviceMap[$match.Name] = $criticalItem
+            }
+        } else {
+            $criticalDetected += @{
+                Name = $critical
+                DisplayName = $critical
+                Kind = "Critical"
+                State = "NotFound"
+                Status = "NotFound"
+                StartMode = "N/A"
+                Healthy = $false
+            }
+        }
+    }
+
+    $services = @($serviceMap.Values | Sort-Object Kind, DisplayName, Name)
+    $autoServices = @($services | Where-Object { $_.StartMode -eq "Auto" -or $_.StartMode -eq "Automatic" })
+    $failedAuto = @($autoServices | Where-Object { $_.State -ne "Running" })
 
     $status = "OK"
     $issues = @()
@@ -267,9 +348,20 @@ function Get-ZKRelatedServices {
         }
     }
 
+    foreach ($svc in $criticalDetected) {
+        if (-not $svc.Healthy) {
+            $status = "CRITICAL"
+            $issues += "Servicio critico ZK no esta Running: $($svc.DisplayName) [$($svc.Name)] = $($svc.State)"
+        }
+    }
+
     return @{
         Status = $status
         Services = $services
+        CriticalServices = $criticalDetected
+        CriticalServicesOk = @($criticalDetected | Where-Object { $_.Healthy }).Count
+        CriticalServicesTotal = $criticalDetected.Count
+        ZKBIOOnline = @($criticalDetected | Where-Object { $_.Name -like "*ZKBIOOnline*" -or $_.DisplayName -like "*ZKBIOOnline*" } | Select-Object -First 1)[0]
         PlatformServicesFound = $platformServices.Count
         DependencyServicesFound = $dependencyServices.Count
         RunningCount = @($services | Where-Object { $_.State -eq "Running" }).Count
@@ -496,7 +588,7 @@ try {
     $disk = Get-DiskHealth
 
     Write-Host "[4/8] Detectando servicios ZKBio/CVSecurity..." -ForegroundColor Cyan
-    $zkServices = Get-ZKRelatedServices
+    $zkServices = Get-ZKRelatedServices -CriticalServices $CriticalZKServices
 
     Write-Host "[5/8] Detectando software instalado..." -ForegroundColor Cyan
     $installedZK = Get-InstalledZKSoftware
@@ -509,6 +601,7 @@ try {
     Write-Host "[7/8] Recolectando eventos recientes del sistema..." -ForegroundColor Cyan
     $events = Get-RecentSystemEvents
 
+    $vmPing = Test-NodePing -IP $ServerIP
     $overall = Get-OverallStatus -HostHealth $hostHealth -Disk $disk -Services $zkServices -Updates $updates -CpuLoadPct $cpuLoad -RamUsedPct $ramUsedPct
 
     $reportData = @{
@@ -522,6 +615,13 @@ try {
         Uptime = $uptimeStr
         Overall = $overall
         Host = $hostHealth
+        VM = @{
+            Name = "SERV-ZK"
+            IP = $ServerIP
+            Type = "Windows 10 VM"
+            Ping = $vmPing
+            Status = if ($vmPing.Pingable) { "OK" } else { "CRITICAL" }
+        }
         Virtualization = @{
             Type = "Proxmox VE"
             HostName = $ProxmoxHostName
@@ -553,6 +653,7 @@ try {
         Updates = $updates
         ZKBio = $zkServices
         Network = @{
+            SelfPing = $vmPing
             ListeningPorts = $listeners
             PortsOfInterest = @(80, 443, 3306, 5432, 6379, 8000, 8080, 8081, 8090, 8098, 9000)
         }

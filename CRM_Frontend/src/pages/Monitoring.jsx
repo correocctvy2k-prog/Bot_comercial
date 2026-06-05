@@ -449,8 +449,21 @@ export default function Monitoring() {
   const zkServiceList = zkServices.Services || rawZ.Services || rawZ.data?.Services || [];
   const zkUpdates = rawZ.Updates || rawZ.data?.Updates || {};
   const zkEvents = rawZ.Events || rawZ.data?.Events || {};
-  const zkVmPing = pingData['SERV-ZK'] || pingData['ZK'] || pingData['192.168.8.112'];
-  const zkHostPing = pingData['PROXMOX-ZK'] || pingData['PROXMOX'] || pingData['192.168.8.50'];
+  const zkReportVmPing = rawZ.VM?.Ping || rawZ.data?.VM?.Ping || rawZ.Network?.SelfPing || rawZ.data?.Network?.SelfPing;
+  const zkReportHostPing = zkHost.Ping || rawZ.data?.Host?.Ping;
+  const toPingStatus = (ping, ip) => {
+    if (!ping) return null;
+    const status = ping.status || ping.Status || (ping.Pingable ? 'UP' : 'DOWN');
+    return {
+      status,
+      time: ping.time ?? ping.LatencyMs ?? (status === 'UP' ? 1 : null),
+      ip,
+      checkedAt: Date.now(),
+      receivedAt: Date.now()
+    };
+  };
+  const zkVmPing = pingData['SERV-ZK'] || pingData['ZK'] || pingData['192.168.8.112'] || toPingStatus(zkReportVmPing, '192.168.8.112');
+  const zkHostPing = pingData['PROXMOX-ZK'] || pingData['PROXMOX'] || pingData['192.168.8.50'] || toPingStatus(zkReportHostPing, '192.168.8.50');
   const zkStatus = (zkOverall.Status || (nodes.zk ? 'OK' : 'SIN DATOS')).toUpperCase();
   const zkStatusColor = zkStatus === 'CRITICAL' || zkStatus === 'ERROR'
     ? 'text-rose-400'
@@ -462,8 +475,11 @@ export default function Monitoring() {
   const zkPrimaryDisk = Array.isArray(zkDisks)
     ? (zkDisks.find(d => d.DeviceID === 'C:' || d.Drive === 'C:') || zkDisks[0])
     : null;
-  const zkRunningServices = zkServices.RunningCount ?? zkServiceList.filter?.(s => s.State === 'Running' || s.Status === 'Running' || s.Status === 4).length ?? 0;
-  const zkTotalServices = zkServices.TotalCount ?? zkServiceList.length ?? 0;
+  const zkCriticalServices = zkServices.CriticalServices || [];
+  const zkOnlineService = zkServices.ZKBIOOnline || zkCriticalServices.find?.(s => String(s.Name || s.DisplayName || '').toLowerCase().includes('zkbioonline')) || zkServiceList.find?.(s => String(s.Name || s.DisplayName || '').toLowerCase().includes('zkbioonline'));
+  const zkRunningServices = zkServices.CriticalServicesOk ?? zkCriticalServices.filter?.(s => s.Healthy || s.State === 'Running' || s.Status === 'Running' || s.Status === 4).length ?? zkServices.RunningCount ?? zkServiceList.filter?.(s => s.State === 'Running' || s.Status === 'Running' || s.Status === 4).length ?? 0;
+  const zkTotalServices = zkServices.CriticalServicesTotal ?? zkCriticalServices.length ?? zkServices.TotalCount ?? zkServiceList.length ?? 0;
+  const zkOnlineServiceStatus = zkOnlineService?.State || zkOnlineService?.Status || 'N/D';
   const zkHostStatus = (zkHost.Status || 'SIN DATOS').toUpperCase();
   const zkHostStatusColor = zkHostStatus === 'CRITICAL' || zkHostStatus === 'ERROR'
     ? 'text-rose-400'
@@ -937,6 +953,13 @@ export default function Monitoring() {
                 <Cpu className="w-3 h-3 text-primary" />
                 <span className="font-bold text-emerald-400">1/1 VMs</span>
               </div>
+              <div className="flex items-center gap-1 px-2 py-1 bg-background rounded-md border border-border">
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                <span className="text-muted-foreground">ZK:</span>
+                <span className={zkOnlineServiceStatus === 'Running' || zkOnlineServiceStatus === 4 ? 'font-bold text-emerald-400' : 'font-bold text-amber-400'}>
+                  {zkOnlineServiceStatus === 'Running' || zkOnlineServiceStatus === 4 ? 'Activo' : zkOnlineServiceStatus}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -948,7 +971,7 @@ export default function Monitoring() {
               {nodes.zk ? (
                 <DCCard
                   title="SERV-ZK"
-                  role="ZKBIO CVSECURITY"
+                  role={`ZKBIOONLINE: ${zkOnlineServiceStatus}`}
                   uptime={rawZ.Uptime || rawZ.data?.Uptime || 'N/A'}
                   servicesOk={zkRunningServices}
                   servicesTotal={zkTotalServices || 1}
@@ -1273,9 +1296,10 @@ export default function Monitoring() {
             </div>
 
             <div className="p-6 overflow-y-auto custom-scrollbar space-y-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <MetricSmall label="Estado General" value={zkStatus} color={zkStatusColor} icon={<Activity className="w-3 h-3" />} />
                 <MetricSmall label="Host Proxmox" value={zkHostStatus} color={zkHostStatusColor} icon={<Server className="w-3 h-3" />} />
+                <MetricSmall label="ZKBIOOnline" value={zkOnlineServiceStatus} color={zkOnlineServiceStatus === 'Running' || zkOnlineServiceStatus === 4 ? 'text-emerald-400' : 'text-amber-400'} icon={<CheckCircle2 className="w-3 h-3" />} />
                 <MetricSmall label="Servicios ZK" value={nodes.zk ? `${zkRunningServices}/${zkTotalServices}` : 'Sin datos'} color={zkServices.Status === 'CRITICAL' ? 'text-rose-400' : 'text-emerald-400'} icon={<CheckCircle2 className="w-3 h-3" />} />
                 <MetricSmall label="Uptime VM" value={rawZ.Uptime || rawZ.data?.Uptime || 'N/A'} icon={<Clock className="w-3 h-3" />} />
               </div>
@@ -1357,6 +1381,17 @@ export default function Monitoring() {
                     <h4 className="text-sm font-semibold mb-3 border-b border-border/50 pb-2 flex items-center gap-2">
                       <Activity className="w-4 h-4 text-purple-400" /> Servicios Detectados
                     </h4>
+                    {zkOnlineService && (
+                      <div className="mb-3 border border-emerald-500/20 bg-emerald-500/5 rounded-lg p-3 flex justify-between items-center text-xs">
+                        <div>
+                          <p className="font-bold text-emerald-400">{zkOnlineService.DisplayName || 'ZKBIOOnline Service'}</p>
+                          <p className="text-[10px] text-muted-foreground">{zkOnlineService.Name || 'ZKBIOOnline Service'} • {zkOnlineService.StartMode || 'N/A'}</p>
+                        </div>
+                        <span className={zkOnlineServiceStatus === 'Running' || zkOnlineServiceStatus === 4 ? 'font-bold text-emerald-400' : 'font-bold text-rose-400'}>
+                          {zkOnlineServiceStatus}
+                        </span>
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       {(Array.isArray(zkServiceList) ? zkServiceList.slice(0, 12) : []).map((svc, idx) => (
                         <div key={idx} className="flex justify-between items-center text-xs border border-border/30 rounded p-2 bg-background/40">
