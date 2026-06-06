@@ -71,10 +71,10 @@ const UpdateBadge = ({ updates }) => {
   const details = updates.LastInstalled ? ` · Última instalación: ${normalizeText(updates.LastInstalled)}` : '';
 
   return (
-    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border ${
+    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border ${
       isPending ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
     }`}>
-      {isPending ? <RefreshCw className="w-3 h-3 animate-spin-slow" /> : <CheckCircle2 className="w-3 h-3" />}
+      {isPending ? <RefreshCw className="w-4 h-4 animate-spin-slow" /> : <CheckCircle2 className="w-4 h-4" />}
       {statusText}{details}
     </div>
   );
@@ -94,6 +94,14 @@ const AzureADIcon = () => (
 
 const KasperskyIcon = ({ className = "w-6 h-6" }) => (
   <img src="/kaspersky_logo.png" alt="Kaspersky" className={`${className} object-contain`} />
+);
+
+const ProxmoxIcon = ({ className = "w-6 h-6" }) => (
+  <img src="/proxmox_logo.png" alt="Proxmox" className={`${className} object-contain`} />
+);
+
+const ZKIcon = ({ className = "w-6 h-6" }) => (
+  <img src="/zk_logo.png" alt="ZKBio" className={`${className} object-contain`} />
 );
 
 const toInt = (value, fallback = 0) => {
@@ -196,18 +204,18 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
 
       <div className="grid grid-cols-2 gap-3 text-xs mb-3 flex-1">
          <div className="flex flex-col gap-1">
-           <span className="text-muted-foreground flex items-center gap-1.5"><Clock className="w-3 h-3" /> Uptime</span>
-           <span className="font-medium pl-4">{formatUptime(uptime)}</span>
+           <span className="text-muted-foreground flex items-center gap-1.5"><Clock className="w-4 h-4" /> Uptime</span>
+           <span className="font-medium pl-5">{formatUptime(uptime)}</span>
          </div>
          <div className="flex flex-col gap-1">
-           <span className="text-muted-foreground flex items-center gap-1.5"><Activity className="w-3 h-3" /> Servicios</span>
-           <span className={`font-bold pl-4 ${isOffline ? 'text-rose-400' : !freshPing ? 'text-amber-400' : servicesOk < servicesTotal ? 'text-rose-400' : 'text-emerald-400'}`}>
+           <span className="text-muted-foreground flex items-center gap-1.5"><Activity className="w-4 h-4" /> Servicios</span>
+           <span className={`font-bold pl-5 ${isOffline ? 'text-rose-400' : !freshPing ? 'text-amber-400' : servicesOk < servicesTotal ? 'text-rose-400' : 'text-emerald-400'}`}>
              {isOffline ? 'SIN RED' : !freshPing ? 'SIN DATOS' : servicesOk < servicesTotal ? `${servicesTotal - servicesOk} CON FALLA` : "SISTEMA OK"}
            </span>
          </div>
          <div className="flex flex-col gap-1">
-           <span className="text-muted-foreground flex items-center gap-1.5"><HardDrive className="w-3 h-3" /> Disco C:</span>
-           <span className="font-medium pl-4">
+           <span className="text-muted-foreground flex items-center gap-1.5"><HardDrive className="w-4 h-4" /> Disco C:</span>
+           <span className="font-medium pl-5">
              {diskSpace ? (
                <span className={diskSpace.PercentFree < 15 ? 'text-rose-400' : diskSpace.PercentFree < 25 ? 'text-amber-400' : 'text-emerald-400'}>
                  {diskSpace.FreeGB}GB libres ({diskSpace.PercentFree}%)
@@ -216,27 +224,27 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
            </span>
          </div>
          <div className="flex flex-col gap-1">
-           <span className="text-muted-foreground flex items-center gap-1.5"><Database className="w-3 h-3" /> Último Backup</span>
-           <span className="font-medium pl-4 truncate">{lastBackup}</span>
+           <span className="text-muted-foreground flex items-center gap-1.5"><Database className="w-4 h-4" /> Último Backup</span>
+           <span className="font-medium pl-5 truncate">{lastBackup}</span>
          </div>
          {replication !== null && (
          <div className="flex flex-col gap-1">
-           <span className="text-muted-foreground flex items-center gap-1.5"><RefreshCw className="w-3 h-3" /> Replicación</span>
-           <span className={`font-bold pl-4 ${replication === 'OK' ? "text-emerald-400" : replication ? "text-rose-400" : "text-slate-400"}`}>
+           <span className="text-muted-foreground flex items-center gap-1.5"><RefreshCw className="w-4 h-4" /> Replicación</span>
+           <span className={`font-bold pl-5 ${replication === 'OK' ? "text-emerald-400" : replication ? "text-rose-400" : "text-slate-400"}`}>
              {replication || "N/A"}{replicationObjects != null ? ` • ${replicationObjects} obj.` : ""}
            </span>
          </div>
        )}
          {fsmoStatus !== undefined && (
            <div className="flex flex-col gap-1">
-             <span className="text-muted-foreground flex items-center gap-1.5"><ShieldCheck className="w-3 h-3" /> FSMO</span>
-             <span className={`font-bold pl-4 ${fsmoStatus === 'OK' ? 'text-emerald-400' : 'text-amber-400'}`}>{fsmoStatus || 'N/A'}</span>
+             <span className="text-muted-foreground flex items-center gap-1.5"><ShieldCheck className="w-4 h-4" /> FSMO</span>
+             <span className={`font-bold pl-5 ${fsmoStatus === 'OK' ? 'text-emerald-400' : 'text-amber-400'}`}>{fsmoStatus || 'N/A'}</span>
            </div>
          )}
          {securityEvents && (
            <div className="flex flex-col gap-1 col-span-2">
-             <span className="text-muted-foreground flex items-center gap-1.5"><Lock className="w-3 h-3" /> Seg. 7 días</span>
-             <span className="pl-4 flex gap-3">
+             <span className="text-muted-foreground flex items-center gap-1.5"><Lock className="w-4 h-4" /> Seg. 7 días</span>
+             <span className="pl-5 flex gap-3">
                <span className="text-rose-400 font-bold">{securityEvents.FailedLogins ?? 0} fallidos</span>
                <span className="text-amber-400">{securityEvents.AccountLockouts ?? 0} bloqueos</span>
              </span>
@@ -570,14 +578,14 @@ export default function Monitoring() {
               </div>
             </div>
             {nodes.host1 && (
-              <div className="flex flex-wrap items-center gap-2 text-[10px]">
-                <div className="flex items-center gap-1 px-2 py-1 bg-background rounded-md border border-border">
-                  <Cpu className="w-3 h-3 text-primary" />
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-md border border-border">
+                  <Cpu className="w-4 h-4 text-primary" />
                   <span className="text-muted-foreground">RAM:</span>
                   <span className="font-mono">{nodes.host1.RAM?.FreeGB}GB / {nodes.host1.RAM?.TotalGB}GB</span>
                 </div>
-                <div className="flex items-center gap-1 px-2 py-1 bg-background rounded-md border border-border">
-                  <Activity className="w-3 h-3 text-emerald-400" />
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-md border border-border">
+                  <Activity className="w-4 h-4 text-emerald-400" />
                   <span className="font-bold text-emerald-400">{nodes.host1.VMs?.filter(v => v.State === 2 || v.State === 'Running').length}/{nodes.host1.VMs?.length} VMs</span>
                 </div>
                 <UpdateBadge updates={nodes.host1.Updates} />
@@ -587,7 +595,7 @@ export default function Monitoring() {
 
           <div className="border-t border-border/30 pt-4">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <Database className="w-3 h-3" /> Máquinas Virtuales
+              <Database className="w-4 h-4" /> Máquinas Virtuales
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {nodes.dc01 ? (
@@ -685,15 +693,15 @@ export default function Monitoring() {
               </div>
             </div>
             {nodes.host2 && (
-              <div className="flex flex-wrap items-center gap-2 text-[10px]">
-                <div className="flex items-center gap-1 px-2 py-1 bg-background rounded-md border border-border">
-                  <Cpu className="w-3 h-3 text-primary" />
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-md border border-border">
+                  <Cpu className="w-4 h-4 text-primary" />
                   <span className="font-mono">
                     {(nodes.host2.data?.System?.RAM_Free_GB || nodes.host2.RAM?.FreeGB || 0)}GB / {(nodes.host2.data?.System?.RAM_Total_GB || nodes.host2.RAM?.TotalGB || 0)}GB
                   </span>
                 </div>
-                <div className="flex items-center gap-1 px-2 py-1 bg-background rounded-md border border-border">
-                  <Activity className="w-3 h-3 text-emerald-400" />
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-md border border-border">
+                  <Activity className="w-4 h-4 text-emerald-400" />
                   <span className="font-bold text-emerald-400">
                     {(nodes.host2.data?.VMs || nodes.host2.VMs)?.filter(v => v.State === 2 || v.State === 'Running' || v.State === 'Operating').length || 0}/{(nodes.host2.data?.VMs || nodes.host2.VMs)?.length || 0} VMs
                   </span>
@@ -705,7 +713,7 @@ export default function Monitoring() {
 
           <div className="border-t border-border/30 pt-4">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <Database className="w-3 h-3" /> Máquinas Virtuales
+              <Database className="w-4 h-4" /> Máquinas Virtuales
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
@@ -936,8 +944,8 @@ export default function Monitoring() {
         >
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-xl ${zkHostPing?.status === 'DOWN' ? 'bg-rose-500/20 text-rose-400' : 'bg-purple-500/20 text-purple-400'}`}>
-                <Server className="w-6 h-6" />
+              <div className={`p-1 rounded-xl ${zkHostPing?.status === 'DOWN' ? 'bg-rose-500/10' : 'bg-transparent'}`}>
+                <ProxmoxIcon className="w-10 h-10" />
               </div>
               <div>
                 <h2 className="text-lg font-bold flex items-center gap-2">
@@ -961,23 +969,23 @@ export default function Monitoring() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-2 text-[10px]">
-              <div className="flex items-center gap-1 px-2 py-1 bg-background rounded-md border border-border">
-                <Activity className="w-3 h-3 text-purple-400" />
+            <div className="flex flex-wrap items-center justify-end gap-2 text-xs">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-md border border-border">
+                <Activity className="w-4 h-4 text-purple-400" />
                 <span className="text-muted-foreground">Web UI:</span>
                 <span className={zkHost.Ports?.WebUI8006 ? 'font-bold text-emerald-400' : 'font-bold text-amber-400'}>{zkHost.Ports?.WebUI8006 ? '8006 OK' : 'N/D'}</span>
               </div>
-              <div className="flex items-center gap-1 px-2 py-1 bg-background rounded-md border border-border">
-                <Lock className="w-3 h-3 text-sky-400" />
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-md border border-border">
+                <Lock className="w-4 h-4 text-sky-400" />
                 <span className="text-muted-foreground">SSH:</span>
                 <span className={zkHost.Ports?.SSH22 ? 'font-bold text-emerald-400' : 'font-bold text-amber-400'}>{zkHost.Ports?.SSH22 ? '22 OK' : 'N/D'}</span>
               </div>
-              <div className="flex items-center gap-1 px-2 py-1 bg-background rounded-md border border-border">
-                <Cpu className="w-3 h-3 text-primary" />
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-md border border-border">
+                <Cpu className="w-4 h-4 text-primary" />
                 <span className="font-bold text-emerald-400">1/1 VMs</span>
               </div>
-              <div className="flex items-center gap-1 px-2 py-1 bg-background rounded-md border border-border">
-                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-md border border-border">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                 <span className="text-muted-foreground">ZK:</span>
                 <span className={zkOnlineServiceStatus === 'Running' || zkOnlineServiceStatus === 4 ? 'font-bold text-emerald-400' : 'font-bold text-amber-400'}>
                   {zkOnlineServiceStatus === 'Running' || zkOnlineServiceStatus === 4 ? 'Activo' : zkOnlineServiceStatus}
@@ -988,7 +996,7 @@ export default function Monitoring() {
 
           <div className="border-t border-border/30 pt-4">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <Database className="w-3 h-3" /> Máquinas Virtuales
+              <Database className="w-4 h-4" /> Máquinas Virtuales
             </p>
             <div className="grid grid-cols-1 gap-4">
               {nodes.zk ? (
@@ -1004,13 +1012,14 @@ export default function Monitoring() {
                   updates={zkUpdates}
                   isHealthy={zkStatus === 'OK' || zkVmPing?.status === 'UP'}
                   pingStatus={zkVmPing}
-                  icon={<Server className="w-5 h-5" />}
+                  icon={<ZKIcon className="w-8 h-8" />}
+                  iconClassName="p-0 rounded-lg"
                   onClick={() => setIsZKModalOpen(true)}
                 />
               ) : (
                 <div className="bg-background/30 border border-dashed border-border/40 rounded-xl p-5 flex flex-col items-center justify-center gap-3 opacity-70 hover:opacity-90 transition-opacity min-h-[180px]">
                   <div className="p-2 bg-slate-500/10 rounded-lg text-slate-400">
-                    <Server className="w-5 h-5" />
+                    <ZKIcon className="w-8 h-8" />
                   </div>
                   <div className="text-center">
                     <p className="text-sm font-semibold text-slate-400">SERV-ZK</p>
@@ -1316,8 +1325,8 @@ export default function Monitoring() {
           <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
             <div className="p-4 border-b border-border flex justify-between items-center bg-muted/30">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-500/10 text-purple-400 rounded-lg">
-                  <Server className="w-5 h-5" />
+                <div className="p-0 rounded-lg">
+                  <ZKIcon className="w-10 h-10" />
                 </div>
                 <div>
                   <h2 className="text-lg font-bold">Análisis Profundo - SERV-ZK</h2>
@@ -1331,11 +1340,11 @@ export default function Monitoring() {
 
             <div className="p-6 overflow-y-auto custom-scrollbar space-y-6">
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <MetricSmall label="Estado General" value={zkStatus} color={zkStatusColor} icon={<Activity className="w-3 h-3" />} />
-                <MetricSmall label="Host Proxmox" value={zkHostStatus} color={zkHostStatusColor} icon={<Server className="w-3 h-3" />} />
-                <MetricSmall label="ZKBIOOnline" value={zkOnlineServiceStatus} color={zkOnlineServiceStatus === 'Running' || zkOnlineServiceStatus === 4 ? 'text-emerald-400' : 'text-amber-400'} icon={<CheckCircle2 className="w-3 h-3" />} />
-                <MetricSmall label="Servicios ZK" value={nodes.zk ? `${zkRunningServices}/${zkTotalServices}` : 'Sin datos'} color={zkServices.Status === 'CRITICAL' ? 'text-rose-400' : 'text-emerald-400'} icon={<CheckCircle2 className="w-3 h-3" />} />
-                <MetricSmall label="Uptime VM" value={rawZ.Uptime || rawZ.data?.Uptime || 'N/A'} icon={<Clock className="w-3 h-3" />} />
+                <MetricSmall label="Estado General" value={zkStatus} color={zkStatusColor} icon={<Activity className="w-4 h-4" />} />
+                <MetricSmall label="Host Proxmox" value={zkHostStatus} color={zkHostStatusColor} icon={<ProxmoxIcon className="w-5 h-5" />} />
+                <MetricSmall label="ZKBIOOnline" value={zkOnlineServiceStatus} color={zkOnlineServiceStatus === 'Running' || zkOnlineServiceStatus === 4 ? 'text-emerald-400' : 'text-amber-400'} icon={<ZKIcon className="w-5 h-5" />} />
+                <MetricSmall label="Servicios ZK" value={nodes.zk ? `${zkRunningServices}/${zkTotalServices}` : 'Sin datos'} color={zkServices.Status === 'CRITICAL' ? 'text-rose-400' : 'text-emerald-400'} icon={<CheckCircle2 className="w-4 h-4" />} />
+                <MetricSmall label="Uptime VM" value={rawZ.Uptime || rawZ.data?.Uptime || 'N/A'} icon={<Clock className="w-4 h-4" />} />
               </div>
 
               {!nodes.zk && (
@@ -1351,7 +1360,7 @@ export default function Monitoring() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-background border border-border rounded-lg p-4">
                       <h4 className="text-sm font-semibold mb-3 border-b border-border/50 pb-2 flex items-center gap-2">
-                        <Server className="w-4 h-4 text-purple-400" /> Anfitrión Proxmox
+                        <ProxmoxIcon className="w-5 h-5" /> Anfitrión Proxmox
                       </h4>
                       <div className="grid grid-cols-2 gap-3 text-xs">
                         <div><p className="text-muted-foreground">Nombre</p><p className="font-bold">{zkHost.Name || zkVirt.HostName || 'PROXMOX-ZK'}</p></div>
@@ -1365,7 +1374,7 @@ export default function Monitoring() {
 
                     <div className="bg-background border border-border rounded-lg p-4">
                       <h4 className="text-sm font-semibold mb-3 border-b border-border/50 pb-2 flex items-center gap-2">
-                        <Cpu className="w-4 h-4 text-sky-400" /> VM Windows SERV-ZK
+                        <ZKIcon className="w-5 h-5" /> VM Windows SERV-ZK
                       </h4>
                       <div className="grid grid-cols-2 gap-3 text-xs">
                         <div><p className="text-muted-foreground">Sistema</p><p className="font-medium">{zkSystem.OS || 'N/A'}</p></div>

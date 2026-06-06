@@ -17,6 +17,14 @@ import { monitoringService } from "@/services/monitoring.service";
 
 const SOCKET_URL = import.meta.env.VITE_MONITORING_BACKEND_URL || "http://localhost:3001";
 
+const ProxmoxIcon = ({ className = "h-6 w-6" }) => (
+  <img src="/proxmox_logo.png" alt="Proxmox" className={`${className} object-contain`} />
+);
+
+const ZKIcon = ({ className = "h-6 w-6" }) => (
+  <img src="/zk_logo.png" alt="ZKBio" className={`${className} object-contain`} />
+);
+
 const normalizeText = (text) => {
   if (text == null) return text;
   return String(text)
@@ -84,7 +92,7 @@ const StatusDot = ({ ping, size = "md" }) => {
 
 const MiniStat = ({ icon, label, value, color = "text-foreground" }) => (
   <div className="min-w-0 rounded-md border border-border/40 bg-background/35 px-2.5 py-2">
-    <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+    <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground [&_svg]:h-4 [&_svg]:w-4">
       {icon}
       {label}
     </p>
@@ -137,20 +145,20 @@ const VmTile = ({ title, role, ping, uptime, servicesOk, servicesTotal, disk, ba
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <MiniStat icon={<Clock className="h-3 w-3" />} label="Uptime" value={formatUptime(uptime)} />
+        <MiniStat icon={<Clock className="h-4 w-4" />} label="Uptime" value={formatUptime(uptime)} />
         <MiniStat
-          icon={<Activity className="h-3 w-3" />}
+          icon={<Activity className="h-4 w-4" />}
           label="Servicios"
           value={!servicesKnown ? "N/D" : servicesHealthy ? "Sistema OK" : `${servicesTotal - servicesOk} falla(s)`}
           color={!servicesKnown ? "text-slate-400" : servicesHealthy ? "text-emerald-400" : "text-rose-400"}
         />
         <MiniStat
-          icon={<HardDrive className="h-3 w-3" />}
+          icon={<HardDrive className="h-4 w-4" />}
           label="Disco C"
           value={disk ? `${disk.FreeGB ?? "?"}GB libres (${disk.PercentFree ?? "?"}%)` : "N/A"}
           color={diskColor}
         />
-        <MiniStat icon={<Database className="h-3 w-3" />} label="Backup" value={backup || "N/A"} />
+        <MiniStat icon={<Database className="h-4 w-4" />} label="Backup" value={backup || "N/A"} />
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/40 pt-3">
@@ -161,15 +169,15 @@ const VmTile = ({ title, role, ping, uptime, servicesOk, servicesTotal, disk, ba
   );
 };
 
-const HostPanel = ({ title, subtitle, ping, status, right, children }) => {
+const HostPanel = ({ title, subtitle, ping, status, right, children, icon }) => {
   const pingState = getPingState(ping);
 
   return (
     <section className={`rounded-xl border bg-card/35 p-4 ${pingState.state === "down" ? "border-rose-500/40 bg-rose-500/5" : "border-border"}`}>
       <div className="mb-4 flex flex-col gap-3 border-b border-border/40 pb-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 items-center gap-3">
-          <div className={`rounded-xl p-3 ${pingState.state === "down" ? "bg-rose-500/20 text-rose-400" : "bg-sky-500/15 text-sky-400"}`}>
-            <Server className="h-6 w-6" />
+          <div className={`rounded-xl ${icon ? "p-0" : "p-3"} ${pingState.state === "down" ? "bg-rose-500/20 text-rose-400" : icon ? "bg-transparent" : "bg-sky-500/15 text-sky-400"}`}>
+            {icon || <Server className="h-6 w-6" />}
           </div>
           <div className="min-w-0">
             <h2 className="flex items-center gap-2 truncate text-lg font-black">
@@ -189,7 +197,7 @@ const HostPanel = ({ title, subtitle, ping, status, right, children }) => {
 
       <div>
         <p className="mb-3 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          <Database className="h-3 w-3" />
+          <Database className="h-4 w-4" />
           Máquinas Virtuales
         </p>
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">{children}</div>
@@ -407,8 +415,8 @@ export default function MonitoringDashboard() {
           status={nodes.host1?.Uptime ? `UPTIME: ${nodes.host1.Uptime}` : ""}
           right={
             <>
-              <MiniStat icon={<Cpu className="h-3 w-3" />} label="RAM" value={model.host1.ram} />
-              <MiniStat icon={<Activity className="h-3 w-3" />} label="VMs" value={model.host1.vmCount} color="text-emerald-400" />
+              <MiniStat icon={<Cpu className="h-4 w-4" />} label="RAM" value={model.host1.ram} />
+              <MiniStat icon={<Activity className="h-4 w-4" />} label="VMs" value={model.host1.vmCount} color="text-emerald-400" />
             </>
           }
         >
@@ -429,8 +437,8 @@ export default function MonitoringDashboard() {
           status={nodes.host2?.Uptime ? `UPTIME: ${nodes.host2.Uptime}` : ""}
           right={
             <>
-              <MiniStat icon={<Cpu className="h-3 w-3" />} label="RAM" value={model.host2.ram} />
-              <MiniStat icon={<Activity className="h-3 w-3" />} label="VMs" value={model.host2.vmCount} color="text-emerald-400" />
+              <MiniStat icon={<Cpu className="h-4 w-4" />} label="RAM" value={model.host2.ram} />
+              <MiniStat icon={<Activity className="h-4 w-4" />} label="VMs" value={model.host2.vmCount} color="text-emerald-400" />
             </>
           }
         >
@@ -449,18 +457,19 @@ export default function MonitoringDashboard() {
           subtitle="Proxmox VE"
           ping={model.proxmox.ping}
           status={model.proxmox.status !== "N/D" ? `ESTADO HOST: ${model.proxmox.status}` : ""}
+          icon={<ProxmoxIcon className="h-10 w-10" />}
           right={
             <>
-              <MiniStat icon={<Activity className="h-3 w-3" />} label="Web UI" value={model.proxmox.web ? "8006 OK" : "N/D"} color={model.proxmox.web ? "text-emerald-400" : "text-amber-400"} />
-              <MiniStat icon={<Lock className="h-3 w-3" />} label="SSH" value={model.proxmox.ssh ? "22 OK" : "N/D"} color={model.proxmox.ssh ? "text-emerald-400" : "text-amber-400"} />
-              <MiniStat icon={<Cpu className="h-3 w-3" />} label="VMs" value="1/1 VMs" color="text-emerald-400" />
+              <MiniStat icon={<Activity className="h-4 w-4" />} label="Web UI" value={model.proxmox.web ? "8006 OK" : "N/D"} color={model.proxmox.web ? "text-emerald-400" : "text-amber-400"} />
+              <MiniStat icon={<Lock className="h-4 w-4" />} label="SSH" value={model.proxmox.ssh ? "22 OK" : "N/D"} color={model.proxmox.ssh ? "text-emerald-400" : "text-amber-400"} />
+              <MiniStat icon={<Cpu className="h-4 w-4" />} label="VMs" value="1/1 VMs" color="text-emerald-400" />
             </>
           }
         >
           <VmTile
             title="SERV-ZK"
             role={`ZKBIOONLINE: ${model.vms.zk.zkOnlineStatus}`}
-            icon={<Server className="h-5 w-5" />}
+            icon={<ZKIcon className="h-7 w-7" />}
             {...model.vms.zk}
             extra={<HealthBadge label={`ZK ${model.vms.zk.zkOnlineStatus}`} ok={model.vms.zk.zkOnlineStatus === "Running" || model.vms.zk.zkOnlineStatus === 4} warn={model.vms.zk.zkOnlineStatus !== "N/D"} />}
           />
