@@ -93,7 +93,7 @@ const AzureADIcon = () => (
 );
 
 const KasperskyIcon = ({ className = "w-6 h-6" }) => (
-  <img src="/kaspersky_logo.jpg" alt="Kaspersky" className={`${className} object-contain rounded-md`} />
+  <img src="/kaspersky_logo.png" alt="Kaspersky" className={`${className} object-contain`} />
 );
 
 const toInt = (value, fallback = 0) => {
@@ -790,14 +790,14 @@ export default function Monitoring() {
                   updates={nodes.ksc?.data?.Updates || nodes.ksc?.Updates || nodes.dc01?.Updates}
                   isHealthy={!!nodes.ksc}
                   pingStatus={pingData['192.168.8.42'] || pingData['SERV-KSC'] || pingData['KSC'] || pingData['ksc']}
-                  icon={<KasperskyIcon className="w-5 h-5" />}
-                  iconClassName="p-1.5 bg-white rounded-lg"
+                  icon={<KasperskyIcon className="w-8 h-8" />}
+                  iconClassName="p-0 rounded-lg"
                   onClick={() => setIsKSCModalOpen(true)}
                 />
               ) : (
                 <div className="bg-background/30 border border-dashed border-border/40 rounded-xl p-5 flex flex-col items-center justify-center gap-3 opacity-50 hover:opacity-80 transition-opacity min-h-[180px]">
                   <div className="p-2 bg-slate-500/10 rounded-lg text-slate-400">
-                    <KasperskyIcon className="w-6 h-6" />
+                    <KasperskyIcon className="w-8 h-8" />
                   </div>
                   <div className="text-center">
                     <p className="text-sm font-semibold text-slate-400">SERV-KSC</p>
@@ -825,8 +825,8 @@ export default function Monitoring() {
             <div>
               <div className="flex justify-between items-start border-b border-border/50 pb-4 mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-1.5 bg-white rounded-lg group-hover:scale-105 transition-transform">
-                    <KasperskyIcon className="w-8 h-8" />
+                  <div className="p-0 rounded-lg group-hover:scale-105 transition-transform">
+                    <KasperskyIcon className="w-10 h-10" />
                   </div>
                   <div>
                     <h3 className="text-base font-bold flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
@@ -850,7 +850,7 @@ export default function Monitoring() {
                   const state = masDeUnaSemana > 0 ? 'MAYORÍA AL DÍA' : 'AL DÍA';
                   return (
                     <div className="bg-background/30 border border-border/40 rounded-lg p-3">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Database className="w-3 h-3" /> Bases de Datos AV</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Database className="w-4 h-4" /> Bases de Datos AV</p>
                       <p className="text-lg font-bold mt-1 text-emerald-400">{state}</p>
                       <div className="flex justify-between text-[11px] mt-1 text-muted-foreground">
                         <span>Al día: <strong className="text-emerald-400">{alDia}</strong></span>
@@ -868,7 +868,7 @@ export default function Monitoring() {
                   const state = infected > 0 ? 'REVISAR' : detected > 0 ? 'CONTENIDO' : 'LIMPIO';
                   return (
                     <div className="bg-background/30 border border-border/40 rounded-lg p-3">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Shield className="w-3 h-3" /> Amenazas</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Shield className="w-4 h-4" /> Amenazas</p>
                       <p className={`text-lg font-bold mt-1 ${infected > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
                         {state}
                       </p>
@@ -888,7 +888,7 @@ export default function Monitoring() {
                   const altas = toInt(vul.DispAlta);
                   return (
                     <div className="bg-background/30 border border-border/40 rounded-lg p-3">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Bug className="w-3 h-3" /> Vulnerabilidades</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Bug className="w-4 h-4" /> Vulnerabilidades</p>
                       <p className="text-lg font-bold mt-1 text-emerald-400">{sinVuln} sin vuln.</p>
                       <div className="flex justify-between text-[11px] mt-1 text-muted-foreground">
                         <span>Críticas: <strong className={criticas > 0 ? 'text-amber-400' : 'text-emerald-400'}>{criticas}</strong></span>
@@ -905,7 +905,7 @@ export default function Monitoring() {
                   const stateColor = activeLic.usage > 90 ? 'text-amber-400' : 'text-emerald-400';
                   return (
                     <div className="bg-background/30 border border-border/40 rounded-lg p-3">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><KeyRound className="w-3 h-3" /> Licenciamiento</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><KeyRound className="w-4 h-4" /> Licenciamiento</p>
                       <p className={`text-lg font-bold mt-1 ${stateColor}`}>{activeLic.used} / {activeLic.limit}</p>
                       <p className="text-[11px] text-muted-foreground mt-0.5">{activeLic.usage}% de uso</p>
                       <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden mt-1.5">
@@ -1035,8 +1035,8 @@ export default function Monitoring() {
           <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
             <div className="p-4 border-b border-border flex justify-between items-center bg-muted/30">
               <div className="flex items-center gap-3">
-                <div className="p-1.5 bg-white rounded-lg">
-                  <KasperskyIcon className="w-7 h-7" />
+                <div className="p-0 rounded-lg">
+                  <KasperskyIcon className="w-10 h-10" />
                 </div>
                 <div>
                   <h2 className="text-lg font-bold">Análisis Profundo - Kaspersky Security Center</h2>
@@ -1070,7 +1070,7 @@ export default function Monitoring() {
                     <div className="bg-background/40 border border-border/50 rounded-xl p-4 flex flex-col justify-between">
                       <div>
                         <div className="flex justify-between items-start mb-2">
-                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Database className="w-3.5 h-3.5" /> Bases de Datos AV</span>
+                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Database className="w-4 h-4" /> Bases de Datos AV</span>
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${stateColor}`}>{state}</span>
                         </div>
                         <div className="space-y-2 mt-4 text-xs">
@@ -1162,7 +1162,7 @@ export default function Monitoring() {
                     <div className="bg-background/40 border border-border/50 rounded-xl p-4 flex flex-col justify-between">
                       <div>
                         <div className="flex justify-between items-start mb-2">
-                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Bug className="w-3.5 h-3.5" /> Vulnerabilidades</span>
+                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Bug className="w-4 h-4" /> Vulnerabilidades</span>
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${stateColor}`}>{state}</span>
                         </div>
                         <div className="space-y-2 mt-4 text-xs">
@@ -1207,7 +1207,7 @@ export default function Monitoring() {
                     <div className="bg-background/40 border border-border/50 rounded-xl p-4 flex flex-col justify-between">
                       <div>
                         <div className="flex justify-between items-start mb-2">
-                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><KeyRound className="w-3.5 h-3.5" /> Licenciamiento</span>
+                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><KeyRound className="w-4 h-4" /> Licenciamiento</span>
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${stateColor}`}>{state}</span>
                         </div>
                         <div className="space-y-3 mt-4 text-[11px]">
@@ -1263,7 +1263,7 @@ export default function Monitoring() {
                     <div className="bg-background/40 border border-border/50 rounded-xl p-4 flex flex-col justify-between">
                       <div>
                         <div className="flex justify-between items-start mb-2">
-                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Shield className="w-3.5 h-3.5" /> Amenazas</span>
+                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Shield className="w-4 h-4" /> Amenazas</span>
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${stateColor}`}>{state}</span>
                         </div>
                         <div className="space-y-2 mt-4 text-xs">
