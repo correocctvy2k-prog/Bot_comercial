@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bot, MapPin, Users, Settings, LogOut, Cable, Terminal, PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, PieChart, Sparkles, Building2, ShieldCheck, User, Image, Mail, UserCircle, Loader2, Camera, X, Activity } from 'lucide-react';
+import { Bot, MapPin, Users, Settings, LogOut, Cable, Terminal, PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, PieChart, Sparkles, Building2, ShieldCheck, User, Image, UserCircle, Loader2, X, Activity, LayoutDashboard } from 'lucide-react';
 import SkylabBot from '../components/SkylabBot';
 import { ModeToggle } from "@/components/mode-toggle";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -43,7 +43,15 @@ const MENU_ITEMS_RAW = [
         section: "Sistema Operativo",
         items: [
             { to: '/command-center', icon: Terminal, label: 'Centro de Mando', module: 'command-center' },
-            { to: '/monitoring', icon: Activity, label: 'Monitoreo IT', module: 'bot-activity' }, // Usamos bot-activity temporalmente como permiso
+            {
+                label: 'Monitoreo IT',
+                icon: Activity,
+                module: 'bot-activity',
+                subItems: [
+                    { to: '/monitoring/dashboard', icon: LayoutDashboard, label: 'Dashboard Monitoreo', module: 'bot-activity' },
+                    { to: '/monitoring', icon: Activity, label: 'Vista Detallada', module: 'bot-activity' }
+                ]
+            },
             {
                 label: 'Configuraciones',
                 icon: Settings,
@@ -63,7 +71,7 @@ export default function Layout({ children }) {
     const navigate = useNavigate();
     const { profile, logout, hasPermission, user, refreshProfile } = useAuth();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-    const [openMenus, setOpenMenus] = useState({ 'Configuraciones': true });
+    const [openMenus, setOpenMenus] = useState({ 'Configuraciones': true, 'Monitoreo IT': true });
     
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
