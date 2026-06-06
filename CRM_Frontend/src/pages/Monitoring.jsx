@@ -16,7 +16,10 @@ import {
   ExternalLink,
   Cpu,
   Activity,
-  Trash2
+  Trash2,
+  KeyRound,
+  Bug,
+  Shield
 } from "lucide-react";
 import { monitoringService } from "@/services/monitoring.service";
 import { formatDistanceToNow } from "date-fns";
@@ -89,7 +92,31 @@ const AzureADIcon = () => (
   </svg>
 );
 
-const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, lastBackup, updates, icon, isPrimary, isHealthy, pingStatus, replication, replicationObjects, fsmoStatus, securityEvents, onClick }) => {
+const KasperskyIcon = ({ className = "w-6 h-6" }) => (
+  <img src="/kaspersky_logo.jpg" alt="Kaspersky" className={`${className} object-contain rounded-md`} />
+);
+
+const toInt = (value, fallback = 0) => {
+  const parsed = parseInt(value ?? fallback, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const getPrimaryLicense = (lic = {}) => {
+  const keys = Array.isArray(lic.Licencias) ? lic.Licencias : [];
+  const selected = keys.reduce((best, current) => {
+    const currentUsed = toInt(current?.DispositivosUsados);
+    const bestUsed = toInt(best?.DispositivosUsados);
+    return currentUsed > bestUsed ? current : best;
+  }, keys[0] || null);
+
+  const used = toInt(selected?.DispositivosUsados);
+  const limit = toInt(selected?.LimiteDispositivos);
+  const usage = selected?.PorcentajeUso ?? (limit > 0 ? Math.round((used / limit) * 100) : 0);
+
+  return { selected, used, limit, usage };
+};
+
+const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, lastBackup, updates, icon, iconClassName = "p-2 bg-[#0078D4]/10 rounded-lg text-[#0078D4]", isPrimary, isHealthy, pingStatus, replication, replicationObjects, fsmoStatus, securityEvents, onClick }) => {
   const PING_FRESH_MS = 45000; // ms to consider a ping "fresh"
   const PING_STALE_MS = 120000; // ms to consider a ping stale (old)
 
@@ -146,7 +173,7 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
       `}</style>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-[#0078D4]/10 rounded-lg text-[#0078D4]">
+          <div className={iconClassName}>
             {icon}
           </div>
           <div>
@@ -532,7 +559,7 @@ export default function Monitoring() {
                   )}
                 </h2>
                 <div className="flex flex-col gap-0.5">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">ProLiant / Hyper-V • 192.168.8.43</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">ProLiant / Hyper-V</p>
                   {nodes.host1?.Uptime && (
                     <span className="text-[11px] text-emerald-400/90 font-bold flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -647,7 +674,7 @@ export default function Monitoring() {
                   {pingData['ANFI-SEG']?.status === 'UP' && <span className="text-xs text-emerald-400 font-normal">{Math.round(pingData['ANFI-SEG'].time)}ms</span>}
                 </h2>
                                 <div className="flex flex-col gap-0.5">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">HP ProLiant DL160 Gen9 / Hyper-V • 192.168.8.41</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">HP ProLiant DL160 Gen9 / Hyper-V</p>
                   {nodes.host2?.Uptime && (
                     <span className="text-[11px] text-emerald-400/90 font-bold flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -763,13 +790,14 @@ export default function Monitoring() {
                   updates={nodes.ksc?.data?.Updates || nodes.ksc?.Updates || nodes.dc01?.Updates}
                   isHealthy={!!nodes.ksc}
                   pingStatus={pingData['192.168.8.42'] || pingData['SERV-KSC'] || pingData['KSC'] || pingData['ksc']}
-                  icon={<ShieldCheck />}
+                  icon={<KasperskyIcon className="w-5 h-5" />}
+                  iconClassName="p-1.5 bg-white rounded-lg"
                   onClick={() => setIsKSCModalOpen(true)}
                 />
               ) : (
                 <div className="bg-background/30 border border-dashed border-border/40 rounded-xl p-5 flex flex-col items-center justify-center gap-3 opacity-50 hover:opacity-80 transition-opacity min-h-[180px]">
                   <div className="p-2 bg-slate-500/10 rounded-lg text-slate-400">
-                    <ShieldCheck />
+                    <KasperskyIcon className="w-6 h-6" />
                   </div>
                   <div className="text-center">
                     <p className="text-sm font-semibold text-slate-400">SERV-KSC</p>
@@ -797,8 +825,8 @@ export default function Monitoring() {
             <div>
               <div className="flex justify-between items-start border-b border-border/50 pb-4 mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-sky-500/10 text-sky-400 rounded-lg group-hover:scale-105 transition-transform">
-                    <ShieldCheck className="w-6 h-6" />
+                  <div className="p-1.5 bg-white rounded-lg group-hover:scale-105 transition-transform">
+                    <KasperskyIcon className="w-8 h-8" />
                   </div>
                   <div>
                     <h3 className="text-base font-bold flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
@@ -817,17 +845,16 @@ export default function Monitoring() {
                 {/* Antivirus DB status */}
                 {(() => {
                   const bd = nodes.ksc.Kaspersky?.BasesDatos || nodes.ksc.data?.Kaspersky?.BasesDatos || {};
-                  const state = bd.EstadoGeneral?.toUpperCase() || 'OK';
-                  const stateColor = state === 'ADVERTENCIA' ? 'text-amber-400' : 
-                                     state === 'ERRORES' || state === 'CRITICO' ? 'text-rose-400' : 
-                                     'text-emerald-400';
+                  const alDia = toInt(bd.AlDia);
+                  const masDeUnaSemana = toInt(bd.MasDeUnaSemana);
+                  const state = masDeUnaSemana > 0 ? 'MAYORÍA AL DÍA' : 'AL DÍA';
                   return (
                     <div className="bg-background/30 border border-border/40 rounded-lg p-3">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Bases de Datos AV</p>
-                      <p className={`text-lg font-bold mt-1 ${stateColor}`}>{state}</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Database className="w-3 h-3" /> Bases de Datos AV</p>
+                      <p className="text-lg font-bold mt-1 text-emerald-400">{state}</p>
                       <div className="flex justify-between text-[11px] mt-1 text-muted-foreground">
-                        <span>Al día: <strong className="text-emerald-400">{bd.AlDia ?? 0}</strong></span>
-                        <span>&gt;1 sem: <strong className="text-rose-400">{bd.MasDeUnaSemana ?? 0}</strong></span>
+                        <span>Al día: <strong className="text-emerald-400">{alDia}</strong></span>
+                        <span>&gt;1 sem: <strong className="text-amber-400">{masDeUnaSemana}</strong></span>
                       </div>
                     </div>
                   );
@@ -836,18 +863,18 @@ export default function Monitoring() {
                 {/* Amenazas status */}
                 {(() => {
                   const am = nodes.ksc.Kaspersky?.Amenazas || nodes.ksc.data?.Kaspersky?.Amenazas || {};
-                  const infected = parseInt(am.DispositivosInfect || '0');
-                  const detected = parseInt(am.AmenazasDetectadas || '0');
-                  const isDanger = infected > 0 || detected > 0;
+                  const infected = toInt(am.DispositivosInfect);
+                  const detected = toInt(am.AmenazasDetectadas);
+                  const state = infected > 0 ? 'REVISAR' : detected > 0 ? 'CONTENIDO' : 'LIMPIO';
                   return (
                     <div className="bg-background/30 border border-border/40 rounded-lg p-3">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Amenazas Activas</p>
-                      <p className={`text-lg font-bold mt-1 ${isDanger ? 'text-rose-400 animate-pulse' : 'text-emerald-400'}`}>
-                        {isDanger ? 'AMENAZA' : 'LIMPIO'}
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Shield className="w-3 h-3" /> Amenazas</p>
+                      <p className={`text-lg font-bold mt-1 ${infected > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        {state}
                       </p>
                       <div className="flex justify-between text-[11px] mt-1 text-muted-foreground">
-                        <span>Infectados: <strong className={infected > 0 ? 'text-rose-400' : ''}>{infected}</strong></span>
-                        <span>Detectadas: <strong className={detected > 0 ? 'text-rose-400' : ''}>{detected}</strong></span>
+                        <span>Infectados: <strong className={infected > 0 ? 'text-amber-400' : 'text-emerald-400'}>{infected}</strong></span>
+                        <span>Detectadas: <strong className="text-sky-400">{detected}</strong></span>
                       </div>
                     </div>
                   );
@@ -856,17 +883,16 @@ export default function Monitoring() {
                 {/* Vulnerabilidades */}
                 {(() => {
                   const vul = nodes.ksc.Kaspersky?.Vulnerabilidades || nodes.ksc.data?.Kaspersky?.Vulnerabilidades || {};
-                  const totalV = (vul.DispCritica || 0) + (vul.DispAlta || 0) + (vul.DispMedia || 0);
-                  const isDanger = totalV > 10;
+                  const sinVuln = toInt(vul.DispSinVulnerabilidad);
+                  const criticas = toInt(vul.DispCritica);
+                  const altas = toInt(vul.DispAlta);
                   return (
                     <div className="bg-background/30 border border-border/40 rounded-lg p-3">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Vulnerabilidades</p>
-                      <p className={`text-lg font-bold mt-1 ${isDanger ? 'text-amber-400' : 'text-emerald-400'}`}>
-                        {totalV} Equipos
-                      </p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Bug className="w-3 h-3" /> Vulnerabilidades</p>
+                      <p className="text-lg font-bold mt-1 text-emerald-400">{sinVuln} sin vuln.</p>
                       <div className="flex justify-between text-[11px] mt-1 text-muted-foreground">
-                        <span>Críticas: <strong className="text-rose-500">{vul.DispCritica ?? 0}</strong></span>
-                        <span>Altas: <strong className="text-amber-500">{vul.DispAlta ?? 0}</strong></span>
+                        <span>Críticas: <strong className={criticas > 0 ? 'text-amber-400' : 'text-emerald-400'}>{criticas}</strong></span>
+                        <span>Altas: <strong className="text-sky-400">{altas}</strong></span>
                       </div>
                     </div>
                   );
@@ -875,20 +901,17 @@ export default function Monitoring() {
                 {/* Licencias */}
                 {(() => {
                   const lic = nodes.ksc.Kaspersky?.Licencias || nodes.ksc.data?.Kaspersky?.Licencias || {};
-                  const keys = Array.isArray(lic.Licencias) ? lic.Licencias : [];
-                  const activeLic = keys[0] || { DispositivosUsados: 0, LimiteDispositivos: 0, PorcentajeUso: 0 };
-                  const state = lic.EstadoGeneral?.toUpperCase() || 'OK';
-                  const stateColor = state === 'CRITICO' || state === 'EXCEDIDO' ? 'text-rose-400' : 
-                                     state === 'ADVERTENCIA' ? 'text-amber-400' : 
-                                     'text-emerald-400';
+                  const activeLic = getPrimaryLicense(lic);
+                  const stateColor = activeLic.usage > 90 ? 'text-amber-400' : 'text-emerald-400';
                   return (
                     <div className="bg-background/30 border border-border/40 rounded-lg p-3">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Licenciamiento</p>
-                      <p className={`text-lg font-bold mt-1 ${stateColor}`}>{activeLic.DispositivosUsados} / {activeLic.LimiteDispositivos}</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><KeyRound className="w-3 h-3" /> Licenciamiento</p>
+                      <p className={`text-lg font-bold mt-1 ${stateColor}`}>{activeLic.used} / {activeLic.limit}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{activeLic.usage}% de uso</p>
                       <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden mt-1.5">
                         <div 
-                          className={`h-full ${activeLic.PorcentajeUso > 90 ? 'bg-rose-500' : activeLic.PorcentajeUso > 75 ? 'bg-amber-500' : 'bg-emerald-500'}`} 
-                          style={{ width: `${activeLic.PorcentajeUso ?? 0}%` }}
+                          className={`h-full ${activeLic.usage > 90 ? 'bg-rose-500' : activeLic.usage > 75 ? 'bg-emerald-500' : 'bg-emerald-500'}`} 
+                          style={{ width: `${activeLic.usage}%` }}
                         ></div>
                       </div>
                     </div>
@@ -929,7 +952,7 @@ export default function Monitoring() {
                   {zkHostPing?.status === 'UP' && <span className="text-xs text-emerald-400 font-normal">{Math.round(zkHostPing.time)}ms</span>}
                 </h2>
                 <div className="flex flex-col gap-0.5">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Proxmox VE • {zkHost.IP || zkVirt.HostIP || '192.168.8.50'}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Proxmox VE</p>
                   <span className={`text-[11px] font-bold flex items-center gap-1.5 ${zkHostStatusColor}`}>
                     <div className={`w-1.5 h-1.5 rounded-full ${(zkHostPing?.status === 'UP' || zkHost.Pingable) ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
                     ESTADO HOST: {zkHostStatus}
@@ -1012,8 +1035,8 @@ export default function Monitoring() {
           <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
             <div className="p-4 border-b border-border flex justify-between items-center bg-muted/30">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-sky-500/10 text-sky-400 rounded-lg">
-                  <ShieldCheck className="w-5 h-5" />
+                <div className="p-1.5 bg-white rounded-lg">
+                  <KasperskyIcon className="w-7 h-7" />
                 </div>
                 <div>
                   <h2 className="text-lg font-bold">Análisis Profundo - Kaspersky Security Center</h2>
@@ -1039,21 +1062,21 @@ export default function Monitoring() {
                 {/* 1. Bases de Datos Antivirus */}
                 {(() => {
                   const bd = nodes.ksc.Kaspersky?.BasesDatos || nodes.ksc.data?.Kaspersky?.BasesDatos || {};
-                  const state = bd.EstadoGeneral?.toUpperCase() || 'OK';
-                  const stateColor = state === 'ADVERTENCIA' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' : 
-                                     state === 'ERRORES' || state === 'CRITICO' ? 'text-rose-400 border-rose-500/20 bg-rose-500/5' : 
-                                     'text-emerald-400 border-emerald-500/20 bg-emerald-500/5';
+                  const alDia = toInt(bd.AlDia);
+                  const masDeUnaSemana = toInt(bd.MasDeUnaSemana);
+                  const state = masDeUnaSemana > 0 ? 'MAYORÍA AL DÍA' : 'AL DÍA';
+                  const stateColor = 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5';
                   return (
                     <div className="bg-background/40 border border-border/50 rounded-xl p-4 flex flex-col justify-between">
                       <div>
                         <div className="flex justify-between items-start mb-2">
-                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Bases de Datos AV</span>
+                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Database className="w-3.5 h-3.5" /> Bases de Datos AV</span>
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${stateColor}`}>{state}</span>
                         </div>
                         <div className="space-y-2 mt-4 text-xs">
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Al Día:</span>
-                            <span className="font-bold text-emerald-400">{bd.AlDia ?? 0}</span>
+                            <span className="font-bold text-emerald-400">{alDia}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Últimos 24h:</span>
@@ -1068,8 +1091,8 @@ export default function Monitoring() {
                             <span className="font-medium">{bd.Ultimos7Dias ?? 0}</span>
                           </div>
                           <div className="flex justify-between border-t border-border/30 pt-1.5">
-                            <span className="text-rose-400 font-bold">&gt; 1 Semana:</span>
-                            <span className="font-bold text-rose-400">{bd.MasDeUnaSemana ?? 0}</span>
+                            <span className="text-muted-foreground font-medium">&gt; 1 Semana:</span>
+                            <span className="font-bold text-amber-400">{masDeUnaSemana}</span>
                           </div>
                         </div>
                       </div>
@@ -1131,16 +1154,15 @@ export default function Monitoring() {
                 {/* 3. Vulnerabilidades */}
                 {(() => {
                   const vul = nodes.ksc.Kaspersky?.Vulnerabilidades || nodes.ksc.data?.Kaspersky?.Vulnerabilidades || {};
-                  const totalV = (vul.DispCritica || 0) + (vul.DispAlta || 0) + (vul.DispMedia || 0);
-                  const state = totalV > 50 ? 'PELIGRO' : totalV > 10 ? 'ADVERTENCIA' : 'OK';
-                  const stateColor = state === 'PELIGRO' ? 'text-rose-400 border-rose-500/20 bg-rose-500/5' : 
-                                     state === 'ADVERTENCIA' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' : 
+                  const criticas = toInt(vul.DispCritica);
+                  const state = criticas > 0 ? 'PRIORIZAR' : 'CONTROLADO';
+                  const stateColor = criticas > 0 ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' : 
                                      'text-emerald-400 border-emerald-500/20 bg-emerald-500/5';
                   return (
                     <div className="bg-background/40 border border-border/50 rounded-xl p-4 flex flex-col justify-between">
                       <div>
                         <div className="flex justify-between items-start mb-2">
-                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Vulnerabilidades</span>
+                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Bug className="w-3.5 h-3.5" /> Vulnerabilidades</span>
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${stateColor}`}>{state}</span>
                         </div>
                         <div className="space-y-2 mt-4 text-xs">
@@ -1150,7 +1172,7 @@ export default function Monitoring() {
                           </div>
                           <div className="flex justify-between border-t border-border/20 pt-2">
                             <span className="text-muted-foreground">Severidad Crítica:</span>
-                            <span className="font-bold text-rose-500">{vul.DispCritica ?? 0}</span>
+                            <span className={`font-bold ${criticas > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>{criticas}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Severidad Alta:</span>
@@ -1174,19 +1196,32 @@ export default function Monitoring() {
                 {/* 4. Licencias */}
                 {(() => {
                   const lic = nodes.ksc.Kaspersky?.Licencias || nodes.ksc.data?.Kaspersky?.Licencias || {};
-                  const state = lic.EstadoGeneral?.toUpperCase() || 'OK';
-                  const stateColor = state === 'CRITICO' || state === 'EXCEDIDO' ? 'text-rose-400 border-rose-500/20 bg-rose-500/5' : 
-                                     state === 'ADVERTENCIA' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' : 
+                  const keys = Array.isArray(lic.Licencias)
+                    ? [...lic.Licencias].sort((a, b) => toInt(b.DispositivosUsados) - toInt(a.DispositivosUsados))
+                    : [];
+                  const primaryLicense = getPrimaryLicense(lic);
+                  const state = primaryLicense.usage > 90 ? 'REVISAR' : 'EN USO';
+                  const stateColor = primaryLicense.usage > 90 ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' : 
                                      'text-emerald-400 border-emerald-500/20 bg-emerald-500/5';
-                  const keys = Array.isArray(lic.Licencias) ? lic.Licencias : [];
                   return (
                     <div className="bg-background/40 border border-border/50 rounded-xl p-4 flex flex-col justify-between">
                       <div>
                         <div className="flex justify-between items-start mb-2">
-                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Licenciamiento</span>
+                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><KeyRound className="w-3.5 h-3.5" /> Licenciamiento</span>
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${stateColor}`}>{state}</span>
                         </div>
                         <div className="space-y-3 mt-4 text-[11px]">
+                          {primaryLicense.limit > 0 && (
+                            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2">
+                              <div className="flex justify-between text-[11px]">
+                                <span className="text-muted-foreground">Licencia principal</span>
+                                <span className="font-bold text-emerald-400">{primaryLicense.used} / {primaryLicense.limit} ({primaryLicense.usage}% de uso)</span>
+                              </div>
+                              <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden mt-2">
+                                <div className="h-full bg-emerald-500" style={{ width: `${primaryLicense.usage}%` }}></div>
+                              </div>
+                            </div>
+                          )}
                           {keys.map((l, i) => {
                             const usage = l.PorcentajeUso ?? 0;
                             const usageColor = usage > 90 ? 'bg-rose-500' : usage > 75 ? 'bg-amber-500' : 'bg-emerald-500';
@@ -1219,27 +1254,26 @@ export default function Monitoring() {
                 {/* 5. Amenazas */}
                 {(() => {
                   const am = nodes.ksc.Kaspersky?.Amenazas || nodes.ksc.data?.Kaspersky?.Amenazas || {};
-                  const infected = parseInt(am.DispositivosInfect || '0');
-                  const detected = parseInt(am.AmenazasDetectadas || '0');
-                  const isDanger = infected > 0 || detected > 0;
-                  const state = isDanger ? 'AMENAZA' : 'LIMPIO';
-                  const stateColor = isDanger ? 'text-rose-400 border-rose-500/20 bg-rose-500/5' : 
+                  const infected = toInt(am.DispositivosInfect);
+                  const detected = toInt(am.AmenazasDetectadas);
+                  const state = infected > 0 ? 'REVISAR' : detected > 0 ? 'CONTENIDO' : 'LIMPIO';
+                  const stateColor = infected > 0 ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' : 
                                      'text-emerald-400 border-emerald-500/20 bg-emerald-500/5';
                   return (
                     <div className="bg-background/40 border border-border/50 rounded-xl p-4 flex flex-col justify-between">
                       <div>
                         <div className="flex justify-between items-start mb-2">
-                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Amenazas</span>
+                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Shield className="w-3.5 h-3.5" /> Amenazas</span>
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${stateColor}`}>{state}</span>
                         </div>
                         <div className="space-y-2 mt-4 text-xs">
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Dispositivos Infectados:</span>
-                            <span className={`font-bold ${infected > 0 ? 'text-rose-400 animate-pulse' : ''}`}>{infected}</span>
+                            <span className={`font-bold ${infected > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>{infected}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Amenazas Detectadas:</span>
-                            <span className={`font-bold ${detected > 0 ? 'text-rose-400' : ''}`}>{detected}</span>
+                            <span className="font-bold text-sky-400">{detected}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Grupos Infectados:</span>
@@ -1287,7 +1321,7 @@ export default function Monitoring() {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold">Análisis Profundo - SERV-ZK</h2>
-                  <p className="text-xs text-muted-foreground">Proxmox 192.168.8.50 • VM Windows 192.168.8.112 • ZKBio CVSecurity</p>
+                  <p className="text-xs text-muted-foreground">Proxmox VE • VM Windows • ZKBio CVSecurity</p>
                 </div>
               </div>
               <button onClick={() => setIsZKModalOpen(false)} className="p-2 hover:bg-muted rounded-lg transition-colors">
@@ -1321,7 +1355,7 @@ export default function Monitoring() {
                       </h4>
                       <div className="grid grid-cols-2 gap-3 text-xs">
                         <div><p className="text-muted-foreground">Nombre</p><p className="font-bold">{zkHost.Name || zkVirt.HostName || 'PROXMOX-ZK'}</p></div>
-                        <div><p className="text-muted-foreground">IP</p><p className="font-mono">{zkHost.IP || zkVirt.HostIP || '192.168.8.50'}</p></div>
+                        <div><p className="text-muted-foreground">Tipo</p><p className="font-medium">Anfitrión Proxmox</p></div>
                         <div><p className="text-muted-foreground">Ping</p><p className={zkHost.Pingable ? 'font-bold text-emerald-400' : 'font-bold text-rose-400'}>{zkHost.Pingable ? 'OK' : 'N/D'}</p></div>
                         <div><p className="text-muted-foreground">Web UI 8006</p><p className={zkHost.Ports?.WebUI8006 ? 'font-bold text-emerald-400' : 'font-bold text-amber-400'}>{zkHost.Ports?.WebUI8006 ? 'OK' : 'N/D'}</p></div>
                         <div><p className="text-muted-foreground">SSH 22</p><p className={zkHost.Ports?.SSH22 ? 'font-bold text-emerald-400' : 'font-bold text-amber-400'}>{zkHost.Ports?.SSH22 ? 'OK' : 'N/D'}</p></div>
