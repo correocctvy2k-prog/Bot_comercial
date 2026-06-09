@@ -6,13 +6,17 @@ import {
   Clock,
   Cpu,
   Database,
+  ExternalLink,
   HardDrive,
+  History,
   Lock,
   RefreshCw,
   Server,
   ShieldCheck,
+  Trash2,
   WifiOff
 } from "lucide-react";
+import { toast } from "sonner";
 import { monitoringService } from "@/services/monitoring.service";
 
 const SOCKET_URL = import.meta.env.VITE_MONITORING_BACKEND_URL || "http://localhost:3001";
@@ -212,6 +216,42 @@ const HostPanel = ({ title, subtitle, ping, status, right, children, icon }) => 
 
 const pickPing = (pingData, keys) => keys.map((key) => pingData[key]).find(Boolean);
 
+const HISTORY_SERVICES = ["ANFIGANE", "ANFI-SEG", "AD", "AD-DC02", "AD-DC03", "KSC", "SERV-ZK", "KSC-HARDWARE"];
+
+const serviceLabel = (service) => ({
+  AD: "AD01",
+  "AD-DC02": "AD02",
+  "AD-DC03": "AD03",
+  "KSC-HARDWARE": "Inventario KSC"
+}[service] || service);
+
+const parseHistoryDate = (fileName) => {
+  try {
+    const name = fileName.replace("report_", "").replace(".json", "");
+    const parts = name.split("T");
+    if (parts.length !== 2) return null;
+    const timePart = parts[1].replace(/-/g, ":").replace(/:(\d{3})Z$/, ".$1Z");
+    const date = new Date(`${parts[0]}T${timePart}`);
+    return Number.isNaN(date.getTime()) ? null : date;
+  } catch {
+    return null;
+  }
+};
+
+const formatHistoryDate = (fileName) => {
+  const date = parseHistoryDate(fileName);
+  if (!date) return fileName;
+  return date.toLocaleString("es-CO", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true
+  });
+};
+
 export default function MonitoringDashboard() {
   const [nodes, setNodes] = useState({
     host1: null,
@@ -225,22 +265,48 @@ export default function MonitoringDashboard() {
   const [pingData, setPingData] = useState({});
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   const fetchData = async () => {
     try {
-      const [host1, host2, dc01, dc02, dc03, ksc, zk] = await Promise.all([
+      const [host1, host2, dc01, dc02, dc03, ksc, zk, ...historyResults] = await Promise.all([
         monitoringService.getLatestStatus("ANFIGANE"),
         monitoringService.getLatestStatus("ANFI-SEG"),
         monitoringService.getLatestStatus("AD"),
         monitoringService.getLatestStatus("AD-DC02"),
         monitoringService.getLatestStatus("AD-DC03"),
         monitoringService.getLatestStatus("KSC"),
-        monitoringService.getLatestStatus("SERV-ZK")
+        monitoringService.getLatestStatus("SERV-ZK"),
+        ...HISTORY_SERVICES.map((service) => monitoringService.getHistory(service))
       ]);
       setNodes({ host1, host2, dc01, dc02, dc03, ksc, zk });
+
+      const allFiles = [];
+      historyResults.forEach((res, index) => {
+        if (!res?.files) return;
+        res.files.forEach((file) => {
+          if (file.toLowerCase().endsWith(".json") && file.startsWith("report_")) {
+            allFiles.push({ name: file, service: HISTORY_SERVICES[index] });
+          }
+        });
+      });
+      setHistory(allFiles.sort((a, b) => b.name.localeCompare(a.name)));
       setLastUpdate(new Date());
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteHistory = async (service, filename) => {
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar el reporte ${filename}?`)) return;
+
+    const success = await monitoringService.deleteHistory(service, filename);
+    if (success) {
+      toast.success("Reporte eliminado correctamente");
+      fetchData();
+    } else {
+      toast.error("Error al eliminar el reporte");
     }
   };
 
@@ -379,7 +445,7 @@ export default function MonitoringDashboard() {
     };
   }, [nodes, pingData]);
 
-  const onlineCount = [
+  const pingTargets = [
     model.host1.ping,
     model.host2.ping,
     model.proxmox.ping,
@@ -389,7 +455,18 @@ export default function MonitoringDashboard() {
     model.vms.ad03.ping,
     model.vms.ksc.ping,
     model.vms.zk.ping
-  ].filter((ping) => getPingState(ping).state === "up").length;
+  ];
+
+  const onlineCount = pingTargets.filter((ping) => getPingState(ping).state === "up").length;
+  const onlineTotal = pingTargets.length;
+
+  const filteredHistory = (showAllHistory
+    ? history
+    : history.filter((item) => {
+      const date = parseHistoryDate(item.name);
+      if (!date) return false;
+      return date.toLocaleDateString("en-CA") === new Date().toLocaleDateString("en-CA");
+    })).filter((item) => item.name.toLowerCase().endsWith(".json"));
 
   return (
     <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -406,11 +483,11 @@ export default function MonitoringDashboard() {
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-2xl font-black tracking-tight">Dashboard Monitoreo</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Vista compacta de salud, servicios y conectividad de infraestructura.</p>
+          <h1 className="text-2xl font-black tracking-tight">Detalles Monitoreo</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Detalle operativo, historial y trazabilidad de ejecuciones.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <HealthBadge label={`${onlineCount}/8 online`} ok={onlineCount === 8} warn={onlineCount >= 6} />
+          <HealthBadge label={`${onlineCount}/${onlineTotal} online`} ok={onlineCount === onlineTotal} warn={onlineCount >= Math.ceil(onlineTotal * 0.7)} />
           <button
             onClick={fetchData}
             disabled={loading}
@@ -499,6 +576,97 @@ export default function MonitoringDashboard() {
           />
         </HostPanel>
       </div>
+
+      <section className="overflow-hidden rounded-xl border border-border bg-card/35">
+        <div className="flex flex-col gap-3 border-b border-border p-5 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="flex items-center gap-2 text-base font-black">
+              <History className="h-4 w-4 text-primary" />
+              Historial de Ejecuciones Local
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">Bitácora de reportes generados por los scripts de monitoreo.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1">
+              <button
+                onClick={() => setShowAllHistory(false)}
+                className={`rounded-md px-3 py-1 text-xs font-bold transition-all ${!showAllHistory ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                Solo Hoy
+              </button>
+              <button
+                onClick={() => setShowAllHistory(true)}
+                className={`rounded-md px-3 py-1 text-xs font-bold transition-all ${showAllHistory ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                Todo
+              </button>
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              {filteredHistory.length} registros
+            </span>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-muted/25 text-xs uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="px-5 py-3">Fecha de Ejecución</th>
+                <th className="px-5 py-3">Servicio</th>
+                <th className="px-5 py-3">ID de Reporte</th>
+                <th className="px-5 py-3">Estado</th>
+                <th className="px-5 py-3 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/50">
+              {filteredHistory.length > 0 ? (
+                filteredHistory.map((item, idx) => (
+                  <tr key={`${item.service}-${item.name}-${idx}`} className="transition-colors hover:bg-muted/25">
+                    <td className="px-5 py-3 font-medium tabular-nums">{formatHistoryDate(item.name)}</td>
+                    <td className="px-5 py-3">
+                      <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
+                        {serviceLabel(item.service)}
+                      </span>
+                    </td>
+                    <td className="max-w-[360px] truncate px-5 py-3 font-mono text-[11px] text-muted-foreground">
+                      {item.name.replace(".json", "")}
+                    </td>
+                    <td className="px-5 py-3">
+                      <HealthBadge label="Ejecutado" ok />
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <div className="flex justify-end gap-2">
+                        <a
+                          href={monitoringService.getReportHtmlUrl(item.service, item.name.replace(".json", ""))}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-lg p-1.5 text-primary transition-colors hover:bg-primary/15"
+                          title="Ver Reporte HTML"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                        <button
+                          onClick={() => handleDeleteHistory(item.service, item.name)}
+                          className="rounded-lg p-1.5 text-rose-400 transition-colors hover:bg-rose-500/15"
+                          title="Eliminar Registro"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="5" className="px-5 py-10 text-center text-sm italic text-muted-foreground">
+                    No se han registrado ejecuciones históricas para el filtro actual.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }

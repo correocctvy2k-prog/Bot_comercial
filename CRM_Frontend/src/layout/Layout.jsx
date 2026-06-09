@@ -50,8 +50,8 @@ const MENU_ITEMS_RAW = [
                 icon: Activity,
                 module: 'bot-activity',
                 subItems: [
-                    { to: '/monitoring/dashboard', icon: LayoutDashboard, label: 'Dashboard Monitoreo', module: 'bot-activity' },
-                    { to: '/monitoring', icon: Activity, label: 'Vista Detallada', module: 'bot-activity' }
+                    { to: '/monitoring/dashboard', icon: LayoutDashboard, label: 'Detalles Monitoreo', module: 'bot-activity' },
+                    { to: '/monitoring', icon: Activity, label: 'Dashboard', module: 'bot-activity' }
                 ]
             },
             {

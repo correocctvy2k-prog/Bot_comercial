@@ -13,28 +13,15 @@ import {
   Database, 
   HardDrive, 
   RefreshCw,
-  History,
   ExternalLink,
   Cpu,
   Activity,
-  Trash2,
   KeyRound,
   Bug,
   Shield
 } from "lucide-react";
 import { monitoringService } from "@/services/monitoring.service";
 import { PageHeaderContext } from "@/layout/Layout";
-import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
-import { toast } from "sonner";
-
-const STATUS_COLORS = {
-  success: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-  warning: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-  error: "text-rose-400 bg-rose-500/10 border-rose-500/20",
-  info: "text-sky-400 bg-sky-500/10 border-sky-500/20",
-  gray: "text-slate-400 bg-slate-500/10 border-slate-500/20"
-};
 
 const SOCKET_URL = import.meta.env.VITE_MONITORING_BACKEND_URL || 'http://localhost:3001';
 
@@ -276,11 +263,124 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
   );
 };
 
+const InventoryKpi = ({ label, value, hint, color = "text-emerald-400", icon }) => (
+  <div className="rounded-lg border border-border/50 bg-background/45 p-3 min-w-0">
+    <div className="flex items-center justify-between gap-2">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <span className="text-muted-foreground">{icon}</span>
+    </div>
+    <p className={`mt-2 text-2xl font-black tracking-tight ${color}`}>{value}</p>
+    {hint && <p className="mt-1 truncate text-[10px] text-muted-foreground">{hint}</p>}
+  </div>
+);
+
+const BarMetric = ({ label, value, total, color = "bg-emerald-500" }) => {
+  const pct = total > 0 ? Math.min(100, Math.round((value / total) * 100)) : 0;
+  return (
+    <div className="space-y-1.5">
+      <div className="flex justify-between text-[11px] font-bold">
+        <span className="text-muted-foreground">{label}</span>
+        <span>{value}<span className="ml-1 text-muted-foreground font-medium">({pct}%)</span></span>
+      </div>
+      <div className="h-2 rounded-full bg-muted overflow-hidden">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+};
+
+const KscHardwareInventoryPanel = ({ data }) => {
+  const inventory = data?.Kaspersky?.HardwareInventory || data?.data?.Kaspersky?.HardwareInventory;
+  const os = inventory?.OperatingSystems || {};
+  const visibility = inventory?.LastSeen || {};
+  const virtualization = inventory?.Virtualization || {};
+  const total = inventory?.TotalDevices || 0;
+  const vmCount = virtualization.VirtualMachines || 0;
+  const physicalCount = virtualization.PhysicalDevices || 0;
+  const vmPct = total > 0 ? Math.round((vmCount / total) * 100) : 0;
+  const physicalPct = total > 0 ? Math.max(0, 100 - vmPct) : 0;
+  const donutStyle = {
+    background: `conic-gradient(#22c55e 0 ${vmPct}%, #38bdf8 ${vmPct}% 100%)`
+  };
+
+  if (!inventory) {
+    return (
+      <div className="rounded-xl border border-dashed border-border/60 bg-card/30 p-6">
+        <div className="flex items-center gap-3">
+          <KasperskyIcon className="w-10 h-10" />
+          <div>
+            <h3 className="text-base font-bold">Inventario KSC</h3>
+            <p className="text-xs text-muted-foreground">Esperando datos de `Monitor-KSC-HardwareInventory.ps1`.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <section className="rounded-xl border border-border bg-card/40 p-5 overflow-hidden">
+      <div className="flex flex-col gap-3 border-b border-border/40 pb-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-center gap-3">
+          <KasperskyIcon className="w-11 h-11" />
+          <div>
+            <h3 className="text-lg font-black tracking-tight">Inventario KSC</h3>
+            <p className="text-xs text-muted-foreground">Sistemas operativos, virtualización y frescura de visibilidad.</p>
+          </div>
+        </div>
+        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          Fuente: {inventory.SourceFile || 'Informe de hardware'} • {inventory.ParsedAt || data?.ReportDate || 'N/D'}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 pt-4 xl:grid-cols-[1.1fr_0.9fr_1fr]">
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-2 gap-3">
+          <InventoryKpi label="Dispositivos" value={total} hint="Inventario total" icon={<Database className="w-4 h-4" />} />
+          <InventoryKpi label="Windows Server" value={os.WindowsServer || 0} color="text-sky-400" icon={<Server className="w-4 h-4" />} />
+          <InventoryKpi label="Windows 10" value={os.Windows10 || 0} color="text-emerald-400" icon={<Cpu className="w-4 h-4" />} />
+          <InventoryKpi label="Windows 11" value={os.Windows11 || 0} color="text-cyan-300" icon={<Activity className="w-4 h-4" />} />
+        </div>
+
+        <div className="rounded-lg border border-border/50 bg-background/40 p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Virtualización</p>
+              <p className="mt-2 text-2xl font-black text-emerald-400">{vmCount}</p>
+              <p className="text-[10px] text-muted-foreground">VMs detectadas</p>
+            </div>
+            <div className="relative h-28 w-28 shrink-0 rounded-full" style={donutStyle}>
+              <div className="absolute inset-4 rounded-full bg-card flex items-center justify-center">
+                <span className="text-xl font-black">{vmPct}%</span>
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+            <div className="rounded border border-emerald-500/20 bg-emerald-500/10 p-2">
+              <p className="text-muted-foreground">Virtuales</p>
+              <p className="font-bold text-emerald-400">{vmCount}</p>
+            </div>
+            <div className="rounded border border-sky-500/20 bg-sky-500/10 p-2">
+              <p className="text-muted-foreground">Físicos</p>
+              <p className="font-bold text-sky-400">{physicalCount} ({physicalPct}%)</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-border/50 bg-background/40 p-4 space-y-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Visible por última vez</p>
+          <BarMetric label="Último día" value={visibility.UltimoDia || 0} total={total} color="bg-emerald-500" />
+          <BarMetric label="Última semana" value={visibility.UltimaSemana || 0} total={total} color="bg-sky-500" />
+          <BarMetric label="Más de una semana" value={visibility.MasDeUnaSemana || 0} total={total} color="bg-amber-500" />
+          <BarMetric label="Más de un mes" value={visibility.MasDeUnMes || 0} total={total} color="bg-rose-500" />
+        </div>
+      </div>
+    </section>
+  );
+};
+
 export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
   const contextSetPageHeader = useContext(PageHeaderContext);
   const setPageHeader = injectedSetPageHeader || contextSetPageHeader;
   const [adData, setAdData] = useState(null);
-  const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [nodes, setNodes] = useState({
@@ -290,55 +390,31 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
     dc02: null,
     dc03: null,
     ksc: null,
-    zk: null
+    zk: null,
+    kscHardware: null
   });
   const [pingData, setPingData] = useState({});
   const [pingTick, setPingTick] = useState(Date.now());
   const [isADModalOpen, setIsADModalOpen] = useState(false);
   const [isKSCModalOpen, setIsKSCModalOpen] = useState(false);
   const [isZKModalOpen, setIsZKModalOpen] = useState(false);
-  const [showAllHistory, setShowAllHistory] = useState(false); // Nuevo: control de filtro de fecha
 
   const fetchData = async () => {
     // No ponemos loading=true aquí para evitar parpadeos en el autorefresh
     try {
-      const [host1, host2, dc01, dc02, dc03, ksc, zk] = await Promise.all([
+      const [host1, host2, dc01, dc02, dc03, ksc, zk, kscHardware] = await Promise.all([
         monitoringService.getLatestStatus('ANFIGANE'),  // ANFIGANE (Antes AD-HOST)
         monitoringService.getLatestStatus('ANFI-SEG'),  // Host 2
         monitoringService.getLatestStatus('AD'),        // AD01
         monitoringService.getLatestStatus('AD-DC02'),   // AD02
         monitoringService.getLatestStatus('AD-DC03'),   // AD03
         monitoringService.getLatestStatus('KSC'),       // Kaspersky
-        monitoringService.getLatestStatus('SERV-ZK')    // ZKBio / Control de Acceso
+        monitoringService.getLatestStatus('SERV-ZK'),   // ZKBio / Control de Acceso
+        monitoringService.getLatestStatus('KSC-HARDWARE')
       ]);
       
-      setNodes({ host1, host2, dc01, dc02, dc03, ksc, zk });
+      setNodes({ host1, host2, dc01, dc02, dc03, ksc, zk, kscHardware });
       setAdData(dc01);
-      
-      // 2. Historial unificado de todos los servicios
-      const services = ['ANFIGANE', 'ANFI-SEG', 'AD', 'AD-DC02', 'AD-DC03', 'KSC', 'SERV-ZK'];
-      const historyPromises = services.map(s => monitoringService.getHistory(s));
-      const historyResults = await Promise.all(historyPromises);
-      
-      // Combinar y ordenar por fecha (el nombre del archivo contiene el timestamp)
-      const allFiles = [];
-      historyResults.forEach((res, index) => {
-        if (res.files) {
-          res.files.forEach(file => {
-            // Filtrado preventivo: Solo JSON y archivos que empiecen con report_
-            if (file.toLowerCase().endsWith('.json') && file.startsWith('report_')) {
-              allFiles.push({
-                name: file,
-                service: services[index]
-              });
-            }
-          });
-        }
-      });
-      
-      // Ordenar por fecha descendente (más recientes primero)
-      setHistory(allFiles.sort((a, b) => b.name.localeCompare(a.name)));
-      
       setLastUpdate(new Date());
     } catch (error) {
       console.error("Error fetching monitoring data", error);
@@ -346,35 +422,6 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
       setLoading(false);
     }
   };
-
-  const handleDeleteHistory = async (service, filename) => {
-    if (!window.confirm(`¿Estás seguro de que deseas eliminar el reporte ${filename}?`)) return;
-    
-    const success = await monitoringService.deleteHistory(service, filename);
-    if (success) {
-      toast.success('Reporte eliminado correctamente');
-      fetchData(); // Refrescar lista
-    } else {
-      toast.error('Error al eliminar el reporte');
-    }
-  };
-
-  const filteredHistory = (showAllHistory 
-    ? history 
-    : history.filter(item => {
-        // Para el filtro de "Solo Hoy", usamos la fecha local
-        const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
-        // Extraer la fecha del nombre del archivo (UTC) y convertirla a local para comparar
-        try {
-          const name = item.name.replace('report_', '').replace('.json', '');
-          const parts = name.split('T');
-          const isoStr = parts[0] + 'T' + parts[1].replace(/-/g, ':').replace(/:(\d{3})Z$/, '.$1Z');
-          const fileDate = new Date(isoStr).toLocaleDateString('en-CA');
-          return fileDate === today;
-        } catch (e) {
-          return false;
-        }
-      })).filter(item => item.name.toLowerCase().endsWith('.json')); // Filtrado reforzado e insensible a mayúsculas
 
   useEffect(() => {
     fetchData();
@@ -1099,6 +1146,8 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
         </div>
 
       </div>
+
+      <KscHardwareInventoryPanel data={nodes.kscHardware} />
       
       {/* Modal KSC Detailed Info */}
       {isKSCModalOpen && nodes.ksc && (nodes.ksc.Kaspersky || nodes.ksc.data?.Kaspersky) && (
@@ -1719,131 +1768,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
           </div>
         </div>
       )}
-      {/* Modulos Secundarios (reserved) - no KSC card here to avoid duplication */}
-
-      {/* History Table */}
-      <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl overflow-hidden">
-        <div className="p-6 border-b border-border flex justify-between items-center">
-          <h3 className="text-base font-semibold flex items-center gap-2">
-            <History className="w-4 h-4 text-primary" />
-            Historial de Ejecuciones Local
-          </h3>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg border border-border">
-              <button
-                onClick={() => setShowAllHistory(false)}
-                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${!showAllHistory ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                Solo Hoy
-              </button>
-              <button
-                onClick={() => setShowAllHistory(true)}
-                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${showAllHistory ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                Todo
-              </button>
-            </div>
-            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
-              {filteredHistory.length} registros
-            </span>
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs uppercase tracking-wider text-muted-foreground bg-muted/30">
-              <tr>
-                <th className="px-6 py-4">Fecha de Ejecución</th>
-                <th className="px-6 py-4">Servicio</th>
-                <th className="px-6 py-4">ID de Reporte</th>
-                <th className="px-6 py-4">Estado General</th>
-                <th className="px-6 py-4 text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/50">
-              {filteredHistory.length > 0 ? (
-                filteredHistory.map((item, idx) => {
-                  let displayDate = item.name;
-                  try {
-                    // El formato es report_YYYY-MM-DDTHH-mm-ss-fffZ.json
-                    const name = item.name.replace('report_', '').replace('.json', '');
-                    const parts = name.split('T');
-                    if (parts.length === 2) {
-                      const datePart = parts[0];
-                      // Convertimos guiones a dos puntos para la parte del tiempo y aseguramos el punto para milisegundos
-                      const timePart = parts[1].replace(/-/g, ':').replace(/:(\d{3})Z$/, '.$1Z');
-                      const dateObj = new Date(`${datePart}T${timePart}`);
-                      
-                      if (!isNaN(dateObj.getTime())) {
-                        displayDate = dateObj.toLocaleString('es-CO', { 
-                          day: '2-digit', month: '2-digit', year: 'numeric',
-                          hour: '2-digit', minute: '2-digit', second: '2-digit',
-                          hour12: true 
-                        });
-                      }
-                    }
-                  } catch (e) {
-                    console.error("Error parsing date:", item.name, e);
-                  }
-
-                  return (
-                    <tr key={idx} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-6 py-4 font-medium tabular-nums">
-                        {displayDate}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-[10px] font-bold uppercase">
-                          {item.service === 'AD' ? 'AD01' : item.service === 'AD-DC02' ? 'AD02' : item.service === 'AD-DC03' ? 'AD03' : item.service}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 font-mono text-[11px] opacity-70">{item.name.replace('.json', '')}</td>
-                      <td className="px-6 py-4">
-                        <StatusBadge status="success" label="EJECUTADO" />
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          {item.service !== 'ANFI-SEG' && item.service !== 'KSC' && (
-                            <a 
-                              href={monitoringService.getReportHtmlUrl(item.service, item.name.replace('.json', ''))} 
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1.5 hover:bg-primary/20 text-primary rounded-lg transition-colors"
-                              title="Ver Reporte HTML"
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                            </a>
-                          )}
-                          <button
-                            onClick={() => handleDeleteHistory(item.service, item.name)}
-                            className="p-1.5 hover:bg-rose-500/20 text-rose-500 rounded-lg transition-colors"
-                            title="Eliminar Registro"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan="5" className="px-6 py-10 text-center text-muted-foreground italic">
-                    No se han registrado ejecuciones históricas aún.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
-  );
-}
-
-function StatusBadge({ status, label }) {
-  return (
-    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${STATUS_COLORS[status] || STATUS_COLORS.gray}`}>
-      {label}
-    </span>
   );
 }
 
