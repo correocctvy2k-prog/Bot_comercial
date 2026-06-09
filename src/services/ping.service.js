@@ -1,4 +1,5 @@
 const ping = require('ping');
+const net = require('net');
 const { getIO } = require('./socket.service');
 
 const nodesToMonitor = [
@@ -12,7 +13,39 @@ const nodesToMonitor = [
     { id: 'SERV-ZK',  ip: '192.168.8.112', name: 'ZKBio CVSecurity VM' }
 ];
 
+const tcpPortsToMonitor = [
+    { id: 'BABYWARE', ip: '192.168.8.112', port: 16001, name: 'BabyWare Alarm Server' }
+];
+
 let pingInterval = null;
+
+function checkTcpPort(target) {
+    return new Promise((resolve) => {
+        const startedAt = Date.now();
+        const socket = new net.Socket();
+        let settled = false;
+
+        const finish = (status, error) => {
+            if (settled) return;
+            settled = true;
+            socket.destroy();
+            resolve({
+                status,
+                time: status === 'UP' ? Date.now() - startedAt : null,
+                ip: target.ip,
+                port: target.port,
+                checkedAt: Date.now(),
+                error: error || null
+            });
+        };
+
+        socket.setTimeout(2000);
+        socket.once('connect', () => finish('UP'));
+        socket.once('timeout', () => finish('DOWN', 'timeout'));
+        socket.once('error', (err) => finish('DOWN', err && err.message ? err.message : 'error'));
+        socket.connect(target.port, target.ip);
+    });
+}
 
 async function checkNodes() {
     try {
@@ -43,6 +76,17 @@ async function checkNodes() {
             }
         }
 
+        for (const target of tcpPortsToMonitor) {
+            try {
+                console.log(`📡 [PING_SVC] tcp ${target.id} @ ${target.ip}:${target.port}`);
+                results[target.id] = await checkTcpPort(target);
+                try { console.log(`📡 [PING_SVC] result ${target.id}: status=${results[target.id].status} time=${results[target.id].time}`); } catch(e) {}
+            } catch (err) {
+                console.error(`📡 [PING_SVC] error tcp ${target.id} (${target.ip}:${target.port}):`, err && err.message ? err.message : err);
+                results[target.id] = { status: 'DOWN', time: null, ip: target.ip, port: target.port, checkedAt: Date.now() };
+            }
+        }
+
         // Agregar alias útiles para la UI
         if (results['AD-DC02']) {
             results['AD02'] = results['AD-DC02'];
@@ -64,6 +108,11 @@ async function checkNodes() {
         if (results['SERV-ZK']) {
             results['ZK'] = results['SERV-ZK'];
             results['192.168.8.112'] = results['SERV-ZK'];
+        }
+        if (results['BABYWARE']) {
+            results['BABYWARE-16001'] = results['BABYWARE'];
+            results['SERV-ZK:16001'] = results['BABYWARE'];
+            results['192.168.8.112:16001'] = results['BABYWARE'];
         }
 
         // Emitir estado global a todos los clientes conectados

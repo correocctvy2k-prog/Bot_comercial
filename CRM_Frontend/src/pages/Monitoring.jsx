@@ -104,6 +104,10 @@ const ZKIcon = ({ className = "w-6 h-6" }) => (
   <img src="/zk_logo.png" alt="ZKBio" className={`${className} object-contain`} />
 );
 
+const BabyWareIcon = ({ className = "w-6 h-6" }) => (
+  <img src="/babyware_logo.jpg" alt="BabyWare" className={`${className} object-contain`} />
+);
+
 const toInt = (value, fallback = 0) => {
   const parsed = parseInt(value ?? fallback, 10);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -124,7 +128,7 @@ const getPrimaryLicense = (lic = {}) => {
   return { selected, used, limit, usage };
 };
 
-const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, lastBackup, updates, icon, iconClassName = "p-2 bg-[#0078D4]/10 rounded-lg text-[#0078D4]", isPrimary, isHealthy, pingStatus, replication, replicationObjects, fsmoStatus, securityEvents, onClick }) => {
+const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, lastBackup, updates, icon, iconClassName = "p-2 bg-[#0078D4]/10 rounded-lg text-[#0078D4]", isPrimary, isHealthy, pingStatus, replication, replicationObjects, fsmoStatus, securityEvents, extraContent, onClick }) => {
   const PING_FRESH_MS = 45000; // ms to consider a ping "fresh"
   const PING_STALE_MS = 120000; // ms to consider a ping stale (old)
 
@@ -251,6 +255,12 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
            </div>
          )}
       </div>
+
+      {extraContent && (
+        <div className="mb-3 border-t border-border/40 pt-3">
+          {extraContent}
+        </div>
+      )}
 
       <div className="flex justify-between items-center border-t border-border/50 pt-3 mt-auto">
         <UpdateBadge updates={updates} />
@@ -481,6 +491,7 @@ export default function Monitoring() {
   const zkDisk = rawZ.Disk || rawZ.data?.Disk || {};
   const zkDisks = rawZ.Disks || rawZ.data?.Disks || zkDisk.Disks || [];
   const zkServices = rawZ.ZKBio || rawZ.data?.ZKBio || {};
+  const babyWare = rawZ.BabyWare || rawZ.data?.BabyWare || {};
   const zkServiceList = zkServices.Services || rawZ.Services || rawZ.data?.Services || [];
   const zkUpdates = rawZ.Updates || rawZ.data?.Updates || {};
   const zkEvents = rawZ.Events || rawZ.data?.Events || {};
@@ -499,6 +510,18 @@ export default function Monitoring() {
   };
   const zkVmPing = pingData['SERV-ZK'] || pingData['ZK'] || pingData['192.168.8.112'] || toPingStatus(zkReportVmPing, '192.168.8.112');
   const zkHostPing = pingData['PROXMOX-ZK'] || pingData['PROXMOX'] || pingData['192.168.8.50'] || toPingStatus(zkReportHostPing, '192.168.8.50');
+  const babyWareReportPing = babyWare.TcpOk != null ? {
+    Status: babyWare.TcpOk ? 'UP' : 'DOWN',
+    LatencyMs: babyWare.LatencyMs,
+    Pingable: babyWare.TcpOk
+  } : null;
+  const babyWarePing = pingData['BABYWARE'] || pingData['BABYWARE-16001'] || pingData['SERV-ZK:16001'] || pingData['192.168.8.112:16001'] || toPingStatus(babyWareReportPing, '192.168.8.112');
+  const babyWarePort = babyWare.Port || babyWare.port || babyWarePing?.port || 16001;
+  const babyWareStatus = babyWarePing?.status === 'UP'
+    ? 'Activo'
+    : babyWare.Status || (babyWare.TcpOk ? 'Activo' : babyWarePing?.status === 'DOWN' ? 'Sin conexion' : 'N/D');
+  const babyWareOk = babyWarePing?.status === 'UP' || babyWare.TcpOk === true || babyWare.Status === 'OK';
+  const babyWareProcess = babyWare.ProcessName || (babyWare.ProcessFound ? 'BabyWare' : 'N/D');
   const zkStatus = (zkOverall.Status || (nodes.zk ? 'OK' : 'SIN DATOS')).toUpperCase();
   const zkStatusColor = zkStatus === 'CRITICAL' || zkStatus === 'ERROR'
     ? 'text-rose-400'
@@ -515,6 +538,8 @@ export default function Monitoring() {
   const zkRunningServices = zkServices.CriticalServicesOk ?? zkCriticalServices.filter?.(s => s.Healthy || s.State === 'Running' || s.Status === 'Running' || s.Status === 4).length ?? zkServices.RunningCount ?? zkServiceList.filter?.(s => s.State === 'Running' || s.Status === 'Running' || s.Status === 4).length ?? 0;
   const zkTotalServices = zkServices.CriticalServicesTotal ?? zkCriticalServices.length ?? zkServices.TotalCount ?? zkServiceList.length ?? 0;
   const zkOnlineServiceStatus = zkOnlineService?.State || zkOnlineService?.Status || 'N/D';
+  const zkBioPlatformHealthy = zkServices.BioPlatformHealthy ?? zkServices.PlatformServicesOk ?? 0;
+  const zkBioPlatformTotal = zkServices.BioPlatformTotal ?? zkServices.BioPlatformServices?.length ?? 0;
   const zkHostStatus = (zkHost.Status || 'SIN DATOS').toUpperCase();
   const zkHostStatusColor = zkHostStatus === 'CRITICAL' || zkHostStatus === 'ERROR'
     ? 'text-rose-400'
@@ -991,6 +1016,13 @@ export default function Monitoring() {
                   {zkOnlineServiceStatus === 'Running' || zkOnlineServiceStatus === 4 ? 'Activo' : zkOnlineServiceStatus}
                 </span>
               </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-md border border-border">
+                <BabyWareIcon className="w-5 h-5" />
+                <span className="text-muted-foreground">BabyWare:</span>
+                <span className={babyWareOk ? 'font-bold text-emerald-400' : 'font-bold text-amber-400'}>
+                  {babyWareOk ? `${babyWarePort} OK` : 'N/D'}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -1014,6 +1046,27 @@ export default function Monitoring() {
                   pingStatus={zkVmPing}
                   icon={<ZKIcon className="w-8 h-8" />}
                   iconClassName="p-0 rounded-lg"
+                  extraContent={
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      <div className="rounded-lg border border-border/40 bg-background/35 p-2.5">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <ZKIcon className="w-5 h-5" />
+                          <span className="font-bold uppercase tracking-wider text-[10px]">BioPlatform</span>
+                        </div>
+                        <p className="mt-1 font-bold text-emerald-400">{zkBioPlatformHealthy}/{zkBioPlatformTotal || 'N/D'} servicios</p>
+                      </div>
+                      <div className="rounded-lg border border-border/40 bg-background/35 p-2.5">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <BabyWareIcon className="w-5 h-5" />
+                          <span className="font-bold uppercase tracking-wider text-[10px]">BabyWare TCP/{babyWarePort}</span>
+                        </div>
+                        <p className={`mt-1 font-bold ${babyWareOk ? 'text-emerald-400' : 'text-amber-400'}`}>
+                          {babyWareStatus}
+                          {babyWarePing?.time != null && <span className="text-[10px] font-medium ml-1">({Math.round(babyWarePing.time)}ms)</span>}
+                        </p>
+                      </div>
+                    </div>
+                  }
                   onClick={() => setIsZKModalOpen(true)}
                 />
               ) : (
@@ -1339,11 +1392,12 @@ export default function Monitoring() {
             </div>
 
             <div className="p-6 overflow-y-auto custom-scrollbar space-y-6">
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
                 <MetricSmall label="Estado General" value={zkStatus} color={zkStatusColor} icon={<Activity className="w-4 h-4" />} />
                 <MetricSmall label="Host Proxmox" value={zkHostStatus} color={zkHostStatusColor} icon={<ProxmoxIcon className="w-5 h-5" />} />
                 <MetricSmall label="ZKBIOOnline" value={zkOnlineServiceStatus} color={zkOnlineServiceStatus === 'Running' || zkOnlineServiceStatus === 4 ? 'text-emerald-400' : 'text-amber-400'} icon={<ZKIcon className="w-5 h-5" />} />
                 <MetricSmall label="Servicios ZK" value={nodes.zk ? `${zkRunningServices}/${zkTotalServices}` : 'Sin datos'} color={zkServices.Status === 'CRITICAL' ? 'text-rose-400' : 'text-emerald-400'} icon={<CheckCircle2 className="w-4 h-4" />} />
+                <MetricSmall label="BabyWare 16001" value={babyWareOk ? 'Activo' : babyWareStatus} color={babyWareOk ? 'text-emerald-400' : 'text-amber-400'} icon={<BabyWareIcon className="w-5 h-5" />} />
                 <MetricSmall label="Uptime VM" value={rawZ.Uptime || rawZ.data?.Uptime || 'N/A'} icon={<Clock className="w-4 h-4" />} />
               </div>
 
@@ -1451,6 +1505,25 @@ export default function Monitoring() {
                         <p className="text-xs text-muted-foreground italic">No se detectaron servicios con los patrones actuales.</p>
                       )}
                     </div>
+                  </div>
+
+                  <div className="bg-background border border-border rounded-lg p-4">
+                    <h4 className="text-sm font-semibold mb-3 border-b border-border/50 pb-2 flex items-center gap-2">
+                      <BabyWareIcon className="w-6 h-6" /> BabyWare Alarmas
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                      <div><p className="text-muted-foreground">Puerto</p><p className="font-bold">TCP/{babyWarePort}</p></div>
+                      <div><p className="text-muted-foreground">Heartbeat VPS</p><p className={babyWarePing?.status === 'UP' ? 'font-bold text-emerald-400' : babyWarePing?.status === 'DOWN' ? 'font-bold text-rose-400' : 'font-bold text-slate-400'}>{babyWarePing?.status || 'Sin latido'}</p></div>
+                      <div><p className="text-muted-foreground">Estado PS1</p><p className={babyWareOk ? 'font-bold text-emerald-400' : 'font-bold text-amber-400'}>{babyWare.Status || 'N/D'}</p></div>
+                      <div><p className="text-muted-foreground">Proceso</p><p className="font-medium truncate">{babyWareProcess}</p></div>
+                    </div>
+                    {Array.isArray(babyWare.Issues) && babyWare.Issues.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {babyWare.Issues.slice(0, 3).map((issue, idx) => (
+                          <div key={idx} className="rounded border border-amber-500/20 bg-amber-500/5 p-2 text-xs text-amber-300">{issue}</div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="bg-background border border-border rounded-lg p-4">

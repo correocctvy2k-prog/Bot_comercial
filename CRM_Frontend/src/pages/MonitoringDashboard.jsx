@@ -25,6 +25,10 @@ const ZKIcon = ({ className = "h-6 w-6" }) => (
   <img src="/zk_logo.png" alt="ZKBio" className={`${className} object-contain`} />
 );
 
+const BabyWareIcon = ({ className = "h-6 w-6" }) => (
+  <img src="/babyware_logo.jpg" alt="BabyWare" className={`${className} object-contain`} />
+);
+
 const normalizeText = (text) => {
   if (text == null) return text;
   return String(text)
@@ -279,6 +283,7 @@ export default function MonitoringDashboard() {
     const rawZ = nodes.zk || {};
     const zkHost = rawZ.Host || rawZ.data?.Host || {};
     const zkServices = rawZ.ZKBio || rawZ.data?.ZKBio || {};
+    const babyWare = rawZ.BabyWare || rawZ.data?.BabyWare || {};
     const zkServiceList = zkServices.Services || rawZ.Services || rawZ.data?.Services || [];
     const zkCritical = zkServices.CriticalServices || [];
     const zkDiskSource = rawZ.Disks || rawZ.data?.Disks || rawZ.Disk?.Disks || rawZ.data?.Disk?.Disks || [];
@@ -288,6 +293,9 @@ export default function MonitoringDashboard() {
     const zkOnline = zkServices.ZKBIOOnline || zkCritical.find?.((s) => String(s.Name || s.DisplayName || "").toLowerCase().includes("zkbioonline"));
     const zkRunning = zkServices.CriticalServicesOk ?? zkCritical.filter?.((s) => s.Healthy || s.State === "Running").length ?? zkServices.RunningCount ?? 0;
     const zkTotal = zkServices.CriticalServicesTotal ?? zkCritical.length ?? zkServices.TotalCount ?? zkServiceList.length ?? 0;
+    const babyWarePing = pickPing(pingData, ["BABYWARE", "BABYWARE-16001", "SERV-ZK:16001", "192.168.8.112:16001"]);
+    const babyWareOk = babyWarePing?.status === "UP" || babyWare.TcpOk === true || babyWare.Status === "OK";
+    const babyWarePort = babyWare.Port || babyWarePing?.port || 16001;
 
     return {
       host1: {
@@ -306,7 +314,13 @@ export default function MonitoringDashboard() {
         ping: pickPing(pingData, ["PROXMOX-ZK", "PROXMOX", "192.168.8.50"]),
         status: zkHost.Status || "N/D",
         web: zkHost.Ports?.WebUI8006,
-        ssh: zkHost.Ports?.SSH22
+        ssh: zkHost.Ports?.SSH22,
+        babyWare: {
+          ping: babyWarePing,
+          ok: babyWareOk,
+          port: babyWarePort,
+          status: babyWareOk ? "Activo" : babyWare.Status || (babyWarePing?.status === "DOWN" ? "Sin conexion" : "N/D")
+        }
       },
       vms: {
         ad01: {
@@ -356,7 +370,10 @@ export default function MonitoringDashboard() {
           disk: zkDisk,
           backup: "N/A",
           updates: rawZ.Updates || rawZ.data?.Updates,
-          zkOnlineStatus: zkOnline?.State || zkOnline?.Status || "N/D"
+          zkOnlineStatus: zkOnline?.State || zkOnline?.Status || "N/D",
+          babyWareStatus: babyWareOk ? "Activo" : babyWare.Status || "N/D",
+          babyWareOk,
+          babyWarePort
         }
       }
     };
@@ -366,6 +383,7 @@ export default function MonitoringDashboard() {
     model.host1.ping,
     model.host2.ping,
     model.proxmox.ping,
+    model.proxmox.babyWare.ping,
     model.vms.ad01.ping,
     model.vms.ad02.ping,
     model.vms.ad03.ping,
@@ -463,6 +481,7 @@ export default function MonitoringDashboard() {
               <MiniStat icon={<Activity className="h-4 w-4" />} label="Web UI" value={model.proxmox.web ? "8006 OK" : "N/D"} color={model.proxmox.web ? "text-emerald-400" : "text-amber-400"} />
               <MiniStat icon={<Lock className="h-4 w-4" />} label="SSH" value={model.proxmox.ssh ? "22 OK" : "N/D"} color={model.proxmox.ssh ? "text-emerald-400" : "text-amber-400"} />
               <MiniStat icon={<Cpu className="h-4 w-4" />} label="VMs" value="1/1 VMs" color="text-emerald-400" />
+              <MiniStat icon={<BabyWareIcon className="h-5 w-5" />} label="BabyWare" value={`${model.proxmox.babyWare.port} ${model.proxmox.babyWare.ok ? "OK" : "N/D"}`} color={model.proxmox.babyWare.ok ? "text-emerald-400" : "text-amber-400"} />
             </>
           }
         >
@@ -471,7 +490,12 @@ export default function MonitoringDashboard() {
             role={`ZKBIOONLINE: ${model.vms.zk.zkOnlineStatus}`}
             icon={<ZKIcon className="h-7 w-7" />}
             {...model.vms.zk}
-            extra={<HealthBadge label={`ZK ${model.vms.zk.zkOnlineStatus}`} ok={model.vms.zk.zkOnlineStatus === "Running" || model.vms.zk.zkOnlineStatus === 4} warn={model.vms.zk.zkOnlineStatus !== "N/D"} />}
+            extra={
+              <>
+                <HealthBadge label={`ZK ${model.vms.zk.zkOnlineStatus}`} ok={model.vms.zk.zkOnlineStatus === "Running" || model.vms.zk.zkOnlineStatus === 4} warn={model.vms.zk.zkOnlineStatus !== "N/D"} />
+                <HealthBadge label={`BabyWare ${model.vms.zk.babyWarePort}`} ok={model.vms.zk.babyWareOk} warn={model.vms.zk.babyWareStatus !== "N/D"} />
+              </>
+            }
           />
         </HostPanel>
       </div>
