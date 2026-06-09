@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, createContext } from 'react';
 import { Bot, MapPin, Users, Settings, LogOut, Cable, Terminal, PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, PieChart, Sparkles, Building2, ShieldCheck, User, Image, UserCircle, Loader2, X, Activity, LayoutDashboard } from 'lucide-react';
 import SkylabBot from '../components/SkylabBot';
 import { ModeToggle } from "@/components/mode-toggle";
@@ -20,6 +20,8 @@ const AsambleaIcon = ({ size = 24, className = "" }) => (
         <circle cx="17" cy="13.5" r="2.2" />
     </svg>
 );
+
+export const PageHeaderContext = createContext(null);
 
 // ─── ESTRUCTURA CENTRAL DE MENÚS ─────────────────────────────────────────────
 const MENU_ITEMS_RAW = [
@@ -72,6 +74,7 @@ export default function Layout({ children }) {
     const { profile, logout, hasPermission, user, refreshProfile } = useAuth();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [openMenus, setOpenMenus] = useState({ 'Configuraciones': true, 'Monitoreo IT': true });
+    const [pageHeader, setPageHeader] = useState(null);
     
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -300,19 +303,25 @@ export default function Layout({ children }) {
                 {/* Header Superior Dinámico */}
                 {location.pathname !== '/command-center' && (
                     <header className="h-[80px] border-b border-border/60 bg-background/80 backdrop-blur-xl flex items-center justify-between px-10 z-10 shrink-0 shadow-sm">
-                        <div className="flex items-center gap-4 animate-in fade-in slide-in-from-left-4 duration-500">
-                        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 text-primary border border-primary/20 shadow-inner">
-                            <CurrentIcon size={20} strokeWidth={2.5} />
-                        </div>
-                            <div>
-                                <h2 className="text-xl font-bold tracking-tight text-foreground">{currentTitle}</h2>
-                                {profile && isSidebarOpen && (
-                                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest bg-white/5 px-2 py-0.5 rounded-md">
-                                        {profile.roles?.display_name}
-                                    </span>
-                                )}
+                        {pageHeader ? (
+                            <div className="min-w-0 flex-1 animate-in fade-in slide-in-from-left-4 duration-500">
+                                {pageHeader}
                             </div>
-                        </div>
+                        ) : (
+                            <div className="flex items-center gap-4 animate-in fade-in slide-in-from-left-4 duration-500">
+                                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 text-primary border border-primary/20 shadow-inner">
+                                    <CurrentIcon size={20} strokeWidth={2.5} />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold tracking-tight text-foreground">{currentTitle}</h2>
+                                    {profile && isSidebarOpen && (
+                                        <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest bg-white/5 px-2 py-0.5 rounded-md">
+                                            {profile.roles?.display_name}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         <div className="flex items-center gap-6">
                             <ModeToggle />
@@ -372,8 +381,10 @@ export default function Layout({ children }) {
                     </header>
                 )}
 
-                <div className={`flex-1 overflow-auto ${location.pathname === '/command-center' ? 'p-0' : 'p-8'}`}>
-                    {children}
+                <div className={`flex-1 overflow-auto ${location.pathname === '/command-center' ? 'p-0' : location.pathname.startsWith('/monitoring') ? 'p-5' : 'p-8'}`}>
+                    <PageHeaderContext.Provider value={setPageHeader}>
+                        {children}
+                    </PageHeaderContext.Provider>
                 </div>
             </main>
 

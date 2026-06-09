@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from "react";
 import { io } from "socket.io-client";
+import { useContext } from "react";
 import { 
   Server, 
   ShieldCheck, 
@@ -22,6 +23,7 @@ import {
   Shield
 } from "lucide-react";
 import { monitoringService } from "@/services/monitoring.service";
+import { PageHeaderContext } from "@/layout/Layout";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
@@ -128,7 +130,7 @@ const getPrimaryLicense = (lic = {}) => {
   return { selected, used, limit, usage };
 };
 
-const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, lastBackup, updates, icon, iconClassName = "p-2 bg-[#0078D4]/10 rounded-lg text-[#0078D4]", isPrimary, isHealthy, pingStatus, replication, replicationObjects, fsmoStatus, securityEvents, extraContent, onClick }) => {
+const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, lastBackup, updates, icon, iconClassName = "p-2 bg-[#0078D4]/10 rounded-lg text-[#0078D4]", isPrimary, isHealthy, pingStatus, replication, replicationObjects, fsmoStatus, securityEvents, extraContent, compact = false, onClick }) => {
   const PING_FRESH_MS = 45000; // ms to consider a ping "fresh"
   const PING_STALE_MS = 120000; // ms to consider a ping stale (old)
 
@@ -159,7 +161,7 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
   return (
     <div 
       onClick={onClick}
-      className={`bg-background/60 border ${!pingStatus ? 'border-border/50' : displayHealthy ? 'border-border' : 'border-rose-500/40'} ${isOffline ? 'bg-rose-500/5' : ''} rounded-xl p-5 transition-all hover:bg-background/80 flex flex-col ${onClick ? 'cursor-pointer hover:border-primary/50' : ''}`}
+      className={`bg-background/60 border ${!pingStatus ? 'border-border/50' : displayHealthy ? 'border-border' : 'border-rose-500/40'} ${isOffline ? 'bg-rose-500/5' : ''} rounded-xl ${compact ? 'p-4' : 'p-5'} transition-all hover:bg-background/80 flex flex-col ${onClick ? 'cursor-pointer hover:border-primary/50' : ''}`}
     >
       <style>{`
         @keyframes breathe {
@@ -183,7 +185,7 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
           }
         }
       `}</style>
-      <div className="flex items-center justify-between mb-4">
+      <div className={`flex items-center justify-between ${compact ? 'mb-3' : 'mb-4'}`}>
         <div className="flex items-center gap-3">
           <div className={iconClassName}>
             {icon}
@@ -206,7 +208,7 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
 
       {/* consolidated KSC card is rendered once at top-level (outside DCCard) */}
 
-      <div className="grid grid-cols-2 gap-3 text-xs mb-3 flex-1">
+      <div className={`grid ${extraContent ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2'} ${compact ? 'gap-2' : 'gap-3'} text-xs mb-3 flex-1`}>
          <div className="flex flex-col gap-1">
            <span className="text-muted-foreground flex items-center gap-1.5"><Clock className="w-4 h-4" /> Uptime</span>
            <span className="font-medium pl-5">{formatUptime(uptime)}</span>
@@ -257,7 +259,7 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
       </div>
 
       {extraContent && (
-        <div className="mb-3 border-t border-border/40 pt-3">
+        <div className="mb-3">
           {extraContent}
         </div>
       )}
@@ -274,7 +276,9 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
   );
 };
 
-export default function Monitoring() {
+export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
+  const contextSetPageHeader = useContext(PageHeaderContext);
+  const setPageHeader = injectedSetPageHeader || contextSetPageHeader;
   const [adData, setAdData] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -430,6 +434,27 @@ export default function Monitoring() {
     return () => clearInterval(pingInterval);
   }, []);
 
+  useEffect(() => {
+    if (!setPageHeader) return undefined;
+    setPageHeader(
+      <div className="flex min-w-0 items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="truncate text-xl font-bold tracking-tight text-foreground">Monitoreo de Infraestructura</h1>
+          <p className="truncate text-xs text-muted-foreground">Estado de salud de servidores locales y cumplimiento ISO 27001</p>
+        </div>
+        <button
+          onClick={fetchData}
+          disabled={loading}
+          className="flex shrink-0 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium transition-colors hover:bg-muted disabled:opacity-60"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          {loading ? 'Actualizando...' : 'Actualizar ahora'}
+        </button>
+      </div>
+    );
+    return () => setPageHeader(null);
+  }, [setPageHeader, loading]);
+
   // Precompute KSC-friendly fallbacks to normalize different report shapes
   const rawK = nodes.ksc || {};
   // Monitor-SERV-KSC.ps1 stores payload as: { Node, Role, ReportDate, LocalHealth, Kaspersky }
@@ -550,28 +575,11 @@ export default function Monitoring() {
         : 'text-slate-400';
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Monitoreo de Infraestructura</h1>
-          <p className="text-muted-foreground text-sm mt-1">Estado de salud de servidores locales y cumplimiento ISO 27001</p>
-        </div>
-        <button 
-          onClick={fetchData}
-          disabled={loading}
-          className="flex items-center gap-2 bg-card border border-border hover:bg-muted transition-colors px-4 py-2 rounded-lg text-sm font-medium"
-        >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          {loading ? 'Actualizando...' : 'Actualizar ahora'}
-        </button>
-      </div>
-
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
+    <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 mb-5">
 
         <div className={`bg-card/40 backdrop-blur-sm border rounded-xl p-5 ${pingData['AD-HOST']?.status === 'DOWN' ? 'border-rose-500/40' : 'border-border'}`}>
-          <div className="flex items-center justify-between mb-5">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] items-start gap-3 mb-4">
             <div className="flex items-center gap-3">
               <div className={`p-3 rounded-xl ${pingData['AD-HOST']?.status === 'DOWN' ? 'bg-rose-500/20 text-rose-400' : 'bg-sky-500/20 text-sky-400'}`}>
                 <Server className="w-6 h-6" />
@@ -603,7 +611,7 @@ export default function Monitoring() {
               </div>
             </div>
             {nodes.host1 && (
-              <div className="flex flex-wrap items-center gap-2 text-xs">
+              <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2 text-xs lg:max-w-[360px]">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-md border border-border">
                   <Cpu className="w-4 h-4 text-primary" />
                   <span className="text-muted-foreground">RAM:</span>
@@ -618,7 +626,7 @@ export default function Monitoring() {
             )}
           </div>
 
-          <div className="border-t border-border/30 pt-4">
+          <div className="border-t border-border/30 pt-3">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <Database className="w-4 h-4" /> Máquinas Virtuales
             </p>
@@ -689,7 +697,7 @@ export default function Monitoring() {
         </div>
 
         <div className={`bg-card/40 backdrop-blur-sm border rounded-xl p-5 ${pingData['ANFI-SEG']?.status === 'DOWN' ? 'border-rose-500/40' : 'border-border'}`}>
-          <div className="flex items-center justify-between mb-5">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] items-start gap-3 mb-4">
             <div className="flex items-center gap-3">
               <div className={`p-3 rounded-xl ${pingData['ANFI-SEG']?.status === 'DOWN' ? 'bg-rose-500/20 text-rose-400' : 'bg-purple-500/20 text-purple-400'}`}>
                 <Server className="w-6 h-6" />
@@ -718,7 +726,7 @@ export default function Monitoring() {
               </div>
             </div>
             {nodes.host2 && (
-              <div className="flex flex-wrap items-center gap-2 text-xs">
+              <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2 text-xs lg:max-w-[360px]">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-md border border-border">
                   <Cpu className="w-4 h-4 text-primary" />
                   <span className="font-mono">
@@ -736,7 +744,7 @@ export default function Monitoring() {
             )}
           </div>
 
-          <div className="border-t border-border/30 pt-4">
+          <div className="border-t border-border/30 pt-3">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <Database className="w-4 h-4" /> Máquinas Virtuales
             </p>
@@ -967,7 +975,7 @@ export default function Monitoring() {
           onClick={() => setIsZKModalOpen(true)}
           className={`bg-card/40 backdrop-blur-sm border rounded-xl p-5 hover:border-primary/50 cursor-pointer transition-all duration-300 group ${zkHostPing?.status === 'DOWN' || zkStatus === 'CRITICAL' || zkVmPing?.status === 'DOWN' ? 'border-rose-500/40' : 'border-border'}`}
         >
-          <div className="flex items-center justify-between mb-5">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] items-start gap-3 mb-4">
             <div className="flex items-center gap-3">
               <div className={`p-1 rounded-xl ${zkHostPing?.status === 'DOWN' ? 'bg-rose-500/10' : 'bg-transparent'}`}>
                 <ProxmoxIcon className="w-10 h-10" />
@@ -994,7 +1002,7 @@ export default function Monitoring() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-2 text-xs">
+            <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2 text-xs lg:max-w-[420px]">
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-md border border-border">
                 <Activity className="w-4 h-4 text-purple-400" />
                 <span className="text-muted-foreground">Web UI:</span>
@@ -1026,7 +1034,7 @@ export default function Monitoring() {
             </div>
           </div>
 
-          <div className="border-t border-border/30 pt-4">
+          <div className="border-t border-border/30 pt-3">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <Database className="w-4 h-4" /> Máquinas Virtuales
             </p>
@@ -1046,6 +1054,7 @@ export default function Monitoring() {
                   pingStatus={zkVmPing}
                   icon={<ZKIcon className="w-8 h-8" />}
                   iconClassName="p-0 rounded-lg"
+                  compact
                   extraContent={
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                       <div className="rounded-lg border border-border/40 bg-background/35 p-2.5">
