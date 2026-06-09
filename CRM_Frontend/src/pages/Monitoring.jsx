@@ -263,27 +263,70 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
   );
 };
 
-const InventoryKpi = ({ label, value, hint, color = "text-emerald-400", icon }) => (
-  <div className="rounded-lg border border-border/50 bg-background/45 p-3 min-w-0">
-    <div className="flex items-center justify-between gap-2">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
-      <span className="text-muted-foreground">{icon}</span>
+const KscAssetIcon = ({ src, alt, className = "h-7 w-7" }) => (
+  <img src={src} alt={alt} className={`${className} object-contain`} />
+);
+
+const InventoryKpi = ({ title, value, badge, badgeColor = "text-muted-foreground", icon, accent, noIconWrapper = false }) => (
+  <div className={`relative min-h-[126px] overflow-hidden rounded-xl border border-border bg-card/40 p-5 shadow-sm bg-gradient-to-br ${accent}`}>
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_10%,rgba(255,255,255,0.08),transparent_32%)]" />
+    <div className="relative flex items-start justify-between gap-4">
+      <div className="min-w-0">
+        <p className="text-xs font-bold text-muted-foreground">{title}</p>
+        <p className="mt-2 text-3xl font-black leading-none tracking-tight text-foreground">{value}</p>
+      </div>
+      <div className={noIconWrapper ? "shrink-0" : "shrink-0 rounded-lg bg-background/45 p-2.5 text-primary shadow-sm"}>
+        {icon}
+      </div>
     </div>
-    <p className={`mt-2 text-2xl font-black tracking-tight ${color}`}>{value}</p>
-    {hint && <p className="mt-1 truncate text-[10px] text-muted-foreground">{hint}</p>}
+    {badge && <p className={`relative mt-5 text-xs font-black ${badgeColor}`}>{badge}</p>}
   </div>
 );
 
-const BarMetric = ({ label, value, total, color = "bg-emerald-500" }) => {
+const VisibilityBar = ({ label, value, total, color, glow }) => {
   const pct = total > 0 ? Math.min(100, Math.round((value / total) * 100)) : 0;
   return (
-    <div className="space-y-1.5">
-      <div className="flex justify-between text-[11px] font-bold">
-        <span className="text-muted-foreground">{label}</span>
-        <span>{value}<span className="ml-1 text-muted-foreground font-medium">({pct}%)</span></span>
+    <div>
+      <div className="mb-1.5 flex items-center justify-between gap-3 text-xs">
+        <span className="font-bold text-muted-foreground">{label}</span>
+        <span className="font-black">{value}<span className="ml-1 font-medium text-muted-foreground">{pct}%</span></span>
       </div>
-      <div className="h-2 rounded-full bg-muted overflow-hidden">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+      <div className="h-2.5 overflow-hidden rounded-full bg-background/70">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%`, boxShadow: glow }} />
+      </div>
+    </div>
+  );
+};
+
+const OsDistributionDonut = ({ segments, total }) => {
+  let cursor = 0;
+  const gradientStops = segments.map((segment) => {
+    const pct = total > 0 ? (segment.value / total) * 100 : 0;
+    const start = cursor;
+    cursor += pct;
+    return `${segment.color} ${start}% ${cursor}%`;
+  }).join(", ");
+
+  return (
+    <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
+      <div className="relative mx-auto h-44 w-44 shrink-0 rounded-full p-3" style={{ background: `conic-gradient(${gradientStops || "#334155 0 100%"})` }}>
+        <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-border/60 bg-card shadow-[inset_0_0_22px_rgba(0,0,0,0.28)]">
+          <p className="text-3xl font-black leading-none">{total}</p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">equipos</p>
+        </div>
+      </div>
+      <div className="w-full space-y-3">
+        {segments.map((segment) => {
+          const pct = total > 0 ? Math.round((segment.value / total) * 100) : 0;
+          return (
+            <div key={segment.label} className="flex items-center gap-3">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: segment.color, boxShadow: `0 0 9px ${segment.color}99` }} />
+              <span className="flex-1 text-sm text-muted-foreground">{segment.label}</span>
+              <span className="text-sm font-black">{segment.value}</span>
+              <span className="w-10 text-right text-xs text-muted-foreground">{pct}%</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -295,13 +338,25 @@ const KscHardwareInventoryPanel = ({ data }) => {
   const visibility = inventory?.LastSeen || {};
   const virtualization = inventory?.Virtualization || {};
   const total = inventory?.TotalDevices || 0;
+  const windowsServer = os.WindowsServer || 0;
+  const windows10 = os.Windows10 || 0;
+  const windows11 = os.Windows11 || 0;
+  const otherOs = Math.max(0, total - windowsServer - windows10 - windows11);
   const vmCount = virtualization.VirtualMachines || 0;
   const physicalCount = virtualization.PhysicalDevices || 0;
   const vmPct = total > 0 ? Math.round((vmCount / total) * 100) : 0;
   const physicalPct = total > 0 ? Math.max(0, 100 - vmPct) : 0;
-  const donutStyle = {
-    background: `conic-gradient(#22c55e 0 ${vmPct}%, #38bdf8 ${vmPct}% 100%)`
-  };
+  const seenToday = visibility.UltimoDia || 0;
+  const seenWeek = visibility.UltimaSemana || 0;
+  const seenOld = visibility.MasDeUnaSemana || 0;
+  const seenMonth = visibility.MasDeUnMes || 0;
+  const freshPct = total > 0 ? Math.round(((seenToday + seenWeek) / total) * 100) : 0;
+  const osSegments = [
+    { label: "Windows 10", value: windows10, color: "#22c55e" },
+    { label: "Windows 11", value: windows11, color: "#38bdf8" },
+    { label: "Windows Server", value: windowsServer, color: "#a78bfa" },
+    { label: "Otros", value: otherOs, color: "#f59e0b" }
+  ].filter((segment) => segment.value > 0);
 
   if (!inventory) {
     return (
@@ -318,12 +373,12 @@ const KscHardwareInventoryPanel = ({ data }) => {
   }
 
   return (
-    <section className="rounded-xl border border-border bg-card/40 p-5 overflow-hidden">
-      <div className="flex flex-col gap-3 border-b border-border/40 pb-4 lg:flex-row lg:items-center lg:justify-between">
+    <section className="space-y-5 rounded-xl border border-border bg-card/30 p-5">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
           <KasperskyIcon className="w-11 h-11" />
           <div>
-            <h3 className="text-lg font-black tracking-tight">Inventario KSC</h3>
+            <h3 className="text-xl font-black tracking-tight">Inventario KSC</h3>
             <p className="text-xs text-muted-foreground">Sistemas operativos, virtualización y frescura de visibilidad.</p>
           </div>
         </div>
@@ -332,45 +387,88 @@ const KscHardwareInventoryPanel = ({ data }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 pt-4 xl:grid-cols-[1.1fr_0.9fr_1fr]">
-        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-2 gap-3">
-          <InventoryKpi label="Dispositivos" value={total} hint="Inventario total" icon={<Database className="w-4 h-4" />} />
-          <InventoryKpi label="Windows Server" value={os.WindowsServer || 0} color="text-sky-400" icon={<Server className="w-4 h-4" />} />
-          <InventoryKpi label="Windows 10" value={os.Windows10 || 0} color="text-emerald-400" icon={<Cpu className="w-4 h-4" />} />
-          <InventoryKpi label="Windows 11" value={os.Windows11 || 0} color="text-cyan-300" icon={<Activity className="w-4 h-4" />} />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-5">
+        <InventoryKpi
+          title="Dispositivos"
+          value={total}
+          badge={`${freshPct}% vistos en semana`}
+          badgeColor="text-emerald-400"
+          icon={<KscAssetIcon src="/ksc_devices.png" alt="Dispositivos" className="h-10 w-10" />}
+          accent="from-blue-500/20 to-blue-600/5"
+          noIconWrapper
+        />
+        <InventoryKpi
+          title="Windows Server"
+          value={windowsServer}
+          badge="Servidores inventariados"
+          badgeColor="text-violet-300"
+          icon={<KscAssetIcon src="/ksc_server.png" alt="Windows Server" className="h-11 w-11" />}
+          accent="from-violet-500/20 to-violet-600/5"
+          noIconWrapper
+        />
+        <InventoryKpi
+          title="Windows 10"
+          value={windows10}
+          badge={`${total > 0 ? Math.round((windows10 / total) * 100) : 0}% del parque`}
+          badgeColor="text-emerald-400"
+          icon={<KscAssetIcon src="/ksc_w10.png" alt="Windows 10" className="h-10 w-10" />}
+          accent="from-emerald-500/20 to-emerald-600/5"
+          noIconWrapper
+        />
+        <InventoryKpi
+          title="Windows 11"
+          value={windows11}
+          badge={`${total > 0 ? Math.round((windows11 / total) * 100) : 0}% del parque`}
+          badgeColor="text-sky-400"
+          icon={<KscAssetIcon src="/ksc_w11.jpg" alt="Windows 11" className="h-10 w-10 rounded-md" />}
+          accent="from-sky-500/20 to-sky-600/5"
+          noIconWrapper
+        />
+        <InventoryKpi
+          title="Máquinas virtuales"
+          value={vmCount}
+          badge={`${physicalCount} físicos · ${vmPct}% VM`}
+          badgeColor="text-amber-300"
+          icon={<Server className="h-6 w-6 text-amber-300" />}
+          accent="from-amber-500/20 to-amber-600/5"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+        <div className="rounded-xl border border-border bg-card/40 p-6 xl:col-span-2">
+          <div className="mb-6 flex items-center justify-between gap-3">
+            <h4 className="flex items-center gap-2 text-base font-bold">
+              <Activity className="h-4 w-4 text-primary" />
+              Distribución por sistema operativo
+            </h4>
+            <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-400">
+              {total} activos
+            </span>
+          </div>
+          <OsDistributionDonut segments={osSegments} total={total} />
         </div>
 
-        <div className="rounded-lg border border-border/50 bg-background/40 p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Virtualización</p>
-              <p className="mt-2 text-2xl font-black text-emerald-400">{vmCount}</p>
-              <p className="text-[10px] text-muted-foreground">VMs detectadas</p>
-            </div>
-            <div className="relative h-28 w-28 shrink-0 rounded-full" style={donutStyle}>
-              <div className="absolute inset-4 rounded-full bg-card flex items-center justify-center">
-                <span className="text-xl font-black">{vmPct}%</span>
-              </div>
-            </div>
+        <div className="rounded-xl border border-border bg-card/40 p-6">
+          <h4 className="mb-5 flex items-center gap-2 text-base font-bold">
+            <Clock className="h-4 w-4 text-primary" />
+            Última visibilidad
+          </h4>
+          <div className="space-y-4">
+            <VisibilityBar label="Último día" value={seenToday} total={total} color="bg-emerald-500" glow="0 0 12px rgba(34,197,94,0.55)" />
+            <VisibilityBar label="Última semana" value={seenWeek} total={total} color="bg-sky-500" glow="0 0 12px rgba(56,189,248,0.5)" />
+            <VisibilityBar label="Más de una semana" value={seenOld} total={total} color="bg-amber-500" glow="0 0 12px rgba(245,158,11,0.45)" />
+            <VisibilityBar label="Más de un mes" value={seenMonth} total={total} color="bg-rose-500" glow="0 0 12px rgba(244,63,94,0.45)" />
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-            <div className="rounded border border-emerald-500/20 bg-emerald-500/10 p-2">
+          <div className="mt-6 grid grid-cols-2 gap-3 border-t border-border/50 pt-4 text-xs">
+            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3">
               <p className="text-muted-foreground">Virtuales</p>
-              <p className="font-bold text-emerald-400">{vmCount}</p>
+              <p className="mt-1 text-lg font-black text-emerald-400">{vmCount}</p>
             </div>
-            <div className="rounded border border-sky-500/20 bg-sky-500/10 p-2">
+            <div className="rounded-lg border border-sky-500/20 bg-sky-500/10 p-3">
               <p className="text-muted-foreground">Físicos</p>
-              <p className="font-bold text-sky-400">{physicalCount} ({physicalPct}%)</p>
+              <p className="mt-1 text-lg font-black text-sky-400">{physicalCount} <span className="text-xs text-muted-foreground">({physicalPct}%)</span></p>
             </div>
           </div>
-        </div>
-
-        <div className="rounded-lg border border-border/50 bg-background/40 p-4 space-y-3">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Visible por última vez</p>
-          <BarMetric label="Último día" value={visibility.UltimoDia || 0} total={total} color="bg-emerald-500" />
-          <BarMetric label="Última semana" value={visibility.UltimaSemana || 0} total={total} color="bg-sky-500" />
-          <BarMetric label="Más de una semana" value={visibility.MasDeUnaSemana || 0} total={total} color="bg-amber-500" />
-          <BarMetric label="Más de un mes" value={visibility.MasDeUnMes || 0} total={total} color="bg-rose-500" />
         </div>
       </div>
     </section>
