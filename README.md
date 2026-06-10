@@ -1,5 +1,12 @@
 # 🚀 Ecosistema Skylab - Bot Comercial & CRM
 
+## 📚 Documentación
+
+Punto de entrada recomendado para humanos y agentes:
+
+- [DOCUMENTACION.md](./DOCUMENTACION.md)
+- [Indice maestro](./docs/README.md)
+
 Bienvenido al repositorio central del Ecosistema Skylab. Este proyecto está diseñado como un **monorepositorio de microservicios** que utiliza Docker para la orquestación de bots de mensajería (WhatsApp/Telegram) y un panel de control administrativo (CRM).
 
 ## 🏗️ Arquitectura del Proyecto

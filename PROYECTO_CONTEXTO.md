@@ -2,6 +2,8 @@
 > **Última actualización:** 2026-05-27  
 > **Propósito:** Referencia rápida para el asistente IA antes de cualquier intervención en los proyectos. Actualizar al finalizar cada sesión de trabajo.
 
+> **Entrada recomendada nueva:** antes de usar este documento como memoria historica, empezar por [`DOCUMENTACION.md`](./DOCUMENTACION.md) y el indice [`docs/README.md`](./docs/README.md). Esos archivos direccionan a la documentacion vigente por modulo.
+
 ---
 
 ## 🏗️ ESTRUCTURA GENERAL DEL REPOSITORIO
@@ -755,4 +757,3 @@ uptime={nodes.dc01.LocalHealth?.Uptime ?? nodes.dc01.DCs?.Status?.find(d => d.Na
 
 ## 🧠 MEMORIA CENTRALIZADA Y APRENDIZAJE AGÉNTICO
 *Consulte `km_agent_memory` en Supabase para detalles técnicos específicos de implementación de controladores.*
- 
