@@ -268,14 +268,29 @@ const KscAssetIcon = ({ src, alt, className = "h-7 w-7" }) => (
   <img src={src} alt={alt} className={`${className} object-contain`} />
 );
 
-const WindowsMark = ({ tone = "bg-sky-400", className = "h-12 w-12" }) => (
-  <div className={`${className} grid grid-cols-2 gap-1.5 p-1 drop-shadow-[0_0_12px_rgba(56,189,248,0.45)]`}>
-    <span className={`${tone} rounded-[2px]`} />
-    <span className={`${tone} rounded-[2px]`} />
-    <span className={`${tone} rounded-[2px]`} />
-    <span className={`${tone} rounded-[2px]`} />
-  </div>
-);
+const WindowsMark = ({ variant = "win11", color = "#38bdf8", className = "h-12 w-12" }) => {
+  if (variant === "win10") {
+    return (
+      <svg viewBox="0 0 64 64" className={`${className} drop-shadow-[0_0_10px_rgba(56,189,248,0.35)]`} aria-label="Windows 10">
+        <path d="M8 15 L29 11 L29 30 L8 30 Z" fill={color} />
+        <path d="M32 10 L58 6 L58 30 L32 30 Z" fill={color} opacity="0.95" />
+        <path d="M8 34 L29 34 L29 53 L8 49 Z" fill={color} opacity="0.9" />
+        <path d="M32 34 L58 34 L58 58 L32 54 Z" fill={color} opacity="0.98" />
+        <path d="M30.5 11 L30.5 54" stroke="rgba(2,6,23,0.8)" strokeWidth="2" />
+        <path d="M8 32 L58 32" stroke="rgba(2,6,23,0.8)" strokeWidth="2" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 64 64" className={`${className} drop-shadow-[0_0_10px_rgba(59,130,246,0.3)]`} aria-label="Windows 11">
+      <rect x="9" y="9" width="21" height="21" rx="2" fill={color} />
+      <rect x="34" y="9" width="21" height="21" rx="2" fill={color} />
+      <rect x="9" y="34" width="21" height="21" rx="2" fill={color} />
+      <rect x="34" y="34" width="21" height="21" rx="2" fill={color} />
+    </svg>
+  );
+};
 
 const InventoryKpi = ({ title, value, badge, badgeColor = "text-muted-foreground", icon, accent, noIconWrapper = false }) => (
   <div className={`relative min-h-[126px] overflow-hidden rounded-xl border border-border bg-card/40 p-5 shadow-sm bg-gradient-to-br ${accent}`}>
@@ -293,16 +308,16 @@ const InventoryKpi = ({ title, value, badge, badgeColor = "text-muted-foreground
   </div>
 );
 
-const VisibilityBar = ({ label, value, total, color, glow }) => {
+const VisibilityBar = ({ label, value, total, color }) => {
   const pct = total > 0 ? Math.min(100, Math.round((value / total) * 100)) : 0;
   return (
     <div>
-      <div className="mb-1.5 flex items-center justify-between gap-3 text-xs">
+      <div className="mb-1 flex items-center justify-between gap-3 text-xs">
         <span className="font-bold text-muted-foreground">{label}</span>
         <span className="font-black">{value}<span className="ml-1 font-medium text-muted-foreground">{pct}%</span></span>
       </div>
-      <div className="h-2.5 overflow-hidden rounded-full bg-background/70">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%`, boxShadow: glow }} />
+      <div className="h-2 overflow-hidden rounded-full bg-background/70">
+        <div className={`h-full rounded-full ${color} animate-[ksc-bar-grow_900ms_ease-out_both]`} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
@@ -318,20 +333,21 @@ const OsDistributionDonut = ({ segments, total }) => {
   }).join(", ");
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="relative mx-auto h-36 w-36 shrink-0 rounded-full p-2.5 animate-[ksc-donut-in_900ms_ease-out_both]" style={{ background: `conic-gradient(${gradientStops || "#334155 0 100%"})` }}>
+    <div className="flex flex-col gap-3">
+      <div className="relative mx-auto h-32 w-32 shrink-0 rounded-full p-2.5 animate-[ksc-donut-in_900ms_ease-out_both]" style={{ background: `conic-gradient(${gradientStops || "#334155 0 100%"})` }}>
         <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-border/60 bg-card shadow-[inset_0_0_22px_rgba(0,0,0,0.28)]">
           <p className="text-2xl font-black leading-none">{total}</p>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">equipos</p>
         </div>
+        <div className="pointer-events-none absolute inset-3 rounded-full border-[10px] border-background/35" />
       </div>
-      <div className="w-full space-y-2.5">
+      <div className="w-full space-y-2">
         {segments.map((segment) => {
           const pct = total > 0 ? Math.round((segment.value / total) * 100) : 0;
           return (
             <div key={segment.label} className="flex items-center gap-3">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: segment.color, boxShadow: `0 0 9px ${segment.color}99` }} />
-              <span className="flex-1 text-sm text-muted-foreground">{segment.label}</span>
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: segment.color }} />
+              <span className="flex-1 text-xs text-muted-foreground">{segment.label}</span>
               <span className="text-sm font-black">{segment.value}</span>
               <span className="w-10 text-right text-xs text-muted-foreground">{pct}%</span>
             </div>
@@ -345,53 +361,49 @@ const OsDistributionDonut = ({ segments, total }) => {
 const FreshnessAreaChart = ({ points }) => {
   const max = Math.max(...points.map((point) => point.value), 1);
   const coords = points.map((point, index) => {
-    const x = 8 + (index * (184 / Math.max(points.length - 1, 1)));
-    const y = 96 - ((point.value / max) * 76);
+    const x = 14 + (index * (272 / Math.max(points.length - 1, 1)));
+    const y = 92 - ((point.value / max) * 68);
     return { ...point, x, y };
   });
   const linePath = coords.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
-  const areaPath = `${linePath} L ${coords[coords.length - 1]?.x || 192} 104 L ${coords[0]?.x || 8} 104 Z`;
+  const areaPath = `${linePath} L ${coords[coords.length - 1]?.x || 286} 100 L ${coords[0]?.x || 14} 100 Z`;
 
   return (
-    <div className="h-full rounded-xl border border-border bg-card/40 p-5">
-      <div className="mb-4 flex items-center justify-between gap-3">
+    <div className="h-full rounded-xl border border-border bg-card/40 p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
         <h4 className="flex items-center gap-2 text-base font-bold">
           <Activity className="h-4 w-4 text-primary" />
           Curva de frescura
         </h4>
         <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">KSC</span>
       </div>
-      <svg viewBox="0 0 200 130" className="h-44 w-full overflow-visible">
+      <svg viewBox="0 0 300 124" className="h-36 w-full overflow-visible">
         <defs>
           <linearGradient id="kscFreshArea" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#22c55e" stopOpacity="0.38" />
+            <stop offset="0%" stopColor="#22c55e" stopOpacity="0.32" />
             <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
           </linearGradient>
-          <filter id="kscFreshGlow">
-            <feGaussianBlur stdDeviation="2.5" result="coloredBlur" />
-            <feMerge>
-              <feMergeNode in="coloredBlur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
         </defs>
-        {[20, 48, 76, 104].map((y) => (
-          <line key={y} x1="8" x2="192" y1={y} y2={y} stroke="rgba(148,163,184,0.12)" strokeDasharray="3 4" />
+        {[24, 48, 72, 96].map((y) => (
+          <line key={y} x1="14" x2="286" y1={y} y2={y} stroke="rgba(255,255,255,0.055)" strokeDasharray="3 4" />
+        ))}
+        {[14, 105, 196, 286].map((x) => (
+          <line key={x} x1={x} x2={x} y1="16" y2="100" stroke="rgba(255,255,255,0.04)" strokeDasharray="3 4" />
         ))}
         <path d={areaPath} fill="url(#kscFreshArea)" className="animate-[ksc-area-rise_900ms_ease-out_both]" />
-        <path d={linePath} fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" filter="url(#kscFreshGlow)" className="animate-[ksc-line-draw_1.1s_ease-out_both]" />
+        <path d={linePath} fill="none" stroke="#22c55e" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="animate-[ksc-line-draw_1.1s_ease-out_both]" />
         {coords.map((point) => (
           <g key={point.label}>
-            <circle cx={point.x} cy={point.y} r="3.2" fill={point.color} className="animate-[ksc-pop_700ms_ease-out_both]" />
-            <text x={point.x} y="122" textAnchor="middle" className="fill-muted-foreground text-[8px] font-bold">{point.short}</text>
+            <circle cx={point.x} cy={point.y} r="3" fill={point.color} stroke="rgba(2,6,23,0.8)" strokeWidth="1.5" className="animate-[ksc-pop_700ms_ease-out_both]" />
+            <text x={point.x} y="116" textAnchor="middle" className="fill-muted-foreground text-[8px] font-bold">{point.short}</text>
           </g>
         ))}
       </svg>
-      <div className="grid grid-cols-2 gap-2 text-xs">
+      <div className="grid grid-cols-4 gap-2 text-xs">
         {points.map((point) => (
-          <div key={point.label} className="flex items-center gap-2 rounded-md bg-background/35 px-2 py-1.5">
+          <div key={point.label} className="flex min-w-0 items-center gap-2 rounded-md bg-background/35 px-2 py-1.5">
             <span className="h-2 w-2 rounded-full" style={{ background: point.color }} />
-            <span className="flex-1 truncate text-muted-foreground">{point.label}</span>
+            <span className="hidden flex-1 truncate text-muted-foreground sm:block">{point.label}</span>
             <span className="font-black">{point.value}</span>
           </div>
         ))}
@@ -465,6 +477,10 @@ const KscHardwareInventoryPanel = ({ data }) => {
           from { opacity: 0; transform: scale(0.5); transform-origin: center; }
           to { opacity: 1; transform: scale(1); transform-origin: center; }
         }
+        @keyframes ksc-bar-grow {
+          from { transform: scaleX(0); transform-origin: left; }
+          to { transform: scaleX(1); transform-origin: left; }
+        }
       `}</style>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
@@ -503,7 +519,7 @@ const KscHardwareInventoryPanel = ({ data }) => {
           value={windows10}
           badge={`${total > 0 ? Math.round((windows10 / total) * 100) : 0}% del parque`}
           badgeColor="text-emerald-400"
-          icon={<WindowsMark tone="bg-sky-400" className="h-14 w-14" />}
+          icon={<WindowsMark variant="win10" color="#38bdf8" className="h-14 w-14" />}
           accent="from-emerald-500/20 to-emerald-600/5"
           noIconWrapper
         />
@@ -512,7 +528,7 @@ const KscHardwareInventoryPanel = ({ data }) => {
           value={windows11}
           badge={`${total > 0 ? Math.round((windows11 / total) * 100) : 0}% del parque`}
           badgeColor="text-sky-400"
-          icon={<WindowsMark tone="bg-blue-500" className="h-14 w-14" />}
+          icon={<WindowsMark variant="win11" color="#3b82f6" className="h-14 w-14" />}
           accent="from-sky-500/20 to-sky-600/5"
           noIconWrapper
         />
@@ -526,8 +542,8 @@ const KscHardwareInventoryPanel = ({ data }) => {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <div className="rounded-xl border border-border bg-card/40 p-5">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[0.86fr_1.28fr_0.86fr]">
+        <div className="rounded-xl border border-border bg-card/40 p-4">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h4 className="flex items-center gap-2 text-base font-bold">
               <Activity className="h-4 w-4 text-primary" />
@@ -542,23 +558,23 @@ const KscHardwareInventoryPanel = ({ data }) => {
 
         <FreshnessAreaChart points={freshnessPoints} />
 
-        <div className="rounded-xl border border-border bg-card/40 p-5">
-          <h4 className="mb-5 flex items-center gap-2 text-base font-bold">
+        <div className="rounded-xl border border-border bg-card/40 p-4">
+          <h4 className="mb-4 flex items-center gap-2 text-base font-bold">
             <Clock className="h-4 w-4 text-primary" />
             Última visibilidad
           </h4>
-          <div className="space-y-4">
-            <VisibilityBar label="Último día" value={seenToday} total={total} color="bg-emerald-500" glow="0 0 12px rgba(34,197,94,0.55)" />
-            <VisibilityBar label="Última semana" value={seenWeek} total={total} color="bg-sky-500" glow="0 0 12px rgba(56,189,248,0.5)" />
-            <VisibilityBar label="Más de una semana" value={seenOld} total={total} color="bg-amber-500" glow="0 0 12px rgba(245,158,11,0.45)" />
-            <VisibilityBar label="Más de un mes" value={seenMonth} total={total} color="bg-rose-500" glow="0 0 12px rgba(244,63,94,0.45)" />
+          <div className="space-y-3">
+            <VisibilityBar label="Último día" value={seenToday} total={total} color="bg-emerald-500" />
+            <VisibilityBar label="Última semana" value={seenWeek} total={total} color="bg-sky-500" />
+            <VisibilityBar label="Más de una semana" value={seenOld} total={total} color="bg-amber-500" />
+            <VisibilityBar label="Más de un mes" value={seenMonth} total={total} color="bg-rose-500" />
           </div>
-          <div className="mt-6 grid grid-cols-2 gap-3 border-t border-border/50 pt-4 text-xs">
-            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3">
+          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border/50 pt-3 text-xs">
+            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-2.5">
               <p className="text-muted-foreground">Virtuales</p>
               <p className="mt-1 text-lg font-black text-emerald-400">{vmCount}</p>
             </div>
-            <div className="rounded-lg border border-sky-500/20 bg-sky-500/10 p-3">
+            <div className="rounded-lg border border-sky-500/20 bg-sky-500/10 p-2.5">
               <p className="text-muted-foreground">Físicos</p>
               <p className="mt-1 text-lg font-black text-sky-400">{physicalCount} <span className="text-xs text-muted-foreground">({physicalPct}%)</span></p>
             </div>
