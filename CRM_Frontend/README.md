@@ -5,9 +5,14 @@ Este es el Panel de Control administrativo del ecosistema Skylab, construido con
 ## 🚀 Características principales
 
 - **Dashboard Realtime:** Monitoreo de KPIs de los bots y estado de puntos de venta.
+- **Monitoreo IT:** Dashboard de infraestructura con pings en tiempo real, scripts PowerShell, inventario KSC, layout editable y notificaciones inteligentes.
 - **Terminal SSH Embebida:** Control directo de los servidores VPS mediante xterm.js (puente vía Socket.io al backend).
 - **Gestión de Puntos:** Mapa interactivo con Leaflet y gestión de alertas.
 - **Centro de Comando:** Autopilot para reinicio de túneles Cloudflare y actualizaciones de Git.
+
+## 📚 Documentación por módulo
+
+- [Monitoreo IT](./docs/monitoreo-it/README.md)
 
 ## 🛠️ Desarrollo Local
 
