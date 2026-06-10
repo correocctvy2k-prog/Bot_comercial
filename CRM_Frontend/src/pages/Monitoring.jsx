@@ -599,7 +599,7 @@ const FocusInventoryChart = ({
   const activeLabel = isFreshnessMode ? 'Dispositivos' : 'Tipos de dispositivo';
 
   return (
-    <div className="h-full rounded-xl border border-border bg-card/40 p-4">
+    <div className="flex h-full min-h-[300px] flex-col rounded-xl border border-border bg-card/40 p-4">
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h4 className="flex items-center gap-2 text-base font-bold">
           <Activity className="h-4 w-4 text-primary" />
@@ -632,7 +632,7 @@ const FocusInventoryChart = ({
           </span>
         </div>
       </div>
-      <div className="h-[190px]">
+      <div className="min-h-[230px] flex-1">
         <ResponsiveContainer width="100%" height="100%">
           {isFreshnessMode ? (
             <AreaChart key="freshness-chart" data={freshnessData} margin={{ top: 6, right: 10, left: -24, bottom: 0 }}>
