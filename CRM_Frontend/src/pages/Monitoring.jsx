@@ -262,7 +262,7 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
   return (
     <div 
       onClick={onClick}
-      className={`bg-background/60 border ${!pingStatus ? 'border-border/50' : displayHealthy ? 'border-border' : 'border-rose-500/40'} ${isOffline ? 'bg-rose-500/5' : ''} rounded-xl ${compact ? 'p-4' : 'p-5'} transition-all hover:bg-background/80 flex flex-col ${onClick ? 'cursor-pointer hover:border-primary/50' : ''}`}
+      className={`bg-background/60 border ${!pingStatus ? 'border-border/50' : displayHealthy ? 'border-border' : 'border-rose-500/40'} ${isOffline ? 'bg-rose-500/5' : ''} rounded-xl ${compact ? 'p-3' : 'p-4'} transition-all hover:bg-background/80 flex flex-col ${onClick ? 'cursor-pointer hover:border-primary/50' : ''}`}
     >
       <style>{`
         @keyframes breathe {
@@ -286,7 +286,7 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
           }
         }
       `}</style>
-      <div className={`flex items-center justify-between ${compact ? 'mb-3' : 'mb-4'}`}>
+      <div className={`flex items-center justify-between ${compact ? 'mb-2.5' : 'mb-3'}`}>
         <div className="flex items-center gap-3">
           <div className={iconClassName}>
             {icon}
@@ -309,7 +309,7 @@ const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, las
 
       {/* consolidated KSC card is rendered once at top-level (outside DCCard) */}
 
-      <div className={`grid ${extraContent ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2'} ${compact ? 'gap-2' : 'gap-3'} text-xs mb-3 flex-1`}>
+      <div className={`grid ${extraContent ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2'} ${compact ? 'gap-1.5' : 'gap-2.5'} text-xs mb-2.5 flex-1`}>
          <div className="flex flex-col gap-1">
            <span className="text-muted-foreground flex items-center gap-1.5"><Clock className="w-4 h-4" /> Uptime</span>
            <span className="font-medium pl-5">{formatUptime(uptime)}</span>
@@ -406,7 +406,7 @@ const WindowsMark = ({ variant = "win11", color = "#38bdf8", className = "h-12 w
 };
 
 const InventoryKpi = ({ title, value, badge, badgeColor = "text-muted-foreground", icon, accent, noIconWrapper = false }) => (
-  <div className={`relative min-h-[126px] overflow-hidden rounded-xl border border-border bg-card/40 p-5 shadow-sm bg-gradient-to-br ${accent}`}>
+  <div className={`relative min-h-[116px] overflow-hidden rounded-xl border border-border bg-card/40 p-4 shadow-sm bg-gradient-to-br ${accent}`}>
     <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_10%,rgba(255,255,255,0.08),transparent_32%)]" />
     <div className="relative flex items-start justify-between gap-4">
       <div className="min-w-0">
@@ -417,7 +417,7 @@ const InventoryKpi = ({ title, value, badge, badgeColor = "text-muted-foreground
         {icon}
       </div>
     </div>
-    {badge && <p className={`relative mt-5 text-xs font-black ${badgeColor}`}>{badge}</p>}
+    {badge && <p className={`relative mt-4 text-xs font-black ${badgeColor}`}>{badge}</p>}
   </div>
 );
 
@@ -667,7 +667,7 @@ const KscHardwareInventoryPanel = ({ data }) => {
 
   if (!inventory) {
     return (
-      <div className="rounded-xl border border-dashed border-border/60 bg-card/30 p-6">
+      <div className="rounded-xl border border-dashed border-border/60 bg-card/30 p-5">
         <div className="flex items-center gap-3">
           <KasperskyIcon className="w-10 h-10" />
           <div>
@@ -680,7 +680,7 @@ const KscHardwareInventoryPanel = ({ data }) => {
   }
 
   return (
-    <section className="space-y-5 rounded-xl border border-border bg-card/30 p-5">
+    <section className="space-y-4 rounded-xl border border-border bg-card/30 p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
           <KasperskyIcon className="w-11 h-11" />
@@ -694,7 +694,7 @@ const KscHardwareInventoryPanel = ({ data }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-5">
         <InventoryKpi
           title="Dispositivos"
           value={total}
@@ -741,7 +741,7 @@ const KscHardwareInventoryPanel = ({ data }) => {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[0.78fr_1.54fr_0.78fr]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[0.78fr_1.54fr_0.78fr]">
         <div className="rounded-xl border border-border bg-card/40 p-4">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h4 className="flex items-center gap-2 text-base font-bold">
@@ -1081,7 +1081,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
         : 'text-slate-400';
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {isLayoutEditing && (
         <div className="col-span-1 lg:col-span-12 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-xs font-medium text-primary">
           Arrastra los paneles para cambiar el orden. Usa 1/3, 1/2, 2/3 o Full para ajustar el ancho. Los cambios se guardan automáticamente en este navegador.
@@ -1099,8 +1099,8 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
           onDragOver={(event) => event.preventDefault()}
           onDrop={handlePanelDrop}
         >
-        <div className={`bg-card/40 backdrop-blur-sm border rounded-xl p-5 ${pingData['AD-HOST']?.status === 'DOWN' ? 'border-rose-500/40' : 'border-border'}`}>
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] items-start gap-3 mb-4">
+        <div className={`bg-card/40 backdrop-blur-sm border rounded-xl p-4 ${pingData['AD-HOST']?.status === 'DOWN' ? 'border-rose-500/40' : 'border-border'}`}>
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] items-start gap-3 mb-3">
             <div className="flex items-center gap-3">
               <div className={`p-3 rounded-xl ${pingData['AD-HOST']?.status === 'DOWN' ? 'bg-rose-500/20 text-rose-400' : 'bg-sky-500/20 text-sky-400'}`}>
                 <Server className="w-6 h-6" />
@@ -1132,7 +1132,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
               </div>
             </div>
             {nodes.host1 && (
-              <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2 text-xs lg:max-w-[360px]">
+              <div className="flex flex-wrap items-center justify-start lg:justify-end gap-1.5 text-xs lg:max-w-[360px]">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-md border border-border">
                   <Cpu className="w-4 h-4 text-primary" />
                   <span className="text-muted-foreground">RAM:</span>
@@ -1148,10 +1148,10 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
           </div>
 
           <div className="border-t border-border/30 pt-3">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
               <Database className="w-4 h-4" /> Máquinas Virtuales
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {nodes.dc01 ? (
                 <DCCard 
                   title="AD01" 
@@ -1206,8 +1206,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                   isHealthy={!!nodes.dc02 || !!nodes.dc01}
                   pingStatus={pingData['AD-DC02'] || pingData['DA02'] || pingData['AD02']}
                   icon={<WindowsADIcon />}
-                  onClick={() => { setAdData(nodes.dc02); setIsADModalOpen(true); }}
-                />
+                  />
               ) : (
                 <div className="bg-background/40 border border-border/50 rounded-lg p-4 animate-pulse h-[200px]"></div>
               )}
@@ -1228,8 +1227,8 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
           onDragOver={(event) => event.preventDefault()}
           onDrop={handlePanelDrop}
         >
-        <div className={`bg-card/40 backdrop-blur-sm border rounded-xl p-5 ${pingData['ANFI-SEG']?.status === 'DOWN' ? 'border-rose-500/40' : 'border-border'}`}>
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] items-start gap-3 mb-4">
+        <div className={`bg-card/40 backdrop-blur-sm border rounded-xl p-4 ${pingData['ANFI-SEG']?.status === 'DOWN' ? 'border-rose-500/40' : 'border-border'}`}>
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] items-start gap-3 mb-3">
             <div className="flex items-center gap-3">
               <div className={`p-3 rounded-xl ${pingData['ANFI-SEG']?.status === 'DOWN' ? 'bg-rose-500/20 text-rose-400' : 'bg-purple-500/20 text-purple-400'}`}>
                 <Server className="w-6 h-6" />
@@ -1258,7 +1257,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
               </div>
             </div>
             {nodes.host2 && (
-              <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2 text-xs lg:max-w-[360px]">
+              <div className="flex flex-wrap items-center justify-start lg:justify-end gap-1.5 text-xs lg:max-w-[360px]">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-md border border-border">
                   <Cpu className="w-4 h-4 text-primary" />
                   <span className="font-mono">
@@ -1277,10 +1276,10 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
           </div>
 
           <div className="border-t border-border/30 pt-3">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
               <Database className="w-4 h-4" /> Máquinas Virtuales
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
               {nodes.dc03 ? (
                 <DCCard 
@@ -1403,11 +1402,10 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
             onDrop={handlePanelDrop}
           >
           <div 
-            onClick={isLayoutEditing ? undefined : () => setIsKSCModalOpen(true)}
-            className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6 flex flex-col justify-between hover:border-primary/50 cursor-pointer transition-all duration-300 group"
+            className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-4 flex flex-col justify-between transition-all duration-300 group"
           >
             <div>
-              <div className="flex justify-between items-start border-b border-border/50 pb-4 mb-4">
+              <div className="flex justify-between items-start border-b border-border/50 pb-3 mb-3">
                 <div className="flex items-center gap-3">
                   <div className="p-0 rounded-lg group-hover:scale-105 transition-transform">
                     <KasperskyIcon className="w-10 h-10" />
@@ -1420,12 +1418,12 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                   </div>
                 </div>
                 <span className="text-[10px] text-primary flex items-center gap-1 bg-primary/10 px-2 py-1 rounded font-semibold">
-                  Detalles <ExternalLink className="w-3 h-3" />
+                  Resumen
                 </span>
               </div>
 
               {/* Data Summary Grid */}
-              <div className="grid grid-cols-2 gap-4 mt-2">
+              <div className="grid grid-cols-2 gap-3 mt-2">
                 {/* Antivirus DB status */}
                 {(() => {
                   const bd = nodes.ksc.Kaspersky?.BasesDatos || nodes.ksc.data?.Kaspersky?.BasesDatos || {};
@@ -1526,10 +1524,9 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
           onDrop={handlePanelDrop}
         >
         <div
-          onClick={isLayoutEditing ? undefined : () => setIsZKModalOpen(true)}
-          className={`bg-card/40 backdrop-blur-sm border rounded-xl p-5 hover:border-primary/50 cursor-pointer transition-all duration-300 group ${zkHostPing?.status === 'DOWN' || zkStatus === 'CRITICAL' || zkVmPing?.status === 'DOWN' ? 'border-rose-500/40' : 'border-border'}`}
+          className={`bg-card/40 backdrop-blur-sm border rounded-xl p-4 transition-all duration-300 group ${zkHostPing?.status === 'DOWN' || zkStatus === 'CRITICAL' || zkVmPing?.status === 'DOWN' ? 'border-rose-500/40' : 'border-border'}`}
         >
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] items-start gap-3 mb-4">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] items-start gap-3 mb-3">
             <div className="flex items-center gap-3">
               <div className={`p-1 rounded-xl ${zkHostPing?.status === 'DOWN' ? 'bg-rose-500/10' : 'bg-transparent'}`}>
                 <ProxmoxIcon className="w-10 h-10" />
@@ -1556,7 +1553,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2 text-xs lg:max-w-[420px]">
+            <div className="flex flex-wrap items-center justify-start lg:justify-end gap-1.5 text-xs lg:max-w-[420px]">
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-md border border-border">
                 <Activity className="w-4 h-4 text-purple-400" />
                 <span className="text-muted-foreground">Web UI:</span>
@@ -1589,7 +1586,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
           </div>
 
           <div className="border-t border-border/30 pt-3">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
               <Database className="w-4 h-4" /> Máquinas Virtuales
             </p>
             <div className="grid grid-cols-1 gap-4">
@@ -1630,7 +1627,6 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                       </div>
                     </div>
                   }
-                  onClick={() => setIsZKModalOpen(true)}
                 />
               ) : (
                 <div className="bg-background/30 border border-dashed border-border/40 rounded-xl p-5 flex flex-col items-center justify-center gap-3 opacity-70 hover:opacity-90 transition-opacity min-h-[180px]">
