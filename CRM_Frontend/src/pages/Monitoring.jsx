@@ -24,7 +24,13 @@ import {
 import {
   Area,
   AreaChart,
+  Bar,
+  BarChart,
+  Cell,
   CartesianGrid,
+  LabelList,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -317,74 +323,54 @@ const InventoryKpi = ({ title, value, badge, badgeColor = "text-muted-foreground
   </div>
 );
 
-const VisibilityBar = ({ label, value, total, color }) => {
-  const pct = total > 0 ? Math.min(100, Math.round((value / total) * 100)) : 0;
-  return (
-    <div>
-      <div className="mb-1 flex items-center justify-between gap-3 text-xs">
-        <span className="font-bold text-muted-foreground">{label}</span>
-        <span className="font-black">{value}<span className="ml-1 font-medium text-muted-foreground">{pct}%</span></span>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-background/70">
-        <div className={`h-full rounded-full ${color} animate-[ksc-bar-grow_900ms_ease-out_both]`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-};
-
 const OsDistributionDonut = ({ segments, total }) => {
-  const size = 150;
-  const cx = size / 2;
-  const cy = size / 2;
-  const radius = 56;
-  const strokeWidth = 13;
-  const circ = 2 * Math.PI * radius;
-  let offsetPct = 0;
-
   return (
-    <div className="flex flex-col gap-3">
-      <div className="relative mx-auto h-[150px] w-[150px] shrink-0">
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
-          <circle cx={cx} cy={cy} r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={strokeWidth} />
-          {segments.map((segment, index) => {
-            const pct = total > 0 ? segment.value / total : 0;
-            const dash = pct * circ;
-            const gap = circ - dash;
-            const dashOffset = -offsetPct * circ;
-            offsetPct += pct;
-
-            return (
-              <circle
-                key={segment.label}
-                cx={cx}
-                cy={cy}
-                r={radius}
-                fill="none"
-                stroke={segment.color}
-                strokeWidth={strokeWidth}
-                strokeLinecap="round"
-                strokeDasharray={`0 ${circ}`}
-                strokeDashoffset={dashOffset}
-                transform={`rotate(-90 ${cx} ${cy})`}
-                opacity={pct > 0 ? 1 : 0}
-              >
-                <animate
-                  attributeName="stroke-dasharray"
-                  from={`0 ${circ}`}
-                  to={`${dash} ${gap}`}
-                  dur="900ms"
-                  begin={`${index * 120}ms`}
-                  fill="freeze"
-                  calcMode="spline"
-                  keySplines="0.25 0.46 0.45 0.94"
-                />
-              </circle>
-            );
-          })}
-        </svg>
-        <div className="absolute inset-[31px] flex flex-col items-center justify-center rounded-full bg-card shadow-[inset_0_0_22px_rgba(0,0,0,0.28)]">
-          <p className="text-2xl font-black leading-none">{total}</p>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">equipos</p>
+    <div className="flex h-full flex-col gap-3">
+      <div className="relative h-[168px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={[{ label: "Track", value: total || 1 }]}
+              dataKey="value"
+              cx="50%"
+              cy="50%"
+              innerRadius={54}
+              outerRadius={68}
+              startAngle={90}
+              endAngle={-270}
+              fill="rgba(255,255,255,0.06)"
+              stroke="none"
+              isAnimationActive={false}
+            />
+            <Pie
+              data={segments}
+              dataKey="value"
+              nameKey="label"
+              cx="50%"
+              cy="50%"
+              innerRadius={54}
+              outerRadius={68}
+              paddingAngle={segments.length > 1 ? 2 : 0}
+              startAngle={90}
+              endAngle={-270}
+              stroke="none"
+              isAnimationActive
+              animationBegin={80}
+              animationDuration={1100}
+              animationEasing="ease-out"
+            >
+              {segments.map((segment) => (
+                <Cell key={segment.label} fill={segment.color} />
+              ))}
+            </Pie>
+            <Tooltip content={<KscChartTooltip />} />
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="flex h-[92px] w-[92px] flex-col items-center justify-center rounded-full bg-card shadow-[inset_0_0_22px_rgba(0,0,0,0.28)]">
+            <p className="text-2xl font-black leading-none">{total}</p>
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">equipos</p>
+          </div>
         </div>
       </div>
       <div className="w-full space-y-2">
@@ -406,13 +392,57 @@ const OsDistributionDonut = ({ segments, total }) => {
 
 const KscChartTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
+  const item = payload[0];
+  const title = label || item?.name || item?.payload?.label || item?.payload?.name;
   return (
     <div className="rounded-lg border border-border bg-popover/95 px-3 py-2 text-xs shadow-xl">
-      <p className="mb-1 font-bold text-foreground">{label}</p>
-      <p className="font-semibold text-emerald-400">{payload[0].value} dispositivos</p>
+      <p className="mb-1 font-bold text-foreground">{title}</p>
+      <p className="font-semibold text-emerald-400">{item.value} dispositivos</p>
     </div>
   );
 };
+
+const VisibilityBarChart = ({ data, total, vmCount, physicalCount, physicalPct }) => (
+  <div className="rounded-xl border border-border bg-card/40 p-4">
+    <h4 className="mb-3 flex items-center gap-2 text-base font-bold">
+      <Clock className="h-4 w-4 text-primary" />
+      Última visibilidad
+    </h4>
+    <div className="h-[168px]">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 32, left: -18, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.055)" />
+          <XAxis type="number" hide domain={[0, total || 1]} />
+          <YAxis
+            type="category"
+            dataKey="short"
+            width={62}
+            tickLine={false}
+            axisLine={false}
+            tick={{ fontSize: 11, fill: "#94a3b8", fontWeight: 700 }}
+          />
+          <Tooltip content={<KscChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.035)" }} />
+          <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={12} isAnimationActive animationDuration={1050} animationEasing="ease-out">
+            {data.map((entry) => (
+              <Cell key={entry.label} fill={entry.color} />
+            ))}
+            <LabelList dataKey="display" position="right" style={{ fill: "#e2e8f0", fontSize: 11, fontWeight: 800 }} />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+    <div className="mt-3 grid grid-cols-2 gap-3 border-t border-border/50 pt-3 text-xs">
+      <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-2.5">
+        <p className="text-muted-foreground">Virtuales</p>
+        <p className="mt-1 text-lg font-black text-emerald-400">{vmCount}</p>
+      </div>
+      <div className="rounded-lg border border-sky-500/20 bg-sky-500/10 p-2.5">
+        <p className="text-muted-foreground">Físicos</p>
+        <p className="mt-1 text-lg font-black text-sky-400">{physicalCount} <span className="text-xs text-muted-foreground">({physicalPct}%)</span></p>
+      </div>
+    </div>
+  </div>
+);
 
 const FreshnessAreaChart = ({ points }) => {
   const chartData = points.map((point) => ({ name: point.short, label: point.label, value: point.value }));
@@ -491,6 +521,15 @@ const KscHardwareInventoryPanel = ({ data }) => {
     { label: "> Semana", short: "+Sem", value: seenOld, color: "#f59e0b" },
     { label: "> Mes", short: "+Mes", value: seenMonth, color: "#f43f5e" }
   ];
+  const visibilityChartData = [
+    { label: "Último día", short: "Día", value: seenToday, color: "#22c55e" },
+    { label: "Última semana", short: "Semana", value: seenWeek, color: "#38bdf8" },
+    { label: "Más de una semana", short: "+Semana", value: seenOld, color: "#f59e0b" },
+    { label: "Más de un mes", short: "+Mes", value: seenMonth, color: "#f43f5e" }
+  ].map((item) => ({
+    ...item,
+    display: `${item.value}  ${total > 0 ? Math.round((item.value / total) * 100) : 0}%`
+  }));
 
   if (!inventory) {
     return (
@@ -508,12 +547,6 @@ const KscHardwareInventoryPanel = ({ data }) => {
 
   return (
     <section className="space-y-5 rounded-xl border border-border bg-card/30 p-5">
-      <style>{`
-        @keyframes ksc-bar-grow {
-          from { transform: scaleX(0); transform-origin: left; }
-          to { transform: scaleX(1); transform-origin: left; }
-        }
-      `}</style>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
           <KasperskyIcon className="w-11 h-11" />
@@ -590,28 +623,13 @@ const KscHardwareInventoryPanel = ({ data }) => {
 
         <FreshnessAreaChart points={freshnessPoints} />
 
-        <div className="rounded-xl border border-border bg-card/40 p-4">
-          <h4 className="mb-4 flex items-center gap-2 text-base font-bold">
-            <Clock className="h-4 w-4 text-primary" />
-            Última visibilidad
-          </h4>
-          <div className="space-y-3">
-            <VisibilityBar label="Último día" value={seenToday} total={total} color="bg-emerald-500" />
-            <VisibilityBar label="Última semana" value={seenWeek} total={total} color="bg-sky-500" />
-            <VisibilityBar label="Más de una semana" value={seenOld} total={total} color="bg-amber-500" />
-            <VisibilityBar label="Más de un mes" value={seenMonth} total={total} color="bg-rose-500" />
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border/50 pt-3 text-xs">
-            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-2.5">
-              <p className="text-muted-foreground">Virtuales</p>
-              <p className="mt-1 text-lg font-black text-emerald-400">{vmCount}</p>
-            </div>
-            <div className="rounded-lg border border-sky-500/20 bg-sky-500/10 p-2.5">
-              <p className="text-muted-foreground">Físicos</p>
-              <p className="mt-1 text-lg font-black text-sky-400">{physicalCount} <span className="text-xs text-muted-foreground">({physicalPct}%)</span></p>
-            </div>
-          </div>
-        </div>
+        <VisibilityBarChart
+          data={visibilityChartData}
+          total={total}
+          vmCount={vmCount}
+          physicalCount={physicalCount}
+          physicalPct={physicalPct}
+        />
       </div>
     </section>
   );
@@ -638,6 +656,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
   const [isADModalOpen, setIsADModalOpen] = useState(false);
   const [isKSCModalOpen, setIsKSCModalOpen] = useState(false);
   const [isZKModalOpen, setIsZKModalOpen] = useState(false);
+  const [animationCycle, setAnimationCycle] = useState(0);
 
   const fetchData = async () => {
     // No ponemos loading=true aquí para evitar parpadeos en el autorefresh
@@ -719,6 +738,14 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
     }, 5000);
 
     return () => clearInterval(pingInterval);
+  }, []);
+
+  useEffect(() => {
+    const animationInterval = setInterval(() => {
+      setAnimationCycle((cycle) => cycle + 1);
+    }, 300000);
+
+    return () => clearInterval(animationInterval);
   }, []);
 
   useEffect(() => {
@@ -1387,7 +1414,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
 
       </div>
 
-      <KscHardwareInventoryPanel data={nodes.kscHardware} />
+      <KscHardwareInventoryPanel key={animationCycle} data={nodes.kscHardware} />
       
       {/* Modal KSC Detailed Info */}
       {isKSCModalOpen && nodes.ksc && (nodes.ksc.Kaspersky || nodes.ksc.data?.Kaspersky) && (
