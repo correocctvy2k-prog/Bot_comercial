@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from "react";
 import { io } from "socket.io-client";
+import { useRef } from "react";
 import { useContext } from "react";
 import { 
   Server, 
@@ -37,6 +38,7 @@ import {
 } from "recharts";
 import { monitoringService } from "@/services/monitoring.service";
 import { PageHeaderContext } from "@/layout/Layout";
+import SkylabBot from "@/components/SkylabBot";
 
 const SOCKET_URL = import.meta.env.VITE_MONITORING_BACKEND_URL || 'http://localhost:3001';
 const MONITORING_LAYOUT_STORAGE_KEY = 'skylab.monitoring.dashboardLayout.v1';
@@ -236,6 +238,323 @@ const getPrimaryLicense = (lic = {}) => {
   const usage = selected?.PorcentajeUso ?? (limit > 0 ? Math.round((used / limit) * 100) : 0);
 
   return { selected, used, limit, usage };
+};
+
+const getPingHealth = (pingStatus, now = Date.now()) => {
+  if (!pingStatus) return 'unknown';
+  const rawLastSeen = pingStatus.receivedAt || pingStatus.checkedAt || null;
+  const lastSeen = typeof rawLastSeen === 'number' ? rawLastSeen : Date.parse(rawLastSeen);
+  if (lastSeen && now - lastSeen > 120000) return 'stale';
+  return String(pingStatus.status || pingStatus.Status || '').toUpperCase() === 'UP' ? 'up' : 'down';
+};
+
+const addSmartRecommendation = (items, priority, tone, title, body) => {
+  items.push({ priority, tone, title, body });
+};
+
+const getSmartMonitoringRecommendation = ({
+  nodes,
+  pingData,
+  kscServicesOk,
+  kscServicesTotal,
+  kscHasServiceSignal,
+  kscDisk,
+  kscKasp,
+  zkStatus,
+  zkHostStatus,
+  zkPrimaryDisk,
+  zkRunningServices,
+  zkTotalServices,
+  zkBioPlatformHealthy,
+  zkBioPlatformTotal,
+  babyWareOk,
+  babyWareStatus,
+  zkVmPing,
+  zkHostPing,
+  babyWarePing
+}) => {
+  const now = Date.now();
+  const recommendations = [];
+
+  const pingChecks = [
+    ['ANFIGANE', pingData['AD-HOST'] || pingData['ANFIGANE']],
+    ['ANFI-SEG', pingData['ANFI-SEG']],
+    ['AD01', pingData['AD'] || pingData['AD01']],
+    ['AD02', pingData['AD-DC02'] || pingData['AD02'] || pingData['DA02']],
+    ['AD03', pingData['AD-DC03'] || pingData['AD03'] || pingData['DA03']],
+    ['SERV-KSC', pingData['SERV-KSC'] || pingData['KSC'] || pingData['192.168.8.42']],
+    ['PROXMOX-ZK', zkHostPing],
+    ['SERV-ZK', zkVmPing],
+    ['BabyWare TCP/16001', babyWarePing]
+  ];
+
+  pingChecks.forEach(([label, ping]) => {
+    const health = getPingHealth(ping, now);
+    if (health === 'down') {
+      addSmartRecommendation(
+        recommendations,
+        1,
+        'critical',
+        `${label} sin respuesta`,
+        `Validar conectividad, energía y ruta de red. El tablero recibió un estado DOWN para ${label}.`
+      );
+    } else if (health === 'stale') {
+      addSmartRecommendation(
+        recommendations,
+        4,
+        'warning',
+        `${label} con latencia de datos`,
+        `El heartbeat de ${label} no se ha renovado recientemente. Conviene revisar el socket de monitoreo o la conectividad intermedia.`
+      );
+    }
+  });
+
+  if (kscHasServiceSignal && kscServicesTotal > 0 && kscServicesOk < kscServicesTotal) {
+    addSmartRecommendation(
+      recommendations,
+      2,
+      'warning',
+      'KSC tiene servicios por revisar',
+      `${kscServicesTotal - kscServicesOk} servicio(s) no están reportando OK. Prioriza consola Kaspersky y servicios Windows del servidor.`
+    );
+  }
+
+  if (zkTotalServices > 0 && zkRunningServices < zkTotalServices) {
+    addSmartRecommendation(
+      recommendations,
+      2,
+      'warning',
+      'SERV-ZK reporta servicios detenidos',
+      `${zkTotalServices - zkRunningServices} servicio(s) críticos no están en ejecución. Revisa ZKBIOOnline y servicios BioPlatform.`
+    );
+  }
+
+  if (zkBioPlatformTotal > 0 && zkBioPlatformHealthy < zkBioPlatformTotal) {
+    addSmartRecommendation(
+      recommendations,
+      3,
+      'warning',
+      'BioPlatform requiere revisión',
+      `${zkBioPlatformHealthy}/${zkBioPlatformTotal} servicios BioPlatform están saludables. Recomiendo validar los servicios restantes antes de hora pico.`
+    );
+  }
+
+  if (!babyWareOk && babyWareStatus !== 'N/D') {
+    addSmartRecommendation(
+      recommendations,
+      2,
+      'warning',
+      'BabyWare no confirma disponibilidad',
+      `El puerto TCP/16001 está reportando ${babyWareStatus}. Validar servicio de alarmas y firewall local en SERV-ZK.`
+    );
+  }
+
+  const diskChecks = [
+    ['SERV-KSC', kscDisk],
+    ['SERV-ZK', zkPrimaryDisk]
+  ];
+
+  diskChecks.forEach(([label, disk]) => {
+    const percentFree = Number(disk?.PercentFree);
+    if (Number.isFinite(percentFree) && percentFree < 15) {
+      addSmartRecommendation(
+        recommendations,
+        2,
+        'critical',
+        `${label} con poco espacio en disco`,
+        `La unidad C: tiene ${percentFree}% libre. Liberar espacio o ampliar almacenamiento antes de que afecte servicios.`
+      );
+    } else if (Number.isFinite(percentFree) && percentFree < 25) {
+      addSmartRecommendation(
+        recommendations,
+        5,
+        'warning',
+        `${label} cerca del umbral de disco`,
+        `La unidad C: tiene ${percentFree}% libre. Programar limpieza preventiva para evitar alertas críticas.`
+      );
+    }
+  });
+
+  const bd = kscKasp?.BasesDatos || {};
+  const outdatedDb = toInt(bd.MasDeUnaSemana);
+  if (outdatedDb > 0) {
+    addSmartRecommendation(
+      recommendations,
+      5,
+      'info',
+      'Kaspersky mantiene mayoría protegida',
+      `${toInt(bd.AlDia)} equipos están al día y ${outdatedDb} llevan más de una semana. Conviene revisar esos endpoints puntuales.`
+    );
+  }
+
+  const am = kscKasp?.Amenazas || {};
+  const infected = toInt(am.DispositivosInfect);
+  const detected = toInt(am.AmenazasDetectadas);
+  if (infected > 0) {
+    addSmartRecommendation(
+      recommendations,
+      1,
+      'critical',
+      'Kaspersky detecta equipos infectados',
+      `${infected} equipo(s) requieren intervención. Revisar cuarentena, eventos recientes y aislamiento si aplica.`
+    );
+  } else if (detected > 0) {
+    addSmartRecommendation(
+      recommendations,
+      6,
+      'success',
+      'Kaspersky actuó correctamente',
+      `${detected} amenaza(s) fueron detectadas sin equipos infectados activos. Buen momento para revisar trazabilidad y origen.`
+    );
+  }
+
+  const lic = getPrimaryLicense(kscKasp?.Licencias || {});
+  if (lic.limit > 0 && lic.usage >= 90) {
+    addSmartRecommendation(
+      recommendations,
+      4,
+      'warning',
+      'Licenciamiento KSC cerca del límite',
+      `Uso actual: ${lic.used}/${lic.limit} (${lic.usage}%). Considerar depuración de equipos antiguos o ampliación.`
+    );
+  }
+
+  const inventory = nodes.kscHardware?.Kaspersky?.HardwareInventory || nodes.kscHardware?.data?.Kaspersky?.HardwareInventory;
+  if (inventory?.TotalDevices) {
+    const seenToday = toInt(inventory.LastSeen?.UltimoDia);
+    const seenWeek = toInt(inventory.LastSeen?.UltimaSemana);
+    const freshPct = Math.round(((seenToday + seenWeek) / inventory.TotalDevices) * 100);
+    if (freshPct < 85) {
+      addSmartRecommendation(
+        recommendations,
+        5,
+        'info',
+        'Inventario KSC con equipos poco recientes',
+        `${freshPct}% del parque fue visto durante la última semana. Revisar endpoints apagados, retirados o fuera de red.`
+      );
+    }
+  }
+
+  if (zkStatus === 'CRITICAL' || zkHostStatus === 'CRITICAL') {
+    addSmartRecommendation(
+      recommendations,
+      1,
+      'critical',
+      'Entorno ZK en estado crítico',
+      'El estado consolidado de ZK requiere revisión prioritaria: validar Proxmox, VM Windows y servicios de control de acceso.'
+    );
+  }
+
+  const sorted = recommendations.sort((a, b) => a.priority - b.priority);
+  if (!sorted.length) {
+    return {
+      tone: 'success',
+      title: 'Infraestructura estable',
+      body: 'Todos los indicadores principales lucen saludables. Mantén el monitoreo activo y conserva la revisión preventiva programada.',
+      actions: ['Verificar backups según agenda', 'Mantener actualizaciones en ventana controlada']
+    };
+  }
+
+  const primary = sorted[0];
+  return {
+    ...primary,
+    actions: sorted.slice(1, 3).map((item) => item.title)
+  };
+};
+
+const playSmartNotificationSound = () => {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const audioContext = new AudioContextClass();
+    const gain = audioContext.createGain();
+    const oscillator = audioContext.createOscillator();
+    const overtone = audioContext.createOscillator();
+    const now = audioContext.currentTime;
+
+    const resumePromise = audioContext.resume?.();
+    resumePromise?.catch?.(() => {});
+    oscillator.type = 'sine';
+    overtone.type = 'triangle';
+    oscillator.frequency.setValueAtTime(640, now);
+    overtone.frequency.setValueAtTime(960, now);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.035, now + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
+
+    oscillator.connect(gain);
+    overtone.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start(now);
+    overtone.start(now + 0.03);
+    oscillator.stop(now + 0.55);
+    overtone.stop(now + 0.42);
+    setTimeout(() => audioContext.close?.(), 800);
+  } catch {
+    // Browsers may block audio until the user interacts with the page.
+  }
+};
+
+const SmartMonitoringNotification = ({ notification, visible, onClose }) => {
+  if (!notification) return null;
+
+  const toneClasses = {
+    success: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+    info: 'border-sky-500/30 bg-sky-500/10 text-sky-300',
+    warning: 'border-amber-500/35 bg-amber-500/10 text-amber-300',
+    critical: 'border-rose-500/35 bg-rose-500/10 text-rose-300'
+  };
+
+  const badgeLabel = {
+    success: 'Recomendación',
+    info: 'Observación',
+    warning: 'Atención',
+    critical: 'Prioritario'
+  }[notification.tone] || 'Recomendación';
+
+  return (
+    <div
+      className={`fixed bottom-6 right-6 z-50 w-[min(420px,calc(100vw-2rem))] transition-all duration-700 ease-out ${
+        visible ? 'translate-y-0 opacity-100' : 'translate-y-5 opacity-0'
+      }`}
+    >
+      <div className="relative overflow-hidden rounded-xl border border-border bg-background/95 p-4 shadow-2xl shadow-black/30 backdrop-blur-xl">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
+        <div className="flex items-start gap-3">
+          <div className="relative shrink-0 rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary shadow-[0_0_24px_rgba(59,130,246,0.22)]">
+            <SkylabBot size={34} className="text-blue-400" />
+            <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${toneClasses[notification.tone] || toneClasses.info}`}>
+                {badgeLabel}
+              </span>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                title="Cerrar notificación"
+              >
+                <XCircle className="h-4 w-4" />
+              </button>
+            </div>
+            <h3 className="text-sm font-black text-foreground">{notification.title}</h3>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{notification.body}</p>
+            {notification.actions?.length > 0 && (
+              <div className="mt-3 space-y-1 border-t border-border/50 pt-2">
+                {notification.actions.map((action) => (
+                  <p key={action} className="text-[11px] font-semibold text-muted-foreground">
+                    {action}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const DCCard = ({ title, role, uptime, servicesOk, servicesTotal, diskSpace, lastBackup, updates, icon, iconClassName = "p-2 bg-[#0078D4]/10 rounded-lg text-[#0078D4]", isPrimary, isHealthy, pingStatus, replication, replicationObjects, fsmoStatus, securityEvents, extraContent, compact = false, onClick }) => {
@@ -877,6 +1196,9 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
   const [dashboardLayout, setDashboardLayout] = useState(loadMonitoringLayout);
   const [focusInventoryChartMode, setFocusInventoryChartMode] = useState('freshness');
   const [isFocusInventoryChartAutoRotating, setIsFocusInventoryChartAutoRotating] = useState(true);
+  const [smartNotification, setSmartNotification] = useState(null);
+  const [isSmartNotificationVisible, setIsSmartNotificationVisible] = useState(false);
+  const latestSmartRecommendationRef = useRef(null);
 
   const resetDashboardLayout = () => {
     setDashboardLayout(DEFAULT_MONITORING_LAYOUT);
@@ -1015,6 +1337,39 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
   }, [isFocusInventoryChartAutoRotating]);
 
   useEffect(() => {
+    let hideTimer;
+    let clearTimer;
+
+    const showNotification = () => {
+      const recommendation = latestSmartRecommendationRef.current;
+      if (!recommendation) return;
+
+      setSmartNotification({ ...recommendation, id: Date.now() });
+      setIsSmartNotificationVisible(true);
+      playSmartNotificationSound();
+
+      clearTimeout(hideTimer);
+      clearTimeout(clearTimer);
+      hideTimer = setTimeout(() => {
+        setIsSmartNotificationVisible(false);
+      }, 30000);
+      clearTimer = setTimeout(() => {
+        setSmartNotification(null);
+      }, 30700);
+    };
+
+    const initialTimer = setTimeout(showNotification, 8000);
+    const notificationInterval = setInterval(showNotification, 300000);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(notificationInterval);
+      clearTimeout(hideTimer);
+      clearTimeout(clearTimer);
+    };
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem(MONITORING_LAYOUT_STORAGE_KEY, JSON.stringify(dashboardLayout));
   }, [dashboardLayout]);
 
@@ -1064,6 +1419,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
   const kscKasp  = rawK.Kaspersky || rawK.data?.Kaspersky || {};
 
   const kscServicesArray = kscLocal?.Services || kscKasp?.Services || rawK.Services || [];
+  const kscHasServiceSignal = Array.isArray(kscServicesArray) && kscServicesArray.length > 0;
 
   let kscServicesOk = Array.isArray(kscServicesArray) ? kscServicesArray.filter(s => {
     try {
@@ -1175,6 +1531,29 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
       : zkHost.Status
         ? 'text-emerald-400'
         : 'text-slate-400';
+  const hasMonitoringSnapshot = Object.values(nodes).some(Boolean) || Object.keys(pingData).length > 0;
+  const smartRecommendation = hasMonitoringSnapshot ? getSmartMonitoringRecommendation({
+    nodes,
+    pingData,
+    kscServicesOk,
+    kscServicesTotal,
+    kscHasServiceSignal,
+    kscDisk,
+    kscKasp,
+    zkStatus,
+    zkHostStatus,
+    zkPrimaryDisk,
+    zkRunningServices,
+    zkTotalServices,
+    zkBioPlatformHealthy,
+    zkBioPlatformTotal,
+    babyWareOk,
+    babyWareStatus,
+    zkVmPing,
+    zkHostPing,
+    babyWarePing
+  }) : null;
+  latestSmartRecommendationRef.current = smartRecommendation;
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -2386,6 +2765,14 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
           </div>
         </div>
       )}
+      <SmartMonitoringNotification
+        notification={smartNotification}
+        visible={isSmartNotificationVisible}
+        onClose={() => {
+          setIsSmartNotificationVisible(false);
+          setTimeout(() => setSmartNotification(null), 700);
+        }}
+      />
     </div>
   );
 }
