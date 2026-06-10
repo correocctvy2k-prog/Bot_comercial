@@ -28,9 +28,6 @@ import {
   BarChart,
   Cell,
   CartesianGrid,
-  LabelList,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -324,56 +321,84 @@ const InventoryKpi = ({ title, value, badge, badgeColor = "text-muted-foreground
 );
 
 const OsDistributionDonut = ({ segments, total }) => {
+  const size = 172;
+  const cx = size / 2;
+  const cy = size / 2;
+  const radius = 61;
+  const strokeWidth = 14;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
+
   return (
     <div className="flex h-full flex-col gap-3">
-      <div className="relative h-[168px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={[{ label: "Track", value: total || 1 }]}
-              dataKey="value"
-              cx="50%"
-              cy="50%"
-              innerRadius={54}
-              outerRadius={68}
-              startAngle={90}
-              endAngle={-270}
-              fill="rgba(255,255,255,0.06)"
-              stroke="none"
-              isAnimationActive={false}
-            />
-            <Pie
-              data={segments}
-              dataKey="value"
-              nameKey="label"
-              cx="50%"
-              cy="50%"
-              innerRadius={54}
-              outerRadius={68}
-              paddingAngle={segments.length > 1 ? 2 : 0}
-              startAngle={90}
-              endAngle={-270}
-              stroke="none"
-              isAnimationActive
-              animationBegin={80}
-              animationDuration={1100}
-              animationEasing="ease-out"
-            >
-              {segments.map((segment) => (
-                <Cell key={segment.label} fill={segment.color} />
-              ))}
-            </Pie>
-            <Tooltip content={<KscChartTooltip />} />
-          </PieChart>
-        </ResponsiveContainer>
+      <div className="relative mx-auto h-[172px] w-[172px]">
+        <svg viewBox={`0 0 ${size} ${size}`} className="h-full w-full overflow-visible">
+          <defs>
+            <filter id="kscDonutSoftShadow" x="-30%" y="-30%" width="160%" height="160%">
+              <feDropShadow dx="0" dy="8" stdDeviation="8" floodColor="#000000" floodOpacity="0.32" />
+            </filter>
+          </defs>
+          <circle
+            cx={cx}
+            cy={cy}
+            r={radius + 12}
+            fill="none"
+            stroke="rgba(255,255,255,0.035)"
+            strokeWidth="1"
+          />
+          <circle
+            cx={cx}
+            cy={cy}
+            r={radius}
+            fill="none"
+            stroke="rgba(255,255,255,0.07)"
+            strokeWidth={strokeWidth}
+            filter="url(#kscDonutSoftShadow)"
+          />
+          {segments.map((segment, index) => {
+            const pct = total > 0 ? segment.value / total : 0;
+            const dash = Math.max(0, pct * circumference - (segments.length > 1 ? 4 : 0));
+            const gap = circumference - dash;
+            const dashOffset = -offset * circumference;
+            offset += pct;
+
+            return (
+              <circle
+                key={segment.label}
+                cx={cx}
+                cy={cy}
+                r={radius}
+                fill="none"
+                stroke={segment.color}
+                strokeWidth={strokeWidth}
+                strokeLinecap="round"
+                strokeDasharray={`0 ${circumference}`}
+                strokeDashoffset={dashOffset}
+                transform={`rotate(-90 ${cx} ${cy})`}
+              >
+                <animate
+                  attributeName="stroke-dasharray"
+                  from={`0 ${circumference}`}
+                  to={`${dash} ${gap}`}
+                  dur="1200ms"
+                  begin={`${index * 140}ms`}
+                  fill="freeze"
+                  calcMode="spline"
+                  keySplines="0.22 1 0.36 1"
+                />
+              </circle>
+            );
+          })}
+          <circle cx={cx} cy={cy} r="43" fill="rgba(2,6,23,0.55)" stroke="rgba(255,255,255,0.07)" />
+        </svg>
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="flex h-[92px] w-[92px] flex-col items-center justify-center rounded-full bg-card shadow-[inset_0_0_22px_rgba(0,0,0,0.28)]">
+          <div className="text-center">
             <p className="text-2xl font-black leading-none">{total}</p>
             <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">equipos</p>
           </div>
         </div>
       </div>
-      <div className="w-full space-y-2">
+      <div className="w-full space-y-2.5">
         {segments.map((segment) => {
           const pct = total > 0 ? Math.round((segment.value / total) * 100) : 0;
           return (
@@ -408,15 +433,15 @@ const VisibilityBarChart = ({ data, total, vmCount, physicalCount, physicalPct }
       <Clock className="h-4 w-4 text-primary" />
       Última visibilidad
     </h4>
-    <div className="h-[168px]">
+    <div className="h-[128px]">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 32, left: -18, bottom: 0 }}>
+        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 8, left: -18, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.055)" />
           <XAxis type="number" hide domain={[0, total || 1]} />
           <YAxis
             type="category"
             dataKey="short"
-            width={62}
+            width={58}
             tickLine={false}
             axisLine={false}
             tick={{ fontSize: 11, fill: "#94a3b8", fontWeight: 700 }}
@@ -426,10 +451,18 @@ const VisibilityBarChart = ({ data, total, vmCount, physicalCount, physicalPct }
             {data.map((entry) => (
               <Cell key={entry.label} fill={entry.color} />
             ))}
-            <LabelList dataKey="display" position="right" style={{ fill: "#e2e8f0", fontSize: 11, fontWeight: 800 }} />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+    </div>
+    <div className="mt-2 grid grid-cols-1 gap-y-1.5 border-t border-border/50 pt-3 text-[11px]">
+      {data.map((item) => (
+        <div key={item.label} className="flex min-w-0 items-center gap-2">
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: item.color }} />
+          <span className="min-w-0 flex-1 text-muted-foreground">{item.label}</span>
+          <span className="shrink-0 font-black">{item.display}</span>
+        </div>
+      ))}
     </div>
     <div className="mt-3 grid grid-cols-2 gap-3 border-t border-border/50 pt-3 text-xs">
       <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-2.5">
