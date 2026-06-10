@@ -13,7 +13,9 @@ import {
   Database, 
   HardDrive, 
   MonitorSmartphone,
+  Move,
   RefreshCw,
+  RotateCcw,
   ExternalLink,
   Cpu,
   Activity,
@@ -37,6 +39,105 @@ import { monitoringService } from "@/services/monitoring.service";
 import { PageHeaderContext } from "@/layout/Layout";
 
 const SOCKET_URL = import.meta.env.VITE_MONITORING_BACKEND_URL || 'http://localhost:3001';
+const MONITORING_LAYOUT_STORAGE_KEY = 'skylab.monitoring.dashboardLayout.v1';
+
+const DEFAULT_MONITORING_LAYOUT = [
+  { id: 'anfigane', size: 'half' },
+  { id: 'anfi-seg', size: 'half' },
+  { id: 'ksc-summary', size: 'half' },
+  { id: 'zk-summary', size: 'half' },
+  { id: 'ksc-inventory', size: 'full' }
+];
+
+const PANEL_SIZE_CLASSES = {
+  third: 'lg:col-span-4',
+  half: 'lg:col-span-6',
+  wide: 'lg:col-span-8',
+  full: 'lg:col-span-12'
+};
+
+const PANEL_SIZE_LABELS = {
+  third: '1/3',
+  half: '1/2',
+  wide: '2/3',
+  full: 'Full'
+};
+
+const normalizeMonitoringLayout = (storedLayout) => {
+  const incoming = Array.isArray(storedLayout) ? storedLayout : [];
+  const byId = new Map(incoming.map((item) => [item.id, item]));
+  return DEFAULT_MONITORING_LAYOUT.map((item) => {
+    const saved = byId.get(item.id);
+    return {
+      id: item.id,
+      size: PANEL_SIZE_CLASSES[saved?.size] ? saved.size : item.size
+    };
+  }).sort((a, b) => {
+    const orderA = incoming.findIndex((item) => item.id === a.id);
+    const orderB = incoming.findIndex((item) => item.id === b.id);
+    return (orderA === -1 ? 999 : orderA) - (orderB === -1 ? 999 : orderB);
+  });
+};
+
+const loadMonitoringLayout = () => {
+  try {
+    return normalizeMonitoringLayout(JSON.parse(localStorage.getItem(MONITORING_LAYOUT_STORAGE_KEY) || '[]'));
+  } catch {
+    return DEFAULT_MONITORING_LAYOUT;
+  }
+};
+
+const EditableDashboardPanel = ({
+  id,
+  title,
+  layout,
+  editMode,
+  onSizeChange,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  children
+}) => {
+  const panel = layout.find((item) => item.id === id) || DEFAULT_MONITORING_LAYOUT.find((item) => item.id === id);
+  const size = panel?.size || 'half';
+  const order = layout.findIndex((item) => item.id === id);
+
+  return (
+    <div
+      className={`col-span-1 ${PANEL_SIZE_CLASSES[size]} min-w-0 transition-all duration-300 ${editMode ? 'rounded-xl border border-dashed border-primary/45 bg-primary/5 p-2' : ''}`}
+      style={{ order }}
+      draggable={editMode}
+      onDragStart={(event) => onDragStart(event, id)}
+      onDragOver={onDragOver}
+      onDrop={(event) => onDrop(event, id)}
+    >
+      {editMode && (
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card/80 px-3 py-2">
+          <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
+            <Move className="h-4 w-4 text-primary" />
+            <span>{title}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            {Object.keys(PANEL_SIZE_CLASSES).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onSizeChange(id, option);
+                }}
+                className={`rounded-md border px-2 py-1 text-[10px] font-black transition-colors ${size === option ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background text-muted-foreground hover:text-foreground'}`}
+              >
+                {PANEL_SIZE_LABELS[option]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {children}
+    </div>
+  );
+};
 
 const normalizeText = (text) => {
   if (text == null) return text;
@@ -690,6 +791,42 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
   const [isKSCModalOpen, setIsKSCModalOpen] = useState(false);
   const [isZKModalOpen, setIsZKModalOpen] = useState(false);
   const [animationCycle, setAnimationCycle] = useState(0);
+  const [isLayoutEditing, setIsLayoutEditing] = useState(false);
+  const [draggedPanelId, setDraggedPanelId] = useState(null);
+  const [dashboardLayout, setDashboardLayout] = useState(loadMonitoringLayout);
+
+  const resetDashboardLayout = () => {
+    setDashboardLayout(DEFAULT_MONITORING_LAYOUT);
+  };
+
+  const updatePanelSize = (panelId, size) => {
+    setDashboardLayout((current) => current.map((panel) => (
+      panel.id === panelId ? { ...panel, size } : panel
+    )));
+  };
+
+  const handlePanelDragStart = (event, panelId) => {
+    setDraggedPanelId(panelId);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', panelId);
+  };
+
+  const handlePanelDrop = (event, targetPanelId) => {
+    event.preventDefault();
+    const sourcePanelId = draggedPanelId || event.dataTransfer.getData('text/plain');
+    setDraggedPanelId(null);
+    if (!sourcePanelId || sourcePanelId === targetPanelId) return;
+
+    setDashboardLayout((current) => {
+      const next = [...current];
+      const from = next.findIndex((panel) => panel.id === sourcePanelId);
+      const to = next.findIndex((panel) => panel.id === targetPanelId);
+      if (from === -1 || to === -1) return current;
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
 
   const fetchData = async () => {
     // No ponemos loading=true aquí para evitar parpadeos en el autorefresh
@@ -782,6 +919,10 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
   }, []);
 
   useEffect(() => {
+    localStorage.setItem(MONITORING_LAYOUT_STORAGE_KEY, JSON.stringify(dashboardLayout));
+  }, [dashboardLayout]);
+
+  useEffect(() => {
     if (!setPageHeader) return undefined;
     setPageHeader(
       <div className="flex min-w-0 items-center justify-between gap-4">
@@ -789,18 +930,36 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
           <h1 className="truncate text-xl font-bold tracking-tight text-foreground">Monitoreo de Infraestructura</h1>
           <p className="truncate text-xs text-muted-foreground">Estado de salud de servidores locales y cumplimiento ISO 27001</p>
         </div>
-        <button
-          onClick={fetchData}
-          disabled={loading}
-          className="flex shrink-0 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium transition-colors hover:bg-muted disabled:opacity-60"
-        >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          {loading ? 'Actualizando...' : 'Actualizar ahora'}
-        </button>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {isLayoutEditing && (
+            <button
+              onClick={resetDashboardLayout}
+              className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium transition-colors hover:bg-muted"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Restablecer
+            </button>
+          )}
+          <button
+            onClick={() => setIsLayoutEditing((value) => !value)}
+            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${isLayoutEditing ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:bg-muted'}`}
+          >
+            <Move className="h-4 w-4" />
+            {isLayoutEditing ? 'Guardar diseño' : 'Editar diseño'}
+          </button>
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium transition-colors hover:bg-muted disabled:opacity-60"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Actualizando...' : 'Actualizar ahora'}
+          </button>
+        </div>
       </div>
     );
     return () => setPageHeader(null);
-  }, [setPageHeader, loading]);
+  }, [setPageHeader, loading, isLayoutEditing, dashboardLayout]);
 
   // Precompute KSC-friendly fallbacks to normalize different report shapes
   const rawK = nodes.ksc || {};
@@ -922,9 +1081,24 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
         : 'text-slate-400';
 
   return (
-    <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 mb-5">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {isLayoutEditing && (
+        <div className="col-span-1 lg:col-span-12 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-xs font-medium text-primary">
+          Arrastra los paneles para cambiar el orden. Usa 1/3, 1/2, 2/3 o Full para ajustar el ancho. Los cambios se guardan automáticamente en este navegador.
+        </div>
+      )}
+      <div className="contents">
 
+        <EditableDashboardPanel
+          id="anfigane"
+          title="ANFIGANE"
+          layout={dashboardLayout}
+          editMode={isLayoutEditing}
+          onSizeChange={updatePanelSize}
+          onDragStart={handlePanelDragStart}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={handlePanelDrop}
+        >
         <div className={`bg-card/40 backdrop-blur-sm border rounded-xl p-5 ${pingData['AD-HOST']?.status === 'DOWN' ? 'border-rose-500/40' : 'border-border'}`}>
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] items-start gap-3 mb-4">
             <div className="flex items-center gap-3">
@@ -1042,7 +1216,18 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
             </div>
           </div>
         </div>
+        </EditableDashboardPanel>
 
+        <EditableDashboardPanel
+          id="anfi-seg"
+          title="ANFI-SEG13798"
+          layout={dashboardLayout}
+          editMode={isLayoutEditing}
+          onSizeChange={updatePanelSize}
+          onDragStart={handlePanelDragStart}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={handlePanelDrop}
+        >
         <div className={`bg-card/40 backdrop-blur-sm border rounded-xl p-5 ${pingData['ANFI-SEG']?.status === 'DOWN' ? 'border-rose-500/40' : 'border-border'}`}>
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] items-start gap-3 mb-4">
             <div className="flex items-center gap-3">
@@ -1198,16 +1383,27 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
             </div>
           </div>
         </div>
+        </EditableDashboardPanel>
 
       </div>
 
       {/* LAYOUT MONITOREO DE SERVIDORES KSC + ZK */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="contents">
         
         {/* Columna 1: Detalle de Kaspersky (Resumido) */}
         {nodes.ksc && (nodes.ksc.Kaspersky || nodes.ksc.data?.Kaspersky) && (
+          <EditableDashboardPanel
+            id="ksc-summary"
+            title="Kaspersky Security Center"
+            layout={dashboardLayout}
+            editMode={isLayoutEditing}
+            onSizeChange={updatePanelSize}
+            onDragStart={handlePanelDragStart}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={handlePanelDrop}
+          >
           <div 
-            onClick={() => setIsKSCModalOpen(true)}
+            onClick={isLayoutEditing ? undefined : () => setIsKSCModalOpen(true)}
             className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6 flex flex-col justify-between hover:border-primary/50 cursor-pointer transition-all duration-300 group"
           >
             <div>
@@ -1315,11 +1511,22 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
               </div>
             )}
           </div>
+          </EditableDashboardPanel>
         )}
 
         {/* Columna 2: PROXMOX-ZK host with SERV-ZK VM */}
+        <EditableDashboardPanel
+          id="zk-summary"
+          title="PROXMOX-ZK / SERV-ZK"
+          layout={dashboardLayout}
+          editMode={isLayoutEditing}
+          onSizeChange={updatePanelSize}
+          onDragStart={handlePanelDragStart}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={handlePanelDrop}
+        >
         <div
-          onClick={() => setIsZKModalOpen(true)}
+          onClick={isLayoutEditing ? undefined : () => setIsZKModalOpen(true)}
           className={`bg-card/40 backdrop-blur-sm border rounded-xl p-5 hover:border-primary/50 cursor-pointer transition-all duration-300 group ${zkHostPing?.status === 'DOWN' || zkStatus === 'CRITICAL' || zkVmPing?.status === 'DOWN' ? 'border-rose-500/40' : 'border-border'}`}
         >
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] items-start gap-3 mb-4">
@@ -1444,10 +1651,22 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
             </div>
           </div>
         </div>
+        </EditableDashboardPanel>
 
       </div>
 
-      <KscHardwareInventoryPanel key={animationCycle} data={nodes.kscHardware} />
+      <EditableDashboardPanel
+        id="ksc-inventory"
+        title="Inventario KSC"
+        layout={dashboardLayout}
+        editMode={isLayoutEditing}
+        onSizeChange={updatePanelSize}
+        onDragStart={handlePanelDragStart}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={handlePanelDrop}
+      >
+        <KscHardwareInventoryPanel key={animationCycle} data={nodes.kscHardware} />
+      </EditableDashboardPanel>
       
       {/* Modal KSC Detailed Info */}
       {isKSCModalOpen && nodes.ksc && (nodes.ksc.Kaspersky || nodes.ksc.data?.Kaspersky) && (
