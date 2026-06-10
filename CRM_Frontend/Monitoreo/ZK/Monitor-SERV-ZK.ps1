@@ -25,7 +25,7 @@ param(
     [string]$BabyWareIP      = "192.168.8.112",
     [int]$BabyWarePort       = 16001,
     # Servicios criticos ZKBio que DEBEN estar Running.
-    # Algunas instalaciones no incluyen "BioPlat Dependent Business Service";
+    # Algunas instalaciones no incluyen todos los servicios BioPlatform;
     # por eso solo ZKBIOOnline se valida como critico por defecto.
     [string[]]$CriticalZKServices = @(
         "ZKBIOOnline Service"
@@ -246,7 +246,7 @@ function Get-ZKRelatedServices {
         "BioPlatform Core Service",
         "BioPlatform CUServer Service",
         "BioPlatform Database Service",
-        "BioPlat Dependent Business Service",
+        "BioPlatform Dependent Business Service",
         "BioPlatform DetectFace Service",
         "BioPlatform Finger Service",
         "BioPlatform ISSONline Service",
