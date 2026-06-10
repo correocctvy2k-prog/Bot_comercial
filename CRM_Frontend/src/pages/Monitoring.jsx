@@ -63,6 +63,13 @@ const PANEL_SIZE_LABELS = {
   full: 'Full'
 };
 
+const FOCUS_INVENTORY_CHART_MODES = ['freshness', 'types'];
+
+const getNextFocusInventoryChartMode = (currentMode) => {
+  const currentIndex = FOCUS_INVENTORY_CHART_MODES.indexOf(currentMode);
+  return FOCUS_INVENTORY_CHART_MODES[(currentIndex + 1) % FOCUS_INVENTORY_CHART_MODES.length];
+};
+
 const normalizeMonitoringLayout = (storedLayout) => {
   const incoming = Array.isArray(storedLayout) ? storedLayout : [];
   const byId = new Map(incoming.map((item) => [item.id, item]));
@@ -519,7 +526,7 @@ const OsDistributionDonut = ({ segments, total }) => {
 const KscChartTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   const item = payload[0];
-  const title = label || item?.name || item?.payload?.label || item?.payload?.name;
+  const title = item?.payload?.label || label || item?.name || item?.payload?.name;
   return (
     <div className="rounded-lg border border-border bg-popover/95 px-3 py-2 text-xs shadow-xl">
       <p className="mb-1 font-bold text-foreground">{title}</p>
@@ -578,53 +585,112 @@ const VisibilityBarChart = ({ data, total, vmCount, physicalCount, physicalPct }
   </div>
 );
 
-const FreshnessAreaChart = ({ points }) => {
-  const chartData = points.map((point) => ({ name: point.short, label: point.label, value: point.value }));
+const FocusInventoryChart = ({
+  freshnessPoints,
+  deviceTypePoints,
+  chartMode,
+  autoRotate,
+  onToggleMode,
+  onToggleAutoRotate
+}) => {
+  const isFreshnessMode = chartMode === 'freshness';
+  const freshnessData = freshnessPoints.map((point) => ({ name: point.short, label: point.label, value: point.value }));
+  const deviceTypeData = deviceTypePoints.filter((point) => point.value > 0);
+  const activeLabel = isFreshnessMode ? 'Dispositivos' : 'Tipos de dispositivo';
 
   return (
     <div className="h-full rounded-xl border border-border bg-card/40 p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h4 className="flex items-center gap-2 text-base font-bold">
           <Activity className="h-4 w-4 text-primary" />
-          Curva de frescura
+          {isFreshnessMode ? 'Curva de frescura' : 'Tipos de dispositivos'}
         </h4>
-        <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Dispositivos</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onToggleMode}
+            className="rounded-lg border border-border bg-background/70 px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+            title="Cambiar grafico"
+          >
+            {isFreshnessMode ? 'Ver tipos' : 'Ver frescura'}
+          </button>
+          <button
+            type="button"
+            onClick={onToggleAutoRotate}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[10px] font-black uppercase tracking-wide transition-colors ${
+              autoRotate
+                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                : 'border-border bg-background/70 text-muted-foreground hover:border-primary/50 hover:text-primary'
+            }`}
+            title="Rotar cada 10 minutos"
+          >
+            <RefreshCw className={`h-3 w-3 ${autoRotate ? 'animate-spin-slow' : ''}`} />
+            Auto 10m
+          </button>
+          <span className="hidden items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground md:flex">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" /> {activeLabel}
+          </span>
         </div>
       </div>
       <div className="h-[190px]">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 6, right: 10, left: -24, bottom: 0 }}>
-            <defs>
-              <linearGradient id="kscFreshnessGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#22c55e" stopOpacity={0.35} />
-                <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.055)" />
-            <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} allowDecimals={false} />
-            <Tooltip content={<KscChartTooltip />} cursor={{ stroke: "rgba(34,197,94,0.25)", strokeWidth: 1 }} />
-            <Area
-              type="monotone"
-              dataKey="value"
-              stroke="#22c55e"
-              strokeWidth={2.4}
-              fill="url(#kscFreshnessGradient)"
-              dot={{ r: 3, fill: "#22c55e", strokeWidth: 0 }}
-              activeDot={{ r: 5, fill: "#22c55e", stroke: "#052e1a", strokeWidth: 2 }}
-              isAnimationActive
-              animationDuration={1200}
-              animationEasing="ease-out"
-            />
-          </AreaChart>
+          {isFreshnessMode ? (
+            <AreaChart key="freshness-chart" data={freshnessData} margin={{ top: 6, right: 10, left: -24, bottom: 0 }}>
+              <defs>
+                <linearGradient id="kscFreshnessGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.35} />
+                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.055)" />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip content={<KscChartTooltip />} cursor={{ stroke: "rgba(34,197,94,0.25)", strokeWidth: 1 }} />
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke="#22c55e"
+                strokeWidth={2.4}
+                fill="url(#kscFreshnessGradient)"
+                dot={{ r: 3, fill: "#22c55e", strokeWidth: 0 }}
+                activeDot={{ r: 5, fill: "#22c55e", stroke: "#052e1a", strokeWidth: 2 }}
+                isAnimationActive
+                animationDuration={1200}
+                animationEasing="ease-out"
+              />
+            </AreaChart>
+          ) : (
+            <BarChart key="device-types-chart" data={deviceTypeData} margin={{ top: 8, right: 10, left: -24, bottom: 0 }}>
+              <defs>
+                <linearGradient id="kscDeviceTypeBar" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.95} />
+                  <stop offset="100%" stopColor="#22c55e" stopOpacity={0.65} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.055)" />
+              <XAxis dataKey="short" tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip content={<KscChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.035)" }} />
+              <Bar dataKey="value" radius={[8, 8, 2, 2]} barSize={42} isAnimationActive animationDuration={1200} animationEasing="ease-out">
+                {deviceTypeData.map((entry) => (
+                  <Cell key={entry.label} fill={entry.color || "url(#kscDeviceTypeBar)"} />
+                ))}
+              </Bar>
+            </BarChart>
+          )}
         </ResponsiveContainer>
       </div>
     </div>
   );
 };
 
-const KscHardwareInventoryPanel = ({ data }) => {
+const KscHardwareInventoryPanel = ({
+  data,
+  focusChartMode,
+  isFocusChartAutoRotating,
+  onToggleFocusChartMode,
+  onToggleFocusChartAutoRotate
+}) => {
   const inventory = data?.Kaspersky?.HardwareInventory || data?.data?.Kaspersky?.HardwareInventory;
   const os = inventory?.OperatingSystems || {};
   const visibility = inventory?.LastSeen || {};
@@ -654,6 +720,14 @@ const KscHardwareInventoryPanel = ({ data }) => {
     { label: "Semana", short: "Sem", value: seenWeek, color: "#38bdf8" },
     { label: "> Semana", short: "+Sem", value: seenOld, color: "#f59e0b" },
     { label: "> Mes", short: "+Mes", value: seenMonth, color: "#f43f5e" }
+  ];
+  const deviceTypePoints = [
+    { label: "Windows 10", short: "Win 10", value: windows10, color: "#22c55e" },
+    { label: "Windows 11", short: "Win 11", value: windows11, color: "#38bdf8" },
+    { label: "Windows Server", short: "Server", value: windowsServer, color: "#a78bfa" },
+    { label: "Virtuales", short: "VM", value: vmCount, color: "#f59e0b" },
+    { label: "Físicos", short: "Físicos", value: physicalCount, color: "#06b6d4" },
+    { label: "Otros sistemas", short: "Otros", value: otherOs, color: "#64748b" }
   ];
   const visibilityChartData = [
     { label: "Último día", short: "Día", value: seenToday, color: "#22c55e" },
@@ -755,7 +829,14 @@ const KscHardwareInventoryPanel = ({ data }) => {
           <OsDistributionDonut segments={osSegments} total={total} />
         </div>
 
-        <FreshnessAreaChart points={freshnessPoints} />
+        <FocusInventoryChart
+          freshnessPoints={freshnessPoints}
+          deviceTypePoints={deviceTypePoints}
+          chartMode={focusChartMode}
+          autoRotate={isFocusChartAutoRotating}
+          onToggleMode={onToggleFocusChartMode}
+          onToggleAutoRotate={onToggleFocusChartAutoRotate}
+        />
 
         <VisibilityBarChart
           data={visibilityChartData}
@@ -794,9 +875,15 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
   const [isLayoutEditing, setIsLayoutEditing] = useState(false);
   const [draggedPanelId, setDraggedPanelId] = useState(null);
   const [dashboardLayout, setDashboardLayout] = useState(loadMonitoringLayout);
+  const [focusInventoryChartMode, setFocusInventoryChartMode] = useState('freshness');
+  const [isFocusInventoryChartAutoRotating, setIsFocusInventoryChartAutoRotating] = useState(true);
 
   const resetDashboardLayout = () => {
     setDashboardLayout(DEFAULT_MONITORING_LAYOUT);
+  };
+
+  const toggleFocusInventoryChartMode = () => {
+    setFocusInventoryChartMode((currentMode) => getNextFocusInventoryChartMode(currentMode));
   };
 
   const updatePanelSize = (panelId, size) => {
@@ -917,6 +1004,15 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
 
     return () => clearInterval(animationInterval);
   }, []);
+
+  useEffect(() => {
+    if (!isFocusInventoryChartAutoRotating) return undefined;
+    const chartInterval = setInterval(() => {
+      setFocusInventoryChartMode((currentMode) => getNextFocusInventoryChartMode(currentMode));
+    }, 600000);
+
+    return () => clearInterval(chartInterval);
+  }, [isFocusInventoryChartAutoRotating]);
 
   useEffect(() => {
     localStorage.setItem(MONITORING_LAYOUT_STORAGE_KEY, JSON.stringify(dashboardLayout));
@@ -1661,7 +1757,14 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
         onDragOver={(event) => event.preventDefault()}
         onDrop={handlePanelDrop}
       >
-        <KscHardwareInventoryPanel key={animationCycle} data={nodes.kscHardware} />
+        <KscHardwareInventoryPanel
+          key={animationCycle}
+          data={nodes.kscHardware}
+          focusChartMode={focusInventoryChartMode}
+          isFocusChartAutoRotating={isFocusInventoryChartAutoRotating}
+          onToggleFocusChartMode={toggleFocusInventoryChartMode}
+          onToggleFocusChartAutoRotate={() => setIsFocusInventoryChartAutoRotating((value) => !value)}
+        />
       </EditableDashboardPanel>
       
       {/* Modal KSC Detailed Info */}
