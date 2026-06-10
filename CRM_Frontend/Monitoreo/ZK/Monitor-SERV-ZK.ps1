@@ -24,10 +24,11 @@ param(
     # BabyWare corre en la misma maquina que ZKBio (SERV-ZK)
     [string]$BabyWareIP      = "192.168.8.112",
     [int]$BabyWarePort       = 16001,
-    # Servicios criticos ZKBio que DEBEN estar Running
+    # Servicios criticos ZKBio que DEBEN estar Running.
+    # Algunas instalaciones no incluyen "BioPlat Dependent Business Service";
+    # por eso solo ZKBIOOnline se valida como critico por defecto.
     [string[]]$CriticalZKServices = @(
-        "ZKBIOOnline Service",
-        "BioPlat Dependent Business Service"
+        "ZKBIOOnline Service"
     )
 )
 
@@ -372,8 +373,9 @@ function Get-ZKRelatedServices {
         }
     }
 
-    $bpHealthy = @($bioPlatformStatus | Where-Object { $_.Healthy }).Count
-    $bpTotal   = $bioPlatformStatus.Count
+    $bpInstalled = @($bioPlatformStatus | Where-Object { $_.Found })
+    $bpHealthy = @($bpInstalled | Where-Object { $_.Healthy }).Count
+    $bpTotal   = $bpInstalled.Count
     $bpFailed  = @($bioPlatformStatus | Where-Object { $_.Found -and -not $_.Healthy })
     foreach ($bp in $bpFailed) {
         if ($status -ne "CRITICAL") { $status = "WARNING" }
@@ -389,6 +391,8 @@ function Get-ZKRelatedServices {
         BioPlatformServices     = $bioPlatformStatus
         BioPlatformHealthy      = $bpHealthy
         BioPlatformTotal        = $bpTotal
+        BioPlatformExpectedTotal = $bioPlatformStatus.Count
+        BioPlatformMissing      = @($bioPlatformStatus | Where-Object { -not $_.Found }).Count
         ZKBIOOnline             = @($criticalDetected | Where-Object { $_.Name -like "*ZKBIOOnline*" -or $_.DisplayName -like "*ZKBIOOnline*" } | Select-Object -First 1)[0]
         PlatformServicesFound   = $platformServices.Count
         DependencyServicesFound = $dependencyServices.Count
