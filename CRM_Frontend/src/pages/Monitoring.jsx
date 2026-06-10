@@ -12,6 +12,7 @@ import {
   XCircle, 
   Database, 
   HardDrive, 
+  MonitorSmartphone,
   RefreshCw,
   ExternalLink,
   Cpu,
@@ -267,6 +268,15 @@ const KscAssetIcon = ({ src, alt, className = "h-7 w-7" }) => (
   <img src={src} alt={alt} className={`${className} object-contain`} />
 );
 
+const WindowsMark = ({ tone = "bg-sky-400", className = "h-12 w-12" }) => (
+  <div className={`${className} grid grid-cols-2 gap-1.5 p-1 drop-shadow-[0_0_12px_rgba(56,189,248,0.45)]`}>
+    <span className={`${tone} rounded-[2px]`} />
+    <span className={`${tone} rounded-[2px]`} />
+    <span className={`${tone} rounded-[2px]`} />
+    <span className={`${tone} rounded-[2px]`} />
+  </div>
+);
+
 const InventoryKpi = ({ title, value, badge, badgeColor = "text-muted-foreground", icon, accent, noIconWrapper = false }) => (
   <div className={`relative min-h-[126px] overflow-hidden rounded-xl border border-border bg-card/40 p-5 shadow-sm bg-gradient-to-br ${accent}`}>
     <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_10%,rgba(255,255,255,0.08),transparent_32%)]" />
@@ -308,14 +318,14 @@ const OsDistributionDonut = ({ segments, total }) => {
   }).join(", ");
 
   return (
-    <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
-      <div className="relative mx-auto h-44 w-44 shrink-0 rounded-full p-3" style={{ background: `conic-gradient(${gradientStops || "#334155 0 100%"})` }}>
+    <div className="flex flex-col gap-4">
+      <div className="relative mx-auto h-36 w-36 shrink-0 rounded-full p-2.5 animate-[ksc-donut-in_900ms_ease-out_both]" style={{ background: `conic-gradient(${gradientStops || "#334155 0 100%"})` }}>
         <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-border/60 bg-card shadow-[inset_0_0_22px_rgba(0,0,0,0.28)]">
-          <p className="text-3xl font-black leading-none">{total}</p>
+          <p className="text-2xl font-black leading-none">{total}</p>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">equipos</p>
         </div>
       </div>
-      <div className="w-full space-y-3">
+      <div className="w-full space-y-2.5">
         {segments.map((segment) => {
           const pct = total > 0 ? Math.round((segment.value / total) * 100) : 0;
           return (
@@ -327,6 +337,64 @@ const OsDistributionDonut = ({ segments, total }) => {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+};
+
+const FreshnessAreaChart = ({ points }) => {
+  const max = Math.max(...points.map((point) => point.value), 1);
+  const coords = points.map((point, index) => {
+    const x = 8 + (index * (184 / Math.max(points.length - 1, 1)));
+    const y = 96 - ((point.value / max) * 76);
+    return { ...point, x, y };
+  });
+  const linePath = coords.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
+  const areaPath = `${linePath} L ${coords[coords.length - 1]?.x || 192} 104 L ${coords[0]?.x || 8} 104 Z`;
+
+  return (
+    <div className="h-full rounded-xl border border-border bg-card/40 p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h4 className="flex items-center gap-2 text-base font-bold">
+          <Activity className="h-4 w-4 text-primary" />
+          Curva de frescura
+        </h4>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">KSC</span>
+      </div>
+      <svg viewBox="0 0 200 130" className="h-44 w-full overflow-visible">
+        <defs>
+          <linearGradient id="kscFreshArea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#22c55e" stopOpacity="0.38" />
+            <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
+          </linearGradient>
+          <filter id="kscFreshGlow">
+            <feGaussianBlur stdDeviation="2.5" result="coloredBlur" />
+            <feMerge>
+              <feMergeNode in="coloredBlur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        {[20, 48, 76, 104].map((y) => (
+          <line key={y} x1="8" x2="192" y1={y} y2={y} stroke="rgba(148,163,184,0.12)" strokeDasharray="3 4" />
+        ))}
+        <path d={areaPath} fill="url(#kscFreshArea)" className="animate-[ksc-area-rise_900ms_ease-out_both]" />
+        <path d={linePath} fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" filter="url(#kscFreshGlow)" className="animate-[ksc-line-draw_1.1s_ease-out_both]" />
+        {coords.map((point) => (
+          <g key={point.label}>
+            <circle cx={point.x} cy={point.y} r="3.2" fill={point.color} className="animate-[ksc-pop_700ms_ease-out_both]" />
+            <text x={point.x} y="122" textAnchor="middle" className="fill-muted-foreground text-[8px] font-bold">{point.short}</text>
+          </g>
+        ))}
+      </svg>
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        {points.map((point) => (
+          <div key={point.label} className="flex items-center gap-2 rounded-md bg-background/35 px-2 py-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ background: point.color }} />
+            <span className="flex-1 truncate text-muted-foreground">{point.label}</span>
+            <span className="font-black">{point.value}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -357,6 +425,12 @@ const KscHardwareInventoryPanel = ({ data }) => {
     { label: "Windows Server", value: windowsServer, color: "#a78bfa" },
     { label: "Otros", value: otherOs, color: "#f59e0b" }
   ].filter((segment) => segment.value > 0);
+  const freshnessPoints = [
+    { label: "Último día", short: "Día", value: seenToday, color: "#22c55e" },
+    { label: "Semana", short: "Sem", value: seenWeek, color: "#38bdf8" },
+    { label: "> Semana", short: "+Sem", value: seenOld, color: "#f59e0b" },
+    { label: "> Mes", short: "+Mes", value: seenMonth, color: "#f43f5e" }
+  ];
 
   if (!inventory) {
     return (
@@ -374,6 +448,24 @@ const KscHardwareInventoryPanel = ({ data }) => {
 
   return (
     <section className="space-y-5 rounded-xl border border-border bg-card/30 p-5">
+      <style>{`
+        @keyframes ksc-donut-in {
+          from { opacity: 0; transform: scale(0.86) rotate(-18deg); }
+          to { opacity: 1; transform: scale(1) rotate(0deg); }
+        }
+        @keyframes ksc-area-rise {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes ksc-line-draw {
+          from { stroke-dasharray: 260; stroke-dashoffset: 260; opacity: 0.4; }
+          to { stroke-dasharray: 260; stroke-dashoffset: 0; opacity: 1; }
+        }
+        @keyframes ksc-pop {
+          from { opacity: 0; transform: scale(0.5); transform-origin: center; }
+          to { opacity: 1; transform: scale(1); transform-origin: center; }
+        }
+      `}</style>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
           <KasperskyIcon className="w-11 h-11" />
@@ -393,7 +485,7 @@ const KscHardwareInventoryPanel = ({ data }) => {
           value={total}
           badge={`${freshPct}% vistos en semana`}
           badgeColor="text-emerald-400"
-          icon={<KscAssetIcon src="/ksc_devices.png" alt="Dispositivos" className="h-10 w-10" />}
+          icon={<MonitorSmartphone className="h-14 w-14 text-sky-300 drop-shadow-[0_0_14px_rgba(56,189,248,0.45)]" />}
           accent="from-blue-500/20 to-blue-600/5"
           noIconWrapper
         />
@@ -402,7 +494,7 @@ const KscHardwareInventoryPanel = ({ data }) => {
           value={windowsServer}
           badge="Servidores inventariados"
           badgeColor="text-violet-300"
-          icon={<KscAssetIcon src="/ksc_server.png" alt="Windows Server" className="h-11 w-11" />}
+          icon={<KscAssetIcon src="/ksc_server.png" alt="Windows Server" className="h-14 w-14" />}
           accent="from-violet-500/20 to-violet-600/5"
           noIconWrapper
         />
@@ -411,7 +503,7 @@ const KscHardwareInventoryPanel = ({ data }) => {
           value={windows10}
           badge={`${total > 0 ? Math.round((windows10 / total) * 100) : 0}% del parque`}
           badgeColor="text-emerald-400"
-          icon={<KscAssetIcon src="/ksc_w10.png" alt="Windows 10" className="h-10 w-10" />}
+          icon={<WindowsMark tone="bg-sky-400" className="h-14 w-14" />}
           accent="from-emerald-500/20 to-emerald-600/5"
           noIconWrapper
         />
@@ -420,7 +512,7 @@ const KscHardwareInventoryPanel = ({ data }) => {
           value={windows11}
           badge={`${total > 0 ? Math.round((windows11 / total) * 100) : 0}% del parque`}
           badgeColor="text-sky-400"
-          icon={<KscAssetIcon src="/ksc_w11.jpg" alt="Windows 11" className="h-10 w-10 rounded-md" />}
+          icon={<WindowsMark tone="bg-blue-500" className="h-14 w-14" />}
           accent="from-sky-500/20 to-sky-600/5"
           noIconWrapper
         />
@@ -429,17 +521,17 @@ const KscHardwareInventoryPanel = ({ data }) => {
           value={vmCount}
           badge={`${physicalCount} físicos · ${vmPct}% VM`}
           badgeColor="text-amber-300"
-          icon={<Server className="h-6 w-6 text-amber-300" />}
+          icon={<Server className="h-8 w-8 text-amber-300" />}
           accent="from-amber-500/20 to-amber-600/5"
         />
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <div className="rounded-xl border border-border bg-card/40 p-6 xl:col-span-2">
-          <div className="mb-6 flex items-center justify-between gap-3">
+        <div className="rounded-xl border border-border bg-card/40 p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
             <h4 className="flex items-center gap-2 text-base font-bold">
               <Activity className="h-4 w-4 text-primary" />
-              Distribución por sistema operativo
+              Distribución
             </h4>
             <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-400">
               {total} activos
@@ -448,7 +540,9 @@ const KscHardwareInventoryPanel = ({ data }) => {
           <OsDistributionDonut segments={osSegments} total={total} />
         </div>
 
-        <div className="rounded-xl border border-border bg-card/40 p-6">
+        <FreshnessAreaChart points={freshnessPoints} />
+
+        <div className="rounded-xl border border-border bg-card/40 p-5">
           <h4 className="mb-5 flex items-center gap-2 text-base font-bold">
             <Clock className="h-4 w-4 text-primary" />
             Última visibilidad
