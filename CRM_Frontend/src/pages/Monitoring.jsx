@@ -21,6 +21,15 @@ import {
   Bug,
   Shield
 } from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from "recharts";
 import { monitoringService } from "@/services/monitoring.service";
 import { PageHeaderContext } from "@/layout/Layout";
 
@@ -324,22 +333,59 @@ const VisibilityBar = ({ label, value, total, color }) => {
 };
 
 const OsDistributionDonut = ({ segments, total }) => {
-  let cursor = 0;
-  const gradientStops = segments.map((segment) => {
-    const pct = total > 0 ? (segment.value / total) * 100 : 0;
-    const start = cursor;
-    cursor += pct;
-    return `${segment.color} ${start}% ${cursor}%`;
-  }).join(", ");
+  const size = 150;
+  const cx = size / 2;
+  const cy = size / 2;
+  const radius = 56;
+  const strokeWidth = 13;
+  const circ = 2 * Math.PI * radius;
+  let offsetPct = 0;
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="relative mx-auto h-32 w-32 shrink-0 rounded-full p-2.5 animate-[ksc-donut-in_900ms_ease-out_both]" style={{ background: `conic-gradient(${gradientStops || "#334155 0 100%"})` }}>
-        <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-border/60 bg-card shadow-[inset_0_0_22px_rgba(0,0,0,0.28)]">
+      <div className="relative mx-auto h-[150px] w-[150px] shrink-0">
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
+          <circle cx={cx} cy={cy} r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={strokeWidth} />
+          {segments.map((segment, index) => {
+            const pct = total > 0 ? segment.value / total : 0;
+            const dash = pct * circ;
+            const gap = circ - dash;
+            const dashOffset = -offsetPct * circ;
+            offsetPct += pct;
+
+            return (
+              <circle
+                key={segment.label}
+                cx={cx}
+                cy={cy}
+                r={radius}
+                fill="none"
+                stroke={segment.color}
+                strokeWidth={strokeWidth}
+                strokeLinecap="round"
+                strokeDasharray={`0 ${circ}`}
+                strokeDashoffset={dashOffset}
+                transform={`rotate(-90 ${cx} ${cy})`}
+                opacity={pct > 0 ? 1 : 0}
+              >
+                <animate
+                  attributeName="stroke-dasharray"
+                  from={`0 ${circ}`}
+                  to={`${dash} ${gap}`}
+                  dur="900ms"
+                  begin={`${index * 120}ms`}
+                  fill="freeze"
+                  calcMode="spline"
+                  keySplines="0.25 0.46 0.45 0.94"
+                />
+              </circle>
+            );
+          })}
+        </svg>
+        <div className="absolute inset-[31px] flex flex-col items-center justify-center rounded-full bg-card shadow-[inset_0_0_22px_rgba(0,0,0,0.28)]">
           <p className="text-2xl font-black leading-none">{total}</p>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">equipos</p>
         </div>
-        <div className="pointer-events-none absolute inset-3 rounded-full border-[10px] border-background/35" />
       </div>
       <div className="w-full space-y-2">
         {segments.map((segment) => {
@@ -358,15 +404,18 @@ const OsDistributionDonut = ({ segments, total }) => {
   );
 };
 
+const KscChartTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-lg border border-border bg-popover/95 px-3 py-2 text-xs shadow-xl">
+      <p className="mb-1 font-bold text-foreground">{label}</p>
+      <p className="font-semibold text-emerald-400">{payload[0].value} dispositivos</p>
+    </div>
+  );
+};
+
 const FreshnessAreaChart = ({ points }) => {
-  const max = Math.max(...points.map((point) => point.value), 1);
-  const coords = points.map((point, index) => {
-    const x = 14 + (index * (272 / Math.max(points.length - 1, 1)));
-    const y = 92 - ((point.value / max) * 68);
-    return { ...point, x, y };
-  });
-  const linePath = coords.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
-  const areaPath = `${linePath} L ${coords[coords.length - 1]?.x || 286} 100 L ${coords[0]?.x || 14} 100 Z`;
+  const chartData = points.map((point) => ({ name: point.short, label: point.label, value: point.value }));
 
   return (
     <div className="h-full rounded-xl border border-border bg-card/40 p-4">
@@ -375,38 +424,37 @@ const FreshnessAreaChart = ({ points }) => {
           <Activity className="h-4 w-4 text-primary" />
           Curva de frescura
         </h4>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">KSC</span>
+        <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Dispositivos</span>
+        </div>
       </div>
-      <svg viewBox="0 0 300 124" className="h-36 w-full overflow-visible">
-        <defs>
-          <linearGradient id="kscFreshArea" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#22c55e" stopOpacity="0.32" />
-            <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        {[24, 48, 72, 96].map((y) => (
-          <line key={y} x1="14" x2="286" y1={y} y2={y} stroke="rgba(255,255,255,0.055)" strokeDasharray="3 4" />
-        ))}
-        {[14, 105, 196, 286].map((x) => (
-          <line key={x} x1={x} x2={x} y1="16" y2="100" stroke="rgba(255,255,255,0.04)" strokeDasharray="3 4" />
-        ))}
-        <path d={areaPath} fill="url(#kscFreshArea)" className="animate-[ksc-area-rise_900ms_ease-out_both]" />
-        <path d={linePath} fill="none" stroke="#22c55e" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="animate-[ksc-line-draw_1.1s_ease-out_both]" />
-        {coords.map((point) => (
-          <g key={point.label}>
-            <circle cx={point.x} cy={point.y} r="3" fill={point.color} stroke="rgba(2,6,23,0.8)" strokeWidth="1.5" className="animate-[ksc-pop_700ms_ease-out_both]" />
-            <text x={point.x} y="116" textAnchor="middle" className="fill-muted-foreground text-[8px] font-bold">{point.short}</text>
-          </g>
-        ))}
-      </svg>
-      <div className="grid grid-cols-4 gap-2 text-xs">
-        {points.map((point) => (
-          <div key={point.label} className="flex min-w-0 items-center gap-2 rounded-md bg-background/35 px-2 py-1.5">
-            <span className="h-2 w-2 rounded-full" style={{ background: point.color }} />
-            <span className="hidden flex-1 truncate text-muted-foreground sm:block">{point.label}</span>
-            <span className="font-black">{point.value}</span>
-          </div>
-        ))}
+      <div className="h-[190px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={chartData} margin={{ top: 6, right: 10, left: -24, bottom: 0 }}>
+            <defs>
+              <linearGradient id="kscFreshnessGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#22c55e" stopOpacity={0.35} />
+                <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.055)" />
+            <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} allowDecimals={false} />
+            <Tooltip content={<KscChartTooltip />} cursor={{ stroke: "rgba(34,197,94,0.25)", strokeWidth: 1 }} />
+            <Area
+              type="monotone"
+              dataKey="value"
+              stroke="#22c55e"
+              strokeWidth={2.4}
+              fill="url(#kscFreshnessGradient)"
+              dot={{ r: 3, fill: "#22c55e", strokeWidth: 0 }}
+              activeDot={{ r: 5, fill: "#22c55e", stroke: "#052e1a", strokeWidth: 2 }}
+              isAnimationActive
+              animationDuration={1200}
+              animationEasing="ease-out"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
@@ -461,22 +509,6 @@ const KscHardwareInventoryPanel = ({ data }) => {
   return (
     <section className="space-y-5 rounded-xl border border-border bg-card/30 p-5">
       <style>{`
-        @keyframes ksc-donut-in {
-          from { opacity: 0; transform: scale(0.86) rotate(-18deg); }
-          to { opacity: 1; transform: scale(1) rotate(0deg); }
-        }
-        @keyframes ksc-area-rise {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes ksc-line-draw {
-          from { stroke-dasharray: 260; stroke-dashoffset: 260; opacity: 0.4; }
-          to { stroke-dasharray: 260; stroke-dashoffset: 0; opacity: 1; }
-        }
-        @keyframes ksc-pop {
-          from { opacity: 0; transform: scale(0.5); transform-origin: center; }
-          to { opacity: 1; transform: scale(1); transform-origin: center; }
-        }
         @keyframes ksc-bar-grow {
           from { transform: scaleX(0); transform-origin: left; }
           to { transform: scaleX(1); transform-origin: left; }
@@ -542,7 +574,7 @@ const KscHardwareInventoryPanel = ({ data }) => {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[0.86fr_1.28fr_0.86fr]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[0.78fr_1.54fr_0.78fr]">
         <div className="rounded-xl border border-border bg-card/40 p-4">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h4 className="flex items-center gap-2 text-base font-bold">
