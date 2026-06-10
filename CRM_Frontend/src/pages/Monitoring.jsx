@@ -470,26 +470,34 @@ const playSmartNotificationSound = () => {
     const gain = audioContext.createGain();
     const oscillator = audioContext.createOscillator();
     const overtone = audioContext.createOscillator();
+    const secondTone = audioContext.createOscillator();
     const now = audioContext.currentTime;
 
     const resumePromise = audioContext.resume?.();
     resumePromise?.catch?.(() => {});
     oscillator.type = 'sine';
     overtone.type = 'triangle';
-    oscillator.frequency.setValueAtTime(640, now);
-    overtone.frequency.setValueAtTime(960, now);
+    secondTone.type = 'sine';
+    oscillator.frequency.setValueAtTime(720, now);
+    overtone.frequency.setValueAtTime(1080, now);
+    secondTone.frequency.setValueAtTime(880, now);
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.035, now + 0.04);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
+    gain.gain.exponentialRampToValueAtTime(0.18, now + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.035, now + 0.34);
+    gain.gain.exponentialRampToValueAtTime(0.14, now + 0.42);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.82);
 
     oscillator.connect(gain);
     overtone.connect(gain);
+    secondTone.connect(gain);
     gain.connect(audioContext.destination);
     oscillator.start(now);
     overtone.start(now + 0.03);
-    oscillator.stop(now + 0.55);
-    overtone.stop(now + 0.42);
-    setTimeout(() => audioContext.close?.(), 800);
+    secondTone.start(now + 0.34);
+    oscillator.stop(now + 0.82);
+    overtone.stop(now + 0.58);
+    secondTone.stop(now + 0.82);
+    setTimeout(() => audioContext.close?.(), 1000);
   } catch {
     // Browsers may block audio until the user interacts with the page.
   }
