@@ -65,7 +65,7 @@ const PANEL_SIZE_LABELS = {
   full: 'Full'
 };
 
-const FOCUS_INVENTORY_CHART_MODES = ['freshness', 'types'];
+const FOCUS_INVENTORY_CHART_MODES = ['freshness', 'types', 'versions'];
 
 const getNextFocusInventoryChartMode = (currentMode) => {
   const currentIndex = FOCUS_INVENTORY_CHART_MODES.indexOf(currentMode);
@@ -1144,25 +1144,112 @@ const VisibilityBarChart = ({ data, total, vmCount, physicalCount, physicalPct }
   </div>
 );
 
+const KasperskyVersionsInfographic = ({ data = [] }) => {
+  const total = data.reduce((sum, item) => sum + item.value, 0);
+  const latest = getLatestVersion(data.map((item) => ({ version: item.version, count: item.value })));
+  const palette = ["#38bdf8", "#a78bfa", "#f59e0b", "#f43f5e", "#14b8a6", "#64748b", "#f97316"];
+  let cursor = 0;
+  let paletteIndex = 0;
+
+  const visibleData = data.slice(0, 6);
+  const otherValue = data.slice(6).reduce((sum, item) => sum + item.value, 0);
+  const chartData = otherValue > 0
+    ? [...visibleData, { label: "Otras versiones", short: "Otras", version: "Otras", value: otherValue, isOther: true }]
+    : visibleData;
+
+  const segments = chartData.map((item) => {
+    const percent = total > 0 ? (item.value / total) * 100 : 0;
+    const isLatest = !item.isOther && latest && compareSemanticVersions(item.version, latest.version) === 0;
+    const color = item.isOther ? "#475569" : isLatest ? "#22c55e" : palette[paletteIndex++ % palette.length];
+    const segment = { ...item, percent, color, isLatest, start: cursor, end: cursor + percent };
+    cursor += percent;
+    return segment;
+  });
+
+  const gradient = segments.length > 0
+    ? segments.map((item) => `${item.color} ${item.start}% ${item.end}%`).join(", ")
+    : "rgba(51,65,85,0.5) 0% 100%";
+  const majority = [...segments].sort((a, b) => b.value - a.value)[0];
+
+  return (
+    <div className="grid h-full min-h-[230px] grid-cols-1 items-center gap-4 lg:grid-cols-[minmax(240px,0.9fr)_1.1fr]">
+      <div className="relative mx-auto flex aspect-square w-full max-w-[290px] items-center justify-center">
+        <div className="absolute inset-0 rounded-full border border-white/10 bg-[radial-gradient(circle_at_35%_25%,rgba(255,255,255,0.14),transparent_34%),radial-gradient(circle_at_50%_50%,rgba(15,23,42,0.2),rgba(2,6,23,0.82))]" />
+        <div className="absolute inset-[3%] rounded-full opacity-75 blur-[1px]" style={{ background: `conic-gradient(${gradient})` }} />
+        <div
+          key={`ksc-version-donut-${segments.map((item) => item.version).join("-")}`}
+          className="absolute inset-[7%] rounded-full shadow-[inset_0_0_28px_rgba(2,6,23,0.65),0_0_26px_rgba(56,189,248,0.12)] animate-in zoom-in-95 duration-700"
+          style={{ background: `conic-gradient(${gradient})` }}
+        />
+        <div className="absolute inset-[22%] rounded-full border border-white/15 bg-background shadow-[0_0_0_10px_rgba(15,23,42,0.42)]" />
+        <div className="absolute inset-[32%] rounded-full border border-white/10 bg-card/80" />
+        <div className="relative text-center">
+          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-muted-foreground">Versiones</p>
+          <p className="mt-1 text-4xl font-black text-foreground">{total}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-300">dispositivos</p>
+        </div>
+        <div className="absolute -right-1 top-8 h-14 w-14 rounded-full border border-sky-300/20 bg-sky-400/10 blur-[1px]" />
+        <div className="absolute bottom-9 left-1 h-12 w-12 rounded-full border border-emerald-300/20 bg-emerald-400/10 blur-[1px]" />
+      </div>
+
+      <div className="min-w-0 space-y-2">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3">
+            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Más actual</p>
+            <p className="mt-1 truncate text-base font-black text-emerald-300">v{latest?.version || "N/D"}</p>
+          </div>
+          <div className="rounded-lg border border-sky-500/20 bg-sky-500/10 p-3">
+            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Mayoritaria</p>
+            <p className="mt-1 truncate text-base font-black text-sky-300">v{majority?.version || "N/D"}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+          {segments.map((item) => (
+            <div key={item.version} className={`flex min-w-0 items-center justify-between gap-2 rounded-lg border px-2.5 py-2 ${item.isLatest ? "border-emerald-500/30 bg-emerald-500/10" : "border-border/40 bg-background/35"}`}>
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: item.color }} />
+                  <p className={`truncate text-[13px] font-black ${item.isLatest ? "text-emerald-300" : "text-slate-200"}`}>{item.isOther ? item.label : `v${item.version}`}</p>
+                </div>
+                <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  {Math.round(item.percent)}% del parque
+                </p>
+              </div>
+              <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-black ${item.isLatest ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300" : "border-border/40 bg-muted/20 text-slate-300"}`}>
+                {item.value}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const FocusInventoryChart = ({
   freshnessPoints,
   deviceTypePoints,
+  versionPoints = [],
   chartMode,
   autoRotate,
   onToggleMode,
   onToggleAutoRotate
 }) => {
   const isFreshnessMode = chartMode === 'freshness';
+  const isVersionsMode = chartMode === 'versions';
   const freshnessData = freshnessPoints.map((point) => ({ name: point.short, label: point.label, value: point.value }));
   const deviceTypeData = deviceTypePoints.filter((point) => point.value > 0);
-  const activeLabel = isFreshnessMode ? 'Dispositivos' : 'Tipos de dispositivo';
+  const activeLabel = isFreshnessMode ? 'Dispositivos' : isVersionsMode ? 'Versiones Kaspersky' : 'Tipos de dispositivo';
+  const chartTitle = isFreshnessMode ? 'Curva de frescura' : isVersionsMode ? 'Versiones Kaspersky' : 'Tipos de dispositivos';
+  const nextLabel = isFreshnessMode ? 'Ver tipos' : isVersionsMode ? 'Ver frescura' : 'Ver versiones';
 
   return (
     <div className="flex h-full min-h-[300px] flex-col rounded-xl border border-border bg-card/40 p-4">
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h4 className="flex items-center gap-2 text-base font-bold">
           <Activity className="h-4 w-4 text-primary" />
-          {isFreshnessMode ? 'Curva de frescura' : 'Tipos de dispositivos'}
+          {chartTitle}
         </h4>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -1171,7 +1258,7 @@ const FocusInventoryChart = ({
             className="rounded-lg border border-border bg-background/70 px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
             title="Cambiar grafico"
           >
-            {isFreshnessMode ? 'Ver tipos' : 'Ver frescura'}
+            {nextLabel}
           </button>
           <button
             type="button"
@@ -1192,52 +1279,56 @@ const FocusInventoryChart = ({
         </div>
       </div>
       <div className="min-h-[230px] flex-1">
-        <ResponsiveContainer width="100%" height="100%">
-          {isFreshnessMode ? (
-            <AreaChart key="freshness-chart" data={freshnessData} margin={{ top: 6, right: 10, left: -24, bottom: 0 }}>
-              <defs>
-                <linearGradient id="kscFreshnessGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.35} />
-                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.055)" />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} allowDecimals={false} />
-              <Tooltip content={<KscChartTooltip />} cursor={{ stroke: "rgba(34,197,94,0.25)", strokeWidth: 1 }} />
-              <Area
-                type="monotone"
-                dataKey="value"
-                stroke="#22c55e"
-                strokeWidth={2.4}
-                fill="url(#kscFreshnessGradient)"
-                dot={{ r: 3, fill: "#22c55e", strokeWidth: 0 }}
-                activeDot={{ r: 5, fill: "#22c55e", stroke: "#052e1a", strokeWidth: 2 }}
-                isAnimationActive
-                animationDuration={1200}
-                animationEasing="ease-out"
-              />
-            </AreaChart>
-          ) : (
-            <BarChart key="device-types-chart" data={deviceTypeData} margin={{ top: 8, right: 10, left: -24, bottom: 0 }}>
-              <defs>
-                <linearGradient id="kscDeviceTypeBar" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.95} />
-                  <stop offset="100%" stopColor="#22c55e" stopOpacity={0.65} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.055)" />
-              <XAxis dataKey="short" tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} allowDecimals={false} />
-              <Tooltip content={<KscChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.035)" }} />
-              <Bar dataKey="value" radius={[8, 8, 2, 2]} barSize={42} isAnimationActive animationDuration={1200} animationEasing="ease-out">
-                {deviceTypeData.map((entry) => (
-                  <Cell key={entry.label} fill={entry.color || "url(#kscDeviceTypeBar)"} />
-                ))}
-              </Bar>
-            </BarChart>
-          )}
-        </ResponsiveContainer>
+        {isVersionsMode ? (
+          <KasperskyVersionsInfographic data={versionPoints} />
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            {isFreshnessMode ? (
+              <AreaChart key="freshness-chart" data={freshnessData} margin={{ top: 6, right: 10, left: -24, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="kscFreshnessGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.055)" />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} allowDecimals={false} />
+                <Tooltip content={<KscChartTooltip />} cursor={{ stroke: "rgba(34,197,94,0.25)", strokeWidth: 1 }} />
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#22c55e"
+                  strokeWidth={2.4}
+                  fill="url(#kscFreshnessGradient)"
+                  dot={{ r: 3, fill: "#22c55e", strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: "#22c55e", stroke: "#052e1a", strokeWidth: 2 }}
+                  isAnimationActive
+                  animationDuration={1200}
+                  animationEasing="ease-out"
+                />
+              </AreaChart>
+            ) : (
+              <BarChart key="device-types-chart" data={deviceTypeData} margin={{ top: 8, right: 10, left: -24, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="kscDeviceTypeBar" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.95} />
+                    <stop offset="100%" stopColor="#22c55e" stopOpacity={0.65} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.055)" />
+                <XAxis dataKey="short" tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} allowDecimals={false} />
+                <Tooltip content={<KscChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.035)" }} />
+                <Bar dataKey="value" radius={[8, 8, 2, 2]} barSize={42} isAnimationActive animationDuration={1200} animationEasing="ease-out">
+                  {deviceTypeData.map((entry) => (
+                    <Cell key={entry.label} fill={entry.color || "url(#kscDeviceTypeBar)"} />
+                  ))}
+                </Bar>
+              </BarChart>
+            )}
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
   );
@@ -1268,6 +1359,12 @@ const KscHardwareInventoryPanel = ({
   const seenOld = visibility.MasDeUnaSemana || 0;
   const seenMonth = visibility.MasDeUnMes || 0;
   const freshPct = total > 0 ? Math.round(((seenToday + seenWeek) / total) * 100) : 0;
+  const kasperskyVersionPoints = getKscVersionInventory(data).kaspersky.map((item) => ({
+    label: `v${item.version}`,
+    short: item.version,
+    version: item.version,
+    value: item.count
+  }));
   const osSegments = [
     { label: "Windows 10", value: windows10, color: "#22c55e" },
     { label: "Windows 11", value: windows11, color: "#38bdf8" },
@@ -1391,6 +1488,7 @@ const KscHardwareInventoryPanel = ({
         <FocusInventoryChart
           freshnessPoints={freshnessPoints}
           deviceTypePoints={deviceTypePoints}
+          versionPoints={kasperskyVersionPoints}
           chartMode={focusChartMode}
           autoRotate={isFocusChartAutoRotating}
           onToggleMode={onToggleFocusChartMode}
