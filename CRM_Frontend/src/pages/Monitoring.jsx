@@ -1425,6 +1425,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
   // Monitor-SERV-KSC.ps1 stores payload as: { Node, Role, ReportDate, LocalHealth, Kaspersky }
   const kscLocal = rawK.LocalHealth || rawK.data?.LocalHealth || {};
   const kscKasp  = rawK.Kaspersky || rawK.data?.Kaspersky || {};
+  const kscUpdates = kscLocal?.Updates || rawK.Updates || rawK.data?.Updates || null;
 
   const kscServicesArray = kscLocal?.Services || kscKasp?.Services || rawK.Services || [];
   const kscHasServiceSignal = Array.isArray(kscServicesArray) && kscServicesArray.length > 0;
@@ -1842,7 +1843,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                   diskSpace={kscDisk}
                   lastBackup={kscLastBackup}
                   replication={null}
-                  updates={nodes.ksc?.data?.Updates || nodes.ksc?.Updates || nodes.dc01?.Updates}
+                  updates={kscUpdates}
                   isHealthy={!!nodes.ksc}
                   pingStatus={pingData['192.168.8.42'] || pingData['SERV-KSC'] || pingData['KSC'] || pingData['ksc']}
                   icon={<KasperskyIcon className="w-8 h-8" />}
