@@ -241,7 +241,73 @@ const normalizeVersionBuckets = (source) => {
       count: toInt(item.Count ?? item.count ?? item.Devices ?? item.devices ?? item.Dispositivos ?? item.Total ?? item.total)
     }))
     .filter((item) => item.version && item.version !== 'N/D' && item.count > 0)
-    .sort((a, b) => b.count - a.count);
+    .sort((a, b) => compareSemanticVersions(b.version, a.version) || b.count - a.count);
+};
+
+const getVersionParts = (version = '') => {
+  const match = String(version).match(/\d+(?:\.\d+)*/);
+  if (!match) return [];
+  return match[0].split('.').map((part) => toInt(part));
+};
+
+const compareSemanticVersions = (left = '', right = '') => {
+  const a = getVersionParts(left);
+  const b = getVersionParts(right);
+  const length = Math.max(a.length, b.length);
+  for (let i = 0; i < length; i += 1) {
+    const diff = (a[i] || 0) - (b[i] || 0);
+    if (diff !== 0) return diff;
+  }
+  return String(left).localeCompare(String(right));
+};
+
+const getLatestVersion = (versions = []) => versions.reduce((latest, item) => {
+  if (!latest) return item;
+  return compareSemanticVersions(item.version, latest.version) > 0 ? item : latest;
+}, null);
+
+const VersionDistribution = ({ title, versions, accent = 'emerald' }) => {
+  const latest = getLatestVersion(versions);
+  const visibleVersions = versions.slice(0, 4);
+  const hiddenCount = Math.max(versions.length - visibleVersions.length, 0);
+  const totalDevices = versions.reduce((sum, item) => sum + item.count, 0);
+  const accentClass = accent === 'sky' ? 'text-sky-300 bg-sky-500/10 border-sky-500/25' : 'text-emerald-300 bg-emerald-500/10 border-emerald-500/25';
+
+  return (
+    <div className="rounded-lg border border-border/40 bg-background/40 p-3">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{title}</p>
+        <span className="shrink-0 text-[10px] font-black text-slate-300">{totalDevices || 0} equipos</span>
+      </div>
+
+      {visibleVersions.length > 0 ? (
+        <div className="mt-2.5 space-y-1.5">
+          {visibleVersions.map((item) => {
+            const isLatest = latest && compareSemanticVersions(item.version, latest.version) === 0;
+            return (
+              <div key={`${title}-${item.version}`} className={`flex items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 ${isLatest ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-border/35 bg-background/30'}`}>
+                <div className="min-w-0">
+                  <p className={`truncate text-[13px] font-black ${isLatest ? 'text-emerald-300' : 'text-slate-200'}`}>v{item.version}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{isLatest ? 'Más actual' : 'Anterior'}</p>
+                </div>
+                <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-black ${isLatest ? accentClass : 'border-border/40 bg-muted/20 text-slate-300'}`}>
+                  {item.count} eq
+                </span>
+              </div>
+            );
+          })}
+          {hiddenCount > 0 && (
+            <p className="text-[10px] font-bold text-muted-foreground">+{hiddenCount} versiones adicionales</p>
+          )}
+        </div>
+      ) : (
+        <div className="mt-2.5 rounded-md border border-border/35 bg-background/30 px-2.5 py-2">
+          <p className="text-base font-black text-sky-300">N/D</p>
+          <p className="text-[11px] text-muted-foreground">Sin datos de versión</p>
+        </div>
+      )}
+    </div>
+  );
 };
 
 const getKscVersionInventory = (data) => {
@@ -2190,9 +2256,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                 {/* Agent / Endpoint versions */}
                 {(() => {
                   const versions = getKscVersionInventory(nodes.kscHardware);
-                  const topAgent = versions.agent[0];
-                  const topKes = versions.kes[0];
-                  const hasVersionData = !!(topAgent || topKes);
+                  const hasVersionData = versions.agent.length > 0 || versions.kes.length > 0;
                   return (
                     <div className="col-span-2 bg-background/30 border border-border/40 rounded-lg p-4">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -2209,16 +2273,8 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                         </span>
                       </div>
                       <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <div className="rounded-lg border border-border/40 bg-background/40 p-3">
-                          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Agente de red</p>
-                          <p className="mt-1 text-base font-black text-sky-300">{topAgent ? `${topAgent.count} equipos` : 'N/D'}</p>
-                          <p className="mt-0.5 truncate text-[12px] text-muted-foreground">{topAgent ? `v${topAgent.version}` : 'Sin datos de versión'}</p>
-                        </div>
-                        <div className="rounded-lg border border-border/40 bg-background/40 p-3">
-                          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Endpoint Security</p>
-                          <p className="mt-1 text-base font-black text-emerald-300">{topKes ? `${topKes.count} equipos` : 'N/D'}</p>
-                          <p className="mt-0.5 truncate text-[12px] text-muted-foreground">{topKes ? `v${topKes.version}` : 'Sin datos de versión'}</p>
-                        </div>
+                        <VersionDistribution title="Agente de red" versions={versions.agent} accent="sky" />
+                        <VersionDistribution title="Endpoint Security" versions={versions.kes} accent="emerald" />
                       </div>
                     </div>
                   );
