@@ -225,6 +225,50 @@ const toInt = (value, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const normalizeVersionBuckets = (source) => {
+  if (!source) return [];
+  const rows = Array.isArray(source)
+    ? source
+    : Object.entries(source).map(([version, value]) => (
+        typeof value === 'object' && value !== null
+          ? { Version: version, ...value }
+          : { Version: version, Count: value }
+      ));
+
+  return rows
+    .map((item) => ({
+      version: normalizeText(item.Version || item.version || item.Name || item.name || item.ProductVersion || item.ApplicationVersion || item.Label || item.label || 'N/D'),
+      count: toInt(item.Count ?? item.count ?? item.Devices ?? item.devices ?? item.Dispositivos ?? item.Total ?? item.total)
+    }))
+    .filter((item) => item.version && item.version !== 'N/D' && item.count > 0)
+    .sort((a, b) => b.count - a.count);
+};
+
+const getKscVersionInventory = (data) => {
+  const inventory = data?.Kaspersky?.HardwareInventory || data?.data?.Kaspersky?.HardwareInventory || {};
+  const versions = inventory.Versions || inventory.SoftwareVersions || inventory.ApplicationVersions || inventory.SecurityVersions || {};
+  return {
+    agent: normalizeVersionBuckets(
+      versions.AgentVersions ||
+      versions.NetworkAgentVersions ||
+      versions.AgenteRed ||
+      versions.AgenteDeRed ||
+      inventory.AgentVersions ||
+      inventory.NetworkAgentVersions ||
+      inventory.AgenteRedVersiones
+    ),
+    kes: normalizeVersionBuckets(
+      versions.KESVersions ||
+      versions.KasperskyEndpointSecurityVersions ||
+      versions.EndpointSecurityVersions ||
+      versions.KasperskyEndpointSecurity ||
+      inventory.KESVersions ||
+      inventory.KasperskyEndpointSecurityVersions ||
+      inventory.EndpointSecurityVersions
+    )
+  };
+};
+
 const getPrimaryLicense = (lic = {}) => {
   const keys = Array.isArray(lic.Licencias) ? lic.Licencias : [];
   const selected = keys.reduce((best, current) => {
@@ -2040,11 +2084,11 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                   const state = masDeUnaSemana > 0 ? 'MAYORÍA AL DÍA' : 'AL DÍA';
                   return (
                     <div className="bg-background/30 border border-border/40 rounded-lg p-3">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Database className="w-4 h-4" /> Bases de Datos AV</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Database className="w-5 h-5 text-sky-300" /> Bases de Datos AV</p>
                       <p className="text-lg font-bold mt-1 text-emerald-400">{state}</p>
-                      <div className="flex justify-between text-[11px] mt-1 text-muted-foreground">
-                        <span>Al día: <strong className="text-emerald-400">{alDia}</strong></span>
-                        <span>&gt;1 sem: <strong className="text-amber-400">{masDeUnaSemana}</strong></span>
+                      <div className="flex justify-between gap-3 text-[12px] mt-1 text-muted-foreground">
+                        <span>Al día: <strong className="text-sm text-emerald-400">{alDia}</strong></span>
+                        <span>&gt;1 sem: <strong className="text-sm text-amber-400">{masDeUnaSemana}</strong></span>
                       </div>
                     </div>
                   );
@@ -2056,15 +2100,37 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                   const infected = toInt(am.DispositivosInfect);
                   const detected = toInt(am.AmenazasDetectadas);
                   const state = infected > 0 ? 'REVISAR' : detected > 0 ? 'CONTENIDO' : 'LIMPIO';
+                  const threatDevices = Array.isArray(am.DispositivosDetalle)
+                    ? am.DispositivosDetalle
+                    : Array.isArray(am.Detalles)
+                      ? am.Detalles
+                      : [];
                   return (
                     <div className="bg-background/30 border border-border/40 rounded-lg p-3">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Shield className="w-4 h-4" /> Amenazas</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Bug className="w-5 h-5 text-rose-400" /> Amenazas</p>
                       <p className={`text-lg font-bold mt-1 ${infected > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
                         {state}
                       </p>
-                      <div className="flex justify-between text-[11px] mt-1 text-muted-foreground">
-                        <span>Infectados: <strong className={infected > 0 ? 'text-amber-400' : 'text-emerald-400'}>{infected}</strong></span>
-                        <span>Detectadas: <strong className="text-sky-400">{detected}</strong></span>
+                      <div className="flex justify-between gap-3 text-[12px] mt-1 text-muted-foreground">
+                        <span>Infectados: <strong className={`text-sm ${infected > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{infected}</strong></span>
+                        <span>Detectados: <strong className="text-sm text-rose-400">{detected}</strong></span>
+                      </div>
+                      <div className="mt-2 border-t border-border/30 pt-2">
+                        {threatDevices.length > 0 ? (
+                          <div className="space-y-1">
+                            {threatDevices.slice(0, 2).map((item, index) => (
+                              <div key={`${item.Dispositivo || item.Device || item.Name || index}`} className="flex min-w-0 items-center justify-between gap-2 text-[11px]">
+                                <span className="min-w-0 truncate font-bold text-slate-200">{item.Dispositivo || item.Device || item.Name || 'Equipo sin nombre'}</span>
+                                <span className="shrink-0 truncate text-amber-300 max-w-[46%]">{item.Grupo || item.Group || 'Sin grupo'}</span>
+                              </div>
+                            ))}
+                            {threatDevices.length > 2 && (
+                              <p className="text-[10px] font-bold text-rose-300">+{threatDevices.length - 2} equipos adicionales</p>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-[11px] font-semibold text-emerald-400">Sin equipos comprometidos activos</p>
+                        )}
                       </div>
                     </div>
                   );
@@ -2078,11 +2144,11 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                   const altas = toInt(vul.DispAlta);
                   return (
                     <div className="bg-background/30 border border-border/40 rounded-lg p-3">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Bug className="w-4 h-4" /> Vulnerabilidades</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><ShieldAlert className="w-5 h-5 text-amber-400" /> Vulnerabilidades</p>
                       <p className="text-lg font-bold mt-1 text-emerald-400">{sinVuln} sin vuln.</p>
-                      <div className="flex justify-between text-[11px] mt-1 text-muted-foreground">
-                        <span>Críticas: <strong className={criticas > 0 ? 'text-amber-400' : 'text-emerald-400'}>{criticas}</strong></span>
-                        <span>Altas: <strong className="text-sky-400">{altas}</strong></span>
+                      <div className="flex justify-between gap-3 text-[12px] mt-1 text-muted-foreground">
+                        <span>Críticas: <strong className={`text-sm ${criticas > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{criticas}</strong></span>
+                        <span>Altas: <strong className={`text-sm ${altas > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>{altas}</strong></span>
                       </div>
                     </div>
                   );
@@ -2095,7 +2161,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                   const stateColor = activeLic.usage > 90 ? 'text-amber-400' : 'text-emerald-400';
                   return (
                     <div className="bg-background/30 border border-border/40 rounded-lg p-3">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><KeyRound className="w-4 h-4" /> Licenciamiento</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><KeyRound className="w-5 h-5 text-violet-300" /> Licenciamiento</p>
                       <p className={`text-lg font-bold mt-1 ${stateColor}`}>{activeLic.used} / {activeLic.limit}</p>
                       <p className="text-[11px] text-muted-foreground mt-0.5">{activeLic.usage}% de uso</p>
                       <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden mt-1.5">
@@ -2103,6 +2169,43 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                           className={`h-full ${activeLic.usage > 90 ? 'bg-rose-500' : activeLic.usage > 75 ? 'bg-emerald-500' : 'bg-emerald-500'}`} 
                           style={{ width: `${activeLic.usage}%` }}
                         ></div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Agent / Endpoint versions */}
+                {(() => {
+                  const versions = getKscVersionInventory(nodes.kscHardware);
+                  const topAgent = versions.agent[0];
+                  const topKes = versions.kes[0];
+                  const hasVersionData = !!(topAgent || topKes);
+                  return (
+                    <div className="col-span-2 bg-background/30 border border-border/40 rounded-lg p-3">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                            <MonitorSmartphone className="w-5 h-5 text-yellow-300" /> Versiones agentes / KES
+                          </p>
+                          <p className="mt-1 text-sm font-bold text-slate-200">
+                            {hasVersionData ? 'Distribución por versión' : 'Esperando informe de versiones'}
+                          </p>
+                        </div>
+                        <span className={`rounded-full border px-2 py-1 text-[10px] font-black ${hasVersionData ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300' : 'border-amber-500/25 bg-amber-500/10 text-amber-300'}`}>
+                          {hasVersionData ? 'Inventario activo' : 'Pendiente'}
+                        </span>
+                      </div>
+                      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div className="rounded-lg border border-border/40 bg-background/40 p-2.5">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Agente de red</p>
+                          <p className="mt-1 text-sm font-black text-sky-300">{topAgent ? `${topAgent.count} equipos` : 'N/D'}</p>
+                          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{topAgent ? `v${topAgent.version}` : 'Sin datos de versión'}</p>
+                        </div>
+                        <div className="rounded-lg border border-border/40 bg-background/40 p-2.5">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Endpoint Security</p>
+                          <p className="mt-1 text-sm font-black text-emerald-300">{topKes ? `${topKes.count} equipos` : 'N/D'}</p>
+                          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{topKes ? `v${topKes.version}` : 'Sin datos de versión'}</p>
+                        </div>
                       </div>
                     </div>
                   );
