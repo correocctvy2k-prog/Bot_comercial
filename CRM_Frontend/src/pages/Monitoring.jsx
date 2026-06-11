@@ -227,6 +227,9 @@ const toInt = (value, fallback = 0) => {
 
 const normalizeVersionBuckets = (source) => {
   if (!source) return [];
+  if (!Array.isArray(source) && typeof source === 'object' && (source.Version || source.version) && (source.Count !== undefined || source.count !== undefined)) {
+    return normalizeVersionBuckets([source]);
+  }
   const rows = Array.isArray(source)
     ? source
     : Object.entries(source).map(([version, value]) => (
@@ -316,16 +319,6 @@ const getKscVersionInventory = (data) => {
   const virusDatabaseUsage = kasp.VirusDatabaseUsage || {};
   const versions = virusDatabaseUsage.Versions || inventory.Versions || inventory.SoftwareVersions || inventory.ApplicationVersions || inventory.SecurityVersions || {};
   return {
-    agent: normalizeVersionBuckets(
-      versions.AgentVersions ||
-      versions.NetworkAgentVersions ||
-      versions.AgenteRed ||
-      versions.AgenteDeRed ||
-      inventory.AgentVersions ||
-      inventory.NetworkAgentVersions ||
-      inventory.AgenteRedVersiones ||
-      virusDatabaseUsage.AgentVersions
-    ),
     kes: normalizeVersionBuckets(
       versions.KESVersions ||
       versions.KasperskyEndpointSecurityVersions ||
@@ -2253,28 +2246,27 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                   );
                 })()}
 
-                {/* Agent / Endpoint versions */}
+                {/* Kaspersky Endpoint Security versions */}
                 {(() => {
                   const versions = getKscVersionInventory(nodes.kscHardware);
-                  const hasVersionData = versions.agent.length > 0 || versions.kes.length > 0;
+                  const hasVersionData = versions.kes.length > 0;
                   return (
                     <div className="col-span-2 bg-background/30 border border-border/40 rounded-lg p-4">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                            <MonitorSmartphone className="w-6 h-6 text-yellow-300" /> Versiones agentes / KES
+                            <MonitorSmartphone className="w-6 h-6 text-yellow-300" /> Versiones Kaspersky
                           </p>
                           <p className="mt-1 text-base font-bold text-slate-200">
-                            {hasVersionData ? 'Distribución por versión' : 'Esperando informe de versiones'}
+                            {hasVersionData ? 'Dispositivos por versión' : 'Esperando informe de versiones'}
                           </p>
                         </div>
                         <span className={`rounded-full border px-2 py-1 text-[10px] font-black ${hasVersionData ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300' : 'border-amber-500/25 bg-amber-500/10 text-amber-300'}`}>
                           {hasVersionData ? 'Inventario activo' : 'Pendiente'}
                         </span>
                       </div>
-                      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <VersionDistribution title="Agente de red" versions={versions.agent} accent="sky" />
-                        <VersionDistribution title="Endpoint Security" versions={versions.kes} accent="emerald" />
+                      <div className="mt-3">
+                        <VersionDistribution title="Kaspersky Endpoint Security" versions={versions.kes} accent="emerald" />
                       </div>
                     </div>
                   );

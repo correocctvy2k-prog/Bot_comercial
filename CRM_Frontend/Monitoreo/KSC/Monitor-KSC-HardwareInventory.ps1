@@ -342,7 +342,6 @@ function Parse-VirusDatabaseUsage {
             TotalDevices  = 0
             Breakdown     = @{}
             Versions      = @{
-                AgentVersions = @()
                 KESVersions   = @()
             }
         }
@@ -381,7 +380,6 @@ function Parse-VirusDatabaseUsage {
 
     $rows = Get-HtmlTableRows -FilePath $file
     $deviceRows = @()
-    $agentVersions = @{}
     $kesVersions = @{}
     $header = $null
 
@@ -412,24 +410,18 @@ function Parse-VirusDatabaseUsage {
 
         $application = Get-FirstRecordValue -Record $record -Keys @("Aplicación", "Aplicacion")
         $kesVersion = Get-KesVersionFromApplication -Application $application
-        $agentVersion = Get-FirstRecordValue -Record $record -Keys @("Número de versión", "Numero de version", "Version", "Versión")
 
         if (-not [string]::IsNullOrWhiteSpace($kesVersion) -and $kesVersion -ne "N/D") {
             Increment-Count -Table $kesVersions -Key $kesVersion
         }
 
-        if (-not [string]::IsNullOrWhiteSpace($agentVersion) -and $agentVersion -ne "N/D") {
-            Increment-Count -Table $agentVersions -Key $agentVersion
-        }
-
         $deviceRows += [pscustomobject]@{
-            Name                = $name
-            Group               = Get-FirstRecordValue -Record $record -Keys @("Grupo", "Grupo de administracion", "Grupo de administración") -Fallback "N/D"
-            Status              = $stateText
-            Bucket              = $bucket
-            Application         = $application
-            KESVersion          = $kesVersion
-            NetworkAgentVersion = $agentVersion
+            Name        = $name
+            Group       = Get-FirstRecordValue -Record $record -Keys @("Grupo", "Grupo de administracion", "Grupo de administración") -Fallback "N/D"
+            Status      = $stateText
+            Bucket      = $bucket
+            Application = $application
+            KESVersion  = $kesVersion
         }
     }
 
@@ -458,7 +450,6 @@ function Parse-VirusDatabaseUsage {
         TotalDevices   = $total
         Breakdown      = $counts
         Versions       = @{
-            AgentVersions = Convert-VersionBuckets -Table $agentVersions
             KESVersions   = Convert-VersionBuckets -Table $kesVersions
         }
         Devices        = @($deviceRows | Sort-Object Name)
@@ -563,11 +554,7 @@ Write-Host "BD virus fuente    : $($virusDatabaseUsage.SourceFile)" -ForegroundC
 Write-Host "BD virus vigentes  : $($virusDatabaseUsage.Vigentes)" -ForegroundColor Gray
 Write-Host "BD virus al dia    : $($virusDatabaseUsage.AlDia)" -ForegroundColor Gray
 Write-Host "BD virus > 1 sem   : $($virusDatabaseUsage.MasDeUnaSemana)" -ForegroundColor Gray
-$topAgentVersion = @($virusDatabaseUsage.Versions.AgentVersions | Select-Object -First 1)
 $topKesVersion = @($virusDatabaseUsage.Versions.KESVersions | Select-Object -First 1)
-if ($topAgentVersion.Count -gt 0) {
-    Write-Host "Agente principal   : $($topAgentVersion[0].Version) ($($topAgentVersion[0].Count))" -ForegroundColor Gray
-}
 if ($topKesVersion.Count -gt 0) {
     Write-Host "KES principal      : $($topKesVersion[0].Version) ($($topKesVersion[0].Count))" -ForegroundColor Gray
 }
