@@ -269,6 +269,31 @@ const getLatestVersion = (versions = []) => versions.reduce((latest, item) => {
   return compareSemanticVersions(item.version, latest.version) > 0 ? item : latest;
 }, null);
 
+const polarToCartesian = (cx, cy, radius, angleInDegrees) => {
+  const angleInRadians = (angleInDegrees - 90) * Math.PI / 180;
+  return {
+    x: cx + (radius * Math.cos(angleInRadians)),
+    y: cy + (radius * Math.sin(angleInRadians))
+  };
+};
+
+const describeDonutSegment = (cx, cy, innerRadius, outerRadius, startAngle, endAngle) => {
+  const safeEndAngle = Math.min(endAngle, startAngle + 359.99);
+  const largeArcFlag = safeEndAngle - startAngle > 180 ? 1 : 0;
+  const outerStart = polarToCartesian(cx, cy, outerRadius, startAngle);
+  const outerEnd = polarToCartesian(cx, cy, outerRadius, safeEndAngle);
+  const innerEnd = polarToCartesian(cx, cy, innerRadius, safeEndAngle);
+  const innerStart = polarToCartesian(cx, cy, innerRadius, startAngle);
+
+  return [
+    `M ${outerStart.x} ${outerStart.y}`,
+    `A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 1 ${outerEnd.x} ${outerEnd.y}`,
+    `L ${innerEnd.x} ${innerEnd.y}`,
+    `A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${innerStart.x} ${innerStart.y}`,
+    "Z"
+  ].join(" ");
+};
+
 const VersionDistribution = ({ title, versions, accent = 'emerald' }) => {
   const latest = getLatestVersion(versions);
   const visibleVersions = versions.slice(0, 8);
@@ -988,17 +1013,18 @@ const InventoryKpi = ({ title, value, badge, badgeColor = "text-muted-foreground
 );
 
 const OsDistributionDonut = ({ segments, total }) => {
-  const size = 172;
+  const [activeIndex, setActiveIndex] = useState(null);
+  const size = 206;
   const cx = size / 2;
   const cy = size / 2;
-  const radius = 61;
-  const strokeWidth = 14;
+  const radius = 73;
+  const strokeWidth = 17;
   const circumference = 2 * Math.PI * radius;
   let offset = 0;
 
   return (
     <div className="flex h-full flex-col gap-3">
-      <div className="relative mx-auto h-[172px] w-[172px]">
+      <div className="relative mx-auto h-[206px] w-[206px]">
         <svg viewBox={`0 0 ${size} ${size}`} className="h-full w-full overflow-visible">
           <defs>
             <filter id="kscDonutSoftShadow" x="-30%" y="-30%" width="160%" height="160%">
@@ -1027,6 +1053,11 @@ const OsDistributionDonut = ({ segments, total }) => {
             const dash = Math.max(0, pct * circumference - (segments.length > 1 ? 4 : 0));
             const gap = circumference - dash;
             const dashOffset = -offset * circumference;
+            const startAngle = offset * 360;
+            const endAngle = (offset + pct) * 360;
+            const midAngle = (startAngle + endAngle) / 2;
+            const isActive = activeIndex === index;
+            const translate = isActive ? polarToCartesian(0, 0, 7, midAngle) : { x: 0, y: 0 };
             offset += pct;
 
             return (
@@ -1034,14 +1065,17 @@ const OsDistributionDonut = ({ segments, total }) => {
                 key={segment.label}
                 cx={cx}
                 cy={cy}
-                r={radius}
+                r={isActive ? radius + 3 : radius}
                 fill="none"
                 stroke={segment.color}
-                strokeWidth={strokeWidth}
+                strokeWidth={isActive ? strokeWidth + 4 : strokeWidth}
                 strokeLinecap="round"
                 strokeDasharray={`0 ${circumference}`}
                 strokeDashoffset={dashOffset}
-                transform={`rotate(-90 ${cx} ${cy})`}
+                transform={`translate(${translate.x} ${translate.y}) rotate(-90 ${cx} ${cy})`}
+                className="cursor-pointer opacity-95 transition-all duration-300 ease-out hover:opacity-100"
+                onMouseEnter={() => setActiveIndex(index)}
+                onMouseLeave={() => setActiveIndex(null)}
               >
                 <animate
                   attributeName="stroke-dasharray"
@@ -1056,11 +1090,11 @@ const OsDistributionDonut = ({ segments, total }) => {
               </circle>
             );
           })}
-          <circle cx={cx} cy={cy} r="43" fill="rgba(2,6,23,0.55)" stroke="rgba(255,255,255,0.07)" />
+          <circle cx={cx} cy={cy} r="52" fill="rgba(2,6,23,0.55)" stroke="rgba(255,255,255,0.07)" />
         </svg>
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div className="text-center">
-            <p className="text-2xl font-black leading-none">{total}</p>
+            <p className="text-3xl font-black leading-none">{total}</p>
             <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">equipos</p>
           </div>
         </div>
@@ -1145,6 +1179,7 @@ const VisibilityBarChart = ({ data, total, vmCount, physicalCount, physicalPct }
 );
 
 const KasperskyVersionsInfographic = ({ data = [] }) => {
+  const [activeIndex, setActiveIndex] = useState(null);
   const total = data.reduce((sum, item) => sum + item.value, 0);
   const latest = getLatestVersion(data.map((item) => ({ version: item.version, count: item.value })));
   const palette = ["#38bdf8", "#a78bfa", "#f59e0b", "#f43f5e", "#14b8a6", "#f97316"];
@@ -1161,7 +1196,19 @@ const KasperskyVersionsInfographic = ({ data = [] }) => {
     const percent = total > 0 ? (item.value / total) * 100 : 0;
     const isLatest = !item.isOther && latest && compareSemanticVersions(item.version, latest.version) === 0;
     const color = item.isOther ? "#475569" : isLatest ? "#22c55e" : palette[paletteIndex++ % palette.length];
-    const segment = { ...item, percent, color, isLatest, start: cursor, end: cursor + percent };
+    const start = cursor;
+    const end = cursor + percent;
+    const segment = {
+      ...item,
+      percent,
+      color,
+      isLatest,
+      start,
+      end,
+      startAngle: start * 3.6,
+      endAngle: end * 3.6,
+      midAngle: ((start + end) / 2) * 3.6
+    };
     cursor += percent;
     return segment;
   });
@@ -1203,20 +1250,44 @@ const KasperskyVersionsInfographic = ({ data = [] }) => {
         <div className="relative flex aspect-square w-[250px] items-center justify-center rounded-full">
           <div className="absolute inset-0 rounded-full border border-white/10 bg-[radial-gradient(circle_at_35%_25%,rgba(255,255,255,0.14),transparent_34%),radial-gradient(circle_at_50%_50%,rgba(15,23,42,0.2),rgba(2,6,23,0.82))]" />
           <div className="absolute inset-[2%] rounded-full opacity-45 blur-[1px]" style={{ background: `conic-gradient(${gradient})` }} />
-          <div
+          <svg
             key={`ksc-version-donut-${segments.map((item) => item.version).join("-")}`}
-            className="ksc-donut-reveal absolute inset-[5%] rounded-full shadow-[inset_0_0_34px_rgba(2,6,23,0.62),0_0_30px_rgba(56,189,248,0.16)]"
-            style={{ background: `conic-gradient(${gradient})` }}
-          />
+            viewBox="0 0 250 250"
+            className="ksc-donut-reveal absolute inset-[5%] overflow-visible drop-shadow-[0_12px_20px_rgba(2,6,23,0.55)]"
+          >
+            <defs>
+              <filter id="kscVersionSegmentGlow" x="-35%" y="-35%" width="170%" height="170%">
+                <feDropShadow dx="0" dy="6" stdDeviation="5" floodColor="#020617" floodOpacity="0.38" />
+              </filter>
+            </defs>
+            {segments.map((item, index) => {
+              const isActive = activeIndex === index;
+              const translate = isActive ? polarToCartesian(0, 0, 10, item.midAngle) : { x: 0, y: 0 };
+              const gap = item.endAngle - item.startAngle > 4 ? 0.85 : 0;
+              const path = describeDonutSegment(125, 125, isActive ? 63 : 68, isActive ? 122 : 115, item.startAngle + gap, item.endAngle - gap);
+              return (
+                <path
+                  key={`version-segment-${item.version}`}
+                  d={path}
+                  fill={item.color}
+                  opacity={isActive ? 1 : 0.92}
+                  stroke="rgba(15,23,42,0.72)"
+                  strokeWidth="1.4"
+                  filter={isActive ? "url(#kscVersionSegmentGlow)" : undefined}
+                  transform={`translate(${translate.x} ${translate.y})`}
+                  className="cursor-pointer transition-all duration-300 ease-out"
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onMouseLeave={() => setActiveIndex(null)}
+                />
+              );
+            })}
+          </svg>
           <div className="absolute inset-[26%] rounded-full border border-white/15 bg-background shadow-[0_0_0_10px_rgba(15,23,42,0.38)]" />
           <div className="absolute inset-[38%] rounded-full border border-white/10 bg-card/80" />
           <div className="relative text-center">
-            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-muted-foreground">Versiones</p>
-            <p className="mt-1 text-5xl font-black text-foreground">{total}</p>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-300">dispositivos</p>
-            <p className="mt-1 text-[9px] font-black uppercase tracking-wider text-muted-foreground">
-              Actual <span className="text-emerald-300">v{latest?.version || "N/D"}</span>
-            </p>
+            <p className="text-[9px] font-black uppercase tracking-[0.22em] text-muted-foreground">Versiones</p>
+            <p className="mt-0.5 text-4xl font-black leading-none text-foreground">{total}</p>
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300">dispositivos</p>
           </div>
         </div>
 
