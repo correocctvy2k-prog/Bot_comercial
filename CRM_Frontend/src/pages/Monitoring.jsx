@@ -1147,12 +1147,12 @@ const VisibilityBarChart = ({ data, total, vmCount, physicalCount, physicalPct }
 const KasperskyVersionsInfographic = ({ data = [] }) => {
   const total = data.reduce((sum, item) => sum + item.value, 0);
   const latest = getLatestVersion(data.map((item) => ({ version: item.version, count: item.value })));
-  const palette = ["#38bdf8", "#a78bfa", "#f59e0b", "#f43f5e", "#14b8a6", "#64748b", "#f97316"];
+  const palette = ["#38bdf8", "#a78bfa", "#f59e0b", "#f43f5e", "#14b8a6", "#f97316"];
   let cursor = 0;
   let paletteIndex = 0;
 
-  const visibleData = data.slice(0, 6);
-  const otherValue = data.slice(6).reduce((sum, item) => sum + item.value, 0);
+  const visibleData = data.slice(0, 5);
+  const otherValue = data.slice(5).reduce((sum, item) => sum + item.value, 0);
   const chartData = otherValue > 0
     ? [...visibleData, { label: "Otras versiones", short: "Otras", version: "Otras", value: otherValue, isOther: true }]
     : visibleData;
@@ -1169,60 +1169,78 @@ const KasperskyVersionsInfographic = ({ data = [] }) => {
   const gradient = segments.length > 0
     ? segments.map((item) => `${item.color} ${item.start}% ${item.end}%`).join(", ")
     : "rgba(51,65,85,0.5) 0% 100%";
-  const majority = [...segments].sort((a, b) => b.value - a.value)[0];
+  const calloutPositions = [
+    "left-[2%] top-[18%] items-end text-right",
+    "right-[2%] top-[16%] items-start text-left",
+    "right-[5%] bottom-[20%] items-start text-left",
+    "left-[4%] bottom-[18%] items-end text-right",
+    "left-1/2 top-[3%] -translate-x-1/2 items-center text-center",
+    "left-1/2 bottom-[2%] -translate-x-1/2 items-center text-center"
+  ];
+  const linePositions = [
+    "right-[-62px] top-1/2 w-14 border-t border-current after:absolute after:right-[-9px] after:top-[-1px] after:h-7 after:w-7 after:border-r after:border-t after:border-current after:content-['']",
+    "left-[-62px] top-1/2 w-14 border-t border-current after:absolute after:left-[-9px] after:top-[-1px] after:h-7 after:w-7 after:border-l after:border-t after:border-current after:content-['']",
+    "left-[-60px] top-1/2 w-14 border-t border-current after:absolute after:left-[-9px] after:bottom-[-1px] after:h-7 after:w-7 after:border-b after:border-l after:border-current after:content-['']",
+    "right-[-60px] top-1/2 w-14 border-t border-current after:absolute after:right-[-9px] after:bottom-[-1px] after:h-7 after:w-7 after:border-b after:border-r after:border-current after:content-['']",
+    "left-1/2 top-[calc(100%+6px)] h-10 border-l border-current",
+    "left-1/2 bottom-[calc(100%+6px)] h-10 border-l border-current"
+  ];
 
   return (
-    <div className="grid h-full min-h-[230px] grid-cols-1 items-center gap-4 lg:grid-cols-[minmax(240px,0.9fr)_1.1fr]">
-      <div className="relative mx-auto flex aspect-square w-full max-w-[290px] items-center justify-center">
-        <div className="absolute inset-0 rounded-full border border-white/10 bg-[radial-gradient(circle_at_35%_25%,rgba(255,255,255,0.14),transparent_34%),radial-gradient(circle_at_50%_50%,rgba(15,23,42,0.2),rgba(2,6,23,0.82))]" />
-        <div className="absolute inset-[3%] rounded-full opacity-75 blur-[1px]" style={{ background: `conic-gradient(${gradient})` }} />
-        <div
-          key={`ksc-version-donut-${segments.map((item) => item.version).join("-")}`}
-          className="absolute inset-[7%] rounded-full shadow-[inset_0_0_28px_rgba(2,6,23,0.65),0_0_26px_rgba(56,189,248,0.12)] animate-in zoom-in-95 duration-700"
-          style={{ background: `conic-gradient(${gradient})` }}
-        />
-        <div className="absolute inset-[22%] rounded-full border border-white/15 bg-background shadow-[0_0_0_10px_rgba(15,23,42,0.42)]" />
-        <div className="absolute inset-[32%] rounded-full border border-white/10 bg-card/80" />
-        <div className="relative text-center">
-          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-muted-foreground">Versiones</p>
-          <p className="mt-1 text-4xl font-black text-foreground">{total}</p>
-          <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-300">dispositivos</p>
-        </div>
-        <div className="absolute -right-1 top-8 h-14 w-14 rounded-full border border-sky-300/20 bg-sky-400/10 blur-[1px]" />
-        <div className="absolute bottom-9 left-1 h-12 w-12 rounded-full border border-emerald-300/20 bg-emerald-400/10 blur-[1px]" />
+    <div className="relative h-full min-h-[230px] overflow-hidden rounded-xl bg-[radial-gradient(circle_at_50%_50%,rgba(56,189,248,0.09),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.18),transparent)]">
+      <div className="absolute inset-x-0 top-2 flex justify-center gap-2 opacity-70">
+        <span className="h-2 w-2 rounded-full border border-slate-400" />
+        <span className="h-2 w-2 rounded-full bg-slate-300" />
+        <span className="h-2 w-2 rounded-full border border-slate-400" />
       </div>
 
-      <div className="min-w-0 space-y-2">
-        <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3">
-            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Más actual</p>
-            <p className="mt-1 truncate text-base font-black text-emerald-300">v{latest?.version || "N/D"}</p>
-          </div>
-          <div className="rounded-lg border border-sky-500/20 bg-sky-500/10 p-3">
-            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Mayoritaria</p>
-            <p className="mt-1 truncate text-base font-black text-sky-300">v{majority?.version || "N/D"}</p>
+      <div className="relative mx-auto flex h-full min-h-[230px] max-w-[760px] items-center justify-center px-24 py-6">
+        <div className="absolute h-[250px] w-[250px] rounded-full border border-white/10" />
+        <div className="absolute h-[302px] w-[302px] rounded-full border border-white/10" />
+        <div className="ksc-orbit-sweep absolute h-[334px] w-[334px] rounded-full border-[18px] border-transparent border-r-sky-300/28 border-t-sky-300/16" />
+        <div className="absolute h-[316px] w-[316px] rounded-full border-[12px] border-transparent border-b-emerald-300/14 border-l-amber-300/14" />
+
+        <div className="relative flex aspect-square w-[250px] items-center justify-center rounded-full">
+          <div className="absolute inset-0 rounded-full border border-white/10 bg-[radial-gradient(circle_at_35%_25%,rgba(255,255,255,0.14),transparent_34%),radial-gradient(circle_at_50%_50%,rgba(15,23,42,0.2),rgba(2,6,23,0.82))]" />
+          <div className="absolute inset-[2%] rounded-full opacity-45 blur-[1px]" style={{ background: `conic-gradient(${gradient})` }} />
+          <div
+            key={`ksc-version-donut-${segments.map((item) => item.version).join("-")}`}
+            className="ksc-donut-reveal absolute inset-[5%] rounded-full shadow-[inset_0_0_34px_rgba(2,6,23,0.62),0_0_30px_rgba(56,189,248,0.16)]"
+            style={{ background: `conic-gradient(${gradient})` }}
+          />
+          <div className="absolute inset-[26%] rounded-full border border-white/15 bg-background shadow-[0_0_0_10px_rgba(15,23,42,0.38)]" />
+          <div className="absolute inset-[38%] rounded-full border border-white/10 bg-card/80" />
+          <div className="relative text-center">
+            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-muted-foreground">Versiones</p>
+            <p className="mt-1 text-5xl font-black text-foreground">{total}</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-300">dispositivos</p>
+            <p className="mt-1 text-[9px] font-black uppercase tracking-wider text-muted-foreground">
+              Actual <span className="text-emerald-300">v{latest?.version || "N/D"}</span>
+            </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-          {segments.map((item) => (
-            <div key={item.version} className={`flex min-w-0 items-center justify-between gap-2 rounded-lg border px-2.5 py-2 ${item.isLatest ? "border-emerald-500/30 bg-emerald-500/10" : "border-border/40 bg-background/35"}`}>
-              <div className="min-w-0">
-                <div className="flex min-w-0 items-center gap-2">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: item.color }} />
-                  <p className={`truncate text-[13px] font-black ${item.isLatest ? "text-emerald-300" : "text-slate-200"}`}>{item.isOther ? item.label : `v${item.version}`}</p>
-                </div>
-                <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {Math.round(item.percent)}% del parque
-                </p>
-              </div>
-              <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-black ${item.isLatest ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300" : "border-border/40 bg-muted/20 text-slate-300"}`}>
-                {item.value}
-              </span>
-            </div>
+        {segments.map((item, index) => (
+          <div
+            key={`callout-${item.version}`}
+            className={`ksc-callout-in absolute z-10 hidden max-w-[160px] flex-col gap-1 text-[11px] text-muted-foreground lg:flex ${calloutPositions[index] || calloutPositions[5]}`}
+            style={{ color: item.color, animationDelay: `${180 + index * 90}ms` }}
+          >
+            <div className={`absolute opacity-70 ${linePositions[index] || linePositions[5]}`} />
+            <p className="text-lg font-black leading-none text-current">{Math.round(item.percent)}%</p>
+            <p className="text-[12px] font-black text-slate-100">{item.isOther ? item.label : `v${item.version}`}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{item.value} dispositivos</p>
+          </div>
+        ))}
+
+        <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5 lg:hidden">
+          {segments.slice(0, 6).map((item) => (
+            <span key={`dot-${item.version}`} className="h-2 w-6 rounded-full" style={{ background: item.color }} />
           ))}
         </div>
       </div>
+
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(15,23,42,0.62),transparent_24%,transparent_76%,rgba(15,23,42,0.62))]" />
     </div>
   );
 };
