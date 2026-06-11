@@ -198,6 +198,30 @@ function Get-CountValue {
     return 0
 }
 
+function Convert-VersionBuckets {
+    param([hashtable]$Table)
+
+    $rows = @()
+    foreach ($key in $Table.Keys) {
+        if ([string]::IsNullOrWhiteSpace("$key")) { continue }
+        $rows += [pscustomobject]@{
+            Version = "$key"
+            Count   = [int]$Table[$key]
+        }
+    }
+
+    return @($rows | Sort-Object Count -Descending)
+}
+
+function Get-KesVersionFromApplication {
+    param([string]$Application)
+
+    if ([string]::IsNullOrWhiteSpace($Application)) { return "" }
+    if ($Application -match '\(([^)]+)\)\s*$') { return $matches[1].Trim() }
+    if ($Application -match '(\d+(?:\.\d+){1,4})') { return $matches[1].Trim() }
+    return $Application.Trim()
+}
+
 function Get-FirstRecordValue {
     param([hashtable]$Record, [string[]]$Keys, [string]$Fallback = "")
     foreach ($key in $Keys) {
@@ -309,6 +333,7 @@ function Parse-VirusDatabaseUsage {
             SourcePath    = $null
             ParsedAt      = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
             AlDia         = 0
+            Vigentes      = 0
             Ultimas24h    = 0
             Ultimos3Dias  = 0
             Ultimos7Dias  = 0
@@ -316,6 +341,10 @@ function Parse-VirusDatabaseUsage {
             SinDatos      = 0
             TotalDevices  = 0
             Breakdown     = @{}
+            Versions      = @{
+                AgentVersions = @()
+                KESVersions   = @()
+            }
         }
     }
 
@@ -352,6 +381,8 @@ function Parse-VirusDatabaseUsage {
 
     $rows = Get-HtmlTableRows -FilePath $file
     $deviceRows = @()
+    $agentVersions = @{}
+    $kesVersions = @{}
     $header = $null
 
     foreach ($row in $rows) {
@@ -379,11 +410,26 @@ function Parse-VirusDatabaseUsage {
         elseif ($stateText -match '7\s+d[íi]as') { $bucket = "Ultimos7Dias" }
         elseif ($stateText -match 'semana') { $bucket = "MasDeUnaSemana" }
 
+        $application = Get-FirstRecordValue -Record $record -Keys @("Aplicación", "Aplicacion")
+        $kesVersion = Get-KesVersionFromApplication -Application $application
+        $agentVersion = Get-FirstRecordValue -Record $record -Keys @("Número de versión", "Numero de version", "Version", "Versión")
+
+        if (-not [string]::IsNullOrWhiteSpace($kesVersion) -and $kesVersion -ne "N/D") {
+            Increment-Count -Table $kesVersions -Key $kesVersion
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($agentVersion) -and $agentVersion -ne "N/D") {
+            Increment-Count -Table $agentVersions -Key $agentVersion
+        }
+
         $deviceRows += [pscustomobject]@{
-            Name   = $name
-            Group  = Get-FirstRecordValue -Record $record -Keys @("Grupo", "Grupo de administracion", "Grupo de administración") -Fallback "N/D"
-            Status = $stateText
-            Bucket = $bucket
+            Name                = $name
+            Group               = Get-FirstRecordValue -Record $record -Keys @("Grupo", "Grupo de administracion", "Grupo de administración") -Fallback "N/D"
+            Status              = $stateText
+            Bucket              = $bucket
+            Application         = $application
+            KESVersion          = $kesVersion
+            NetworkAgentVersion = $agentVersion
         }
     }
 
@@ -394,6 +440,7 @@ function Parse-VirusDatabaseUsage {
     }
 
     $total = [int](($counts.Values | Measure-Object -Sum).Sum)
+    $vigentes = [int]($counts["AlDia"] + $counts["Ultimas24h"] + $counts["Ultimos3Dias"] + $counts["Ultimos7Dias"])
     $status = if ($counts["MasDeUnaSemana"] -gt 0 -or $counts["SinDatos"] -gt 0) { "ADVERTENCIA" } else { "OK" }
 
     return @{
@@ -402,6 +449,7 @@ function Parse-VirusDatabaseUsage {
         SourcePath     = $file
         ParsedAt       = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         AlDia          = [int]$counts["AlDia"]
+        Vigentes       = $vigentes
         Ultimas24h     = [int]$counts["Ultimas24h"]
         Ultimos3Dias   = [int]$counts["Ultimos3Dias"]
         Ultimos7Dias   = [int]$counts["Ultimos7Dias"]
@@ -409,6 +457,10 @@ function Parse-VirusDatabaseUsage {
         SinDatos       = [int]$counts["SinDatos"]
         TotalDevices   = $total
         Breakdown      = $counts
+        Versions       = @{
+            AgentVersions = Convert-VersionBuckets -Table $agentVersions
+            KESVersions   = Convert-VersionBuckets -Table $kesVersions
+        }
         Devices        = @($deviceRows | Sort-Object Name)
     }
 }
@@ -461,8 +513,8 @@ function New-HardwareInventoryHtml {
   <h2>Uso de bases de datos de virus</h2>
   <div class="muted">Fuente: $($db.SourceFile) · Estado: $($db.Status)</div>
   <table>
-    <tr><th>Al dia</th><th>Ultimas 24h</th><th>Ultimos 3 dias</th><th>Ultimos 7 dias</th><th>Mas de una semana</th><th>Sin datos</th></tr>
-    <tr><td>$($db.AlDia)</td><td>$($db.Ultimas24h)</td><td>$($db.Ultimos3Dias)</td><td>$($db.Ultimos7Dias)</td><td>$($db.MasDeUnaSemana)</td><td>$($db.SinDatos)</td></tr>
+    <tr><th>Vigentes</th><th>Al dia</th><th>Ultimas 24h</th><th>Ultimos 3 dias</th><th>Ultimos 7 dias</th><th>Mas de una semana</th><th>Sin datos</th></tr>
+    <tr><td>$($db.Vigentes)</td><td>$($db.AlDia)</td><td>$($db.Ultimas24h)</td><td>$($db.Ultimos3Dias)</td><td>$($db.Ultimos7Dias)</td><td>$($db.MasDeUnaSemana)</td><td>$($db.SinDatos)</td></tr>
   </table>
 </body>
 </html>
@@ -479,6 +531,7 @@ Write-Host "Informe : $hardwareReport" -ForegroundColor Gray
 
 $inventory = Parse-HardwareInventory -FilePath $hardwareReport
 $virusDatabaseUsage = Parse-VirusDatabaseUsage
+$inventory["Versions"] = $virusDatabaseUsage.Versions
 
 $reportData = @{
     Node       = $NodeName
@@ -507,8 +560,17 @@ Write-Host "Ultima semana      : $($inventory.LastSeen.UltimaSemana)" -Foregroun
 Write-Host "Mas de una semana  : $($inventory.LastSeen.MasDeUnaSemana)" -ForegroundColor Gray
 Write-Host "Mas de un mes      : $($inventory.LastSeen.MasDeUnMes)" -ForegroundColor Gray
 Write-Host "BD virus fuente    : $($virusDatabaseUsage.SourceFile)" -ForegroundColor Gray
+Write-Host "BD virus vigentes  : $($virusDatabaseUsage.Vigentes)" -ForegroundColor Gray
 Write-Host "BD virus al dia    : $($virusDatabaseUsage.AlDia)" -ForegroundColor Gray
 Write-Host "BD virus > 1 sem   : $($virusDatabaseUsage.MasDeUnaSemana)" -ForegroundColor Gray
+$topAgentVersion = @($virusDatabaseUsage.Versions.AgentVersions | Select-Object -First 1)
+$topKesVersion = @($virusDatabaseUsage.Versions.KESVersions | Select-Object -First 1)
+if ($topAgentVersion.Count -gt 0) {
+    Write-Host "Agente principal   : $($topAgentVersion[0].Version) ($($topAgentVersion[0].Count))" -ForegroundColor Gray
+}
+if ($topKesVersion.Count -gt 0) {
+    Write-Host "KES principal      : $($topKesVersion[0].Version) ($($topKesVersion[0].Count))" -ForegroundColor Gray
+}
 
 if ($SkipUpload) {
     Write-Host "[INFO] SkipUpload activo. No se enviaron datos al backend." -ForegroundColor Yellow

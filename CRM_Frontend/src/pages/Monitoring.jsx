@@ -245,8 +245,10 @@ const normalizeVersionBuckets = (source) => {
 };
 
 const getKscVersionInventory = (data) => {
-  const inventory = data?.Kaspersky?.HardwareInventory || data?.data?.Kaspersky?.HardwareInventory || {};
-  const versions = inventory.Versions || inventory.SoftwareVersions || inventory.ApplicationVersions || inventory.SecurityVersions || {};
+  const kasp = data?.Kaspersky || data?.data?.Kaspersky || {};
+  const inventory = kasp.HardwareInventory || {};
+  const virusDatabaseUsage = kasp.VirusDatabaseUsage || {};
+  const versions = virusDatabaseUsage.Versions || inventory.Versions || inventory.SoftwareVersions || inventory.ApplicationVersions || inventory.SecurityVersions || {};
   return {
     agent: normalizeVersionBuckets(
       versions.AgentVersions ||
@@ -255,7 +257,8 @@ const getKscVersionInventory = (data) => {
       versions.AgenteDeRed ||
       inventory.AgentVersions ||
       inventory.NetworkAgentVersions ||
-      inventory.AgenteRedVersiones
+      inventory.AgenteRedVersiones ||
+      virusDatabaseUsage.AgentVersions
     ),
     kes: normalizeVersionBuckets(
       versions.KESVersions ||
@@ -264,7 +267,8 @@ const getKscVersionInventory = (data) => {
       versions.KasperskyEndpointSecurity ||
       inventory.KESVersions ||
       inventory.KasperskyEndpointSecurityVersions ||
-      inventory.EndpointSecurityVersions
+      inventory.EndpointSecurityVersions ||
+      virusDatabaseUsage.KESVersions
     )
   };
 };
@@ -457,7 +461,7 @@ const getSmartMonitoringRecommendation = ({
       5,
       'info',
       'Kaspersky mantiene mayoría protegida',
-      `${toInt(bd.AlDia)} equipos están al día y ${outdatedDb} llevan más de una semana. Conviene revisar esos endpoints puntuales.`
+      `${toInt(bd.Vigentes ?? bd.AlDia)} equipos tienen bases vigentes y ${outdatedDb} llevan más de una semana. Conviene revisar esos endpoints puntuales.`
     );
   }
 
@@ -2088,7 +2092,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                 {/* Antivirus DB status */}
                 {(() => {
                   const bd = getKscVirusDatabaseUsage(nodes);
-                  const alDia = toInt(bd.AlDia);
+                  const alDia = toInt(bd.Vigentes ?? bd.AlDia);
                   const masDeUnaSemana = toInt(bd.MasDeUnaSemana);
                   const state = masDeUnaSemana > 0 ? 'MAYORÍA AL DÍA' : 'AL DÍA';
                   return (
@@ -2424,7 +2428,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                 {/* 1. Bases de Datos Antivirus */}
                 {(() => {
                   const bd = getKscVirusDatabaseUsage(nodes);
-                  const alDia = toInt(bd.AlDia);
+                  const alDia = toInt(bd.Vigentes ?? bd.AlDia);
                   const masDeUnaSemana = toInt(bd.MasDeUnaSemana);
                   const state = masDeUnaSemana > 0 ? 'MAYORÍA AL DÍA' : 'AL DÍA';
                   const stateColor = 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5';
