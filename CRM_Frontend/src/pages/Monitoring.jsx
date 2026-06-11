@@ -1216,22 +1216,6 @@ const KasperskyVersionsInfographic = ({ data = [] }) => {
   const gradient = segments.length > 0
     ? segments.map((item) => `${item.color} ${item.start}% ${item.end}%`).join(", ")
     : "rgba(51,65,85,0.5) 0% 100%";
-  const calloutPositions = [
-    "left-[2%] top-[18%] items-end text-right",
-    "right-[2%] top-[16%] items-start text-left",
-    "right-[5%] bottom-[20%] items-start text-left",
-    "left-[4%] bottom-[18%] items-end text-right",
-    "left-1/2 top-[3%] -translate-x-1/2 items-center text-center",
-    "left-1/2 bottom-[2%] -translate-x-1/2 items-center text-center"
-  ];
-  const linePositions = [
-    "right-[-62px] top-1/2 w-14 border-t border-current after:absolute after:right-[-9px] after:top-[-1px] after:h-7 after:w-7 after:border-r after:border-t after:border-current after:content-['']",
-    "left-[-62px] top-1/2 w-14 border-t border-current after:absolute after:left-[-9px] after:top-[-1px] after:h-7 after:w-7 after:border-l after:border-t after:border-current after:content-['']",
-    "left-[-60px] top-1/2 w-14 border-t border-current after:absolute after:left-[-9px] after:bottom-[-1px] after:h-7 after:w-7 after:border-b after:border-l after:border-current after:content-['']",
-    "right-[-60px] top-1/2 w-14 border-t border-current after:absolute after:right-[-9px] after:bottom-[-1px] after:h-7 after:w-7 after:border-b after:border-r after:border-current after:content-['']",
-    "left-1/2 top-[calc(100%+6px)] h-10 border-l border-current",
-    "left-1/2 bottom-[calc(100%+6px)] h-10 border-l border-current"
-  ];
 
   return (
     <div className="group/ksc-version relative h-full min-h-[230px] overflow-hidden rounded-xl bg-[radial-gradient(circle_at_50%_50%,rgba(56,189,248,0.09),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.18),transparent)]">
@@ -1242,12 +1226,12 @@ const KasperskyVersionsInfographic = ({ data = [] }) => {
       </div>
 
       <div className="relative mx-auto flex h-full min-h-[230px] max-w-[760px] items-center justify-center px-24 py-6">
-        <div className="absolute h-[250px] w-[250px] rounded-full border border-white/10" />
-        <div className="absolute h-[302px] w-[302px] rounded-full border border-white/10" />
-        <div className="ksc-orbit-sweep absolute h-[334px] w-[334px] rounded-full border-[18px] border-transparent border-r-sky-300/28 border-t-sky-300/16" />
-        <div className="absolute h-[316px] w-[316px] rounded-full border-[12px] border-transparent border-b-emerald-300/14 border-l-amber-300/14" />
-        <div className="ksc-orbit-sweep-reverse absolute h-[278px] w-[278px] rounded-full border-[8px] border-transparent border-l-white/10 border-t-white/15" />
-        <svg viewBox="0 0 360 360" className="pointer-events-none absolute h-[338px] w-[338px] opacity-35 transition-opacity duration-500 group-hover/ksc-version:opacity-65">
+        <div className="absolute h-[238px] w-[238px] rounded-full border border-white/10" />
+        <div className="absolute h-[287px] w-[287px] rounded-full border border-white/10" />
+        <div className="ksc-orbit-sweep absolute h-[317px] w-[317px] rounded-full border-[17px] border-transparent border-r-sky-300/28 border-t-sky-300/16" />
+        <div className="absolute h-[300px] w-[300px] rounded-full border-[11px] border-transparent border-b-emerald-300/14 border-l-amber-300/14" />
+        <div className="ksc-orbit-sweep-reverse absolute h-[264px] w-[264px] rounded-full border-[8px] border-transparent border-l-white/10 border-t-white/15" />
+        <svg viewBox="0 0 360 360" className="pointer-events-none absolute h-[321px] w-[321px] opacity-35 transition-opacity duration-500 group-hover/ksc-version:opacity-65">
           {Array.from({ length: 60 }).map((_, index) => {
             const angle = index * 6;
             const isMajorTick = index % 5 === 0;
@@ -1267,7 +1251,7 @@ const KasperskyVersionsInfographic = ({ data = [] }) => {
           })}
         </svg>
 
-        <div className="relative flex aspect-square w-[250px] items-center justify-center rounded-full transition-transform duration-500 ease-out group-hover/ksc-version:scale-[1.015]">
+        <div className="relative flex aspect-square w-[238px] items-center justify-center rounded-full transition-transform duration-500 ease-out group-hover/ksc-version:scale-[1.015]">
           <div className="absolute inset-0 rounded-full border border-white/10 bg-[radial-gradient(circle_at_35%_25%,rgba(255,255,255,0.14),transparent_34%),radial-gradient(circle_at_50%_50%,rgba(15,23,42,0.2),rgba(2,6,23,0.82))]" />
           <div className="absolute inset-[2%] rounded-full opacity-45 blur-[1px]" style={{ background: `conic-gradient(${gradient})` }} />
           <svg
@@ -1311,21 +1295,6 @@ const KasperskyVersionsInfographic = ({ data = [] }) => {
             <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300">dispositivos</p>
           </div>
         </div>
-
-        {segments.map((item, index) => (
-          <div
-            key={`callout-${item.version}`}
-            className={`ksc-callout-in absolute z-10 hidden max-w-[160px] flex-col gap-1 text-[11px] text-muted-foreground lg:flex ${calloutPositions[index] || calloutPositions[5]}`}
-            style={{ color: item.color, animationDelay: `${180 + index * 90}ms` }}
-            onMouseEnter={() => setActiveIndex(index)}
-            onMouseLeave={() => setActiveIndex(null)}
-          >
-            <div className={`absolute opacity-70 ${linePositions[index] || linePositions[5]}`} />
-            <p className="text-lg font-black leading-none text-current">{Math.round(item.percent)}%</p>
-            <p className="text-[12px] font-black text-slate-100">{item.isOther ? item.label : `v${item.version}`}</p>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{item.value} dispositivos</p>
-          </div>
-        ))}
 
         <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5 lg:hidden">
           {segments.slice(0, 6).map((item) => (
