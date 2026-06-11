@@ -1216,6 +1216,18 @@ const KasperskyVersionsInfographic = ({ data = [] }) => {
   const gradient = segments.length > 0
     ? segments.map((item) => `${item.color} ${item.start}% ${item.end}%`).join(", ")
     : "rgba(51,65,85,0.5) 0% 100%";
+  const sideCalloutPositions = [
+    "left-[2%] top-[20%] items-end text-right",
+    "right-[2%] top-[18%] items-start text-left",
+    "right-[5%] bottom-[20%] items-start text-left",
+    "left-[4%] bottom-[18%] items-end text-right"
+  ];
+  const sideLinePositions = [
+    "right-[-62px] top-1/2 w-14 border-t border-current after:absolute after:right-[-9px] after:top-[-1px] after:h-7 after:w-7 after:border-r after:border-t after:border-current after:content-['']",
+    "left-[-62px] top-1/2 w-14 border-t border-current after:absolute after:left-[-9px] after:top-[-1px] after:h-7 after:w-7 after:border-l after:border-t after:border-current after:content-['']",
+    "left-[-60px] top-1/2 w-14 border-t border-current after:absolute after:left-[-9px] after:bottom-[-1px] after:h-7 after:w-7 after:border-b after:border-l after:border-current after:content-['']",
+    "right-[-60px] top-1/2 w-14 border-t border-current after:absolute after:right-[-9px] after:bottom-[-1px] after:h-7 after:w-7 after:border-b after:border-r after:border-current after:content-['']"
+  ];
 
   return (
     <div className="group/ksc-version relative h-full min-h-[230px] overflow-hidden rounded-xl bg-[radial-gradient(circle_at_50%_50%,rgba(56,189,248,0.09),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.18),transparent)]">
@@ -1295,6 +1307,21 @@ const KasperskyVersionsInfographic = ({ data = [] }) => {
             <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300">dispositivos</p>
           </div>
         </div>
+
+        {segments.slice(0, 4).map((item, index) => (
+          <div
+            key={`side-callout-${item.version}`}
+            className={`ksc-callout-in absolute z-10 hidden max-w-[160px] flex-col gap-1 text-[11px] text-muted-foreground lg:flex ${sideCalloutPositions[index]}`}
+            style={{ color: item.color, animationDelay: `${180 + index * 90}ms` }}
+            onMouseEnter={() => setActiveIndex(index)}
+            onMouseLeave={() => setActiveIndex(null)}
+          >
+            <div className={`absolute opacity-70 ${sideLinePositions[index]}`} />
+            <p className="text-lg font-black leading-none text-current">{Math.round(item.percent)}%</p>
+            <p className="text-[12px] font-black text-slate-100">{item.isOther ? item.label : `v${item.version}`}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{item.value} dispositivos</p>
+          </div>
+        ))}
 
         <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5 lg:hidden">
           {segments.slice(0, 6).map((item) => (
