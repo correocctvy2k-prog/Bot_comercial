@@ -252,6 +252,26 @@ const addSmartRecommendation = (items, priority, tone, title, body) => {
   items.push({ priority, tone, title, body });
 };
 
+const hasUpdateSignal = (updates) => {
+  if (!updates || typeof updates !== 'object') return false;
+  return ['Status', 'PendingCount', 'RebootRequired', 'RebootPending', 'LastInstalled', 'LastKB'].some((key) => updates[key] !== undefined && updates[key] !== null);
+};
+
+const getUpdateState = (updates) => {
+  if (!hasUpdateSignal(updates)) return null;
+  const pendingCount = toInt(updates.PendingCount);
+  const rebootRequired = !!(updates.RebootRequired || updates.RebootPending);
+  const rawStatus = normalizeText(updates.Status || '');
+  const isOk = !rebootRequired && pendingCount === 0 && (!rawStatus || rawStatus === 'OK' || rawStatus.toLowerCase().includes('actualizado'));
+  return {
+    pendingCount,
+    rebootRequired,
+    isOk,
+    status: rawStatus || (isOk ? 'OK' : 'Pendiente'),
+    lastInstalled: normalizeText(updates.LastInstalled || updates.LastKB || '')
+  };
+};
+
 const getSmartMonitoringRecommendation = ({
   nodes,
   pingData,
@@ -271,7 +291,8 @@ const getSmartMonitoringRecommendation = ({
   babyWareStatus,
   zkVmPing,
   zkHostPing,
-  babyWarePing
+  babyWarePing,
+  updateChecks = []
 }) => {
   const now = Date.now();
   const recommendations = [];
@@ -445,21 +466,90 @@ const getSmartMonitoringRecommendation = ({
     );
   }
 
-  const sorted = recommendations.sort((a, b) => a.priority - b.priority);
-  if (!sorted.length) {
-    return {
-      tone: 'success',
-      title: 'Infraestructura estable',
-      body: 'Todos los indicadores principales lucen saludables. Mantén el monitoreo activo y conserva la revisión preventiva programada.',
-      actions: ['Verificar backups según agenda', 'Mantener actualizaciones en ventana controlada']
-    };
+  const updateStates = updateChecks
+    .map(([label, updates]) => [label, getUpdateState(updates)])
+    .filter(([, state]) => state);
+
+  updateStates.forEach(([label, state]) => {
+    if (state.rebootRequired) {
+      addSmartRecommendation(
+        recommendations,
+        2,
+        'warning',
+        `${label} requiere reinicio`,
+        `Las actualizaciones ya pueden estar instaladas, pero el servidor aun reporta reinicio pendiente. Programar ventana controlada.`
+      );
+    } else if (state.pendingCount > 0) {
+      addSmartRecommendation(
+        recommendations,
+        4,
+        'warning',
+        `${label} tiene parches pendientes`,
+        `El servidor reporta ${state.pendingCount} actualizacion(es) pendiente(s). Validar Windows Update o la politica de mantenimiento.`
+      );
+    }
+  });
+
+  const updatedServers = updateStates.filter(([, state]) => state.isOk);
+  if (updatedServers.length >= 3) {
+    addSmartRecommendation(
+      recommendations,
+      8,
+      'success',
+      'Actualizaciones bajo control',
+      `${updatedServers.length} servidores reportan sistema actualizado. Mantener la ventana de mantenimiento y revisar reinicios pendientes despues de cada ciclo.`
+    );
   }
 
-  const primary = sorted[0];
-  return {
-    ...primary,
-    actions: sorted.slice(1, 3).map((item) => item.title)
-  };
+  const healthyPings = pingChecks.filter(([, ping]) => getPingHealth(ping, now) === 'up');
+  if (healthyPings.length >= 6) {
+    addSmartRecommendation(
+      recommendations,
+      9,
+      'success',
+      'Conectividad estable',
+      `${healthyPings.length} objetivos responden al heartbeat del VPS. La lectura de LEDs y latencias se mantiene confiable.`
+    );
+  }
+
+  const healthyDisks = diskChecks.filter(([, disk]) => {
+    const percentFree = Number(disk?.PercentFree);
+    return Number.isFinite(percentFree) && percentFree >= 25;
+  });
+  if (healthyDisks.length > 0) {
+    addSmartRecommendation(
+      recommendations,
+      9,
+      'info',
+      'Capacidad de disco saludable',
+      `${healthyDisks.map(([label]) => label).join(' y ')} mantienen espacio disponible por encima del umbral preventivo.`
+    );
+  }
+
+  const sorted = recommendations.sort((a, b) => a.priority - b.priority);
+  if (!sorted.length) {
+    return [
+      {
+        priority: 9,
+        tone: 'success',
+        title: 'Infraestructura estable',
+        body: 'Todos los indicadores principales lucen saludables. Mantén el monitoreo activo y conserva la revisión preventiva programada.',
+        actions: ['Verificar backups según agenda', 'Mantener actualizaciones en ventana controlada']
+      },
+      {
+        priority: 9,
+        tone: 'info',
+        title: 'Monitoreo sin novedades críticas',
+        body: 'El tablero no tiene alertas prioritarias en este ciclo. Buen momento para revisar tendencias y validar historiales si hay ventana disponible.',
+        actions: ['Revisar Detalles Monitoreo si se requiere auditoría']
+      }
+    ];
+  }
+
+  return sorted.map((item, index) => ({
+    ...item,
+    actions: item.actions || sorted.filter((_, itemIndex) => itemIndex !== index).slice(0, 2).map((candidate) => candidate.title)
+  }));
 };
 
 const playSmartNotificationSound = () => {
@@ -506,12 +596,29 @@ const playSmartNotificationSound = () => {
 const SmartMonitoringNotification = ({ notification, visible, onClose }) => {
   if (!notification) return null;
 
-  const toneClasses = {
-    success: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
-    info: 'border-sky-500/30 bg-sky-500/10 text-sky-300',
-    warning: 'border-amber-500/35 bg-amber-500/10 text-amber-300',
-    critical: 'border-rose-500/35 bg-rose-500/10 text-rose-300'
+  const toneConfig = {
+    success: {
+      badge: 'border-emerald-400/35 bg-emerald-400/10 text-emerald-300',
+      dot: 'bg-emerald-400',
+      rail: 'from-emerald-400/80 via-yellow-300/70 to-transparent'
+    },
+    info: {
+      badge: 'border-sky-400/35 bg-sky-400/10 text-sky-300',
+      dot: 'bg-sky-400',
+      rail: 'from-sky-400/80 via-yellow-300/70 to-transparent'
+    },
+    warning: {
+      badge: 'border-yellow-300/45 bg-yellow-300/10 text-yellow-200',
+      dot: 'bg-yellow-300',
+      rail: 'from-yellow-300/90 via-amber-400/70 to-transparent'
+    },
+    critical: {
+      badge: 'border-rose-400/45 bg-rose-500/10 text-rose-200',
+      dot: 'bg-rose-400',
+      rail: 'from-rose-400/90 via-yellow-300/70 to-transparent'
+    }
   };
+  const currentTone = toneConfig[notification.tone] || toneConfig.info;
 
   const badgeLabel = {
     success: 'Recomendación',
@@ -522,37 +629,41 @@ const SmartMonitoringNotification = ({ notification, visible, onClose }) => {
 
   return (
     <div
-      className={`fixed bottom-6 right-6 z-50 w-[min(420px,calc(100vw-2rem))] transition-all duration-700 ease-out ${
+      className={`fixed bottom-6 right-6 z-50 w-[min(450px,calc(100vw-2rem))] transition-all duration-700 ease-out ${
         visible ? 'translate-y-0 opacity-100' : 'translate-y-5 opacity-0'
       }`}
     >
-      <div className="relative overflow-hidden rounded-xl border border-border bg-background/95 p-4 shadow-2xl shadow-black/30 backdrop-blur-xl">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
-        <div className="flex items-start gap-3">
-          <div className="relative shrink-0 rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary shadow-[0_0_24px_rgba(59,130,246,0.22)]">
+      <div className="relative overflow-hidden rounded-xl border border-yellow-300/20 bg-[#07101d]/95 p-4 shadow-2xl shadow-black/40 backdrop-blur-xl">
+        <div className={`absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r ${currentTone.rail}`} />
+        <div className="flex items-start gap-3.5">
+          <div className="relative mt-0.5 shrink-0 rounded-xl border border-slate-700/80 bg-slate-950/70 p-2.5 text-blue-400">
             <SkylabBot size={34} className="text-blue-400" />
-            <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]" />
+            <span className={`absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border border-[#07101d] ${currentTone.dot}`} />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="mb-1 flex items-center justify-between gap-3">
-              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${toneClasses[notification.tone] || toneClasses.info}`}>
-                {badgeLabel}
-              </span>
+            <div className="mb-2 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <span className="block text-[10px] font-black uppercase tracking-[0.18em] text-yellow-200/80">Skylab Monitor</span>
+                <span className={`mt-1 inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${currentTone.badge}`}>
+                  {badgeLabel}
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="rounded-md p-1 text-slate-500 transition-colors hover:bg-white/10 hover:text-slate-100"
                 title="Cerrar notificación"
               >
                 <XCircle className="h-4 w-4" />
               </button>
             </div>
-            <h3 className="text-sm font-black text-foreground">{notification.title}</h3>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{notification.body}</p>
+            <h3 className="text-[15px] font-black leading-snug text-slate-50">{notification.title}</h3>
+            <p className="mt-1.5 text-[12px] leading-5 text-slate-300">{notification.body}</p>
             {notification.actions?.length > 0 && (
-              <div className="mt-3 space-y-1 border-t border-border/50 pt-2">
+              <div className="mt-3 space-y-1.5 border-t border-yellow-300/10 pt-2.5">
                 {notification.actions.map((action) => (
-                  <p key={action} className="text-[11px] font-semibold text-muted-foreground">
+                  <p key={action} className="flex items-start gap-2 text-[11px] font-semibold leading-4 text-slate-400">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-yellow-300/80" />
                     {action}
                   </p>
                 ))}
@@ -1349,8 +1460,12 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
     let clearTimer;
 
     const showNotification = () => {
-      const recommendation = latestSmartRecommendationRef.current;
-      if (!recommendation) return;
+      const recommendationPool = latestSmartRecommendationRef.current;
+      const candidates = Array.isArray(recommendationPool) ? recommendationPool : [recommendationPool].filter(Boolean);
+      if (!candidates.length) return;
+      const urgentCandidates = candidates.filter((item) => item.priority <= 2);
+      const visiblePool = urgentCandidates.length > 0 ? urgentCandidates : candidates;
+      const recommendation = visiblePool[Math.floor(Math.random() * visiblePool.length)];
 
       setSmartNotification({ ...recommendation, id: Date.now() });
       setIsSmartNotificationVisible(true);
@@ -1560,7 +1675,16 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
     babyWareStatus,
     zkVmPing,
     zkHostPing,
-    babyWarePing
+    babyWarePing,
+    updateChecks: [
+      ['ANFIGANE', nodes.host1?.Updates],
+      ['AD01', nodes.dc01?.Updates],
+      ['AD02', nodes.dc02?.LocalHealth?.Updates || nodes.dc02?.data?.LocalHealth?.Updates],
+      ['ANFI-SEG', nodes.host2?.data?.Updates || nodes.host2?.Updates],
+      ['AD03', nodes.dc03?.LocalHealth?.Updates || nodes.dc03?.data?.LocalHealth?.Updates],
+      ['SERV-KSC', kscUpdates],
+      ['SERV-ZK', zkUpdates]
+    ]
   }) : null;
   latestSmartRecommendationRef.current = smartRecommendation;
 
