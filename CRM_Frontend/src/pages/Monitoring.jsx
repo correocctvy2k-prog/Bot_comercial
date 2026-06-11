@@ -41,13 +41,13 @@ import { PageHeaderContext } from "@/layout/Layout";
 import SkylabBot from "@/components/SkylabBot";
 
 const SOCKET_URL = import.meta.env.VITE_MONITORING_BACKEND_URL || 'http://localhost:3001';
-const MONITORING_LAYOUT_STORAGE_KEY = 'skylab.monitoring.dashboardLayout.v1';
+const MONITORING_LAYOUT_STORAGE_KEY = 'skylab.monitoring.dashboardLayout.v2';
 
 const DEFAULT_MONITORING_LAYOUT = [
   { id: 'anfigane', size: 'half' },
   { id: 'anfi-seg', size: 'half' },
-  { id: 'ksc-summary', size: 'half' },
-  { id: 'zk-summary', size: 'half' },
+  { id: 'ksc-summary', size: 'wide' },
+  { id: 'zk-summary', size: 'third' },
   { id: 'ksc-inventory', size: 'full' }
 ];
 
@@ -271,7 +271,7 @@ const getLatestVersion = (versions = []) => versions.reduce((latest, item) => {
 
 const VersionDistribution = ({ title, versions, accent = 'emerald' }) => {
   const latest = getLatestVersion(versions);
-  const visibleVersions = versions.slice(0, 4);
+  const visibleVersions = versions.slice(0, 8);
   const hiddenCount = Math.max(versions.length - visibleVersions.length, 0);
   const totalDevices = versions.reduce((sum, item) => sum + item.count, 0);
   const accentClass = accent === 'sky' ? 'text-sky-300 bg-sky-500/10 border-sky-500/25' : 'text-emerald-300 bg-emerald-500/10 border-emerald-500/25';
@@ -284,11 +284,11 @@ const VersionDistribution = ({ title, versions, accent = 'emerald' }) => {
       </div>
 
       {visibleVersions.length > 0 ? (
-        <div className="mt-2.5 space-y-1.5">
+        <div className="mt-2.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2 xl:grid-cols-4">
           {visibleVersions.map((item) => {
             const isLatest = latest && compareSemanticVersions(item.version, latest.version) === 0;
             return (
-              <div key={`${title}-${item.version}`} className={`flex items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 ${isLatest ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-border/35 bg-background/30'}`}>
+              <div key={`${title}-${item.version}`} className={`flex min-w-0 items-center justify-between gap-2 rounded-md border px-2.5 py-2 ${isLatest ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-border/35 bg-background/30'}`}>
                 <div className="min-w-0">
                   <p className={`truncate text-[13px] font-black ${isLatest ? 'text-emerald-300' : 'text-slate-200'}`}>v{item.version}</p>
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{isLatest ? 'Más actual' : 'Anterior'}</p>
@@ -300,7 +300,9 @@ const VersionDistribution = ({ title, versions, accent = 'emerald' }) => {
             );
           })}
           {hiddenCount > 0 && (
-            <p className="text-[10px] font-bold text-muted-foreground">+{hiddenCount} versiones adicionales</p>
+            <div className="flex items-center rounded-md border border-border/35 bg-background/30 px-2.5 py-2 text-[10px] font-bold text-muted-foreground">
+              +{hiddenCount} versiones adicionales
+            </div>
           )}
         </div>
       ) : (
@@ -2129,13 +2131,13 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
             onDrop={handlePanelDrop}
           >
           <div 
-            className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-4 flex flex-col justify-between transition-all duration-300 group"
+            className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-3 flex flex-col justify-between transition-all duration-300 group"
           >
             <div>
-              <div className="flex justify-between items-start border-b border-border/50 pb-3 mb-3">
+              <div className="flex justify-between items-start border-b border-border/50 pb-2.5 mb-2.5">
                 <div className="flex items-center gap-3">
                   <div className="p-0 rounded-lg group-hover:scale-105 transition-transform">
-                    <KasperskyIcon className="w-10 h-10" />
+                    <KasperskyIcon className="w-9 h-9" />
                   </div>
                   <div>
                     <h3 className="text-base font-bold flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
@@ -2150,7 +2152,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
               </div>
 
               {/* Data Summary Grid */}
-              <div className="grid grid-cols-2 gap-3 mt-2">
+              <div className="grid grid-cols-2 gap-2.5 mt-2 2xl:grid-cols-4">
                 {/* Antivirus DB status */}
                 {(() => {
                   const bd = getKscVirusDatabaseUsage(nodes);
@@ -2158,12 +2160,12 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                   const masDeUnaSemana = toInt(bd.MasDeUnaSemana);
                   const state = masDeUnaSemana > 0 ? 'MAYORÍA AL DÍA' : 'AL DÍA';
                   return (
-                    <div className="bg-background/30 border border-border/40 rounded-lg p-4">
-                      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Database className="w-6 h-6 text-sky-300" /> Bases de Datos AV</p>
+                    <div className="bg-background/30 border border-border/40 rounded-lg p-3">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Database className="w-5 h-5 text-sky-300" /> Bases de Datos AV</p>
                       <p className="text-xl font-bold mt-1 text-emerald-400">{state}</p>
-                      <div className="flex justify-between gap-3 text-[13px] mt-1.5 text-muted-foreground">
-                        <span>Al día: <strong className="text-base text-emerald-400">{alDia}</strong></span>
-                        <span>&gt;1 sem: <strong className="text-base text-amber-400">{masDeUnaSemana}</strong></span>
+                      <div className="flex justify-between gap-3 text-[12px] mt-1.5 text-muted-foreground">
+                        <span>Al día: <strong className="text-sm text-emerald-400">{alDia}</strong></span>
+                        <span>&gt;1 sem: <strong className="text-sm text-amber-400">{masDeUnaSemana}</strong></span>
                       </div>
                     </div>
                   );
@@ -2181,14 +2183,14 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                       ? am.Detalles
                       : [];
                   return (
-                    <div className="bg-background/30 border border-border/40 rounded-lg p-4">
-                      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Bug className="w-6 h-6 text-rose-400" /> Amenazas</p>
+                    <div className="bg-background/30 border border-border/40 rounded-lg p-3">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Bug className="w-5 h-5 text-rose-400" /> Amenazas</p>
                       <p className={`text-xl font-bold mt-1 ${infected > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
                         {state}
                       </p>
-                      <div className="flex justify-between gap-3 text-[13px] mt-1.5 text-muted-foreground">
-                        <span>Infectados: <strong className={`text-base ${infected > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{infected}</strong></span>
-                        <span>Detectados: <strong className="text-base text-rose-400">{detected}</strong></span>
+                      <div className="flex justify-between gap-3 text-[12px] mt-1.5 text-muted-foreground">
+                        <span>Infectados: <strong className={`text-sm ${infected > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{infected}</strong></span>
+                        <span>Detectados: <strong className="text-sm text-rose-400">{detected}</strong></span>
                       </div>
                       <div className="mt-2 border-t border-border/30 pt-2">
                         {threatDevices.length > 0 ? (
@@ -2218,12 +2220,12 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                   const criticas = toInt(vul.DispCritica);
                   const altas = toInt(vul.DispAlta);
                   return (
-                    <div className="bg-background/30 border border-border/40 rounded-lg p-4">
-                      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><ShieldAlert className="w-6 h-6 text-amber-400" /> Vulnerabilidades</p>
+                    <div className="bg-background/30 border border-border/40 rounded-lg p-3">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><ShieldAlert className="w-5 h-5 text-amber-400" /> Vulnerabilidades</p>
                       <p className="text-xl font-bold mt-1 text-emerald-400">{sinVuln} sin vuln.</p>
-                      <div className="flex justify-between gap-3 text-[13px] mt-1.5 text-muted-foreground">
-                        <span>Críticas: <strong className={`text-base ${criticas > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{criticas}</strong></span>
-                        <span>Altas: <strong className={`text-base ${altas > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>{altas}</strong></span>
+                      <div className="flex justify-between gap-3 text-[12px] mt-1.5 text-muted-foreground">
+                        <span>Críticas: <strong className={`text-sm ${criticas > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{criticas}</strong></span>
+                        <span>Altas: <strong className={`text-sm ${altas > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>{altas}</strong></span>
                       </div>
                     </div>
                   );
@@ -2235,8 +2237,8 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                   const activeLic = getPrimaryLicense(lic);
                   const stateColor = activeLic.usage > 90 ? 'text-amber-400' : 'text-emerald-400';
                   return (
-                    <div className="bg-background/30 border border-border/40 rounded-lg p-4">
-                      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><KeyRound className="w-6 h-6 text-violet-300" /> Licenciamiento</p>
+                    <div className="bg-background/30 border border-border/40 rounded-lg p-3">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><KeyRound className="w-5 h-5 text-violet-300" /> Licenciamiento</p>
                       <p className={`text-xl font-bold mt-1 ${stateColor}`}>{activeLic.used} / {activeLic.limit}</p>
                       <p className="text-[12px] text-muted-foreground mt-0.5">{activeLic.usage}% de uso</p>
                       <div className="h-2 w-full bg-muted rounded-full overflow-hidden mt-1.5">
@@ -2254,7 +2256,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                   const versions = getKscVersionInventory(nodes.kscHardware);
                   const hasVersionData = versions.kaspersky.length > 0;
                   return (
-                    <div className="col-span-2 bg-background/30 border border-border/40 rounded-lg p-4">
+                    <div className="col-span-2 bg-background/30 border border-border/40 rounded-lg p-3 2xl:col-span-4">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
@@ -2268,7 +2270,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                           {hasVersionData ? 'Inventario activo' : 'Pendiente'}
                         </span>
                       </div>
-                      <div className="mt-3">
+                      <div className="mt-2.5">
                         <VersionDistribution title="Número de versión" versions={versions.kaspersky} accent="emerald" />
                       </div>
                     </div>
@@ -2278,7 +2280,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
             </div>
 
             {(nodes.ksc.ReportDate || nodes.ksc.data?.ReportDate) && (
-              <div className="text-[9px] text-muted-foreground border-t border-border/20 pt-3 mt-4 flex items-center gap-1.5">
+              <div className="text-[9px] text-muted-foreground border-t border-border/20 pt-2 mt-2.5 flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-sky-400" />
                 Actualizado: {nodes.ksc.ReportDate || nodes.ksc.data?.ReportDate}
               </div>
@@ -2299,15 +2301,15 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
           onDrop={handlePanelDrop}
         >
         <div
-          className={`bg-card/40 backdrop-blur-sm border rounded-xl p-4 transition-all duration-300 group ${zkHostPing?.status === 'DOWN' || zkStatus === 'CRITICAL' || zkVmPing?.status === 'DOWN' ? 'border-rose-500/40' : 'border-border'}`}
+          className={`bg-card/40 backdrop-blur-sm border rounded-xl p-3 transition-all duration-300 group ${zkHostPing?.status === 'DOWN' || zkStatus === 'CRITICAL' || zkVmPing?.status === 'DOWN' ? 'border-rose-500/40' : 'border-border'}`}
         >
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] items-start gap-3 mb-3">
+          <div className="grid grid-cols-1 items-start gap-2 mb-2 xl:grid-cols-[minmax(0,1fr)_auto]">
             <div className="flex items-center gap-3">
               <div className={`p-1 rounded-xl ${zkHostPing?.status === 'DOWN' ? 'bg-rose-500/10' : 'bg-transparent'}`}>
-                <ProxmoxIcon className="w-10 h-10" />
+                <ProxmoxIcon className="w-9 h-9" />
               </div>
               <div>
-                <h2 className="text-lg font-bold flex items-center gap-2">
+                <h2 className="text-base font-bold flex items-center gap-2">
                   {zkHost.Name || zkVirt.HostName || 'PROXMOX-ZK'}
                   <div
                     className={`w-3 h-3 rounded-full ${(!zkHostPing && !zkHost.Status) ? 'bg-slate-600' : (zkHostPing?.status === 'UP' || zkHost.Pingable) ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'bg-rose-500'}`}
@@ -2328,30 +2330,30 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-start lg:justify-end gap-1.5 text-xs lg:max-w-[420px]">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-md border border-border">
-                <Activity className="w-4 h-4 text-purple-400" />
+            <div className="flex flex-wrap items-center justify-start xl:justify-end gap-1.5 text-[11px] xl:max-w-[360px]">
+              <div className="flex items-center gap-1.5 px-2 py-1.5 bg-background rounded-md border border-border">
+                <Activity className="w-3.5 h-3.5 text-purple-400" />
                 <span className="text-muted-foreground">Web UI:</span>
                 <span className={zkHost.Ports?.WebUI8006 ? 'font-bold text-emerald-400' : 'font-bold text-amber-400'}>{zkHost.Ports?.WebUI8006 ? '8006 OK' : 'N/D'}</span>
               </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-md border border-border">
-                <Lock className="w-4 h-4 text-sky-400" />
+              <div className="flex items-center gap-1.5 px-2 py-1.5 bg-background rounded-md border border-border">
+                <Lock className="w-3.5 h-3.5 text-sky-400" />
                 <span className="text-muted-foreground">SSH:</span>
                 <span className={zkHost.Ports?.SSH22 ? 'font-bold text-emerald-400' : 'font-bold text-amber-400'}>{zkHost.Ports?.SSH22 ? '22 OK' : 'N/D'}</span>
               </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-md border border-border">
-                <Cpu className="w-4 h-4 text-primary" />
+              <div className="flex items-center gap-1.5 px-2 py-1.5 bg-background rounded-md border border-border">
+                <Cpu className="w-3.5 h-3.5 text-primary" />
                 <span className="font-bold text-emerald-400">1/1 VMs</span>
               </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-md border border-border">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <div className="flex items-center gap-1.5 px-2 py-1.5 bg-background rounded-md border border-border">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                 <span className="text-muted-foreground">ZK:</span>
                 <span className={zkOnlineServiceStatus === 'Running' || zkOnlineServiceStatus === 4 ? 'font-bold text-emerald-400' : 'font-bold text-amber-400'}>
                   {zkOnlineServiceStatus === 'Running' || zkOnlineServiceStatus === 4 ? 'Activo' : zkOnlineServiceStatus}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background rounded-md border border-border">
-                <BabyWareIcon className="w-5 h-5" />
+              <div className="flex items-center gap-1.5 px-2 py-1.5 bg-background rounded-md border border-border">
+                <BabyWareIcon className="w-4 h-4" />
                 <span className="text-muted-foreground">BabyWare:</span>
                 <span className={babyWareOk ? 'font-bold text-emerald-400' : 'font-bold text-amber-400'}>
                   {babyWareOk ? `${babyWarePort} OK` : 'N/D'}
@@ -2360,11 +2362,11 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
             </div>
           </div>
 
-          <div className="border-t border-border/30 pt-3">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+          <div className="border-t border-border/30 pt-2.5">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <Database className="w-4 h-4" /> Máquinas Virtuales
             </p>
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-3">
               {nodes.zk ? (
                 <DCCard
                   title="SERV-ZK"
