@@ -1234,7 +1234,7 @@ const KasperskyVersionsInfographic = ({ data = [] }) => {
   ];
 
   return (
-    <div className="relative h-full min-h-[230px] overflow-hidden rounded-xl bg-[radial-gradient(circle_at_50%_50%,rgba(56,189,248,0.09),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.18),transparent)]">
+    <div className="group/ksc-version relative h-full min-h-[230px] overflow-hidden rounded-xl bg-[radial-gradient(circle_at_50%_50%,rgba(56,189,248,0.09),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.18),transparent)]">
       <div className="absolute inset-x-0 top-2 flex justify-center gap-2 opacity-70">
         <span className="h-2 w-2 rounded-full border border-slate-400" />
         <span className="h-2 w-2 rounded-full bg-slate-300" />
@@ -1246,8 +1246,28 @@ const KasperskyVersionsInfographic = ({ data = [] }) => {
         <div className="absolute h-[302px] w-[302px] rounded-full border border-white/10" />
         <div className="ksc-orbit-sweep absolute h-[334px] w-[334px] rounded-full border-[18px] border-transparent border-r-sky-300/28 border-t-sky-300/16" />
         <div className="absolute h-[316px] w-[316px] rounded-full border-[12px] border-transparent border-b-emerald-300/14 border-l-amber-300/14" />
+        <div className="ksc-orbit-sweep-reverse absolute h-[278px] w-[278px] rounded-full border-[8px] border-transparent border-l-white/10 border-t-white/15" />
+        <svg viewBox="0 0 360 360" className="pointer-events-none absolute h-[338px] w-[338px] opacity-35 transition-opacity duration-500 group-hover/ksc-version:opacity-65">
+          {Array.from({ length: 60 }).map((_, index) => {
+            const angle = index * 6;
+            const isMajorTick = index % 5 === 0;
+            const outer = polarToCartesian(180, 180, isMajorTick ? 166 : 162, angle);
+            const inner = polarToCartesian(180, 180, isMajorTick ? 153 : 156, angle);
+            return (
+              <line
+                key={`version-tick-${index}`}
+                x1={inner.x}
+                y1={inner.y}
+                x2={outer.x}
+                y2={outer.y}
+                stroke={isMajorTick ? "rgba(226,232,240,0.42)" : "rgba(148,163,184,0.22)"}
+                strokeWidth={isMajorTick ? 1.4 : 0.8}
+              />
+            );
+          })}
+        </svg>
 
-        <div className="relative flex aspect-square w-[250px] items-center justify-center rounded-full">
+        <div className="relative flex aspect-square w-[250px] items-center justify-center rounded-full transition-transform duration-500 ease-out group-hover/ksc-version:scale-[1.015]">
           <div className="absolute inset-0 rounded-full border border-white/10 bg-[radial-gradient(circle_at_35%_25%,rgba(255,255,255,0.14),transparent_34%),radial-gradient(circle_at_50%_50%,rgba(15,23,42,0.2),rgba(2,6,23,0.82))]" />
           <div className="absolute inset-[2%] rounded-full opacity-45 blur-[1px]" style={{ background: `conic-gradient(${gradient})` }} />
           <svg
@@ -1283,7 +1303,8 @@ const KasperskyVersionsInfographic = ({ data = [] }) => {
             })}
           </svg>
           <div className="absolute inset-[26%] rounded-full border border-white/15 bg-background shadow-[0_0_0_10px_rgba(15,23,42,0.38)]" />
-          <div className="absolute inset-[38%] rounded-full border border-white/10 bg-card/80" />
+          <div className="absolute inset-[38%] rounded-full border border-white/10 bg-card/80 shadow-[inset_0_1px_12px_rgba(255,255,255,0.08),0_10px_24px_rgba(2,6,23,0.35)]" />
+          <div className="pointer-events-none absolute inset-[38%] rounded-full bg-[linear-gradient(135deg,rgba(255,255,255,0.16),transparent_38%,rgba(34,197,94,0.08)_72%,transparent)]" />
           <div className="relative text-center">
             <p className="text-[9px] font-black uppercase tracking-[0.22em] text-muted-foreground">Versiones</p>
             <p className="mt-0.5 text-4xl font-black leading-none text-foreground">{total}</p>
@@ -1296,6 +1317,8 @@ const KasperskyVersionsInfographic = ({ data = [] }) => {
             key={`callout-${item.version}`}
             className={`ksc-callout-in absolute z-10 hidden max-w-[160px] flex-col gap-1 text-[11px] text-muted-foreground lg:flex ${calloutPositions[index] || calloutPositions[5]}`}
             style={{ color: item.color, animationDelay: `${180 + index * 90}ms` }}
+            onMouseEnter={() => setActiveIndex(index)}
+            onMouseLeave={() => setActiveIndex(null)}
           >
             <div className={`absolute opacity-70 ${linePositions[index] || linePositions[5]}`} />
             <p className="text-lg font-black leading-none text-current">{Math.round(item.percent)}%</p>
@@ -1357,10 +1380,10 @@ const FocusInventoryChart = ({
                 ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
                 : 'border-border bg-background/70 text-muted-foreground hover:border-primary/50 hover:text-primary'
             }`}
-            title="Rotar cada 10 minutos"
+            title="Rotar cada 5 minutos"
           >
             <RefreshCw className={`h-3 w-3 ${autoRotate ? 'animate-spin-slow' : ''}`} />
-            Auto 10m
+            Auto 5m
           </button>
           <span className="hidden items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground md:flex">
             <span className="h-2 w-2 rounded-full bg-emerald-500" /> {activeLabel}
@@ -1758,7 +1781,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
     if (!isFocusInventoryChartAutoRotating) return undefined;
     const chartInterval = setInterval(() => {
       setFocusInventoryChartMode((currentMode) => getNextFocusInventoryChartMode(currentMode));
-    }, 600000);
+    }, 300000);
 
     return () => clearInterval(chartInterval);
   }, [isFocusInventoryChartAutoRotating]);
