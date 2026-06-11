@@ -319,14 +319,17 @@ const getKscVersionInventory = (data) => {
   const virusDatabaseUsage = kasp.VirusDatabaseUsage || {};
   const versions = virusDatabaseUsage.Versions || inventory.Versions || inventory.SoftwareVersions || inventory.ApplicationVersions || inventory.SecurityVersions || {};
   return {
-    kes: normalizeVersionBuckets(
+    kaspersky: normalizeVersionBuckets(
+      versions.KasperskyVersions ||
       versions.KESVersions ||
       versions.KasperskyEndpointSecurityVersions ||
       versions.EndpointSecurityVersions ||
       versions.KasperskyEndpointSecurity ||
+      inventory.KasperskyVersions ||
       inventory.KESVersions ||
       inventory.KasperskyEndpointSecurityVersions ||
       inventory.EndpointSecurityVersions ||
+      virusDatabaseUsage.KasperskyVersions ||
       virusDatabaseUsage.KESVersions
     )
   };
@@ -2246,10 +2249,10 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                   );
                 })()}
 
-                {/* Kaspersky Endpoint Security versions */}
+                {/* Kaspersky report version numbers */}
                 {(() => {
                   const versions = getKscVersionInventory(nodes.kscHardware);
-                  const hasVersionData = versions.kes.length > 0;
+                  const hasVersionData = versions.kaspersky.length > 0;
                   return (
                     <div className="col-span-2 bg-background/30 border border-border/40 rounded-lg p-4">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -2258,7 +2261,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                             <MonitorSmartphone className="w-6 h-6 text-yellow-300" /> Versiones Kaspersky
                           </p>
                           <p className="mt-1 text-base font-bold text-slate-200">
-                            {hasVersionData ? 'Dispositivos por versión' : 'Esperando informe de versiones'}
+                            {hasVersionData ? 'Dispositivos por número de versión' : 'Esperando informe de versiones'}
                           </p>
                         </div>
                         <span className={`rounded-full border px-2 py-1 text-[10px] font-black ${hasVersionData ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300' : 'border-amber-500/25 bg-amber-500/10 text-amber-300'}`}>
@@ -2266,7 +2269,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                         </span>
                       </div>
                       <div className="mt-3">
-                        <VersionDistribution title="Kaspersky Endpoint Security" versions={versions.kes} accent="emerald" />
+                        <VersionDistribution title="Número de versión" versions={versions.kaspersky} accent="emerald" />
                       </div>
                     </div>
                   );

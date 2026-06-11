@@ -213,15 +213,6 @@ function Convert-VersionBuckets {
     return @($rows | Sort-Object Count -Descending)
 }
 
-function Get-KesVersionFromApplication {
-    param([string]$Application)
-
-    if ([string]::IsNullOrWhiteSpace($Application)) { return "" }
-    if ($Application -match '\(([^)]+)\)\s*$') { return $matches[1].Trim() }
-    if ($Application -match '(\d+(?:\.\d+){1,4})') { return $matches[1].Trim() }
-    return $Application.Trim()
-}
-
 function Get-FirstRecordValue {
     param([hashtable]$Record, [string[]]$Keys, [string]$Fallback = "")
     foreach ($key in $Keys) {
@@ -342,7 +333,8 @@ function Parse-VirusDatabaseUsage {
             TotalDevices  = 0
             Breakdown     = @{}
             Versions      = @{
-                KESVersions   = @()
+                KasperskyVersions = @()
+                KESVersions       = @()
             }
         }
     }
@@ -380,7 +372,7 @@ function Parse-VirusDatabaseUsage {
 
     $rows = Get-HtmlTableRows -FilePath $file
     $deviceRows = @()
-    $kesVersions = @{}
+    $kasperskyVersions = @{}
     $header = $null
 
     foreach ($row in $rows) {
@@ -409,10 +401,10 @@ function Parse-VirusDatabaseUsage {
         elseif ($stateText -match 'semana') { $bucket = "MasDeUnaSemana" }
 
         $application = Get-FirstRecordValue -Record $record -Keys @("Aplicación", "Aplicacion")
-        $kesVersion = Get-KesVersionFromApplication -Application $application
+        $versionNumber = Get-FirstRecordValue -Record $record -Keys @("Número de versión", "Numero de version", "Version", "Versión")
 
-        if (-not [string]::IsNullOrWhiteSpace($kesVersion) -and $kesVersion -ne "N/D") {
-            Increment-Count -Table $kesVersions -Key $kesVersion
+        if (-not [string]::IsNullOrWhiteSpace($versionNumber) -and $versionNumber -ne "N/D") {
+            Increment-Count -Table $kasperskyVersions -Key $versionNumber
         }
 
         $deviceRows += [pscustomobject]@{
@@ -421,7 +413,7 @@ function Parse-VirusDatabaseUsage {
             Status      = $stateText
             Bucket      = $bucket
             Application = $application
-            KESVersion  = $kesVersion
+            Version     = $versionNumber
         }
     }
 
@@ -450,7 +442,8 @@ function Parse-VirusDatabaseUsage {
         TotalDevices   = $total
         Breakdown      = $counts
         Versions       = @{
-            KESVersions   = Convert-VersionBuckets -Table $kesVersions
+            KasperskyVersions = Convert-VersionBuckets -Table $kasperskyVersions
+            KESVersions       = Convert-VersionBuckets -Table $kasperskyVersions
         }
         Devices        = @($deviceRows | Sort-Object Name)
     }
@@ -554,9 +547,9 @@ Write-Host "BD virus fuente    : $($virusDatabaseUsage.SourceFile)" -ForegroundC
 Write-Host "BD virus vigentes  : $($virusDatabaseUsage.Vigentes)" -ForegroundColor Gray
 Write-Host "BD virus al dia    : $($virusDatabaseUsage.AlDia)" -ForegroundColor Gray
 Write-Host "BD virus > 1 sem   : $($virusDatabaseUsage.MasDeUnaSemana)" -ForegroundColor Gray
-$topKesVersion = @($virusDatabaseUsage.Versions.KESVersions | Select-Object -First 1)
-if ($topKesVersion.Count -gt 0) {
-    Write-Host "KES principal      : $($topKesVersion[0].Version) ($($topKesVersion[0].Count))" -ForegroundColor Gray
+$topKasperskyVersion = @($virusDatabaseUsage.Versions.KasperskyVersions | Select-Object -First 1)
+if ($topKasperskyVersion.Count -gt 0) {
+    Write-Host "Version mayoritaria: $($topKasperskyVersion[0].Version) ($($topKasperskyVersion[0].Count))" -ForegroundColor Gray
 }
 
 if ($SkipUpload) {
