@@ -269,6 +269,15 @@ const getKscVersionInventory = (data) => {
   };
 };
 
+const getKscVirusDatabaseUsage = (nodes = {}) => {
+  const inventoryDb = nodes.kscHardware?.Kaspersky?.VirusDatabaseUsage || nodes.kscHardware?.data?.Kaspersky?.VirusDatabaseUsage || {};
+  const legacyDb = nodes.ksc?.Kaspersky?.BasesDatos || nodes.ksc?.data?.Kaspersky?.BasesDatos || {};
+  const inventoryHasData = ['AlDia', 'Ultimas24h', 'Ultimos3Dias', 'Ultimos7Dias', 'MasDeUnaSemana', 'SinDatos', 'TotalDevices']
+    .some((key) => toInt(inventoryDb[key]) > 0);
+  const inventoryHasReport = inventoryDb.Status && inventoryDb.Status !== 'SIN INFORME';
+  return inventoryHasData || inventoryHasReport ? inventoryDb : legacyDb;
+};
+
 const getPrimaryLicense = (lic = {}) => {
   const keys = Array.isArray(lic.Licencias) ? lic.Licencias : [];
   const selected = keys.reduce((best, current) => {
@@ -440,7 +449,7 @@ const getSmartMonitoringRecommendation = ({
     }
   });
 
-  const bd = kscKasp?.BasesDatos || {};
+  const bd = getKscVirusDatabaseUsage(nodes);
   const outdatedDb = toInt(bd.MasDeUnaSemana);
   if (outdatedDb > 0) {
     addSmartRecommendation(
@@ -2078,17 +2087,17 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
               <div className="grid grid-cols-2 gap-3 mt-2">
                 {/* Antivirus DB status */}
                 {(() => {
-                  const bd = nodes.ksc.Kaspersky?.BasesDatos || nodes.ksc.data?.Kaspersky?.BasesDatos || {};
+                  const bd = getKscVirusDatabaseUsage(nodes);
                   const alDia = toInt(bd.AlDia);
                   const masDeUnaSemana = toInt(bd.MasDeUnaSemana);
                   const state = masDeUnaSemana > 0 ? 'MAYORÍA AL DÍA' : 'AL DÍA';
                   return (
-                    <div className="bg-background/30 border border-border/40 rounded-lg p-3">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Database className="w-5 h-5 text-sky-300" /> Bases de Datos AV</p>
-                      <p className="text-lg font-bold mt-1 text-emerald-400">{state}</p>
-                      <div className="flex justify-between gap-3 text-[12px] mt-1 text-muted-foreground">
-                        <span>Al día: <strong className="text-sm text-emerald-400">{alDia}</strong></span>
-                        <span>&gt;1 sem: <strong className="text-sm text-amber-400">{masDeUnaSemana}</strong></span>
+                    <div className="bg-background/30 border border-border/40 rounded-lg p-4">
+                      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Database className="w-6 h-6 text-sky-300" /> Bases de Datos AV</p>
+                      <p className="text-xl font-bold mt-1 text-emerald-400">{state}</p>
+                      <div className="flex justify-between gap-3 text-[13px] mt-1.5 text-muted-foreground">
+                        <span>Al día: <strong className="text-base text-emerald-400">{alDia}</strong></span>
+                        <span>&gt;1 sem: <strong className="text-base text-amber-400">{masDeUnaSemana}</strong></span>
                       </div>
                     </div>
                   );
@@ -2106,14 +2115,14 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                       ? am.Detalles
                       : [];
                   return (
-                    <div className="bg-background/30 border border-border/40 rounded-lg p-3">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Bug className="w-5 h-5 text-rose-400" /> Amenazas</p>
-                      <p className={`text-lg font-bold mt-1 ${infected > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                    <div className="bg-background/30 border border-border/40 rounded-lg p-4">
+                      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Bug className="w-6 h-6 text-rose-400" /> Amenazas</p>
+                      <p className={`text-xl font-bold mt-1 ${infected > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
                         {state}
                       </p>
-                      <div className="flex justify-between gap-3 text-[12px] mt-1 text-muted-foreground">
-                        <span>Infectados: <strong className={`text-sm ${infected > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{infected}</strong></span>
-                        <span>Detectados: <strong className="text-sm text-rose-400">{detected}</strong></span>
+                      <div className="flex justify-between gap-3 text-[13px] mt-1.5 text-muted-foreground">
+                        <span>Infectados: <strong className={`text-base ${infected > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{infected}</strong></span>
+                        <span>Detectados: <strong className="text-base text-rose-400">{detected}</strong></span>
                       </div>
                       <div className="mt-2 border-t border-border/30 pt-2">
                         {threatDevices.length > 0 ? (
@@ -2143,12 +2152,12 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                   const criticas = toInt(vul.DispCritica);
                   const altas = toInt(vul.DispAlta);
                   return (
-                    <div className="bg-background/30 border border-border/40 rounded-lg p-3">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><ShieldAlert className="w-5 h-5 text-amber-400" /> Vulnerabilidades</p>
-                      <p className="text-lg font-bold mt-1 text-emerald-400">{sinVuln} sin vuln.</p>
-                      <div className="flex justify-between gap-3 text-[12px] mt-1 text-muted-foreground">
-                        <span>Críticas: <strong className={`text-sm ${criticas > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{criticas}</strong></span>
-                        <span>Altas: <strong className={`text-sm ${altas > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>{altas}</strong></span>
+                    <div className="bg-background/30 border border-border/40 rounded-lg p-4">
+                      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><ShieldAlert className="w-6 h-6 text-amber-400" /> Vulnerabilidades</p>
+                      <p className="text-xl font-bold mt-1 text-emerald-400">{sinVuln} sin vuln.</p>
+                      <div className="flex justify-between gap-3 text-[13px] mt-1.5 text-muted-foreground">
+                        <span>Críticas: <strong className={`text-base ${criticas > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{criticas}</strong></span>
+                        <span>Altas: <strong className={`text-base ${altas > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>{altas}</strong></span>
                       </div>
                     </div>
                   );
@@ -2160,11 +2169,11 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                   const activeLic = getPrimaryLicense(lic);
                   const stateColor = activeLic.usage > 90 ? 'text-amber-400' : 'text-emerald-400';
                   return (
-                    <div className="bg-background/30 border border-border/40 rounded-lg p-3">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><KeyRound className="w-5 h-5 text-violet-300" /> Licenciamiento</p>
-                      <p className={`text-lg font-bold mt-1 ${stateColor}`}>{activeLic.used} / {activeLic.limit}</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">{activeLic.usage}% de uso</p>
-                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden mt-1.5">
+                    <div className="bg-background/30 border border-border/40 rounded-lg p-4">
+                      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><KeyRound className="w-6 h-6 text-violet-300" /> Licenciamiento</p>
+                      <p className={`text-xl font-bold mt-1 ${stateColor}`}>{activeLic.used} / {activeLic.limit}</p>
+                      <p className="text-[12px] text-muted-foreground mt-0.5">{activeLic.usage}% de uso</p>
+                      <div className="h-2 w-full bg-muted rounded-full overflow-hidden mt-1.5">
                         <div 
                           className={`h-full ${activeLic.usage > 90 ? 'bg-rose-500' : activeLic.usage > 75 ? 'bg-emerald-500' : 'bg-emerald-500'}`} 
                           style={{ width: `${activeLic.usage}%` }}
@@ -2181,13 +2190,13 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                   const topKes = versions.kes[0];
                   const hasVersionData = !!(topAgent || topKes);
                   return (
-                    <div className="col-span-2 bg-background/30 border border-border/40 rounded-lg p-3">
+                    <div className="col-span-2 bg-background/30 border border-border/40 rounded-lg p-4">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                            <MonitorSmartphone className="w-5 h-5 text-yellow-300" /> Versiones agentes / KES
+                          <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                            <MonitorSmartphone className="w-6 h-6 text-yellow-300" /> Versiones agentes / KES
                           </p>
-                          <p className="mt-1 text-sm font-bold text-slate-200">
+                          <p className="mt-1 text-base font-bold text-slate-200">
                             {hasVersionData ? 'Distribución por versión' : 'Esperando informe de versiones'}
                           </p>
                         </div>
@@ -2196,15 +2205,15 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
                         </span>
                       </div>
                       <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <div className="rounded-lg border border-border/40 bg-background/40 p-2.5">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Agente de red</p>
-                          <p className="mt-1 text-sm font-black text-sky-300">{topAgent ? `${topAgent.count} equipos` : 'N/D'}</p>
-                          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{topAgent ? `v${topAgent.version}` : 'Sin datos de versión'}</p>
+                        <div className="rounded-lg border border-border/40 bg-background/40 p-3">
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Agente de red</p>
+                          <p className="mt-1 text-base font-black text-sky-300">{topAgent ? `${topAgent.count} equipos` : 'N/D'}</p>
+                          <p className="mt-0.5 truncate text-[12px] text-muted-foreground">{topAgent ? `v${topAgent.version}` : 'Sin datos de versión'}</p>
                         </div>
-                        <div className="rounded-lg border border-border/40 bg-background/40 p-2.5">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Endpoint Security</p>
-                          <p className="mt-1 text-sm font-black text-emerald-300">{topKes ? `${topKes.count} equipos` : 'N/D'}</p>
-                          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{topKes ? `v${topKes.version}` : 'Sin datos de versión'}</p>
+                        <div className="rounded-lg border border-border/40 bg-background/40 p-3">
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Endpoint Security</p>
+                          <p className="mt-1 text-base font-black text-emerald-300">{topKes ? `${topKes.count} equipos` : 'N/D'}</p>
+                          <p className="mt-0.5 truncate text-[12px] text-muted-foreground">{topKes ? `v${topKes.version}` : 'Sin datos de versión'}</p>
                         </div>
                       </div>
                     </div>
@@ -2414,7 +2423,7 @@ export default function Monitoring({ setPageHeader: injectedSetPageHeader }) {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                 {/* 1. Bases de Datos Antivirus */}
                 {(() => {
-                  const bd = nodes.ksc.Kaspersky?.BasesDatos || nodes.ksc.data?.Kaspersky?.BasesDatos || {};
+                  const bd = getKscVirusDatabaseUsage(nodes);
                   const alDia = toInt(bd.AlDia);
                   const masDeUnaSemana = toInt(bd.MasDeUnaSemana);
                   const state = masDeUnaSemana > 0 ? 'MAYORÍA AL DÍA' : 'AL DÍA';

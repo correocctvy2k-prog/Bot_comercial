@@ -8,6 +8,7 @@
     - Windows Server, Windows 10, Windows 11 y otros
     - maquinas virtuales vs fisicas
     - clasificacion por "visible por ultima vez"
+    - uso de bases de datos de virus/antivirus cuando el informe existe
 
     No recolecta metricas de hardware detalladas; el foco es inventario
     y frescura de visibilidad de los dispositivos.
@@ -50,6 +51,25 @@ function Get-LatestHardwareReport {
         Select-Object -First 1
 
     if ($file) { return $file.FullName }
+    return $null
+}
+
+function Get-LatestReportByPrefixes {
+    param([string[]]$Prefixes)
+
+    if (-not (Test-Path -LiteralPath $KasperskyReportsPath)) {
+        return $null
+    }
+
+    foreach ($prefix in $Prefixes) {
+        $file = Get-ChildItem -Path $KasperskyReportsPath -Filter "*.html" -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -like "$prefix*" } |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+
+        if ($file) { return $file.FullName }
+    }
+
     return $null
 }
 
@@ -178,6 +198,16 @@ function Get-CountValue {
     return 0
 }
 
+function Get-FirstRecordValue {
+    param([hashtable]$Record, [string[]]$Keys, [string]$Fallback = "")
+    foreach ($key in $Keys) {
+        if ($Record.ContainsKey($key) -and -not [string]::IsNullOrWhiteSpace("$($Record[$key])")) {
+            return "$($Record[$key])"
+        }
+    }
+    return $Fallback
+}
+
 function Parse-HardwareInventory {
     param([string]$FilePath)
 
@@ -264,6 +294,125 @@ function Parse-HardwareInventory {
     }
 }
 
+function Parse-VirusDatabaseUsage {
+    $file = Get-LatestReportByPrefixes -Prefixes @(
+        "Informe de uso de bases de datos de virus",
+        "Informe de uso de las bases de datos de virus",
+        "Informe de uso de bases de datos antivirus",
+        "Informe de uso de las bases de datos antivirus"
+    )
+
+    if (-not $file) {
+        return @{
+            Status        = "SIN INFORME"
+            SourceFile    = $null
+            SourcePath    = $null
+            ParsedAt      = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+            AlDia         = 0
+            Ultimas24h    = 0
+            Ultimos3Dias  = 0
+            Ultimos7Dias  = 0
+            MasDeUnaSemana = 0
+            SinDatos      = 0
+            TotalDevices  = 0
+            Breakdown     = @{}
+        }
+    }
+
+    $raw = Get-Content -Path $file -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+    $text = Convert-HtmlToText -Html $raw
+
+    $counts = @{
+        AlDia          = 0
+        Ultimas24h     = 0
+        Ultimos3Dias   = 0
+        Ultimos7Dias   = 0
+        MasDeUnaSemana = 0
+        SinDatos       = 0
+    }
+
+    $patterns = @(
+        @{ Key='AlDia';          Regex='Al d[íi]a[^:\d]*[:\s]+(\d+)' },
+        @{ Key='Ultimas24h';     Regex='(?:[uú]ltimas|ultimas)\s+24\s+horas[^:\d]*[:\s]+(\d+)' },
+        @{ Key='Ultimos3Dias';   Regex='(?:[uú]ltimos|ultimos)\s+3\s+d[íi]as[^:\d]*[:\s]+(\d+)' },
+        @{ Key='Ultimos7Dias';   Regex='(?:[uú]ltimos|ultimos)\s+7\s+d[íi]as[^:\d]*[:\s]+(\d+)' },
+        @{ Key='MasDeUnaSemana'; Regex='m[áa]s\s+de\s+una\s+semana[^:\d]*[:\s]+(\d+)' },
+        @{ Key='SinDatos';       Regex='sin\s+datos[^:\d]*[:\s]+(\d+)' }
+    )
+
+    foreach ($pattern in $patterns) {
+        $match = [regex]::Match($raw, $pattern['Regex'], [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+        if (-not $match.Success) {
+            $match = [regex]::Match($text, $pattern['Regex'], [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+        }
+        if ($match.Success) {
+            $counts[$pattern['Key']] = [int]$match.Groups[1].Value
+        }
+    }
+
+    $rows = Get-HtmlTableRows -FilePath $file
+    $deviceRows = @()
+    $header = $null
+
+    foreach ($row in $rows) {
+        if (-not $header -and ($row -contains "Dispositivo" -or $row -contains "Nombre") -and ($row -match "Base|Bases|Estado|Actualiz")) {
+            $header = $row
+            continue
+        }
+
+        if (-not $header) { continue }
+        if ($row.Count -lt 2) { continue }
+
+        $record = @{}
+        for ($i = 0; $i -lt [math]::Min($header.Count, $row.Count); $i++) {
+            $record[$header[$i]] = $row[$i]
+        }
+
+        $name = Get-FirstRecordValue -Record $record -Keys @("Dispositivo", "Nombre", "Equipo")
+        if (-not $name -or $name -eq "Dispositivo" -or $name -eq "Nombre") { continue }
+
+        $stateText = Get-FirstRecordValue -Record $record -Keys @("Estado", "Uso de bases de datos", "Bases de datos", "Actualizacion", "Actualización")
+        $bucket = "SinDatos"
+        if ($stateText -match 'Al d[íi]a') { $bucket = "AlDia" }
+        elseif ($stateText -match '24\s+horas') { $bucket = "Ultimas24h" }
+        elseif ($stateText -match '3\s+d[íi]as') { $bucket = "Ultimos3Dias" }
+        elseif ($stateText -match '7\s+d[íi]as') { $bucket = "Ultimos7Dias" }
+        elseif ($stateText -match 'semana') { $bucket = "MasDeUnaSemana" }
+
+        $deviceRows += [pscustomobject]@{
+            Name   = $name
+            Group  = Get-FirstRecordValue -Record $record -Keys @("Grupo", "Grupo de administracion", "Grupo de administración") -Fallback "N/D"
+            Status = $stateText
+            Bucket = $bucket
+        }
+    }
+
+    if (($counts.Values | Measure-Object -Sum).Sum -eq 0 -and $deviceRows.Count -gt 0) {
+        foreach ($device in $deviceRows) {
+            $counts[$device.Bucket]++
+        }
+    }
+
+    $total = [int](($counts.Values | Measure-Object -Sum).Sum)
+    $status = if ($counts["MasDeUnaSemana"] -gt 0 -or $counts["SinDatos"] -gt 0) { "ADVERTENCIA" } else { "OK" }
+
+    return @{
+        Status         = $status
+        SourceFile     = Split-Path -Path $file -Leaf
+        SourcePath     = $file
+        ParsedAt       = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        AlDia          = [int]$counts["AlDia"]
+        Ultimas24h     = [int]$counts["Ultimas24h"]
+        Ultimos3Dias   = [int]$counts["Ultimos3Dias"]
+        Ultimos7Dias   = [int]$counts["Ultimos7Dias"]
+        MasDeUnaSemana = [int]$counts["MasDeUnaSemana"]
+        SinDatos       = [int]$counts["SinDatos"]
+        TotalDevices   = $total
+        Breakdown      = $counts
+        Devices        = @($deviceRows | Sort-Object Name)
+    }
+}
+
 function New-HardwareInventoryHtml {
     param($Data)
 
@@ -271,6 +420,7 @@ function New-HardwareInventoryHtml {
     $ls = $inv.LastSeen
     $os = $inv.OperatingSystems
     $vm = $inv.Virtualization
+    $db = $Data.Kaspersky.VirusDatabaseUsage
     $generated = $Data.ReportDate
 
     return @"
@@ -308,6 +458,12 @@ function New-HardwareInventoryHtml {
     <tr><th>Ultimo dia</th><th>Ultima semana</th><th>Mas de una semana</th><th>Mas de un mes</th><th>Sin datos</th></tr>
     <tr><td>$($ls.UltimoDia)</td><td>$($ls.UltimaSemana)</td><td>$($ls.MasDeUnaSemana)</td><td>$($ls.MasDeUnMes)</td><td>$($ls.SinDatos)</td></tr>
   </table>
+  <h2>Uso de bases de datos de virus</h2>
+  <div class="muted">Fuente: $($db.SourceFile) · Estado: $($db.Status)</div>
+  <table>
+    <tr><th>Al dia</th><th>Ultimas 24h</th><th>Ultimos 3 dias</th><th>Ultimos 7 dias</th><th>Mas de una semana</th><th>Sin datos</th></tr>
+    <tr><td>$($db.AlDia)</td><td>$($db.Ultimas24h)</td><td>$($db.Ultimos3Dias)</td><td>$($db.Ultimos7Dias)</td><td>$($db.MasDeUnaSemana)</td><td>$($db.SinDatos)</td></tr>
+  </table>
 </body>
 </html>
 "@
@@ -322,13 +478,15 @@ if (-not $hardwareReport) {
 Write-Host "Informe : $hardwareReport" -ForegroundColor Gray
 
 $inventory = Parse-HardwareInventory -FilePath $hardwareReport
+$virusDatabaseUsage = Parse-VirusDatabaseUsage
 
 $reportData = @{
     Node       = $NodeName
     Role       = "Kaspersky Security Center Hardware Inventory"
     ReportDate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     Kaspersky  = @{
-        HardwareInventory = $inventory
+        HardwareInventory  = $inventory
+        VirusDatabaseUsage = $virusDatabaseUsage
     }
 }
 
@@ -348,6 +506,9 @@ Write-Host "Ultimo dia         : $($inventory.LastSeen.UltimoDia)" -ForegroundCo
 Write-Host "Ultima semana      : $($inventory.LastSeen.UltimaSemana)" -ForegroundColor Gray
 Write-Host "Mas de una semana  : $($inventory.LastSeen.MasDeUnaSemana)" -ForegroundColor Gray
 Write-Host "Mas de un mes      : $($inventory.LastSeen.MasDeUnMes)" -ForegroundColor Gray
+Write-Host "BD virus fuente    : $($virusDatabaseUsage.SourceFile)" -ForegroundColor Gray
+Write-Host "BD virus al dia    : $($virusDatabaseUsage.AlDia)" -ForegroundColor Gray
+Write-Host "BD virus > 1 sem   : $($virusDatabaseUsage.MasDeUnaSemana)" -ForegroundColor Gray
 
 if ($SkipUpload) {
     Write-Host "[INFO] SkipUpload activo. No se enviaron datos al backend." -ForegroundColor Yellow
