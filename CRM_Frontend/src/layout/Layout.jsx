@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, createContext } from 'react';
-import { Bot, MapPin, Users, Settings, LogOut, Cable, Terminal, PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, PieChart, Sparkles, Building2, ShieldCheck, User, Image, UserCircle, Loader2, X, Activity, LayoutDashboard } from 'lucide-react';
+import { Bot, MapPin, Users, Settings, LogOut, Cable, Terminal, PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, PieChart, Sparkles, Building2, ShieldCheck, User, Image, UserCircle, Loader2, X, Activity, LayoutDashboard, Server } from 'lucide-react';
 import SkylabBot from '../components/SkylabBot';
 import { ModeToggle } from "@/components/mode-toggle";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -51,6 +51,7 @@ const MENU_ITEMS_RAW = [
                 module: 'bot-activity',
                 subItems: [
                     { to: '/monitoring/dashboard', icon: LayoutDashboard, label: 'Detalles Monitoreo', module: 'bot-activity' },
+                    { to: '/monitoring/services-ti', icon: Server, label: 'Dashboard Servicios TI', module: 'bot-activity' },
                     { to: '/monitoring', icon: Activity, label: 'Dashboard', module: 'bot-activity' }
                 ]
             },

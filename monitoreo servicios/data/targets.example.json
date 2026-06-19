@@ -1,0 +1,13 @@
+[
+  {
+    "id": "demo-vps",
+    "name": "Servidor Demo",
+    "host": "192.168.8.65",
+    "port": 22,
+    "username": "skylab",
+    "password": "cambia-esta-clave",
+    "type": "linux",
+    "enabled": true,
+    "tags": ["docker", "vps"]
+  }
+]

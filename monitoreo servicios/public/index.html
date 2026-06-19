@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Skylab Node Monitor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div class="topbar-brand">
+          <div class="logo-area">
+            <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path>
+              <path d="M12 6v6l4 2"></path>
+            </svg>
+            <div>
+              <h1>Monitoreo Infraestructura</h1>
+            </div>
+          </div>
+          <div class="status-summary" id="statusSummary">
+            <!-- Dynamically populated: 3 / 4 En Línea -->
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-button" id="refreshBtn" title="Actualizar ahora">
+            <svg class="icon-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+              <path d="M3 3v5h5"></path>
+              <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+              <path d="M16 16h5v5"></path>
+            </svg>
+          </button>
+          <button class="ghost-button" id="analysisBtn">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="20" x2="18" y2="10"></line>
+              <line x1="12" y1="20" x2="12" y2="4"></line>
+              <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+            Análisis
+          </button>
+          <button class="primary-button" id="newTargetBtn">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Agregar servidor
+          </button>
+        </div>
+      </header>
+
+      <section class="critical-alert-hero" id="criticalAlertHero"></section>
+      <section class="smart-alerts-panel" id="smartAlertsPanel"></section>
+      <section class="grid" id="targetGrid"></section>
+    </main>
+
+    <dialog class="modal" id="targetModal">
+      <form method="dialog" class="modal-panel" id="targetForm">
+        <header class="modal-header">
+          <h2 id="modalTitle">Agregar servidor</h2>
+          <button class="close-icon-btn" type="button" id="closeModalBtn" title="Cerrar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </header>
+
+        <input type="hidden" id="targetId">
+
+        <div class="form-grid">
+          <label>
+            Nombre
+            <input id="name" required autocomplete="off" placeholder="VPS Skylab">
+          </label>
+          <label>
+            IP / hostname
+            <input id="host" required autocomplete="off" placeholder="192.168.8.65">
+          </label>
+          <label>
+            Puerto
+            <input id="port" required type="number" min="1" max="65535" value="22">
+          </label>
+          <label>
+            Tipo
+            <select id="type">
+              <option value="linux">Linux por SSH</option>
+              <option value="tcp">Solo puerto TCP</option>
+            </select>
+          </label>
+          <label>
+            Usuario
+            <input id="username" autocomplete="off" placeholder="skylab">
+          </label>
+          <label>
+            Contraseña
+            <input id="password" type="password" autocomplete="new-password" placeholder="Dejar vacía para conservar">
+          </label>
+          <label class="wide">
+            Tags (separados por coma)
+            <input id="tags" autocomplete="off" placeholder="docker, vps, produccion">
+          </label>
+          <label class="check">
+            <input id="enabled" type="checkbox" checked>
+            Monitoreo activo
+          </label>
+        </div>
+
+        <footer class="modal-actions">
+          <button class="danger-button" id="deleteBtn" type="button">Eliminar</button>
+          <div class="spacer"></div>
+          <button class="ghost-button" type="button" id="cancelBtn">Cancelar</button>
+          <button class="primary-button" type="submit">Guardar</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog class="modal analysis-modal" id="analysisModal">
+      <section class="modal-panel">
+        <header class="modal-header">
+          <h2>Análisis de infraestructura</h2>
+          <button class="close-icon-btn" type="button" id="closeAnalysisBtn" title="Cerrar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </header>
+        <div class="analysis-content" id="analysisContent"></div>
+      </section>
+    </dialog>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>
