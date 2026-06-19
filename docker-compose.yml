@@ -78,9 +78,27 @@ services:
         - VITE_MONITORING_BACKEND_URL=http://192.168.8.65:3001
         - VITE_SUPABASE_URL=https://fxlbqlzsbrgnkpcduzxt.supabase.co
         - VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4bGJxbHpzYnJnbmtwY2R1enh0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIwNzg3NiwiZXhwIjoyMDg1NzgzODc2fQ.odcV7pu9oD6l3UgFTY97AljC7lCxZskuxRrd4m2Nl5Y
+      - VITE_SERVICES_TI_BACKEND_URL=http://192.168.8.65:3004
     container_name: crm-frontend
     restart: always
     ports:
       - "3003:80"
     environment:
       - TZ=America/Bogota
+
+  # ==========================================
+  # MICROSERVICIO 4: MONITOR DE SERVICIOS TI
+  # ==========================================
+  monitoreo-ti:
+    build:
+      context: ./monitoreo servicios
+    container_name: monitoreo-ti
+    restart: always
+    ports:
+      - "3004:3004"
+    volumes:
+      - ./monitoreo servicios:/app
+      - /app/node_modules
+    environment:
+      - TZ=America/Bogota
+      - PORT=3004

@@ -5,7 +5,7 @@ const net = require('net');
 const crypto = require('crypto');
 const { Client } = require('ssh2');
 
-const PORT = Number(process.env.PORT || 3003);
+const PORT = Number(process.env.PORT || 3004);
 const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS || 15000);
 const SSH_TIMEOUT_MS = Number(process.env.SSH_TIMEOUT_MS || 15000);
 const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(__dirname, 'data'));
