@@ -363,15 +363,7 @@ export default function ServicesTIDashboard() {
     }
   };
 
-  // Loading screen
-  if (loading && !state) {
-    return (
-      <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Cargando Dashboard de Servicios...</p>
-      </div>
-    );
-  }
+
 
   // Counters
   const totalServers = state?.targets?.length || 0;
@@ -445,6 +437,16 @@ export default function ServicesTIDashboard() {
     );
     return () => setPageHeader(null);
   }, [setPageHeader, refreshing, totalServers, onlineServers, degradedServers, offlineServers]);
+
+  // Loading screen
+  if (loading && !state) {
+    return (
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Cargando Dashboard de Servicios...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
