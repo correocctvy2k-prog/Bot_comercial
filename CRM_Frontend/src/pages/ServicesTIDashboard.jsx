@@ -157,15 +157,7 @@ export default function ServicesTIDashboard() {
     enabled: true
   });
 
-  // Sync title header
-  useEffect(() => {
-    if (setPageHeader) {
-      setPageHeader({
-        title: "Servicios TI",
-        subtitle: "Monitoreo en tiempo real de infraestructura y servidores de base."
-      });
-    }
-  }, [setPageHeader]);
+
 
   // Fetch all state
   const loadState = async (showFeedback = false) => {
@@ -390,6 +382,70 @@ export default function ServicesTIDashboard() {
   // Global critical alerts
   const criticalAlerts = (state?.smartAlerts || []).filter(alert => alert.severity === "critical");
 
+  // Sync title header
+  useEffect(() => {
+    if (!setPageHeader) return;
+    setPageHeader(
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between w-full">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <Server className="h-5 w-5 text-primary" />
+            Dashboard Servicios TI
+          </h1>
+          <p className="text-xs text-muted-foreground">Monitoreo en tiempo real de infraestructura y servidores de base.</p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Stats Counters */}
+          <div className="flex items-center gap-2 bg-background/50 border border-border/40 rounded-xl px-3 py-1.5 text-[10px] font-bold shadow-inner">
+            <span className="text-muted-foreground">ESTADO:</span>
+            <span className="text-foreground">{totalServers} Totales</span>
+            <span className="h-3 w-px bg-border/80" />
+            <span className="text-emerald-400">{onlineServers} Online</span>
+            {degradedServers > 0 && (
+              <>
+                <span className="h-3 w-px bg-border/80" />
+                <span className="text-amber-400">{degradedServers} Degradados</span>
+              </>
+            )}
+            {offlineServers > 0 && (
+              <>
+                <span className="h-3 w-px bg-border/80" />
+                <span className="text-rose-400">{offlineServers} Offline</span>
+              </>
+            )}
+          </div>
+
+          <button
+            onClick={handleSweep}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold hover:bg-muted disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            Escanear
+          </button>
+          
+          <button
+            onClick={openAnalysis}
+            className="flex items-center gap-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary px-3 py-2 text-xs font-semibold hover:bg-primary/20"
+          >
+            <Activity className="h-3.5 w-3.5" />
+            Análisis
+          </button>
+
+          <button
+            onClick={() => openModal()}
+            className="flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-3 py-2 text-xs font-semibold hover:shadow-[0_0_12px_rgba(59,130,246,0.3)] transition-all"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Agregar
+          </button>
+        </div>
+      </div>
+    );
+    return () => setPageHeader(null);
+  }, [setPageHeader, refreshing, totalServers, onlineServers, degradedServers, offlineServers]);
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
@@ -408,64 +464,6 @@ export default function ServicesTIDashboard() {
           50% { opacity: 0.45; filter: brightness(0.7) drop-shadow(0 0 5px rgba(244,63,94,0.5)); }
         }
       `}</style>
-
-      {/* Top Banner Header & Stats */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-border/50 pb-5">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <Server className="h-6 w-6 text-primary" />
-            Dashboard Servicios TI
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">Supervisión integral de servidores base por SSH/TCP, contenedores Docker y SharePlex.</p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Stats Counters */}
-          <div className="flex items-center gap-2 bg-background/50 border border-border/40 rounded-xl px-4 py-2 text-xs font-bold shadow-inner">
-            <span className="text-muted-foreground mr-1">ESTADO:</span>
-            <span className="text-foreground">{totalServers} Totales</span>
-            <span className="h-3 w-px bg-border/80" />
-            <span className="text-emerald-400">{onlineServers} En Línea</span>
-            {degradedServers > 0 && (
-              <>
-                <span className="h-3 w-px bg-border/80" />
-                <span className="text-amber-400">{degradedServers} Degradados</span>
-              </>
-            )}
-            {offlineServers > 0 && (
-              <>
-                <span className="h-3 w-px bg-border/80" />
-                <span className="text-rose-400">{offlineServers} Offline</span>
-              </>
-            )}
-          </div>
-
-          <button
-            onClick={handleSweep}
-            disabled={refreshing}
-            className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-black uppercase tracking-wider transition-all hover:bg-muted active:scale-95 disabled:opacity-50"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-            Escanear
-          </button>
-          
-          <button
-            onClick={openAnalysis}
-            className="flex items-center gap-2 rounded-xl bg-primary/10 border border-primary/20 text-primary px-4 py-2.5 text-xs font-black uppercase tracking-wider transition-all hover:bg-primary/20 active:scale-95"
-          >
-            <Activity className="h-3.5 w-3.5" />
-            Análisis
-          </button>
-
-          <button
-            onClick={() => openModal()}
-            className="flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-all active:scale-95"
-          >
-            <Plus className="h-4 w-4" />
-            Agregar Servidor
-          </button>
-        </div>
-      </div>
 
       {/* Critical Alert Hero banner */}
       {criticalAlerts.length > 0 && (
