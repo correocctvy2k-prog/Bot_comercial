@@ -630,7 +630,15 @@ async function runSweep() {
   state.polling = true;
   try {
     const enabledTargets = [...state.targets];
-    const results = await Promise.all(enabledTargets.map(target => checkTarget(target)));
+    const results = [];
+    for (const target of enabledTargets) {
+      try {
+        const res = await checkTarget(target);
+        results.push(res);
+      } catch (err) {
+        console.error(`Error checking target ${target.name || target.id}:`, err);
+      }
+    }
     for (const result of results) {
       state.results.set(result.targetId, result);
     }

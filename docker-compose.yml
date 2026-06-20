@@ -104,4 +104,4 @@ services:
       - TZ=America/Bogota
       - PORT=3004
       - POLL_INTERVAL_MS=30000
-      - SSH_TIMEOUT_MS=8000
+      - SSH_TIMEOUT_MS=15000
