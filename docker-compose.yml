@@ -94,6 +94,7 @@ services:
       context: ./monitoreo servicios
     container_name: monitoreo-ti
     restart: always
+    stop_grace_period: 60s
     ports:
       - "3004:3004"
     volumes:
@@ -102,3 +103,5 @@ services:
     environment:
       - TZ=America/Bogota
       - PORT=3004
+      - POLL_INTERVAL_MS=30000
+      - SSH_TIMEOUT_MS=8000
