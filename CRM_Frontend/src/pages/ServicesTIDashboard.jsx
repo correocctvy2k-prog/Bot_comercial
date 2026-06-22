@@ -24,7 +24,10 @@ import {
   ExternalLink,
   Cable,
   Clock,
-  WifiOff
+  WifiOff,
+  Bell,
+  BellRing,
+  ShieldCheck
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, Tooltip } from "recharts";
 import { toast } from "sonner";
@@ -121,8 +124,6 @@ const CircleGauge = ({ label, value }) => {
   );
 };
 
-const dashboardShellClass = "relative overflow-hidden rounded-xl border border-border/60 bg-card/35 shadow-[0_18px_45px_rgba(2,6,23,0.16)] backdrop-blur-sm";
-const dashboardPanelClass = `${dashboardShellClass} before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_86%_12%,rgba(255,255,255,0.08),transparent_30%)] before:content-['']`;
 
 const GROUP_ACCENTS = {
   correo: {
@@ -133,9 +134,9 @@ const GROUP_ACCENTS = {
   },
   core: {
     icon: Database,
-    rail: "from-violet-400 via-sky-300 to-emerald-300",
-    iconClass: "bg-violet-500/15 text-violet-300 border-violet-400/20",
-    glow: "shadow-[0_0_24px_rgba(139,92,246,0.12)]"
+    rail: "from-sky-400 via-cyan-300 to-emerald-300",
+    iconClass: "bg-sky-500/15 text-sky-300 border-sky-400/20",
+    glow: "shadow-[0_0_24px_rgba(56,189,248,0.14)]"
   },
   naos: {
     icon: Terminal,
@@ -197,25 +198,118 @@ const getStatusMeta = (status) => {
   };
 };
 
+const DataPill = ({ label, value, color = "text-foreground" }) => (
+  <div className="min-w-0 rounded-lg border border-border/30 bg-background/35 px-2.5 py-1.5">
+    <span className="block truncate text-[8px] font-black uppercase tracking-widest text-muted-foreground">{label}</span>
+    <strong className={`mt-0.5 block truncate text-[11px] font-black ${color}`}>{value}</strong>
+  </div>
+);
+
 const SummaryCard = ({ icon, label, value, detail, tone = "sky" }) => {
   const toneClass = {
-    sky: "border-sky-400/20 bg-sky-500/10 text-sky-300",
-    emerald: "border-emerald-400/20 bg-emerald-500/10 text-emerald-300",
-    amber: "border-amber-400/20 bg-amber-500/10 text-amber-300",
-    rose: "border-rose-400/20 bg-rose-500/10 text-rose-300"
+    sky: "from-sky-500/14 via-cyan-500/8 to-transparent text-sky-300 border-sky-400/20",
+    emerald: "from-emerald-500/14 via-cyan-500/8 to-transparent text-emerald-300 border-emerald-400/20",
+    amber: "from-amber-500/14 via-yellow-500/8 to-transparent text-amber-300 border-amber-400/20",
+    rose: "from-rose-500/14 via-amber-500/8 to-transparent text-rose-300 border-rose-400/20"
   }[tone];
 
   return (
-    <div className="relative min-h-[104px] overflow-hidden rounded-xl border border-border/50 bg-card/40 p-4 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card/55">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_14%,rgba(255,255,255,0.08),transparent_34%)]" />
+    <div className={`relative min-h-[116px] overflow-hidden rounded-xl border border-border bg-card/40 p-4 shadow-sm bg-gradient-to-br ${toneClass} transition-all duration-300 hover:-translate-y-0.5 hover:bg-card/55`}>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_86%_12%,rgba(255,255,255,0.1),transparent_32%)]" />
       <div className="relative flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</p>
           <strong className="mt-2 block text-3xl font-black tracking-tight text-foreground">{value}</strong>
           <span className="mt-1 block text-[11px] font-medium text-muted-foreground">{detail}</span>
         </div>
-        <div className={`rounded-xl border p-2.5 ${toneClass}`}>
-          {createElement(icon, { className: "h-5 w-5" })}
+        <div className="shrink-0 rounded-lg bg-background/45 p-2.5 text-current shadow-sm">
+          {createElement(icon, { className: "h-12 w-12 drop-shadow-[0_0_14px_rgba(56,189,248,0.28)]" })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AlertNotificationCenter = ({ alerts, criticalAlerts, isOpen, onToggle }) => {
+  const topAlerts = alerts.slice(0, 10);
+
+  return (
+    <div className="relative flex justify-end">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-black uppercase tracking-wider shadow-sm transition-all ${alerts.length > 0 ? "border-amber-400/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/15" : "border-border bg-card/40 text-muted-foreground hover:text-foreground"}`}
+      >
+        {alerts.length > 0 ? <BellRing className="h-4 w-4 animate-pulse" /> : <Bell className="h-4 w-4" />}
+        Alertas
+        <span className="rounded-full border border-current/20 bg-background/45 px-2 py-0.5 text-[10px]">{alerts.length}</span>
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 top-11 z-40 w-[min(92vw,420px)] overflow-hidden rounded-xl border border-border bg-card/95 shadow-2xl shadow-black/30 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
+          <div className="border-b border-border/50 bg-gradient-to-r from-sky-500/10 to-transparent p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-black text-foreground">Centro de notificaciones</h3>
+                <p className="text-[11px] text-muted-foreground">Alertas activas y recordatorios operativos</p>
+              </div>
+              <span className={`rounded-full border px-2 py-1 text-[10px] font-black ${criticalAlerts.length > 0 ? "border-rose-400/30 bg-rose-500/10 text-rose-300" : "border-emerald-400/25 bg-emerald-500/10 text-emerald-300"}`}>
+                {criticalAlerts.length > 0 ? `${criticalAlerts.length} criticas` : "estable"}
+              </span>
+            </div>
+          </div>
+          <div className="max-h-[420px] space-y-2 overflow-y-auto p-3">
+            {topAlerts.length > 0 ? topAlerts.map(alert => (
+              <div key={alert.id} className={`rounded-lg border p-3 shadow-sm ${alertToneClass(alert.severity)}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <strong className="truncate text-[11px] font-black uppercase">{alert.targetName} · {alert.title}</strong>
+                  <span className="text-[9px] font-black uppercase tracking-wider opacity-80">{alert.severity}</span>
+                </div>
+                <p className="mt-1 text-xs font-medium leading-relaxed opacity-95">{alert.message}</p>
+                {alert.recommendation && (
+                  <p className="mt-2 border-t border-current/10 pt-2 text-[10px] leading-relaxed opacity-85">
+                    <span className="font-black">Recordatorio: </span>{alert.recommendation}
+                  </p>
+                )}
+              </div>
+            )) : (
+              <div className="flex flex-col items-center justify-center gap-2 py-10 text-center text-muted-foreground">
+                <ShieldCheck className="h-10 w-10 text-emerald-300" />
+                <p className="text-sm font-bold text-foreground">Sin alertas activas</p>
+                <span className="text-xs">El monitoreo no reporta novedades críticas.</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const AlertReminderPopup = ({ alert, count, onDismiss }) => {
+  if (!alert) return null;
+
+  return (
+    <div className="fixed right-5 top-24 z-50 w-[min(92vw,360px)] overflow-hidden rounded-xl border border-amber-400/30 bg-card/95 shadow-2xl shadow-black/35 backdrop-blur-xl animate-in slide-in-from-right-4 fade-in duration-300">
+      <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-rose-400 via-amber-300 to-sky-300" />
+      <div className="p-4">
+        <div className="flex items-start gap-3">
+          <div className="rounded-xl border border-amber-400/25 bg-amber-500/10 p-2 text-amber-300">
+            <BellRing className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-300">Recordatorio</span>
+              <button type="button" onClick={onDismiss} className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <strong className="mt-1 block truncate text-sm font-black text-foreground">{alert.targetName} · {alert.title}</strong>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{alert.message}</p>
+            <span className="mt-3 inline-flex rounded-full border border-border/50 bg-background/45 px-2 py-1 text-[10px] font-black uppercase text-muted-foreground">
+              {count} alertas activas
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -249,6 +343,9 @@ export default function ServicesTIDashboard() {
   const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
   const [analysisData, setAnalysisData] = useState(null);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+  const [isAlertsMenuOpen, setIsAlertsMenuOpen] = useState(false);
+  const [dismissedReminderId, setDismissedReminderId] = useState(null);
+  const [showAlertReminder, setShowAlertReminder] = useState(false);
 
   // Form state
   const [formFields, setFormFields] = useState({
@@ -310,6 +407,15 @@ export default function ServicesTIDashboard() {
     const interval = setInterval(() => loadState(), 60000); // Poll every 60 seconds for premium feel
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    const firstAlert = state?.smartAlerts?.[0];
+    if (!firstAlert || firstAlert.id === dismissedReminderId) return;
+
+    setShowAlertReminder(true);
+    const timer = setTimeout(() => setShowAlertReminder(false), 12000);
+    return () => clearTimeout(timer);
+  }, [state?.smartAlerts, dismissedReminderId]);
 
   // Handle re-ordering layout
   const handleMove = (id, direction) => {
@@ -491,12 +597,14 @@ export default function ServicesTIDashboard() {
   const degradedServers = state?.targets?.filter(t => t.result?.status === "degraded").length || 0;
   const offlineServers = state?.targets?.filter(t => t.result?.status === "offline").length || 0;
 
-  const criticalAlerts = (state?.smartAlerts || []).filter(alert => alert.severity === "critical");
-  const activeAlertCount = state?.smartAlerts?.length || 0;
+  const activeAlerts = state?.smartAlerts || [];
+  const criticalAlerts = activeAlerts.filter(alert => alert.severity === "critical");
+  const activeAlertCount = activeAlerts.length;
   const healthScore = totalServers > 0 ? Math.round(((onlineServers + degradedServers * 0.45) / totalServers) * 100) : 0;
   const lastUpdateText = lastUpdate
     ? lastUpdate.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })
     : "Sin sincronizar";
+  const reminderAlert = activeAlerts[0];
 
   useEffect(() => {
     if (!setPageHeader) return;
@@ -588,73 +696,34 @@ export default function ServicesTIDashboard() {
         }
       `}</style>
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
         <SummaryCard icon={Server} label="Servidores" value={totalServers} detail={`${categorizedGroups.length} grupos operativos`} tone="sky" />
         <SummaryCard icon={CheckCircle2} label="En línea" value={onlineServers} detail={`${healthScore}% salud ponderada`} tone="emerald" />
         <SummaryCard icon={AlertTriangle} label="Alertas" value={activeAlertCount} detail={criticalAlerts.length > 0 ? `${criticalAlerts.length} críticas` : "Sin incidentes críticos"} tone={criticalAlerts.length > 0 ? "rose" : "amber"} />
         <SummaryCard icon={Clock} label="Última señal" value={lastUpdateText} detail={refreshing ? "Barrido en progreso" : "Actualización automática cada minuto"} tone="sky" />
+        <div className="flex items-start justify-start md:col-span-2 xl:col-span-1 xl:justify-end">
+          <AlertNotificationCenter
+            alerts={activeAlerts}
+            criticalAlerts={criticalAlerts}
+            isOpen={isAlertsMenuOpen}
+            onToggle={() => setIsAlertsMenuOpen(value => !value)}
+          />
+        </div>
       </section>
 
-      {/* Incident Banner */}
-      {criticalAlerts.length > 0 && (
-        <div className="relative overflow-hidden rounded-xl border border-rose-500/35 bg-rose-500/10 p-4 shadow-[0_16px_38px_rgba(244,63,94,0.14)] backdrop-blur-sm animate-[pulse_3s_infinite]">
-          <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-rose-400 via-amber-300 to-transparent" />
-          <div className="relative flex items-center gap-4">
-            <div 
-              className="w-3.5 h-3.5 bg-rose-500 rounded-full shrink-0 shadow-[0_0_14px_rgba(244,63,94,0.9)]" 
-              style={{ animation: "breathe-red 2s ease-in-out infinite" }}
-            />
-            <div className="flex-1 min-w-0">
-              <span className="text-[10px] font-black uppercase tracking-widest text-rose-400 block">Incidente Crítico</span>
-              <strong className="text-sm font-bold text-foreground truncate block mt-0.5">
-                {criticalAlerts[0].targetName} &bull; {criticalAlerts[0].title}
-              </strong>
-              <p className="text-xs text-muted-foreground mt-0.5">{criticalAlerts[0].message}</p>
-            </div>
-            <div className="text-xs font-black bg-rose-500/20 text-rose-300 px-3 py-1.5 rounded-lg border border-rose-500/25 shadow-[0_0_18px_rgba(244,63,94,0.16)]">
-              {criticalAlerts.length} Fallas
-            </div>
-          </div>
-        </div>
+      {showAlertReminder && reminderAlert && !isAlertsMenuOpen && (
+        <AlertReminderPopup
+          alert={reminderAlert}
+          count={activeAlertCount}
+          onDismiss={() => {
+            setDismissedReminderId(reminderAlert.id);
+            setShowAlertReminder(false);
+          }}
+        />
       )}
 
-      {/* Main Grid Content */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
-        
-        {/* Active Smart Alerts Sidebar */}
-        {state?.smartAlerts && state.smartAlerts.length > 0 && (
-          <section className={`lg:col-span-3 space-y-4 p-4 ${dashboardPanelClass}`}>
-            <div className="relative flex items-center justify-between border-b border-border/40 pb-3">
-              <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-500" />
-                Alertas Activas
-              </h2>
-              <span className="rounded-full border border-border/50 bg-background/50 text-[10px] px-2 py-0.5 font-bold text-foreground shadow-inner">
-                {state.smartAlerts.length}
-              </span>
-            </div>
-            
-            <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1">
-              {state.smartAlerts.slice(0, 8).map(alert => (
-                <div key={alert.id} className={`p-3 rounded-lg border flex flex-col gap-1.5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg ${alertToneClass(alert.severity)}`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <strong className="text-[11px] font-bold uppercase truncate">{alert.targetName} &bull; {alert.title}</strong>
-                    <span className="text-[9px] uppercase tracking-wider opacity-85">{alert.severity}</span>
-                  </div>
-                  <p className="text-xs font-medium leading-relaxed opacity-95">{alert.message}</p>
-                  {alert.recommendation && (
-                    <div className="text-[10px] border-t border-current/10 pt-1.5 opacity-80">
-                      <span className="font-bold">Acción: </span>{alert.recommendation}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Categorized Servers Panels */}
-        <div className={`${state?.smartAlerts && state.smartAlerts.length > 0 ? "lg:col-span-9" : "lg:col-span-12"} space-y-6`}>
+      {/* Categorized Servers Panels */}
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2 2xl:grid-cols-3">
           {categorizedGroups.map((group) => {
             const groupAccent = GROUP_ACCENTS[group.id] || GROUP_ACCENTS.otros;
             const GroupIcon = groupAccent.icon;
@@ -680,7 +749,7 @@ export default function ServicesTIDashboard() {
               </div>
 
               {/* Grid of Server Tiles */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
                 {group.servers.map((target) => {
                   const res = target.result;
                   const metrics = res?.metrics;
@@ -696,6 +765,10 @@ export default function ServicesTIDashboard() {
                   const highUsageFilesystems = filesystems.filter(fs => Number(fs.usedPercent || 0) >= 80);
                   const hasDiskWarning = highUsageFilesystems.length > 0;
                   const alerts = res?.alerts || [];
+                  const filesystemCount = filesystems.length || (metrics?.disk ? 1 : 0);
+                  const containerCount = metrics?.docker?.containers?.length || 0;
+                  const latencyValue = res?.tcp?.latencyMs ? `${res.tcp.latencyMs} ms` : "N/D";
+                  const loadValue = metrics?.cpu?.load1 !== undefined && metrics?.cpu?.load1 !== null ? metrics.cpu.load1 : "N/D";
 
                   const statusMeta = getStatusMeta(status);
 
@@ -710,6 +783,9 @@ export default function ServicesTIDashboard() {
                       <header className="relative flex items-start justify-between gap-3 border-b border-border/15 pb-2">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
+                            <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-current/20 bg-background/45 ${statusMeta.text}`}>
+                              <Server className="h-5 w-5" />
+                            </span>
                             <h3 className="text-sm font-black truncate text-foreground">{target.name}</h3>
                             <span 
                               className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusMeta.dot}`}
@@ -770,6 +846,14 @@ export default function ServicesTIDashboard() {
                         </div>
                       )}
 
+
+                      <div className="relative mt-3 grid grid-cols-2 gap-2 xl:grid-cols-3 2xl:grid-cols-2">
+                        <DataPill label="Latencia" value={latencyValue} color={status === "offline" ? "text-rose-300" : "text-sky-300"} />
+                        <DataPill label="Particiones" value={filesystemCount || "N/D"} color={hasDiskWarning ? "text-amber-300" : "text-foreground"} />
+                        <DataPill label="Load" value={loadValue} color={loadValue !== "N/D" ? "text-foreground" : "text-muted-foreground"} />
+                        <DataPill label="Contenedores" value={containerCount || "N/D"} color={containerCount > 0 ? "text-emerald-300" : "text-muted-foreground"} />
+                        <DataPill label="Alertas" value={alerts.length || "0"} color={alerts.length > 0 ? "text-rose-300" : "text-emerald-300"} />
+                      </div>
                       {/* 2x2 Grid Statistics */}
                       <div className="relative grid grid-cols-2 gap-2 mt-3">
                         <MiniStat 
@@ -1065,7 +1149,6 @@ export default function ServicesTIDashboard() {
             </div>
           )}
         </div>
-      </div>
 
       {/* CRUD MODAL FOR ADDING / EDITING SERVER */}
       {isEditModalOpen && (
