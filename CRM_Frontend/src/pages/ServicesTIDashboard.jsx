@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, useContext } from "react";
+import { createElement, useState, useEffect, useMemo, useContext } from "react";
 import { 
   Server, 
   Activity, 
@@ -61,7 +61,7 @@ const alertToneClass = (severity) => {
 
 // Compact MiniStat widget
 const MiniStat = ({ icon, label, value, color = "text-foreground" }) => (
-  <div className="min-w-0 rounded-lg border border-border/30 bg-background/40 px-2.5 py-1.5 shadow-sm">
+  <div className="min-w-0 rounded-lg border border-border/35 bg-background/45 px-2.5 py-1.5 shadow-sm transition-all duration-300 hover:border-primary/20 hover:bg-background/60">
     <p className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-muted-foreground [&_svg]:h-3.5 [&_svg]:w-3.5">
       {icon}
       {label}
@@ -91,7 +91,7 @@ const CircleGauge = ({ label, value }) => {
   const strokeDashoffset = circumference - (val / 100) * circumference;
 
   return (
-    <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-background/55 border border-border/35 flex-1 min-w-[65px] shadow-sm">
+    <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-background/55 border border-border/35 flex-1 min-w-[65px] shadow-sm transition-all duration-300 hover:border-primary/20 hover:bg-background/70">
       <div className="relative w-11 h-11 flex items-center justify-center">
         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 56 56">
           <circle 
@@ -121,6 +121,106 @@ const CircleGauge = ({ label, value }) => {
   );
 };
 
+const dashboardShellClass = "relative overflow-hidden rounded-xl border border-border/60 bg-card/35 shadow-[0_18px_45px_rgba(2,6,23,0.16)] backdrop-blur-sm";
+const dashboardPanelClass = `${dashboardShellClass} before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_86%_12%,rgba(255,255,255,0.08),transparent_30%)] before:content-['']`;
+
+const GROUP_ACCENTS = {
+  correo: {
+    icon: Cable,
+    rail: "from-sky-400 via-cyan-300 to-emerald-300",
+    iconClass: "bg-sky-500/15 text-sky-300 border-sky-400/20",
+    glow: "shadow-[0_0_24px_rgba(56,189,248,0.14)]"
+  },
+  core: {
+    icon: Database,
+    rail: "from-violet-400 via-sky-300 to-emerald-300",
+    iconClass: "bg-violet-500/15 text-violet-300 border-violet-400/20",
+    glow: "shadow-[0_0_24px_rgba(139,92,246,0.12)]"
+  },
+  naos: {
+    icon: Terminal,
+    rail: "from-emerald-300 via-lime-300 to-amber-300",
+    iconClass: "bg-emerald-500/15 text-emerald-300 border-emerald-400/20",
+    glow: "shadow-[0_0_24px_rgba(52,211,153,0.13)]"
+  },
+  otros: {
+    icon: Server,
+    rail: "from-slate-300 via-sky-300 to-cyan-300",
+    iconClass: "bg-slate-500/15 text-slate-300 border-slate-300/20",
+    glow: "shadow-[0_0_24px_rgba(148,163,184,0.12)]"
+  }
+};
+
+const getStatusMeta = (status) => {
+  if (status === "online") {
+    return {
+      label: "Online",
+      dot: "bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.85)]",
+      card: "border-emerald-400/25 bg-emerald-500/[0.035] hover:border-emerald-300/40",
+      rail: "from-emerald-300 via-cyan-300 to-transparent",
+      text: "text-emerald-300"
+    };
+  }
+  if (status === "degraded") {
+    return {
+      label: "Degradado",
+      dot: "bg-amber-400 shadow-[0_0_14px_rgba(245,158,11,0.85)] animate-pulse",
+      card: "border-amber-400/30 bg-amber-500/[0.045] hover:border-amber-300/45",
+      rail: "from-amber-300 via-orange-300 to-transparent",
+      text: "text-amber-300"
+    };
+  }
+  if (status === "offline") {
+    return {
+      label: "Offline",
+      dot: "bg-rose-500 shadow-[0_0_16px_rgba(244,63,94,0.9)] animate-pulse",
+      card: "border-rose-500/35 bg-rose-500/[0.055] hover:border-rose-400/55",
+      rail: "from-rose-400 via-red-300 to-transparent",
+      text: "text-rose-300"
+    };
+  }
+  if (status === "paused") {
+    return {
+      label: "Pausado",
+      dot: "bg-slate-500",
+      card: "border-slate-500/25 bg-slate-500/[0.035] hover:border-slate-400/35 opacity-80",
+      rail: "from-slate-400 via-slate-300 to-transparent",
+      text: "text-slate-300"
+    };
+  }
+  return {
+    label: "Sin datos",
+    dot: "bg-slate-600",
+    card: "border-border/45 bg-background/45 hover:border-primary/25",
+    rail: "from-slate-400 via-sky-300 to-transparent",
+    text: "text-muted-foreground"
+  };
+};
+
+const SummaryCard = ({ icon, label, value, detail, tone = "sky" }) => {
+  const toneClass = {
+    sky: "border-sky-400/20 bg-sky-500/10 text-sky-300",
+    emerald: "border-emerald-400/20 bg-emerald-500/10 text-emerald-300",
+    amber: "border-amber-400/20 bg-amber-500/10 text-amber-300",
+    rose: "border-rose-400/20 bg-rose-500/10 text-rose-300"
+  }[tone];
+
+  return (
+    <div className="relative min-h-[104px] overflow-hidden rounded-xl border border-border/50 bg-card/40 p-4 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card/55">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_14%,rgba(255,255,255,0.08),transparent_34%)]" />
+      <div className="relative flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</p>
+          <strong className="mt-2 block text-3xl font-black tracking-tight text-foreground">{value}</strong>
+          <span className="mt-1 block text-[11px] font-medium text-muted-foreground">{detail}</span>
+        </div>
+        <div className={`rounded-xl border p-2.5 ${toneClass}`}>
+          {createElement(icon, { className: "h-5 w-5" })}
+        </div>
+      </div>
+    </div>
+  );
+};
 export default function ServicesTIDashboard() {
   const setPageHeader = useContext(PageHeaderContext);
 
@@ -365,7 +465,7 @@ export default function ServicesTIDashboard() {
         toast.dismiss(toastId);
         toast.success("Monitoreo actualizado");
       }, 5000);
-    } catch (error) {
+    } catch {
       toast.dismiss(toastId);
       toast.error("Error al iniciar el escaneo");
       setRefreshing(false);
@@ -378,7 +478,7 @@ export default function ServicesTIDashboard() {
     try {
       const data = await servicesTIService.getAnalysis();
       setAnalysisData(data);
-    } catch (error) {
+    } catch {
       toast.error("No se pudo obtener el análisis avanzado");
       setIsAnalysisModalOpen(false);
     } finally {
@@ -392,6 +492,11 @@ export default function ServicesTIDashboard() {
   const offlineServers = state?.targets?.filter(t => t.result?.status === "offline").length || 0;
 
   const criticalAlerts = (state?.smartAlerts || []).filter(alert => alert.severity === "critical");
+  const activeAlertCount = state?.smartAlerts?.length || 0;
+  const healthScore = totalServers > 0 ? Math.round(((onlineServers + degradedServers * 0.45) / totalServers) * 100) : 0;
+  const lastUpdateText = lastUpdate
+    ? lastUpdate.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })
+    : "Sin sincronizar";
 
   useEffect(() => {
     if (!setPageHeader) return;
@@ -453,7 +558,8 @@ export default function ServicesTIDashboard() {
       </div>
     );
     return () => setPageHeader(null);
-  }, [setPageHeader, refreshing, totalServers, onlineServers, degradedServers, offlineServers]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- El header se refresca con los contadores visibles y usa handlers estables en la sesión actual.
+  }, [setPageHeader, refreshing, totalServers, onlineServers, degradedServers, offlineServers, activeAlertCount, lastUpdateText]);
 
   if (loading && !state) {
     return (
@@ -465,7 +571,7 @@ export default function ServicesTIDashboard() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       
       <style>{`
         @keyframes breathe {
@@ -482,22 +588,32 @@ export default function ServicesTIDashboard() {
         }
       `}</style>
 
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <SummaryCard icon={Server} label="Servidores" value={totalServers} detail={`${categorizedGroups.length} grupos operativos`} tone="sky" />
+        <SummaryCard icon={CheckCircle2} label="En línea" value={onlineServers} detail={`${healthScore}% salud ponderada`} tone="emerald" />
+        <SummaryCard icon={AlertTriangle} label="Alertas" value={activeAlertCount} detail={criticalAlerts.length > 0 ? `${criticalAlerts.length} críticas` : "Sin incidentes críticos"} tone={criticalAlerts.length > 0 ? "rose" : "amber"} />
+        <SummaryCard icon={Clock} label="Última señal" value={lastUpdateText} detail={refreshing ? "Barrido en progreso" : "Actualización automática cada minuto"} tone="sky" />
+      </section>
+
       {/* Incident Banner */}
       {criticalAlerts.length > 0 && (
-        <div className="relative overflow-hidden rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 flex items-center gap-4 animate-[pulse_3s_infinite]">
-          <div 
-            className="w-3.5 h-3.5 bg-rose-500 rounded-full shrink-0 shadow-[0_0_14px_rgba(244,63,94,0.9)]" 
-            style={{ animation: "breathe-red 2s ease-in-out infinite" }}
-          />
-          <div className="flex-1 min-w-0">
-            <span className="text-[10px] font-black uppercase tracking-widest text-rose-500 block">Incidente Crítico</span>
-            <strong className="text-sm font-bold text-foreground truncate block mt-0.5">
-              {criticalAlerts[0].targetName} &bull; {criticalAlerts[0].title}
-            </strong>
-            <p className="text-xs text-muted-foreground mt-0.5">{criticalAlerts[0].message}</p>
-          </div>
-          <div className="text-xs font-black bg-rose-500/20 text-rose-400 px-3 py-1.5 rounded-lg border border-rose-500/20">
-            {criticalAlerts.length} Fallas
+        <div className="relative overflow-hidden rounded-xl border border-rose-500/35 bg-rose-500/10 p-4 shadow-[0_16px_38px_rgba(244,63,94,0.14)] backdrop-blur-sm animate-[pulse_3s_infinite]">
+          <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-rose-400 via-amber-300 to-transparent" />
+          <div className="relative flex items-center gap-4">
+            <div 
+              className="w-3.5 h-3.5 bg-rose-500 rounded-full shrink-0 shadow-[0_0_14px_rgba(244,63,94,0.9)]" 
+              style={{ animation: "breathe-red 2s ease-in-out infinite" }}
+            />
+            <div className="flex-1 min-w-0">
+              <span className="text-[10px] font-black uppercase tracking-widest text-rose-400 block">Incidente Crítico</span>
+              <strong className="text-sm font-bold text-foreground truncate block mt-0.5">
+                {criticalAlerts[0].targetName} &bull; {criticalAlerts[0].title}
+              </strong>
+              <p className="text-xs text-muted-foreground mt-0.5">{criticalAlerts[0].message}</p>
+            </div>
+            <div className="text-xs font-black bg-rose-500/20 text-rose-300 px-3 py-1.5 rounded-lg border border-rose-500/25 shadow-[0_0_18px_rgba(244,63,94,0.16)]">
+              {criticalAlerts.length} Fallas
+            </div>
           </div>
         </div>
       )}
@@ -507,20 +623,20 @@ export default function ServicesTIDashboard() {
         
         {/* Active Smart Alerts Sidebar */}
         {state?.smartAlerts && state.smartAlerts.length > 0 && (
-          <section className="lg:col-span-3 space-y-4 rounded-xl border border-border bg-card/25 p-4 backdrop-blur-sm">
-            <div className="flex items-center justify-between border-b border-border/40 pb-3">
+          <section className={`lg:col-span-3 space-y-4 p-4 ${dashboardPanelClass}`}>
+            <div className="relative flex items-center justify-between border-b border-border/40 pb-3">
               <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-amber-500" />
                 Alertas Activas
               </h2>
-              <span className="rounded-full bg-border/50 text-[10px] px-2 py-0.5 font-bold text-foreground">
+              <span className="rounded-full border border-border/50 bg-background/50 text-[10px] px-2 py-0.5 font-bold text-foreground shadow-inner">
                 {state.smartAlerts.length}
               </span>
             </div>
             
             <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1">
               {state.smartAlerts.slice(0, 8).map(alert => (
-                <div key={alert.id} className={`p-3 rounded-lg border flex flex-col gap-1.5 ${alertToneClass(alert.severity)}`}>
+                <div key={alert.id} className={`p-3 rounded-lg border flex flex-col gap-1.5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg ${alertToneClass(alert.severity)}`}>
                   <div className="flex items-start justify-between gap-2">
                     <strong className="text-[11px] font-bold uppercase truncate">{alert.targetName} &bull; {alert.title}</strong>
                     <span className="text-[9px] uppercase tracking-wider opacity-85">{alert.severity}</span>
@@ -539,14 +655,21 @@ export default function ServicesTIDashboard() {
 
         {/* Categorized Servers Panels */}
         <div className={`${state?.smartAlerts && state.smartAlerts.length > 0 ? "lg:col-span-9" : "lg:col-span-12"} space-y-6`}>
-          {categorizedGroups.map((group) => (
-            <section key={group.id} className="rounded-xl border border-border/60 bg-card/35 p-4 backdrop-blur-sm">
-              
+          {categorizedGroups.map((group) => {
+            const groupAccent = GROUP_ACCENTS[group.id] || GROUP_ACCENTS.otros;
+            const GroupIcon = groupAccent.icon;
+
+            return (
+            <section key={group.id} className={`relative overflow-hidden rounded-xl border border-border/60 bg-card/35 p-4 backdrop-blur-sm ${groupAccent.glow}`}>
+              <div className={`absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r ${groupAccent.rail}`} />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_0%,rgba(255,255,255,0.08),transparent_30%)]" />
               {/* Group Header */}
               <div className="mb-4 flex flex-col gap-2 border-b border-border/30 pb-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <h2 className="flex items-center gap-2 text-base font-black text-foreground">
-                    <Server className="h-4 w-4 text-primary" />
+                    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border ${groupAccent.iconClass}`}>
+                      <GroupIcon className="h-4 w-4" />
+                    </span>
                     {group.title}
                   </h2>
                   <p className="text-[11px] text-muted-foreground">{group.subtitle}</p>
@@ -574,35 +697,25 @@ export default function ServicesTIDashboard() {
                   const hasDiskWarning = highUsageFilesystems.length > 0;
                   const alerts = res?.alerts || [];
 
-                  // Status dot glow effects
-                  const pingColor = status === "online" 
-                    ? "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.7)]" 
-                    : status === "degraded"
-                      ? "bg-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.7)] animate-pulse"
-                      : status === "offline"
-                        ? "bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.8)] animate-pulse"
-                        : "bg-slate-600";
+                  const statusMeta = getStatusMeta(status);
 
                   return (
                     <article 
                       key={target.id} 
-                      className={`rounded-xl border transition-all duration-300 ${
-                        status === "offline" 
-                          ? "border-rose-500/25 bg-rose-500/5 hover:border-rose-500/40" 
-                          : isExpanded 
-                            ? "border-primary/40 bg-card/60 shadow-lg"
-                            : "border-border/40 bg-background/45 hover:border-primary/20"
-                      } p-3.5 flex flex-col`}
+                      className={`group/server relative overflow-hidden rounded-xl border p-3.5 flex flex-col shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl ${statusMeta.card} ${isExpanded ? "bg-card/65 shadow-lg ring-1 ring-primary/20" : ""}`}
                     >
+                      <div className={`absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r ${statusMeta.rail}`} />
+                      <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover/server:opacity-100 bg-[radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.08),transparent_34%)]" />
                       {/* Header row */}
-                      <header className="flex items-start justify-between gap-3 border-b border-border/10 pb-2">
+                      <header className="relative flex items-start justify-between gap-3 border-b border-border/15 pb-2">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <h3 className="text-sm font-black truncate text-foreground">{target.name}</h3>
                             <span 
-                              className={`w-2.5 h-2.5 rounded-full shrink-0 ${pingColor}`}
+                              className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusMeta.dot}`}
                               style={{ animation: status === "online" ? "breathe 3s ease-in-out infinite" : undefined }}
                             />
+                            <span className={`rounded-full border border-current/15 px-1.5 py-0.5 text-[9px] font-black uppercase ${statusMeta.text}`}>{statusMeta.label}</span>
                             {res?.tcp?.latencyMs && (
                               <span className="text-[10px] font-bold text-emerald-400/80">{res.tcp.latencyMs}ms</span>
                             )}
@@ -616,28 +729,28 @@ export default function ServicesTIDashboard() {
                         <div className="flex items-center gap-0.5">
                           <button 
                             onClick={() => handleMove(target.id, "up")}
-                            className="p-1 rounded bg-background/55 hover:bg-muted text-muted-foreground hover:text-foreground transition-all"
+                            className="p-1 rounded bg-background/55 hover:bg-muted text-muted-foreground hover:text-foreground transition-all hover:scale-105"
                             title="Mover Arriba"
                           >
                             <ChevronUp size={11} />
                           </button>
                           <button 
                             onClick={() => handleMove(target.id, "down")}
-                            className="p-1 rounded bg-background/55 hover:bg-muted text-muted-foreground hover:text-foreground transition-all"
+                            className="p-1 rounded bg-background/55 hover:bg-muted text-muted-foreground hover:text-foreground transition-all hover:scale-105"
                             title="Mover Abajo"
                           >
                             <ChevronDown size={11} />
                           </button>
                           <button 
                             onClick={() => openModal(target)}
-                            className="p-1 rounded bg-background/55 hover:bg-muted text-muted-foreground hover:text-foreground transition-all ml-0.5"
+                            className="p-1 rounded bg-background/55 hover:bg-muted text-muted-foreground hover:text-foreground transition-all hover:scale-105 ml-0.5"
                             title="Editar"
                           >
                             <Edit size={11} />
                           </button>
                           <button 
                             onClick={() => setExpandedCards(prev => ({ ...prev, [target.id]: !isExpanded }))}
-                            className="p-1 rounded bg-background/55 hover:bg-muted text-muted-foreground hover:text-foreground transition-all ml-0.5"
+                            className="p-1 rounded bg-background/55 hover:bg-muted text-muted-foreground hover:text-foreground transition-all hover:scale-105 ml-0.5"
                             title={isExpanded ? "Contraer Detalles" : "Expandir Detalles"}
                           >
                             {isExpanded ? <ChevronUp size={13} className="text-primary" /> : <ChevronDown size={13} />}
@@ -658,7 +771,7 @@ export default function ServicesTIDashboard() {
                       )}
 
                       {/* 2x2 Grid Statistics */}
-                      <div className="grid grid-cols-2 gap-2 mt-3">
+                      <div className="relative grid grid-cols-2 gap-2 mt-3">
                         <MiniStat 
                           icon={<Clock className="h-3.5 w-3.5" />} 
                           label="Uptime" 
@@ -686,7 +799,7 @@ export default function ServicesTIDashboard() {
 
                       {/* Expanded diagnostic panels */}
                       {isExpanded && (
-                        <div className="mt-4 border-t border-border/20 pt-3 space-y-3.5 animate-in fade-in duration-300">
+                        <div className="relative mt-4 border-t border-border/20 pt-3 space-y-3.5 animate-in fade-in duration-300">
                           
                           {/* Navigation tab bar */}
                           <nav className="flex border-b border-border/25 text-xs font-bold">
@@ -944,7 +1057,8 @@ export default function ServicesTIDashboard() {
                 })}
               </div>
             </section>
-          ))}
+            );
+          })}
           {sortedTargets.length === 0 && (
             <div className="rounded-xl border border-dashed border-border p-12 text-center text-muted-foreground">
               Agrega tu primer servidor utilizando el botón "Agregar Servidor" superior para iniciar el monitoreo.
