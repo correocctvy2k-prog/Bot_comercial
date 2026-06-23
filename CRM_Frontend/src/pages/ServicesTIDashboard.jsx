@@ -1,4 +1,4 @@
-import { createElement, useState, useEffect, useMemo, useContext } from "react";
+import { createElement, useState, useEffect, useMemo, useContext, useRef } from "react";
 import { 
   Server, 
   Activity, 
@@ -60,6 +60,61 @@ const alertToneClass = (severity) => {
   if (severity === "critical" || severity === "high") return "bg-rose-500/10 border-rose-500/20 text-rose-400";
   if (severity === "medium") return "bg-amber-500/10 border-amber-500/20 text-amber-400";
   return "bg-sky-500/10 border-sky-500/20 text-sky-400";
+};
+
+const StatusDot = ({ status, size = "md" }) => {
+  const dimensions = size === "lg" ? "w-3 h-3" : "w-2.5 h-2.5";
+  const color = status === "online"
+    ? "bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.75)]"
+    : status === "offline"
+      ? "bg-rose-500 shadow-[0_0_14px_rgba(244,63,94,0.8)]"
+      : status === "degraded"
+        ? "bg-amber-400 shadow-[0_0_14px_rgba(245,158,11,0.75)] animate-pulse"
+        : "bg-slate-600";
+
+  const animation = status === "online"
+    ? "breathe 3s ease-in-out infinite"
+    : status === "offline"
+      ? "breathe-red 2s ease-in-out infinite"
+      : "none";
+
+  return (
+    <span
+      className={`${dimensions} rounded-full ${color} shrink-0`}
+      style={{ animation }}
+    />
+  );
+};
+
+const UpdateBadge = ({ updates }) => {
+  if (!updates) {
+    return (
+      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+        <CheckCircle2 className="w-3.5 h-3.5" />
+        SO al día
+      </div>
+    );
+  }
+  const isPending = updates.RebootRequired || updates.RebootPending || (updates.PendingCount && updates.PendingCount > 0);
+  
+  let statusText = 'SO actualizado';
+  if (updates.RebootRequired || updates.RebootPending) {
+    statusText = 'Reinicio pendiente';
+  } else if (updates.PendingCount > 0) {
+    statusText = `${updates.PendingCount} actualizaciones pendientes`;
+  } else if (updates.Status) {
+    statusText = updates.Status === 'OK' ? 'SO actualizado' : String(updates.Status);
+  }
+  const details = updates.LastInstalled ? ` · Última instalación: ${String(updates.LastInstalled)}` : '';
+
+  return (
+    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border ${
+      isPending ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+    }`}>
+      {isPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin-slow" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+      {statusText}{details}
+    </div>
+  );
 };
 
 // Compact MiniStat widget
@@ -286,7 +341,7 @@ const AlertNotificationCenter = ({ alerts, criticalAlerts, isOpen, onToggle }) =
   );
 };
 
-const AlertReminderPopup = ({ alert, count, onDismiss }) => {
+const AlertReminderPopup = ({ alert, count, onDismiss, onOpenAlerts }) => {
   if (!alert) return null;
 
   return (
@@ -306,9 +361,18 @@ const AlertReminderPopup = ({ alert, count, onDismiss }) => {
             </div>
             <strong className="mt-1 block truncate text-sm font-black text-foreground">{alert.targetName} · {alert.title}</strong>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{alert.message}</p>
-            <span className="mt-3 inline-flex rounded-full border border-border/50 bg-background/45 px-2 py-1 text-[10px] font-black uppercase text-muted-foreground">
-              {count} alertas activas
-            </span>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="inline-flex rounded-full border border-border/50 bg-background/45 px-2 py-1 text-[10px] font-black uppercase text-muted-foreground">
+                {count} alertas activas
+              </span>
+              <button
+                type="button"
+                onClick={onOpenAlerts}
+                className="rounded-lg border border-amber-400/25 bg-amber-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-300 transition-colors hover:bg-amber-500/20"
+              >
+                Ver alertas
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -317,6 +381,7 @@ const AlertReminderPopup = ({ alert, count, onDismiss }) => {
 };
 export default function ServicesTIDashboard() {
   const setPageHeader = useContext(PageHeaderContext);
+  const alertsMenuRef = useRef(null);
 
   // Core monitoring state
   const [state, setState] = useState(null);
@@ -409,13 +474,33 @@ export default function ServicesTIDashboard() {
   }, []);
 
   useEffect(() => {
-    const firstAlert = state?.smartAlerts?.[0];
-    if (!firstAlert || firstAlert.id === dismissedReminderId) return;
+    const firstAlert = state?.smartAlerts?.find(alert => alert.severity === "critical" || alert.severity === "high") || state?.smartAlerts?.[0];
+    if (!firstAlert || firstAlert.id === dismissedReminderId || isAlertsMenuOpen) return;
 
     setShowAlertReminder(true);
     const timer = setTimeout(() => setShowAlertReminder(false), 12000);
     return () => clearTimeout(timer);
-  }, [state?.smartAlerts, dismissedReminderId]);
+  }, [state?.smartAlerts, dismissedReminderId, isAlertsMenuOpen]);
+
+  useEffect(() => {
+    if (!isAlertsMenuOpen) return;
+
+    const handlePointerDown = (event) => {
+      if (alertsMenuRef.current && !alertsMenuRef.current.contains(event.target)) {
+        setIsAlertsMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setIsAlertsMenuOpen(false);
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isAlertsMenuOpen]);
 
   // Handle re-ordering layout
   const handleMove = (id, direction) => {
@@ -604,7 +689,7 @@ export default function ServicesTIDashboard() {
   const lastUpdateText = lastUpdate
     ? lastUpdate.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })
     : "Sin sincronizar";
-  const reminderAlert = activeAlerts[0];
+  const reminderAlert = criticalAlerts[0] || activeAlerts[0];
 
   useEffect(() => {
     if (!setPageHeader) return;
@@ -701,12 +786,15 @@ export default function ServicesTIDashboard() {
         <SummaryCard icon={CheckCircle2} label="En línea" value={onlineServers} detail={`${healthScore}% salud ponderada`} tone="emerald" />
         <SummaryCard icon={AlertTriangle} label="Alertas" value={activeAlertCount} detail={criticalAlerts.length > 0 ? `${criticalAlerts.length} críticas` : "Sin incidentes críticos"} tone={criticalAlerts.length > 0 ? "rose" : "amber"} />
         <SummaryCard icon={Clock} label="Última señal" value={lastUpdateText} detail={refreshing ? "Barrido en progreso" : "Actualización automática cada minuto"} tone="sky" />
-        <div className="flex items-start justify-start md:col-span-2 xl:col-span-1 xl:justify-end">
+        <div ref={alertsMenuRef} className="flex items-start justify-start md:col-span-2 xl:col-span-1 xl:justify-end">
           <AlertNotificationCenter
             alerts={activeAlerts}
             criticalAlerts={criticalAlerts}
             isOpen={isAlertsMenuOpen}
-            onToggle={() => setIsAlertsMenuOpen(value => !value)}
+            onToggle={() => {
+              setShowAlertReminder(false);
+              setIsAlertsMenuOpen(value => !value);
+            }}
           />
         </div>
       </section>
@@ -768,118 +856,151 @@ export default function ServicesTIDashboard() {
                   const filesystemCount = filesystems.length || (metrics?.disk ? 1 : 0);
                   const containerCount = metrics?.docker?.containers?.length || 0;
                   const latencyValue = res?.tcp?.latencyMs ? `${res.tcp.latencyMs} ms` : "N/D";
-                  const loadValue = metrics?.cpu?.load1 !== undefined && metrics?.cpu?.load1 !== null ? metrics.cpu.load1 : "N/D";
 
                   const statusMeta = getStatusMeta(status);
 
                   return (
-                    <article 
-                      key={target.id} 
-                      className={`group/server relative overflow-hidden rounded-xl border p-3.5 flex flex-col shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl ${statusMeta.card} ${isExpanded ? "bg-card/65 shadow-lg ring-1 ring-primary/20" : ""}`}
-                    >
-                      <div className={`absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r ${statusMeta.rail}`} />
-                      <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover/server:opacity-100 bg-[radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.08),transparent_34%)]" />
-                      {/* Header row */}
-                      <header className="relative flex items-start justify-between gap-3 border-b border-border/15 pb-2">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-current/20 bg-background/45 ${statusMeta.text}`}>
-                              <Server className="h-5 w-5" />
+                     <article 
+                       key={target.id} 
+                       className={`bg-background/60 border ${status === "offline" ? "border-rose-500/40 bg-rose-500/5" : "border-border/50"} rounded-xl p-4 transition-all hover:bg-background/80 flex flex-col shadow-sm duration-300 hover:-translate-y-0.5 hover:shadow-xl ${isExpanded ? "bg-card/65 shadow-lg ring-1 ring-primary/20" : ""}`}
+                     >
+                       <div className={`absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r ${statusMeta.rail}`} />
+                       <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover/server:opacity-100 bg-[radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.08),transparent_34%)]" />
+                       
+                       {/* Header row */}
+                       <header className="relative flex items-start justify-between gap-3 mb-3 border-b border-border/15 pb-2.5">
+                         <div className="flex items-center gap-3 min-w-0">
+                           <div className={`p-2.5 rounded-lg bg-sky-500/10 text-sky-400 border border-sky-500/15 shrink-0 ${status === "offline" ? "text-rose-400 bg-rose-500/10 border-rose-500/15" : ""}`}>
+                             <Server className="h-5 w-5" />
+                           </div>
+                           <div className="min-w-0">
+                             <h3 className="text-sm font-bold text-foreground flex items-center gap-2 truncate">
+                               {target.name}
+                               {status === "offline" && <span className="px-1.5 py-0.5 rounded text-[9px] bg-rose-500 text-white font-bold animate-pulse">OFFLINE</span>}
+                               {status !== "offline" && res?.tcp?.latencyMs && <span className="text-[10px] text-emerald-400 font-normal">{res.tcp.latencyMs}ms</span>}
+                             </h3>
+                             <p className="text-[10px] text-muted-foreground truncate uppercase font-semibold tracking-wider mt-0.5">
+                               {target.host}:{target.port} &bull; {target.type === "linux" ? "SSH" : "TCP"}
+                             </p>
+                           </div>
+                         </div>
+                         <div className="flex items-center gap-2 shrink-0">
+                           {/* Action buttons */}
+                           <div className="flex items-center gap-0.5">
+                             <button 
+                               type="button"
+                               onClick={() => handleMove(target.id, "up")}
+                               className="p-1 rounded bg-background/55 hover:bg-muted text-muted-foreground hover:text-foreground transition-all hover:scale-105"
+                               title="Mover Arriba"
+                             >
+                               <ChevronUp size={11} />
+                             </button>
+                             <button 
+                               type="button"
+                               onClick={() => handleMove(target.id, "down")}
+                               className="p-1 rounded bg-background/55 hover:bg-muted text-muted-foreground hover:text-foreground transition-all hover:scale-105"
+                               title="Mover Abajo"
+                             >
+                               <ChevronDown size={11} />
+                             </button>
+                             <button 
+                               type="button"
+                               onClick={() => openModal(target)}
+                               className="p-1 rounded bg-background/55 hover:bg-muted text-muted-foreground hover:text-foreground transition-all hover:scale-105 ml-0.5"
+                               title="Editar"
+                             >
+                               <Edit size={11} />
+                             </button>
+                             <button 
+                               type="button"
+                               onClick={() => setExpandedCards(prev => ({ ...prev, [target.id]: !isExpanded }))}
+                               className="p-1 rounded bg-background/55 hover:bg-muted text-muted-foreground hover:text-foreground transition-all hover:scale-105 ml-0.5"
+                               title={isExpanded ? "Contraer Detalles" : "Expandir Detalles"}
+                             >
+                               {isExpanded ? <ChevronUp size={13} className="text-primary" /> : <ChevronDown size={13} />}
+                             </button>
+                           </div>
+                           <StatusDot status={status} />
+                         </div>
+                       </header>
+
+                       {/* Tags row */}
+                       {(target.tags || []).length > 0 && (
+                         <div className="flex flex-wrap gap-1 mb-3">
+                           {target.tags.map((tag, idx) => (
+                             <span key={idx} className="inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[8px] font-black uppercase text-primary">
+                               <Tag size={8} />
+                               {tag}
+                             </span>
+                           ))}
+                         </div>
+                       )}
+
+                       {/* Detailed Metrics Grid */}
+                       <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs mb-3 flex-1 border-t border-border/10 pt-3">
+                         <div className="flex flex-col gap-1">
+                           <span className="text-muted-foreground flex items-center gap-1.5"><Clock className="w-4 h-4" /> Uptime</span>
+                           <span className="font-medium pl-5">{formatUptimeDays(metrics?.uptime)}</span>
+                         </div>
+                         
+                         <div className="flex flex-col gap-1">
+                           <span className="text-muted-foreground flex items-center gap-1.5"><Activity className="w-4 h-4" /> Servicios</span>
+                           <span className={`font-bold pl-5 ${status === 'offline' ? 'text-rose-400' : alerts.length > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                             {status === 'offline' ? 'SIN RED' : alerts.length > 0 ? `${alerts.length} ALERTA(S)` : "SISTEMA OK"}
+                           </span>
+                         </div>
+
+                         <div className="flex flex-col gap-1">
+                           <span className="text-muted-foreground flex items-center gap-1.5"><Cpu className="w-4 h-4" /> CPU</span>
+                           <span className={`font-bold pl-5 ${metrics?.cpu?.usagePercent >= 90 ? "text-rose-400" : metrics?.cpu?.usagePercent >= 75 ? "text-amber-400" : "text-emerald-400"}`}>
+                             {metrics?.cpu?.usagePercent !== undefined && metrics?.cpu?.usagePercent !== null ? `${Math.round(metrics.cpu.usagePercent)}%` : "N/D"}
+                           </span>
+                         </div>
+
+                         <div className="flex flex-col gap-1">
+                           <span className="text-muted-foreground flex items-center gap-1.5"><Layers className="w-4 h-4" /> RAM</span>
+                           <span className={`font-bold pl-5 ${metrics?.memory?.usedPercent >= 90 ? "text-rose-400" : metrics?.memory?.usedPercent >= 75 ? "text-amber-400" : "text-emerald-400"}`}>
+                             {metrics?.memory?.usedPercent !== undefined && metrics?.memory?.usedPercent !== null ? `${Math.round(metrics.memory.usedPercent)}%` : "N/D"}
+                           </span>
+                         </div>
+
+                         <div className="flex flex-col gap-1">
+                           <span className="text-muted-foreground flex items-center gap-1.5"><HardDrive className="w-4 h-4" /> Disco /</span>
+                           <span className={`font-bold pl-5 ${metrics?.disk?.usedPercent >= 90 ? "text-rose-400" : metrics?.disk?.usedPercent >= 75 ? "text-amber-400" : "text-emerald-400"}`}>
+                             {metrics?.disk?.usedPercent !== undefined && metrics?.disk?.usedPercent !== null ? `${Math.round(metrics.disk.usedPercent)}%` : "N/D"}
+                           </span>
+                         </div>
+
+                         <div className="flex flex-col gap-1">
+                           <span className="text-muted-foreground flex items-center gap-1.5"><Database className="w-4 h-4" /> Particiones</span>
+                           <span className={`font-medium pl-5 ${hasDiskWarning ? 'text-amber-400' : 'text-foreground'}`}>
+                             {filesystemCount || "N/D"} detectadas
+                           </span>
+                         </div>
+
+                         <div className="flex flex-col gap-1">
+                           <span className="text-muted-foreground flex items-center gap-1.5"><Layers className="w-4 h-4" /> Contenedores</span>
+                           <span className={`font-medium pl-5 ${containerCount > 0 ? "text-emerald-400" : "text-slate-400"}`}>
+                             {containerCount > 0 ? `${containerCount} Docker` : "N/D"}
+                           </span>
+                         </div>
+
+                         <div className="flex flex-col gap-1">
+                           <span className="text-muted-foreground flex items-center gap-1.5"><Activity className="w-4 h-4" /> Latencia</span>
+                           <span className={`font-medium pl-5 ${status === 'offline' ? 'text-rose-400' : 'text-emerald-400'}`}>
+                             {latencyValue}
+                           </span>
+                         </div>
+                       </div>
+
+                        <div className="flex justify-between items-center border-t border-border/20 pt-3 mt-auto">
+                          <UpdateBadge updates={metrics?.updates} />
+                          {alerts.length > 0 && (
+                            <span className="text-[10px] font-semibold text-rose-400 flex items-center gap-1 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded animate-pulse">
+                              Revisar Alertas
                             </span>
-                            <h3 className="text-sm font-black truncate text-foreground">{target.name}</h3>
-                            <span 
-                              className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusMeta.dot}`}
-                              style={{ animation: status === "online" ? "breathe 3s ease-in-out infinite" : undefined }}
-                            />
-                            <span className={`rounded-full border border-current/15 px-1.5 py-0.5 text-[9px] font-black uppercase ${statusMeta.text}`}>{statusMeta.label}</span>
-                            {res?.tcp?.latencyMs && (
-                              <span className="text-[10px] font-bold text-emerald-400/80">{res.tcp.latencyMs}ms</span>
-                            )}
-                          </div>
-                          <p className="text-[10px] text-muted-foreground truncate uppercase font-bold tracking-wider mt-0.5">
-                            {target.host}:{target.port} &bull; {target.type === "linux" ? "SSH" : "TCP"}
-                          </p>
+                          )}
                         </div>
-
-                        {/* Action buttons */}
-                        <div className="flex items-center gap-0.5">
-                          <button 
-                            onClick={() => handleMove(target.id, "up")}
-                            className="p-1 rounded bg-background/55 hover:bg-muted text-muted-foreground hover:text-foreground transition-all hover:scale-105"
-                            title="Mover Arriba"
-                          >
-                            <ChevronUp size={11} />
-                          </button>
-                          <button 
-                            onClick={() => handleMove(target.id, "down")}
-                            className="p-1 rounded bg-background/55 hover:bg-muted text-muted-foreground hover:text-foreground transition-all hover:scale-105"
-                            title="Mover Abajo"
-                          >
-                            <ChevronDown size={11} />
-                          </button>
-                          <button 
-                            onClick={() => openModal(target)}
-                            className="p-1 rounded bg-background/55 hover:bg-muted text-muted-foreground hover:text-foreground transition-all hover:scale-105 ml-0.5"
-                            title="Editar"
-                          >
-                            <Edit size={11} />
-                          </button>
-                          <button 
-                            onClick={() => setExpandedCards(prev => ({ ...prev, [target.id]: !isExpanded }))}
-                            className="p-1 rounded bg-background/55 hover:bg-muted text-muted-foreground hover:text-foreground transition-all hover:scale-105 ml-0.5"
-                            title={isExpanded ? "Contraer Detalles" : "Expandir Detalles"}
-                          >
-                            {isExpanded ? <ChevronUp size={13} className="text-primary" /> : <ChevronDown size={13} />}
-                          </button>
-                        </div>
-                      </header>
-
-                      {/* Tags row */}
-                      {(target.tags || []).length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {target.tags.map((tag, idx) => (
-                            <span key={idx} className="inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[8px] font-black uppercase text-primary">
-                              <Tag size={8} />
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-
-                      <div className="relative mt-3 grid grid-cols-2 gap-2 xl:grid-cols-3 2xl:grid-cols-2">
-                        <DataPill label="Latencia" value={latencyValue} color={status === "offline" ? "text-rose-300" : "text-sky-300"} />
-                        <DataPill label="Particiones" value={filesystemCount || "N/D"} color={hasDiskWarning ? "text-amber-300" : "text-foreground"} />
-                        <DataPill label="Load" value={loadValue} color={loadValue !== "N/D" ? "text-foreground" : "text-muted-foreground"} />
-                        <DataPill label="Contenedores" value={containerCount || "N/D"} color={containerCount > 0 ? "text-emerald-300" : "text-muted-foreground"} />
-                        <DataPill label="Alertas" value={alerts.length || "0"} color={alerts.length > 0 ? "text-rose-300" : "text-emerald-300"} />
-                      </div>
-                      {/* 2x2 Grid Statistics */}
-                      <div className="relative grid grid-cols-2 gap-2 mt-3">
-                        <MiniStat 
-                          icon={<Clock className="h-3.5 w-3.5" />} 
-                          label="Uptime" 
-                          value={formatUptimeDays(metrics?.uptime)} 
-                        />
-                        <MiniStat 
-                          icon={<Cpu className="h-3.5 w-3.5" />} 
-                          label="CPU" 
-                          value={metrics?.cpu?.usagePercent !== undefined && metrics?.cpu?.usagePercent !== null ? `${Math.round(metrics.cpu.usagePercent)}%` : "N/D"} 
-                          color={metrics?.cpu?.usagePercent >= 90 ? "text-rose-400" : metrics?.cpu?.usagePercent >= 75 ? "text-amber-400" : "text-emerald-400"}
-                        />
-                        <MiniStat 
-                          icon={<Layers className="h-3.5 w-3.5" />} 
-                          label="RAM" 
-                          value={metrics?.memory?.usedPercent !== undefined && metrics?.memory?.usedPercent !== null ? `${Math.round(metrics.memory.usedPercent)}%` : "N/D"} 
-                          color={metrics?.memory?.usedPercent >= 90 ? "text-rose-400" : metrics?.memory?.usedPercent >= 75 ? "text-amber-400" : "text-emerald-400"}
-                        />
-                        <MiniStat 
-                          icon={<HardDrive className="h-3.5 w-3.5" />} 
-                          label="Disco /" 
-                          value={metrics?.disk?.usedPercent !== undefined && metrics?.disk?.usedPercent !== null ? `${Math.round(metrics.disk.usedPercent)}%` : "N/D"} 
-                          color={metrics?.disk?.usedPercent >= 90 ? "text-rose-400" : metrics?.disk?.usedPercent >= 75 ? "text-amber-400" : "text-emerald-400"}
-                        />
-                      </div>
 
                       {/* Expanded diagnostic panels */}
                       {isExpanded && (
@@ -1061,43 +1182,58 @@ export default function ServicesTIDashboard() {
                               </div>
                             )}
 
-                            {/* TAB 3: SERVICES */}
+                               {/* TAB 3: SERVICES */}
                             {activeTab === "services" && (
-                              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                              <div className="space-y-3.5 max-h-[360px] overflow-y-auto pr-1">
                                 {hasDocker ? (
                                   <div className="space-y-2">
-                                    <h4 className="text-[9px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 border-b border-border/10 pb-1">
-                                      <Layers className="h-3.5 w-3.5" />
+                                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 border-b border-border/10 pb-1.5">
+                                      <Layers className="h-4 w-4 text-sky-400" />
                                       Contenedores Docker
                                     </h4>
-                                    <div className="grid grid-cols-1 gap-1.5">
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                       {metrics.docker.containers.map((container, idx) => {
                                         const cpu = Number(container.cpuPercent || 0);
                                         const ram = Number(container.memoryPercent || 0);
                                         const isHot = cpu >= 70 || ram >= 70;
+                                        const isRunning = container.status === "running";
+                                        const isRestarting = container.status === "restarting";
+                                        
+                                        const ledColor = !isRunning ? (isRestarting ? 'bg-amber-400' : 'bg-rose-500 animate-pulse') : 'bg-emerald-400';
                                         
                                         return (
                                           <div 
                                             key={idx} 
-                                            className={`p-2 rounded-lg bg-background/20 border text-[11px] ${
-                                              isHot ? "border-rose-500/20 bg-rose-500/5" : "border-border/10"
+                                            className={`rounded-lg border bg-background/45 p-3.5 flex flex-col transition-all hover:bg-background/60 ${
+                                              !isRunning ? "border-rose-500/40 bg-rose-500/5" : "border-border/50"
                                             }`}
                                           >
-                                            <div className="flex items-center justify-between gap-2">
-                                              <div className="flex items-center gap-1.5 min-w-0">
-                                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                                  container.status === "running" ? "bg-emerald-400 animate-pulse" :
-                                                  container.status === "restarting" ? "bg-amber-400" : "bg-rose-500"
-                                                }`} />
-                                                <span className="font-bold text-foreground truncate" title={`${container.name} (${container.image})`}>
-                                                  {container.name}
-                                                </span>
+                                            <div className="mb-2.5 flex items-start justify-between gap-2.5">
+                                              <div className="flex min-w-0 items-center gap-2">
+                                                <div className="rounded-lg bg-sky-500/10 p-1.5 text-sky-400 border border-sky-500/15">
+                                                  <Layers className="h-4 w-4" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                  <h3 className="truncate text-xs font-bold text-foreground" title={container.name}>{container.name}</h3>
+                                                  <p className="truncate text-[9px] font-semibold uppercase tracking-wider text-muted-foreground" title={container.image}>{container.image}</p>
+                                                </div>
                                               </div>
-                                              <span className="text-[10px] text-muted-foreground shrink-0">{formatContainerUptime(container.statusText)}</span>
+                                              <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${ledColor}`} />
                                             </div>
-                                            <div className="flex gap-3 text-[10px] mt-1 text-muted-foreground">
-                                              <span>CPU: <strong className={cpu >= 70 ? "text-rose-400 font-bold" : "text-foreground"}>{cpu.toFixed(1)}%</strong></span>
-                                              <span>RAM: <strong className={ram >= 70 ? "text-rose-400 font-bold" : "text-foreground"}>{container.memoryUsage || `${ram.toFixed(1)}%`}</strong></span>
+
+                                            <div className="grid grid-cols-2 gap-2 text-[10px] mt-1">
+                                              <div className="flex flex-col gap-0.5">
+                                                <span className="text-muted-foreground flex items-center gap-1"><Clock size={10} /> Uptime</span>
+                                                <span className="font-medium pl-3.5 truncate">{formatContainerUptime(container.statusText)}</span>
+                                              </div>
+                                              <div className="flex flex-col gap-0.5">
+                                                <span className="text-muted-foreground flex items-center gap-1"><Cpu size={10} /> CPU</span>
+                                                <span className={`font-bold pl-3.5 ${cpu >= 70 ? 'text-rose-400' : 'text-emerald-400'}`}>{cpu.toFixed(1)}%</span>
+                                              </div>
+                                              <div className="flex flex-col gap-0.5 col-span-2 border-t border-border/10 pt-1.5 mt-0.5">
+                                                <span className="text-muted-foreground flex items-center gap-1"><Layers size={10} /> RAM</span>
+                                                <span className={`font-bold pl-3.5 ${ram >= 70 ? 'text-rose-400' : 'text-emerald-400'}`}>{container.memoryUsage || `${ram.toFixed(1)}%`}</span>
+                                              </div>
                                             </div>
                                           </div>
                                         );
@@ -1107,21 +1243,26 @@ export default function ServicesTIDashboard() {
                                 ) : null}
 
                                 {hasShareplex ? (
-                                  <div className="space-y-2 border-t border-border/10 pt-2.5">
-                                    <h4 className="text-[9px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 border-b border-border/10 pb-1">
-                                      <Database className="h-3.5 w-3.5" />
+                                  <div className="space-y-2 border-t border-border/10 pt-3">
+                                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 border-b border-border/10 pb-1.5">
+                                      <Database className="h-4 w-4 text-emerald-400" />
                                       SharePlex Replicación
                                     </h4>
-                                    <div className="flex items-center justify-between p-2 rounded-lg bg-background/20 border border-border/10 text-xs">
+                                    <div className="rounded-lg border border-border/50 bg-background/45 p-3.5 flex items-center justify-between transition-all hover:bg-background/60">
                                       <div className="flex items-center gap-2">
-                                        <span className={`w-2 h-2 rounded-full ${metrics.shareplex.running ? "bg-emerald-400" : "bg-rose-500 animate-pulse"}`} />
-                                        <span className="font-bold text-foreground">sp_cop / shareplex</span>
+                                        <div className="rounded-lg bg-emerald-500/10 p-1.5 text-emerald-400 border border-emerald-500/15">
+                                          <Database className="h-4 w-4" />
+                                        </div>
+                                        <div>
+                                          <span className="font-bold text-xs text-foreground block">sp_cop / shareplex</span>
+                                          <span className="text-[9px] text-muted-foreground">{metrics.shareplex.processCount || 0} procesos activos</span>
+                                        </div>
                                       </div>
-                                      <div className="text-right">
-                                        <strong className={`font-black ${metrics.shareplex.running ? "text-emerald-400" : "text-rose-400"}`}>
+                                      <div className="text-right flex items-center gap-2">
+                                        <strong className={`font-black text-xs ${metrics.shareplex.running ? "text-emerald-400" : "text-rose-400"}`}>
                                           {metrics.shareplex.running ? "ACTIVO" : "INACTIVO"}
                                         </strong>
-                                        <span className="block text-[9px] text-muted-foreground">{metrics.shareplex.processCount || 0} procesos</span>
+                                        <span className={`w-2.5 h-2.5 rounded-full ${metrics.shareplex.running ? "bg-emerald-400" : "bg-rose-500 animate-pulse"}`} />
                                       </div>
                                     </div>
                                   </div>
