@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, useContext } from "react";
+﻿import { useState, useEffect, useMemo, useContext, useRef } from "react";
 import { 
   Server, 
   Activity, 
@@ -25,9 +25,11 @@ import {
   Cable,
   Clock,
   WifiOff,
-  ShieldCheck
+  ShieldCheck,
+  Bell,
+  TrendingUp
 } from "lucide-react";
-import { ResponsiveContainer, AreaChart, Area, Tooltip } from "recharts";
+import { ResponsiveContainer, AreaChart, Area, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 import { toast } from "sonner";
 import { servicesTIService } from "@/services/servicesTI.service";
 import { PageHeaderContext } from "@/layout/Layout";
@@ -60,7 +62,7 @@ const alertToneClass = (severity) => {
 };
 
 const MiniStat = ({ icon, label, value, color = "text-foreground" }) => (
-  <div className="min-w-0 rounded-md border border-border/40 bg-background/35 px-2.5 py-2">
+  <div className="min-w-0 rounded-md border border-border/40 bg-background/35 px-2.5 py-2 shadow-sm">
     <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground [&_svg]:h-4 [&_svg]:w-4">
       {icon}
       {label}
@@ -77,8 +79,8 @@ const HealthBadge = ({ label, ok, warn }) => {
       : "border-rose-500/20 bg-rose-500/10 text-rose-400";
 
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${cls}`}>
-      {ok ? <CheckCircle2 className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${cls}`}>
+      {ok ? <CheckCircle2 className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
       {label}
     </span>
   );
@@ -146,6 +148,12 @@ export default function ServicesTIDashboard() {
   const [diskSorts, setDiskSorts] = useState({});
   const [expandedCards, setExpandedCards] = useState({});
   const [history, setHistory] = useState({});
+  const [isAlertDropdownOpen, setIsAlertDropdownOpen] = useState(false);
+  const [isGlobalChartOpen, setIsGlobalChartOpen] = useState(false);
+
+  const prevStatusesRef = useRef({});
+  const prevAlertsRef = useRef([]);
+
   const [layoutOrder, setLayoutOrder] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("skylab.nodeMonitor.layout.v2") || "[]");
@@ -177,6 +185,36 @@ export default function ServicesTIDashboard() {
       const dashboardState = await servicesTIService.getDashboardState();
       setState(dashboardState);
       setLastUpdate(new Date());
+
+      // Status Change popup notifications (Toasts)
+      dashboardState.targets.forEach(target => {
+        const id = target.id;
+        const currentStatus = target.result?.status || (target.enabled ? "unknown" : "paused");
+        const prevStatus = prevStatusesRef.current[id];
+
+        if (prevStatus && prevStatus !== currentStatus && target.enabled) {
+          if (currentStatus === "offline") {
+            toast.error(`¡Alerta! Servidor offline: ${target.name} (${target.host})`);
+          } else if (currentStatus === "online" && prevStatus === "offline") {
+            toast.success(`Servidor restablecido: ${target.name} (${target.host})`);
+          } else if (currentStatus === "degraded" && prevStatus === "online") {
+            toast.warning(`Servidor degradado (SSH falló): ${target.name}`);
+          }
+        }
+        prevStatusesRef.current[id] = currentStatus;
+      });
+
+      // Smart Alert popups
+      const currentAlertIds = (dashboardState.smartAlerts || []).map(a => a.id);
+      dashboardState.smartAlerts?.forEach(alert => {
+        if (alert.severity === "critical" && !prevAlertsRef.current.includes(alert.id)) {
+          toast.error(`Incidente Crítico en ${alert.targetName}: ${alert.title}`, {
+            description: alert.message,
+            duration: 8000
+          });
+        }
+      });
+      prevAlertsRef.current = currentAlertIds;
 
       setHistory(prevHistory => {
         const nextHistory = { ...prevHistory };
@@ -284,6 +322,30 @@ export default function ServicesTIDashboard() {
       { id: "otros", title: "OTROS SERVIDORES", subtitle: "Equipos y módulos adicionales", servers: otros }
     ].filter(g => g.servers.length > 0);
   }, [sortedTargets]);
+
+  // Premium multi-line APM chart data builder
+  const globalChartData = useMemo(() => {
+    if (!state?.targets) return [];
+    const times = new Set();
+    Object.values(history).forEach(points => {
+      points.forEach(pt => times.add(pt.time));
+    });
+    
+    const sortedTimes = Array.from(times).sort();
+    
+    return sortedTimes.map(t => {
+      const dataPoint = { time: t };
+      state.targets.forEach(target => {
+        if (target.enabled && target.result?.status === "online") {
+          const pt = history[target.id]?.find(p => p.time === t);
+          if (pt) {
+            dataPoint[target.name] = Math.round(pt.cpu);
+          }
+        }
+      });
+      return dataPoint;
+    });
+  }, [history, state?.targets]);
 
   const openModal = (target = null) => {
     setSelectedTarget(target);
@@ -408,6 +470,76 @@ export default function ServicesTIDashboard() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Global APM chart toggle */}
+          <button
+            onClick={() => setIsGlobalChartOpen(!isGlobalChartOpen)}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold uppercase tracking-wide transition-all ${
+              isGlobalChartOpen 
+                ? "bg-primary/25 border-primary text-primary" 
+                : "border-border bg-card hover:bg-muted text-foreground"
+            }`}
+            title="Vista Global APM"
+          >
+            <TrendingUp className="h-3.5 w-3.5" />
+            APM
+          </button>
+
+          {/* Bell Alerts Dropdown trigger */}
+          <div className="relative">
+            <button
+              onClick={() => setIsAlertDropdownOpen(!isAlertDropdownOpen)}
+              className={`relative p-2 rounded-lg border transition-all ${
+                isAlertDropdownOpen 
+                  ? "bg-primary/10 border-primary/30 text-primary" 
+                  : "border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground"
+              }`}
+              title="Alertas Activas"
+            >
+              <Bell className="h-4 w-4" />
+              {state?.smartAlerts?.length > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-rose-500 text-[9px] font-black text-white ring-2 ring-background animate-pulse">
+                  {state.smartAlerts.length}
+                </span>
+              )}
+            </button>
+            {isAlertDropdownOpen && (
+              <div className="absolute right-0 mt-2 z-50 w-80 rounded-xl border border-border bg-card p-4 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="flex items-center justify-between border-b border-border/40 pb-2 mb-3">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                    Alertas Activas
+                  </h3>
+                  <button 
+                    onClick={() => setIsAlertDropdownOpen(false)}
+                    className="p-1 rounded hover:bg-muted text-muted-foreground"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+                <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+                  {state?.smartAlerts && state.smartAlerts.length > 0 ? (
+                    state.smartAlerts.map(alert => (
+                      <div key={alert.id} className={`p-2.5 rounded-lg border text-xs leading-relaxed ${alertToneClass(alert.severity)}`}>
+                        <div className="font-bold flex items-center justify-between gap-1">
+                          <span className="truncate">{alert.targetName}</span>
+                          <span className="text-[8px] uppercase tracking-widest">{alert.severity}</span>
+                        </div>
+                        <p className="mt-1 opacity-90">{alert.message}</p>
+                        {alert.recommendation && (
+                          <div className="mt-1 border-t border-current/10 pt-1 text-[10px] opacity-75">
+                            <span className="font-bold">Acción:</span> {alert.recommendation}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-muted-foreground text-center py-6">No hay alertas activas.</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="flex items-center gap-2 bg-background/50 border border-border/40 rounded-xl px-3 py-1.5 text-[10px] font-bold shadow-inner">
             <span className="text-muted-foreground">ESTADO:</span>
             <span className="text-foreground">{totalServers} Totales</span>
@@ -455,7 +587,7 @@ export default function ServicesTIDashboard() {
       </div>
     );
     return () => setPageHeader(null);
-  }, [setPageHeader, refreshing, totalServers, onlineServers, degradedServers, offlineServers]);
+  }, [setPageHeader, refreshing, totalServers, onlineServers, degradedServers, offlineServers, isAlertDropdownOpen, isGlobalChartOpen, state?.smartAlerts]);
 
   if (loading && !state) {
     return (
@@ -484,6 +616,7 @@ export default function ServicesTIDashboard() {
         }
       `}</style>
 
+      {/* Critical alerts banner */}
       {criticalAlerts.length > 0 && (
         <div className="relative overflow-hidden rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 flex items-center gap-4 animate-[pulse_3s_infinite]">
           <div 
@@ -503,47 +636,79 @@ export default function ServicesTIDashboard() {
         </div>
       )}
 
+      {/* Collapsible APM Premium Chart */}
+      {isGlobalChartOpen && (
+        <div className="rounded-xl border border-border bg-card/45 p-5 backdrop-blur-sm animate-in slide-in-from-top-4 duration-300 shadow-xl">
+          <div className="flex flex-col gap-2 border-b border-border/40 pb-3 mb-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-sm font-black text-foreground flex items-center gap-2 uppercase tracking-wide">
+                <TrendingUp className="h-4.5 w-4.5 text-primary" />
+                Historial Comparativo APM — Carga de CPU (%)
+              </h2>
+              <p className="text-xs text-muted-foreground">Métrica agregada comparativa de procesador en todos los nodos en línea.</p>
+            </div>
+            <button
+              onClick={() => setIsGlobalChartOpen(false)}
+              className="text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted p-1 rounded transition-colors"
+            >
+              Contraer
+            </button>
+          </div>
+
+          <div className="h-64 w-full">
+            {globalChartData.length >= 2 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={globalChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
+                  <XAxis dataKey="time" stroke="#94a3b8" fontSize={9} tickLine={false} />
+                  <YAxis stroke="#94a3b8" fontSize={9} domain={[0, 100]} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: "8px", fontSize: "11px" }}
+                    labelStyle={{ color: "#94a3b8", fontWeight: "bold" }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: "10px", paddingTop: "10px" }} />
+                  {state?.targets?.map((target, idx) => {
+                    if (!target.enabled || target.result?.status !== "online") return null;
+                    const colors = [
+                      "#34d399", "#38bdf8", "#fbbf24", "#a78bfa", 
+                      "#f472b6", "#fb7185", "#2dd4bf", "#60a5fa"
+                    ];
+                    const color = colors[idx % colors.length];
+                    return (
+                      <Line
+                        key={target.id}
+                        type="monotone"
+                        dataKey={target.name}
+                        stroke={color}
+                        strokeWidth={2}
+                        dot={false}
+                        activeDot={{ r: 4 }}
+                      />
+                    );
+                  })}
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-xs text-muted-foreground flex-col gap-2">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span>Recolectando historial de métricas... (Se requieren al menos 2 ciclos)</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 items-start">
         
-        {state?.smartAlerts && state.smartAlerts.length > 0 && (
-          <section className="lg:col-span-3 space-y-4 rounded-xl border border-border bg-card/35 p-4 backdrop-blur-sm">
-            <div className="flex items-center justify-between border-b border-border/40 pb-3">
-              <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-500" />
-                Alertas Activas
-              </h2>
-              <span className="rounded-full bg-border/50 text-[10px] px-2 py-0.5 font-bold text-foreground">
-                {state.smartAlerts.length}
-              </span>
-            </div>
-            
-            <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1">
-              {state.smartAlerts.slice(0, 8).map(alert => (
-                <div key={alert.id} className={`p-3 rounded-lg border flex flex-col gap-1.5 ${alertToneClass(alert.severity)}`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <strong className="text-[11px] font-bold uppercase truncate">{alert.targetName} &bull; {alert.title}</strong>
-                    <span className="text-[9px] uppercase tracking-wider opacity-85">{alert.severity}</span>
-                  </div>
-                  <p className="text-xs font-medium leading-relaxed opacity-95">{alert.message}</p>
-                  {alert.recommendation && (
-                    <div className="text-[10px] border-t border-current/10 pt-1.5 opacity-80">
-                      <span className="font-bold">Acción: </span>{alert.recommendation}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <div className={`${state?.smartAlerts && state.smartAlerts.length > 0 ? "lg:col-span-9" : "lg:col-span-12"} grid grid-cols-1 gap-5 2xl:grid-cols-3`}>
+        {/* Main Grid Category Columns */}
+        <div className="lg:col-span-12 grid grid-cols-1 gap-5 2xl:grid-cols-3">
           {categorizedGroups.map((group) => {
             const groupOnline = group.servers.filter(s => s.result?.status === "online").length;
             const groupTotal = group.servers.length;
             const isGroupOk = groupOnline === groupTotal;
 
             return (
-              <section key={group.id} className={`rounded-xl border bg-card/35 p-4 ${!isGroupOk ? "border-rose-500/20 bg-rose-500/5" : "border-border"}`}>
+              <section key={group.id} className={`rounded-xl border bg-card/35 p-4 ${!isGroupOk ? "border-rose-500/20 bg-rose-500/5 shadow-rose-950/5" : "border-border shadow-sm"}`}>
                 
                 <div className="mb-4 flex flex-col gap-3 border-b border-border/40 pb-4 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex min-w-0 items-center gap-3">
@@ -691,6 +856,7 @@ export default function ServicesTIDashboard() {
                               color={metrics?.disk?.usedPercent >= 90 ? "text-rose-400" : metrics?.disk?.usedPercent >= 75 ? "text-amber-400" : "text-emerald-400"}
                             />
                           </div>
+
                           {isExpanded && (
                             <div className="mt-4 border-t border-border/20 pt-3 space-y-3.5 animate-in fade-in duration-300">
                               <nav className="flex border-b border-border/25 text-xs font-bold">
