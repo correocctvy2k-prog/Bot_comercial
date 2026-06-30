@@ -335,16 +335,8 @@ export default function ServicesTIDashboard() {
         prevStatusesRef.current[id] = currentStatus;
       });
 
-      // Smart Alert popups
+      // Track alert IDs for deduplication (displayed via Skylab notification system)
       const currentAlertIds = (dashboardState.smartAlerts || []).map(a => a.id);
-      dashboardState.smartAlerts?.forEach(alert => {
-        if (alert.severity === "critical" && !prevAlertsRef.current.includes(alert.id)) {
-          toast.error(`Incidente Crítico en ${alert.targetName}: ${alert.title}`, {
-            description: alert.message,
-            duration: 8000
-          });
-        }
-      });
       prevAlertsRef.current = currentAlertIds;
 
       setHistory(prevHistory => {
