@@ -75,15 +75,34 @@ const alertToneClass = (severity) => {
   return "bg-sky-500/10 border-sky-500/20 text-sky-400";
 };
 
-const MiniStat = ({ icon, label, value, color = "text-foreground" }) => (
-  <div className="min-w-0 rounded-md border border-border/40 bg-background/35 px-2.5 py-2 shadow-sm">
-    <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground [&_svg]:h-4 [&_svg]:w-4">
-      {icon}
-      {label}
-    </p>
-    <p className={`mt-1 truncate text-xs font-bold ${color}`}>{value}</p>
-  </div>
-);
+const MiniStat = ({ icon, label, value, percent, color = "text-foreground" }) => {
+  const isPct = percent !== undefined && percent !== null && !isNaN(Number(percent));
+  const valPct = isPct ? Math.max(0, Math.min(100, Number(percent))) : 0;
+  
+  let barTone = "bg-emerald-400";
+  if (valPct >= 90) barTone = "bg-rose-500";
+  else if (valPct >= 75) barTone = "bg-amber-400";
+
+  return (
+    <div className="min-w-0 rounded-md border border-border/40 bg-background/35 px-2.5 py-1.5 shadow-sm flex flex-col justify-between min-h-[46px]">
+      <div className="flex items-center justify-between gap-1.5">
+        <p className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-muted-foreground [&_svg]:h-3.5 [&_svg]:w-3.5 truncate">
+          {icon}
+          {label}
+        </p>
+        <p className={`truncate text-xs font-black shrink-0 ${color}`}>{value}</p>
+      </div>
+      {isPct && (
+        <div className="w-full h-1 bg-background/80 rounded-full mt-1.5 overflow-hidden border border-border/10">
+          <div 
+            className={`h-full rounded-full ${barTone} transition-all duration-500`} 
+            style={{ width: `${valPct}%` }}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
 
 const HealthBadge = ({ label, ok, warn }) => {
   const cls = ok
@@ -1114,7 +1133,7 @@ export default function ServicesTIDashboard() {
                               : isExpanded 
                                 ? "border-primary/45 bg-card/60 shadow-lg"
                                 : "border-border/50 bg-background/45 hover:border-primary/30"
-                          } p-3.5 flex flex-col`}
+                          } p-3 flex flex-col`}
                         >
                           <header className="flex items-start justify-between gap-3 border-b border-border/10 pb-2">
                             <div className="min-w-0">
@@ -1177,24 +1196,22 @@ export default function ServicesTIDashboard() {
                           )}
 
                           {filesystems.length > 1 && (
-                            <div className="mt-2 p-2 rounded-lg bg-background/25 border border-border/15 flex flex-col gap-1 shadow-inner">
-                              <span className="text-[8px] font-black uppercase tracking-wider text-muted-foreground block mb-0.5">Almacenamiento (Unidades):</span>
-                              <div className="flex flex-wrap gap-x-2.5 gap-y-1">
-                                {filesystems.map((fs, idx) => {
-                                  const pct = Math.round(Number(fs.usedPercent || 0));
-                                  const color = pct >= 90 ? "text-rose-400 font-bold" : pct >= 75 ? "text-amber-400 font-bold" : "text-foreground/80";
-                                  return (
-                                    <span key={idx} className="text-[10px] font-semibold flex items-center gap-1">
-                                      <span className="text-muted-foreground">{fs.name || fs.mount}:</span>
-                                      <span className={color}>{pct}%</span>
-                                    </span>
-                                  );
-                                })}
-                              </div>
+                            <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] font-black leading-none">
+                              <span className="text-muted-foreground shrink-0 uppercase tracking-wider">Unidades:</span>
+                              {filesystems.map((fs, idx) => {
+                                const pct = Math.round(Number(fs.usedPercent || 0));
+                                const color = pct >= 90 ? "text-rose-400" : pct >= 75 ? "text-amber-400" : "text-foreground/80";
+                                return (
+                                  <span key={idx} className={`${color} flex items-center gap-0.5`}>
+                                    <span className="text-muted-foreground/60">{fs.name || fs.mount}:</span>
+                                    <span>{pct}%</span>
+                                  </span>
+                                );
+                              })}
                             </div>
                           )}
 
-                          <div className="grid grid-cols-2 gap-2 mt-3">
+                          <div className="grid grid-cols-2 gap-1.5 mt-2">
                             <MiniStat 
                               icon={<Clock className="h-3.5 w-3.5" />} 
                               label="Uptime" 
@@ -1204,18 +1221,21 @@ export default function ServicesTIDashboard() {
                               icon={<Cpu className="h-3.5 w-3.5" />} 
                               label="CPU" 
                               value={metrics?.cpu?.usagePercent !== undefined && metrics?.cpu?.usagePercent !== null ? `${Math.round(metrics.cpu.usagePercent)}%` : "N/D"} 
+                              percent={metrics?.cpu?.usagePercent}
                               color={metrics?.cpu?.usagePercent >= 90 ? "text-rose-400" : metrics?.cpu?.usagePercent >= 75 ? "text-amber-400" : "text-emerald-400"}
                             />
                             <MiniStat 
                               icon={<Layers className="h-3.5 w-3.5" />} 
                               label="RAM" 
                               value={metrics?.memory?.usedPercent !== undefined && metrics?.memory?.usedPercent !== null ? `${Math.round(metrics.memory.usedPercent)}%` : "N/D"} 
+                              percent={metrics?.memory?.usedPercent}
                               color={metrics?.memory?.usedPercent >= 90 ? "text-rose-400" : metrics?.memory?.usedPercent >= 75 ? "text-amber-400" : "text-emerald-400"}
                             />
                             <MiniStat 
                               icon={<HardDrive className="h-3.5 w-3.5" />} 
                               label={`Disco (${maxFs.name || maxFs.mount || "/"})`} 
                               value={maxFs.usedPercent !== undefined && maxFs.usedPercent !== null ? `${Math.round(maxFs.usedPercent)}%` : "N/D"} 
+                              percent={maxFs.usedPercent}
                               color={maxFs.usedPercent >= 90 ? "text-rose-400" : maxFs.usedPercent >= 75 ? "text-amber-400" : "text-emerald-400"}
                             />
                           </div>
