@@ -241,7 +241,7 @@ export default function ServicesTIDashboard() {
       });
     } catch (error) {
       console.error(error);
-      toast.error("Error al conectar con el servidor de monitoreo");
+      toast.error("Error de conexión", { description: "No se pudo obtener datos del backend de monitoreo TI.", duration: 6000 });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -427,11 +427,11 @@ export default function ServicesTIDashboard() {
       setTimeout(async () => {
         await loadState();
         toast.dismiss(toastId);
-        toast.success("Monitoreo actualizado");
+        toast.success("Monitoreo actualizado", { description: "Barrido secuencial completado en todos los servidores." });
       }, 5000);
     } catch (error) {
       toast.dismiss(toastId);
-      toast.error("Error al iniciar el escaneo");
+      toast.error("Escaneo fallido", { description: "No se pudo iniciar el barrido secuencial de servidores.", duration: 5000 });
       setRefreshing(false);
     }
   };
@@ -443,7 +443,7 @@ export default function ServicesTIDashboard() {
       const data = await servicesTIService.getAnalysis();
       setAnalysisData(data);
     } catch (error) {
-      toast.error("No se pudo obtener el análisis avanzado");
+      toast.error("Error en Análisis", { description: "No se pudo conectar con el endpoint de análisis avanzado.", duration: 5000 });
       setIsAnalysisModalOpen(false);
     } finally {
       setLoadingAnalysis(false);
@@ -636,64 +636,154 @@ export default function ServicesTIDashboard() {
         </div>
       )}
 
+
       {/* Collapsible APM Premium Chart */}
       {isGlobalChartOpen && (
         <div className="rounded-xl border border-border bg-card/45 p-5 backdrop-blur-sm animate-in slide-in-from-top-4 duration-300 shadow-xl">
-          <div className="flex flex-col gap-2 border-b border-border/40 pb-3 mb-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-2 border-b border-border/40 pb-3 mb-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-sm font-black text-foreground flex items-center gap-2 uppercase tracking-wide">
-                <TrendingUp className="h-4.5 w-4.5 text-primary" />
-                Historial Comparativo APM — Carga de CPU (%)
+              <h2 className="text-sm font-black text-foreground flex items-center gap-2 uppercase tracking-widest">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                Monitor APM - Carga Comparativa CPU/RAM
               </h2>
-              <p className="text-xs text-muted-foreground">Métrica agregada comparativa de procesador en todos los nodos en línea.</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Historial en tiempo real de todos los nodos activos. Actualiza cada minuto.</p>
             </div>
             <button
               onClick={() => setIsGlobalChartOpen(false)}
-              className="text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted p-1 rounded transition-colors"
+              className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted px-2.5 py-1.5 rounded-lg transition-colors border border-border/40"
             >
+              <ChevronUp size={12} />
               Contraer
             </button>
           </div>
 
-          <div className="h-64 w-full">
-            {globalChartData.length >= 2 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={globalChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-                  <XAxis dataKey="time" stroke="#94a3b8" fontSize={9} tickLine={false} />
-                  <YAxis stroke="#94a3b8" fontSize={9} domain={[0, 100]} tickLine={false} />
-                  <Tooltip
-                    contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: "8px", fontSize: "11px" }}
-                    labelStyle={{ color: "#94a3b8", fontWeight: "bold" }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: "10px", paddingTop: "10px" }} />
-                  {state?.targets?.map((target, idx) => {
-                    if (!target.enabled || target.result?.status !== "online") return null;
-                    const colors = [
-                      "#34d399", "#38bdf8", "#fbbf24", "#a78bfa", 
-                      "#f472b6", "#fb7185", "#2dd4bf", "#60a5fa"
-                    ];
-                    const color = colors[idx % colors.length];
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+            <div className="xl:col-span-2 space-y-3">
+              <div className="rounded-xl border border-border/30 bg-background/40 p-3.5 shadow-inner">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
+                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">CPU por servidor (%)</span>
+                  </div>
+                </div>
+                <div className="h-48">
+                  {globalChartData.length >= 2 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={globalChartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                        <defs>
+                          {state && state.targets && state.targets.map((target, idx) => {
+                            if (!target.enabled || target.result?.status !== "online") return null;
+                            const colors = ["#34d399","#38bdf8","#fbbf24","#a78bfa","#f472b6","#fb7185","#2dd4bf","#60a5fa"];
+                            const color = colors[idx % colors.length];
+                            return (
+                              <linearGradient key={target.id} id={`apm-grad-${target.id}`} x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={color} stopOpacity={0.2}/>
+                                <stop offset="95%" stopColor={color} stopOpacity={0}/>
+                              </linearGradient>
+                            );
+                          })}
+                        </defs>
+                        <CartesianGrid strokeDasharray="2 4" stroke="#1e293b" vertical={false} />
+                        <XAxis dataKey="time" stroke="#475569" fontSize={8} tickLine={false} axisLine={false} tick={{ fill: "#64748b" }} />
+                        <YAxis stroke="#475569" fontSize={8} domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fill: "#64748b" }} tickFormatter={(v) => `${v}%`} />
+                        <Tooltip
+                          contentStyle={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: "10px", fontSize: "11px", boxShadow: "0 20px 40px rgba(0,0,0,0.5)" }}
+                          labelStyle={{ color: "#94a3b8", fontWeight: "900", textTransform: "uppercase", letterSpacing: "0.05em", fontSize: "9px", marginBottom: "6px" }}
+                          itemStyle={{ color: "#e2e8f0", fontWeight: "700" }}
+                          formatter={(value, name) => [`${Number(value).toFixed(1)}%`, name]}
+                        />
+                        {state && state.targets && state.targets.map((target, idx) => {
+                          if (!target.enabled || target.result?.status !== "online") return null;
+                          const colors = ["#34d399","#38bdf8","#fbbf24","#a78bfa","#f472b6","#fb7185","#2dd4bf","#60a5fa"];
+                          const color = colors[idx % colors.length];
+                          return (
+                            <Area
+                              key={target.id}
+                              type="monotone"
+                              dataKey={target.name}
+                              stroke={color}
+                              strokeWidth={2}
+                              fillOpacity={1}
+                              fill={`url(#apm-grad-${target.id})`}
+                              dot={false}
+                              activeDot={{ r: 5, strokeWidth: 2, stroke: "#0f172a" }}
+                            />
+                          );
+                        })}
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-xs text-muted-foreground flex-col gap-3">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest">Recolectando metricas... aguarda al menos 2 ciclos</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {state && state.targets && state.targets.map((target, idx) => {
+                  if (!target.enabled || target.result?.status !== "online") return null;
+                  const colors = ["#34d399","#38bdf8","#fbbf24","#a78bfa","#f472b6","#fb7185","#2dd4bf","#60a5fa"];
+                  const color = colors[idx % colors.length];
+                  return (
+                    <div key={target.id} className="flex items-center gap-1.5 rounded-full border border-border/30 bg-background/50 px-2.5 py-1">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color, boxShadow: `0 0 6px ${color}60` }} />
+                      <span className="text-[9px] font-black text-foreground uppercase tracking-wide truncate max-w-[100px]">{target.name}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border/30 pb-2 flex items-center gap-1.5">
+                <Activity className="h-3.5 w-3.5 text-primary" />
+                Snapshot Actual - CPU y RAM
+              </p>
+              <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+                {state && state.targets && state.targets
+                  .filter(t => t.enabled && t.result && t.result.status === "online" && t.result.metrics)
+                  .sort((a, b) => (b.result.metrics.cpu && b.result.metrics.cpu.usagePercent || 0) - (a.result.metrics.cpu && a.result.metrics.cpu.usagePercent || 0))
+                  .map((target, idx) => {
+                    const cpu = Math.round((target.result.metrics.cpu && target.result.metrics.cpu.usagePercent) || 0);
+                    const ram = Math.round((target.result.metrics.memory && target.result.metrics.memory.usedPercent) || 0);
+                    const colors = ["#34d399","#38bdf8","#fbbf24","#a78bfa","#f472b6","#fb7185","#2dd4bf","#60a5fa"];
+                    const origIdx = state.targets.indexOf(target);
+                    const color = colors[origIdx % colors.length];
+                    const cpuTone = cpu >= 90 ? "#fb7185" : cpu >= 75 ? "#fbbf24" : color;
+                    const ramTone = ram >= 90 ? "#fb7185" : ram >= 75 ? "#fbbf24" : "#38bdf8";
+
                     return (
-                      <Line
-                        key={target.id}
-                        type="monotone"
-                        dataKey={target.name}
-                        stroke={color}
-                        strokeWidth={2}
-                        dot={false}
-                        activeDot={{ r: 4 }}
-                      />
+                      <div key={target.id} className="rounded-lg bg-background/40 border border-border/20 p-2.5 space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
+                            <span className="text-[10px] font-black text-foreground truncate">{target.name}</span>
+                          </div>
+                          <span className="text-[9px] text-muted-foreground font-bold shrink-0">{(target.result.tcp && target.result.tcp.latencyMs) || "-"}ms</span>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[8px] font-black text-muted-foreground uppercase w-8 shrink-0">CPU</span>
+                            <div className="flex-1 h-1.5 bg-background/80 rounded-full overflow-hidden border border-border/20">
+                              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${cpu}%`, background: cpuTone, boxShadow: `0 0 6px ${cpuTone}50` }} />
+                            </div>
+                            <span className="text-[9px] font-black w-7 text-right" style={{ color: cpuTone }}>{cpu}%</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[8px] font-black text-muted-foreground uppercase w-8 shrink-0">RAM</span>
+                            <div className="flex-1 h-1.5 bg-background/80 rounded-full overflow-hidden border border-border/20">
+                              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${ram}%`, background: ramTone, boxShadow: `0 0 6px ${ramTone}50` }} />
+                            </div>
+                            <span className="text-[9px] font-black w-7 text-right" style={{ color: ramTone }}>{ram}%</span>
+                          </div>
+                        </div>
+                      </div>
                     );
                   })}
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-xs text-muted-foreground flex-col gap-2">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                <span>Recolectando historial de métricas... (Se requieren al menos 2 ciclos)</span>
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}
@@ -1446,3 +1536,4 @@ export default function ServicesTIDashboard() {
     </div>
   );
 }
+
