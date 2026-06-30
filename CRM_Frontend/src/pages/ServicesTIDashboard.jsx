@@ -55,6 +55,19 @@ const formatContainerUptime = (statusText = "") => {
   if (/Up\s+\d+\s+minutes?/i.test(text) || /Up\s+Less than/i.test(text)) return "0 días";
   return text || "N/A";
 };
+// Helper to mask IP addresses for privacy
+const maskHost = (host) => {
+  if (!host) return "";
+  const ipRegex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+  if (ipRegex.test(host)) {
+    return host.replace(ipRegex, "$1.***.***.$4");
+  }
+  if (host.length > 8) {
+    return host.slice(0, 4) + "..." + host.slice(-3);
+  }
+  return host;
+};
+
 
 const alertToneClass = (severity) => {
   if (severity === "critical" || severity === "high") return "bg-rose-500/10 border-rose-500/20 text-rose-400";
@@ -240,6 +253,7 @@ export default function ServicesTIDashboard() {
   const [skylabNotifVisible, setSkylabNotifVisible] = useState(false);
   const prevStatusesRef = useRef({});
   const prevAlertsRef = useRef([]);
+  const lastNotificationTimeRef = useRef(0);
 
   const [layoutOrder, setLayoutOrder] = useState(() => {
     try {
@@ -718,22 +732,21 @@ export default function ServicesTIDashboard() {
         }
       `}</style>
 
-      {/* Critical alerts banner */}
+      {/* Critical alerts compact side strip */}
       {criticalAlerts.length > 0 && (
-        <div className="relative overflow-hidden rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 flex items-center gap-4 animate-[pulse_3s_infinite]">
-          <div 
-            className="w-3.5 h-3.5 bg-rose-500 rounded-full shrink-0 shadow-[0_0_14px_rgba(244,63,94,0.9)]" 
-            style={{ animation: "breathe-red 2s ease-in-out infinite" }}
-          />
-          <div className="flex-1 min-w-0">
-            <span className="text-[10px] font-black uppercase tracking-widest text-rose-500 block">Incidente Crítico</span>
-            <strong className="text-sm font-bold text-foreground truncate block mt-0.5">
-              {criticalAlerts[0].targetName} &bull; {criticalAlerts[0].title}
-            </strong>
-            <p className="text-xs text-muted-foreground mt-0.5">{criticalAlerts[0].message}</p>
-          </div>
-          <div className="text-xs font-black bg-rose-500/20 text-rose-400 px-3 py-1.5 rounded-lg border border-rose-500/20">
-            {criticalAlerts.length} Fallas
+        <div className="flex justify-end mb-3">
+          <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/8 px-3 py-1.5 shadow-lg shadow-rose-950/20 max-w-sm">
+            <div
+              className="w-2 h-2 rounded-full bg-rose-500 shrink-0"
+              style={{ animation: "breathe-red 2s ease-in-out infinite" }}
+            />
+            <div className="min-w-0">
+              <span className="text-[9px] font-black uppercase tracking-widest text-rose-400">Incidente Critico</span>
+              <p className="text-[11px] font-bold text-foreground truncate">{criticalAlerts[0].targetName} &bull; {criticalAlerts[0].message}</p>
+            </div>
+            <span className="ml-1 shrink-0 rounded-lg bg-rose-500/20 border border-rose-500/30 px-2 py-0.5 text-[10px] font-black text-rose-300">
+              {criticalAlerts.length}
+            </span>
           </div>
         </div>
       )}
@@ -840,11 +853,11 @@ export default function ServicesTIDashboard() {
 
             <div className="space-y-3">
               <div className="flex items-center justify-between border-b border-border/30 pb-2.5">
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                  <Activity className="h-3.5 w-3.5 text-primary" />
+                <p className="text-sm font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary" />
                   Ranking de Recursos
                 </p>
-                <span className="text-[9px] font-bold text-muted-foreground bg-background/50 border border-border/30 rounded px-1.5 py-0.5">
+                <span className="text-[11px] font-black text-muted-foreground bg-background/50 border border-border/30 rounded px-2.5 py-0.5">
                   CPU desc
                 </span>
               </div>
@@ -870,40 +883,40 @@ export default function ServicesTIDashboard() {
 
                     return (
                       <div key={target.id} className="rounded-xl bg-background/40 border border-border/20 p-3 space-y-2.5 hover:border-border/50 transition-colors">
-                        <div className="flex items-center gap-2.5">
-                          <span className={`shrink-0 w-5 h-5 rounded-full border text-[9px] font-black flex items-center justify-center ${rankMedal}`}>
+                        <div className="flex items-center gap-3">
+                          <span className={`shrink-0 w-6.5 h-6.5 rounded-full border text-[11px] font-black flex items-center justify-center ${rankMedal}`}>
                             {rankIdx + 1}
                           </span>
-                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                            <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm" style={{ background: color, boxShadow: `0 0 6px ${color}80` }} />
-                            <span className="text-[11px] font-black text-foreground truncate">{target.name}</span>
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <span className="w-3.5 h-3.5 rounded-full shrink-0 shadow-sm animate-pulse" style={{ background: color, boxShadow: `0 0 8px ${color}80` }} />
+                            <span className="text-sm font-black text-foreground truncate">{target.name}</span>
                           </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <span className="text-[9px] text-muted-foreground font-bold">{latency}</span>
-                            <span className={`w-1.5 h-1.5 rounded-full ${cpu >= 75 || ram >= 75 ? "bg-amber-400 animate-pulse" : "bg-emerald-400"}`} />
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[11px] text-muted-foreground font-bold">{latency}</span>
+                            <span className={`w-2 h-2 rounded-full ${cpu >= 75 || ram >= 75 ? "bg-amber-400 animate-pulse" : "bg-emerald-400"}`} />
                           </div>
                         </div>
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-2.5">
-                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wide w-9 shrink-0">CPU</span>
-                            <div className="flex-1 h-2 bg-background/80 rounded-full overflow-hidden border border-border/20">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-3">
+                            <span className="text-[11px] font-black text-muted-foreground uppercase tracking-wide w-10 shrink-0">CPU</span>
+                            <div className="flex-1 h-2.5 bg-background/80 rounded-full overflow-hidden border border-border/20">
                               <div className="h-full rounded-full transition-all duration-700" style={{ width: `${cpu}%`, background: `linear-gradient(90deg, ${cpuTone}99, ${cpuTone})`, boxShadow: `0 0 8px ${cpuTone}60` }} />
                             </div>
-                            <span className="text-[10px] font-black w-8 text-right shrink-0" style={{ color: cpuTone }}>{cpu}%</span>
+                            <span className="text-[13px] font-black w-10 text-right shrink-0" style={{ color: cpuTone }}>{cpu}%</span>
                           </div>
-                          <div className="flex items-center gap-2.5">
-                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wide w-9 shrink-0">RAM</span>
-                            <div className="flex-1 h-2 bg-background/80 rounded-full overflow-hidden border border-border/20">
+                          <div className="flex items-center gap-3">
+                            <span className="text-[11px] font-black text-muted-foreground uppercase tracking-wide w-10 shrink-0">RAM</span>
+                            <div className="flex-1 h-2.5 bg-background/80 rounded-full overflow-hidden border border-border/20">
                               <div className="h-full rounded-full transition-all duration-700" style={{ width: `${ram}%`, background: `linear-gradient(90deg, ${ramTone}99, ${ramTone})`, boxShadow: `0 0 8px ${ramTone}60` }} />
                             </div>
-                            <span className="text-[10px] font-black w-8 text-right shrink-0" style={{ color: ramTone }}>{ram}%</span>
+                            <span className="text-[13px] font-black w-10 text-right shrink-0" style={{ color: ramTone }}>{ram}%</span>
                           </div>
-                          <div className="flex items-center gap-2.5">
-                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wide w-9 shrink-0">DISK</span>
-                            <div className="flex-1 h-2 bg-background/80 rounded-full overflow-hidden border border-border/20">
+                          <div className="flex items-center gap-3">
+                            <span className="text-[11px] font-black text-muted-foreground uppercase tracking-wide w-10 shrink-0">DISK</span>
+                            <div className="flex-1 h-2.5 bg-background/80 rounded-full overflow-hidden border border-border/20">
                               <div className="h-full rounded-full transition-all duration-700" style={{ width: `${disk}%`, background: `linear-gradient(90deg, ${diskTone}99, ${diskTone})`, boxShadow: `0 0 8px ${diskTone}60` }} />
                             </div>
-                            <span className="text-[10px] font-black w-8 text-right shrink-0" style={{ color: diskTone }}>{disk}%</span>
+                            <span className="text-[13px] font-black w-10 text-right shrink-0" style={{ color: diskTone }}>{disk}%</span>
                           </div>
                         </div>
                       </div>
@@ -974,6 +987,8 @@ export default function ServicesTIDashboard() {
                       const highUsageFilesystems = filesystems.filter(fs => Number(fs.usedPercent || 0) >= 80);
                       const hasDiskWarning = highUsageFilesystems.length > 0;
                       const alerts = res?.alerts || [];
+                      // Find partition with maximum disk usage
+                      const maxFs = filesystems.reduce((max, fs) => (Number(fs.usedPercent || 0) > Number(max.usedPercent || 0) ? fs : max), { name: "/", usedPercent: metrics?.disk?.usedPercent || 0 });
 
                       const pingColor = status === "online" 
                         ? "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.7)]" 
@@ -1007,7 +1022,7 @@ export default function ServicesTIDashboard() {
                                 )}
                               </div>
                               <p className="text-[10px] text-muted-foreground truncate uppercase font-bold tracking-wider mt-0.5">
-                                {target.host}:{target.port} &bull; {target.type === "linux" ? "SSH" : "TCP"}
+                                {maskHost(target.host)}:{target.port} &bull; {target.type === "linux" ? "SSH" : "TCP"}
                               </p>
                             </div>
 
@@ -1054,6 +1069,24 @@ export default function ServicesTIDashboard() {
                             </div>
                           )}
 
+                          {filesystems.length > 1 && (
+                            <div className="mt-2 p-2 rounded-lg bg-background/25 border border-border/15 flex flex-col gap-1 shadow-inner">
+                              <span className="text-[8px] font-black uppercase tracking-wider text-muted-foreground block mb-0.5">Almacenamiento (Unidades):</span>
+                              <div className="flex flex-wrap gap-x-2.5 gap-y-1">
+                                {filesystems.map((fs, idx) => {
+                                  const pct = Math.round(Number(fs.usedPercent || 0));
+                                  const color = pct >= 90 ? "text-rose-400 font-bold" : pct >= 75 ? "text-amber-400 font-bold" : "text-foreground/80";
+                                  return (
+                                    <span key={idx} className="text-[10px] font-semibold flex items-center gap-1">
+                                      <span className="text-muted-foreground">{fs.name || fs.mount}:</span>
+                                      <span className={color}>{pct}%</span>
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
                           <div className="grid grid-cols-2 gap-2 mt-3">
                             <MiniStat 
                               icon={<Clock className="h-3.5 w-3.5" />} 
@@ -1074,9 +1107,9 @@ export default function ServicesTIDashboard() {
                             />
                             <MiniStat 
                               icon={<HardDrive className="h-3.5 w-3.5" />} 
-                              label="Disco /" 
-                              value={metrics?.disk?.usedPercent !== undefined && metrics?.disk?.usedPercent !== null ? `${Math.round(metrics.disk.usedPercent)}%` : "N/D"} 
-                              color={metrics?.disk?.usedPercent >= 90 ? "text-rose-400" : metrics?.disk?.usedPercent >= 75 ? "text-amber-400" : "text-emerald-400"}
+                              label={`Disco (${maxFs.name || maxFs.mount || "/"})`} 
+                              value={maxFs.usedPercent !== undefined && maxFs.usedPercent !== null ? `${Math.round(maxFs.usedPercent)}%` : "N/D"} 
+                              color={maxFs.usedPercent >= 90 ? "text-rose-400" : maxFs.usedPercent >= 75 ? "text-amber-400" : "text-emerald-400"}
                             />
                           </div>
 
