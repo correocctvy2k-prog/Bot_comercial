@@ -293,12 +293,6 @@ export default function ServicesTIDashboard() {
             setSkylabNotifVisible(true);
             setTimeout(() => setSkylabNotifVisible(false), 7000);
           }
-        } (${target.host})`);
-          } else if (currentStatus === "online" && prevStatus === "offline") {
-            toast.success(`Servidor restablecido: ${target.name} (${target.host})`);
-          } else if (currentStatus === "degraded" && prevStatus === "online") {
-            toast.warning(`Servidor degradado (SSH falló): ${target.name}`);
-          }
         }
         prevStatusesRef.current[id] = currentStatus;
       });
