@@ -254,6 +254,8 @@ export default function ServicesTIDashboard() {
   const prevStatusesRef = useRef({});
   const prevAlertsRef = useRef([]);
   const lastNotificationTimeRef = useRef(0);
+  const [rankChanges, setRankChanges] = useState({});
+  const lastRankOrderRef = useRef([]);
 
   const [layoutOrder, setLayoutOrder] = useState(() => {
     try {
@@ -360,6 +362,93 @@ export default function ServicesTIDashboard() {
     const interval = setInterval(() => loadState(), 60000);
     return () => clearInterval(interval);
   }, []);
+  // Detect rank change up transitions to play animations
+  useEffect(() => {
+    if (!state?.targets) return;
+    const currentSortedIds = state.targets
+      .filter(t => t.enabled && t.result?.status === "online" && t.result?.metrics)
+      .sort((a, b) => (b.result?.metrics?.cpu?.usagePercent || 0) - (a.result?.metrics?.cpu?.usagePercent || 0))
+      .map(t => t.id);
+
+    if (lastRankOrderRef.current.length > 0) {
+      const newChanges = {};
+      let hasChanges = false;
+      currentSortedIds.forEach((id, currentIdx) => {
+        const prevIdx = lastRankOrderRef.current.indexOf(id);
+        if (prevIdx !== -1 && currentIdx < prevIdx) {
+          newChanges[id] = true;
+          hasChanges = true;
+        }
+      });
+      if (hasChanges) {
+        setRankChanges(newChanges);
+        const timer = setTimeout(() => setRankChanges({}), 4000);
+        return () => clearTimeout(timer);
+      }
+    }
+    lastRankOrderRef.current = currentSortedIds;
+  }, [state?.targets]);
+
+  // Periodic Auto-Notification trigger loop (Deploy notifications automatically)
+  useEffect(() => {
+    if (!state) return;
+
+    const showPeriodicAlert = () => {
+      const activeAlerts = state.smartAlerts || [];
+      if (activeAlerts.length > 0) {
+        // Pick a random active smart alert to display
+        const alert = activeAlerts[Math.floor(Math.random() * activeAlerts.length)];
+        let tone = "info";
+        if (alert.severity === "critical" || alert.severity === "high") tone = "critical";
+        else if (alert.severity === "medium") tone = "warning";
+
+        setSkylabNotification({
+          tone,
+          title: `${alert.targetName} — Novedad activa`,
+          body: alert.message,
+          actions: alert.recommendation ? [alert.recommendation] : ["Revisar panel de APM y logs"]
+        });
+      } else {
+        // Summarize overall cluster health if everything is fine
+        const online = state.targets?.filter(t => t.result?.status === "online").length || 0;
+        const total = state.targets?.length || 0;
+        setSkylabNotification({
+          tone: "success",
+          title: "Sistemas estables",
+          body: `${online} de ${total} servidores base reportando conexion OK sin alertas activas.`,
+          actions: ["Monitoreo secuencial en tiempo real", "Memoria vectorial KM sincronizada"]
+        });
+      }
+      setSkylabNotifVisible(true);
+      
+      // Play brief notification sound
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.01, audioCtx.currentTime);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.12);
+      } catch (e) {}
+
+      setTimeout(() => setSkylabNotifVisible(false), 9000);
+    };
+
+    // Trigger first popup 4 seconds after page load
+    const startTimer = setTimeout(showPeriodicAlert, 4000);
+    // Trigger periodically every 3 minutes (180000ms)
+    const loopInterval = setInterval(showPeriodicAlert, 180000);
+
+    return () => {
+      clearTimeout(startTimer);
+      clearInterval(loopInterval);
+    };
+  }, [state]);
+
 
   const handleMove = (id, direction) => {
     if (!state) return;
@@ -730,6 +819,14 @@ export default function ServicesTIDashboard() {
           0%, 100% { opacity: 1; filter: brightness(1.2) drop-shadow(0 0 12px rgba(244,63,94,0.9)); }
           50% { opacity: 0.45; filter: brightness(0.7) drop-shadow(0 0 5px rgba(244,63,94,0.5)); }
         }
+        @keyframes rank-up-glow {
+          0% { border-color: rgba(52, 211, 153, 0.3); box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.4); transform: translateY(0) scale(1); }
+          30% { border-color: rgba(52, 211, 153, 0.9); box-shadow: 0 0 14px 4px rgba(52, 211, 153, 0.35); transform: translateY(-4px) scale(1.025); }
+          100% { border-color: rgba(255, 255, 255, 0.1); box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); transform: translateY(0) scale(1); }
+        }
+        .animate-rank-up {
+          animation: rank-up-glow 2.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
       `}</style>
 
       {/* Critical alerts compact side strip */}
@@ -880,11 +977,12 @@ export default function ServicesTIDashboard() {
                                       rankIdx === 2 ? "bg-orange-700/15 text-orange-400 border-orange-700/30" :
                                       "bg-background/40 text-muted-foreground border-border/20";
                     const latency = (target.result.tcp && target.result.tcp.latencyMs) ? `${target.result.tcp.latencyMs}ms` : "-";
+                    const isRankUp = rankChanges[target.id];
 
                     return (
-                      <div key={target.id} className="rounded-xl bg-background/40 border border-border/20 p-3 space-y-2.5 hover:border-border/50 transition-colors">
+                      <div key={target.id} className={`rounded-xl bg-background/40 border p-3 space-y-2.5 hover:border-border/50 transition-all duration-300 ${isRankUp ? "animate-rank-up border-emerald-500/50 bg-emerald-950/5" : "border-border/20"}`}>
                         <div className="flex items-center gap-3">
-                          <span className={`shrink-0 w-6.5 h-6.5 rounded-full border text-[11px] font-black flex items-center justify-center ${rankMedal}`}>
+                          <span className={`shrink-0 w-8.5 h-8.5 rounded-full border text-xs font-black flex items-center justify-center ${rankMedal}`}>
                             {rankIdx + 1}
                           </span>
                           <div className="flex items-center gap-2 min-w-0 flex-1">
