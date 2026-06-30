@@ -32,6 +32,7 @@ import {
 import { ResponsiveContainer, AreaChart, Area, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 import { toast } from "sonner";
 import { servicesTIService } from "@/services/servicesTI.service";
+import SkylabBot from "@/components/SkylabBot";
 import { PageHeaderContext } from "@/layout/Layout";
 
 const formatUptimeDays = (raw) => {
@@ -136,6 +137,90 @@ const CircleGauge = ({ label, value }) => {
   );
 };
 
+
+// ---- Skylab Notification Component ----
+const SkylabNotification = ({ notification, visible, onClose }) => {
+  if (!notification) return null;
+
+  const toneConfig = {
+    success: {
+      badge: "border-emerald-400/35 bg-emerald-400/10 text-emerald-300",
+      dot: "bg-emerald-400",
+      rail: "from-emerald-400/80 via-yellow-300/70 to-transparent"
+    },
+    info: {
+      badge: "border-sky-400/35 bg-sky-400/10 text-sky-300",
+      dot: "bg-sky-400",
+      rail: "from-sky-400/80 via-yellow-300/70 to-transparent"
+    },
+    warning: {
+      badge: "border-yellow-300/45 bg-yellow-300/10 text-yellow-200",
+      dot: "bg-yellow-300",
+      rail: "from-yellow-300/90 via-amber-400/70 to-transparent"
+    },
+    critical: {
+      badge: "border-rose-400/45 bg-rose-500/10 text-rose-200",
+      dot: "bg-rose-400",
+      rail: "from-rose-400/90 via-yellow-300/70 to-transparent"
+    }
+  };
+  const currentTone = toneConfig[notification.tone] || toneConfig.info;
+
+  const badgeLabel = {
+    success: "En linea",
+    info: "Observacion",
+    warning: "Atencion",
+    critical: "Alerta Critica"
+  }[notification.tone] || "Informacion";
+
+  return (
+    <div
+      className={`fixed bottom-6 right-6 z-[999] w-[min(440px,calc(100vw-2rem))] transition-all duration-700 ease-out ${
+        visible ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0 pointer-events-none"
+      }`}
+    >
+      <div className="relative overflow-hidden rounded-xl border border-yellow-300/20 bg-[#07101d]/95 p-4 shadow-2xl shadow-black/40 backdrop-blur-xl">
+        <div className={`absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r ${currentTone.rail}`} />
+        <div className="flex items-start gap-3.5">
+          <div className="relative mt-0.5 shrink-0 rounded-xl border border-slate-700/80 bg-slate-950/70 p-2.5 text-blue-400">
+            <SkylabBot size={34} className="text-blue-400" />
+            <span className={`absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border border-[#07101d] ${currentTone.dot} animate-pulse`} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="mb-2 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <span className="block text-[10px] font-black uppercase tracking-[0.18em] text-yellow-200/80">Skylab Monitor</span>
+                <span className={`mt-1 inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${currentTone.badge}`}>
+                  {badgeLabel}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-md p-1 text-slate-500 transition-colors hover:bg-white/10 hover:text-slate-100"
+              >
+                <XCircle className="h-4 w-4" />
+              </button>
+            </div>
+            <h3 className="text-[15px] font-black leading-snug text-slate-50">{notification.title}</h3>
+            <p className="mt-1.5 text-[12px] leading-5 text-slate-300">{notification.body}</p>
+            {notification.actions && notification.actions.length > 0 && (
+              <div className="mt-3 space-y-1.5 border-t border-yellow-300/10 pt-2.5">
+                {notification.actions.map((action, idx) => (
+                  <p key={idx} className="flex items-start gap-2 text-[11px] font-semibold leading-4 text-slate-400">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-yellow-300/80" />
+                    {action}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function ServicesTIDashboard() {
   const setPageHeader = useContext(PageHeaderContext);
 
@@ -151,6 +236,8 @@ export default function ServicesTIDashboard() {
   const [isAlertDropdownOpen, setIsAlertDropdownOpen] = useState(false);
   const [isGlobalChartOpen, setIsGlobalChartOpen] = useState(false);
 
+  const [skylabNotification, setSkylabNotification] = useState(null);
+  const [skylabNotifVisible, setSkylabNotifVisible] = useState(false);
   const prevStatusesRef = useRef({});
   const prevAlertsRef = useRef([]);
 
@@ -194,7 +281,19 @@ export default function ServicesTIDashboard() {
 
         if (prevStatus && prevStatus !== currentStatus && target.enabled) {
           if (currentStatus === "offline") {
-            toast.error(`¡Alerta! Servidor offline: ${target.name} (${target.host})`);
+            setSkylabNotification({ tone: "critical", title: `${target.name} — Sin respuesta`, body: `${target.host} no responde al barrido de red SSH/TCP. Verificar conectividad.`, actions: ["Verificar estado de red y firewall", "Revisar logs del servidor"] });
+            setSkylabNotifVisible(true);
+            setTimeout(() => setSkylabNotifVisible(false), 8000);
+          } else if (currentStatus === "online" && prevStatus === "offline") {
+            setSkylabNotification({ tone: "success", title: `${target.name} — Restablecido`, body: `${target.host} volvio a responder correctamente.`, actions: [] });
+            setSkylabNotifVisible(true);
+            setTimeout(() => setSkylabNotifVisible(false), 6000);
+          } else if (currentStatus === "degraded" && prevStatus === "online") {
+            setSkylabNotification({ tone: "warning", title: `${target.name} — SSH degradado`, body: `TCP responde pero SSH fallo. Metricas no disponibles hasta la proxima actualizacion.`, actions: ["Revisar credenciales SSH del servidor"] });
+            setSkylabNotifVisible(true);
+            setTimeout(() => setSkylabNotifVisible(false), 7000);
+          }
+        } (${target.host})`);
           } else if (currentStatus === "online" && prevStatus === "offline") {
             toast.success(`Servidor restablecido: ${target.name} (${target.host})`);
           } else if (currentStatus === "degraded" && prevStatus === "online") {
@@ -540,22 +639,31 @@ export default function ServicesTIDashboard() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 bg-background/50 border border-border/40 rounded-xl px-3 py-1.5 text-[10px] font-bold shadow-inner">
-            <span className="text-muted-foreground">ESTADO:</span>
-            <span className="text-foreground">{totalServers} Totales</span>
-            <span className="h-3 w-px bg-border/80" />
-            <span className="text-emerald-400">{onlineServers} Online</span>
+          {/* Premium status bar */}
+          <div className="flex items-center gap-1.5 rounded-xl border border-border/40 bg-background/60 px-3.5 py-2 shadow-inner backdrop-blur-sm">
+            <div className="flex items-center gap-1.5 pr-2.5 border-r border-border/40">
+              <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Nodos</span>
+              <span className="text-sm font-black text-foreground">{totalServers}</span>
+            </div>
+            <div className="flex items-center gap-1.5 pl-1.5 pr-2.5 border-r border-border/40">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
+              <span className="text-[11px] font-black text-emerald-400">{onlineServers}</span>
+            </div>
             {degradedServers > 0 && (
-              <>
-                <span className="h-3 w-px bg-border/80" />
-                <span className="text-amber-400">{degradedServers} Degradados</span>
-              </>
+              <div className="flex items-center gap-1.5 pl-1.5 pr-2.5 border-r border-border/40">
+                <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.7)]" />
+                <span className="text-[11px] font-black text-amber-400">{degradedServers}</span>
+              </div>
             )}
-            {offlineServers > 0 && (
-              <>
-                <span className="h-3 w-px bg-border/80" />
-                <span className="text-rose-400">{offlineServers} Offline</span>
-              </>
+            {offlineServers > 0 ? (
+              <div className="flex items-center gap-1.5 pl-1.5">
+                <span className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.8)] animate-pulse" />
+                <span className="text-[11px] font-black text-rose-400">{offlineServers} offline</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 pl-1.5">
+                <span className="text-[9px] font-bold text-muted-foreground">All OK</span>
+              </div>
             )}
           </div>
 
@@ -736,52 +844,83 @@ export default function ServicesTIDashboard() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border/30 pb-2 flex items-center gap-1.5">
-                <Activity className="h-3.5 w-3.5 text-primary" />
-                Snapshot Actual - CPU y RAM
-              </p>
-              <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between border-b border-border/30 pb-2.5">
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                  <Activity className="h-3.5 w-3.5 text-primary" />
+                  Ranking de Recursos
+                </p>
+                <span className="text-[9px] font-bold text-muted-foreground bg-background/50 border border-border/30 rounded px-1.5 py-0.5">
+                  CPU desc
+                </span>
+              </div>
+              <div className="space-y-2 max-h-72 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-border/40">
                 {state && state.targets && state.targets
                   .filter(t => t.enabled && t.result && t.result.status === "online" && t.result.metrics)
                   .sort((a, b) => (b.result.metrics.cpu && b.result.metrics.cpu.usagePercent || 0) - (a.result.metrics.cpu && a.result.metrics.cpu.usagePercent || 0))
-                  .map((target, idx) => {
+                  .map((target, rankIdx) => {
                     const cpu = Math.round((target.result.metrics.cpu && target.result.metrics.cpu.usagePercent) || 0);
                     const ram = Math.round((target.result.metrics.memory && target.result.metrics.memory.usedPercent) || 0);
+                    const disk = Math.round((target.result.metrics.disk && target.result.metrics.disk.usedPercent) || 0);
                     const colors = ["#34d399","#38bdf8","#fbbf24","#a78bfa","#f472b6","#fb7185","#2dd4bf","#60a5fa"];
                     const origIdx = state.targets.indexOf(target);
                     const color = colors[origIdx % colors.length];
-                    const cpuTone = cpu >= 90 ? "#fb7185" : cpu >= 75 ? "#fbbf24" : color;
+                    const cpuTone = cpu >= 90 ? "#fb7185" : cpu >= 75 ? "#fbbf24" : "#34d399";
                     const ramTone = ram >= 90 ? "#fb7185" : ram >= 75 ? "#fbbf24" : "#38bdf8";
+                    const diskTone = disk >= 90 ? "#fb7185" : disk >= 75 ? "#fbbf24" : "#a78bfa";
+                    const rankMedal = rankIdx === 0 ? "bg-amber-500/20 text-amber-300 border-amber-500/30" :
+                                      rankIdx === 1 ? "bg-slate-400/15 text-slate-300 border-slate-400/30" :
+                                      rankIdx === 2 ? "bg-orange-700/15 text-orange-400 border-orange-700/30" :
+                                      "bg-background/40 text-muted-foreground border-border/20";
+                    const latency = (target.result.tcp && target.result.tcp.latencyMs) ? `${target.result.tcp.latencyMs}ms` : "-";
 
                     return (
-                      <div key={target.id} className="rounded-lg bg-background/40 border border-border/20 p-2.5 space-y-1.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
-                            <span className="text-[10px] font-black text-foreground truncate">{target.name}</span>
+                      <div key={target.id} className="rounded-xl bg-background/40 border border-border/20 p-3 space-y-2.5 hover:border-border/50 transition-colors">
+                        <div className="flex items-center gap-2.5">
+                          <span className={`shrink-0 w-5 h-5 rounded-full border text-[9px] font-black flex items-center justify-center ${rankMedal}`}>
+                            {rankIdx + 1}
+                          </span>
+                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm" style={{ background: color, boxShadow: `0 0 6px ${color}80` }} />
+                            <span className="text-[11px] font-black text-foreground truncate">{target.name}</span>
                           </div>
-                          <span className="text-[9px] text-muted-foreground font-bold shrink-0">{(target.result.tcp && target.result.tcp.latencyMs) || "-"}ms</span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-[9px] text-muted-foreground font-bold">{latency}</span>
+                            <span className={`w-1.5 h-1.5 rounded-full ${cpu >= 75 || ram >= 75 ? "bg-amber-400 animate-pulse" : "bg-emerald-400"}`} />
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[8px] font-black text-muted-foreground uppercase w-8 shrink-0">CPU</span>
-                            <div className="flex-1 h-1.5 bg-background/80 rounded-full overflow-hidden border border-border/20">
-                              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${cpu}%`, background: cpuTone, boxShadow: `0 0 6px ${cpuTone}50` }} />
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wide w-9 shrink-0">CPU</span>
+                            <div className="flex-1 h-2 bg-background/80 rounded-full overflow-hidden border border-border/20">
+                              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${cpu}%`, background: `linear-gradient(90deg, ${cpuTone}99, ${cpuTone})`, boxShadow: `0 0 8px ${cpuTone}60` }} />
                             </div>
-                            <span className="text-[9px] font-black w-7 text-right" style={{ color: cpuTone }}>{cpu}%</span>
+                            <span className="text-[10px] font-black w-8 text-right shrink-0" style={{ color: cpuTone }}>{cpu}%</span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[8px] font-black text-muted-foreground uppercase w-8 shrink-0">RAM</span>
-                            <div className="flex-1 h-1.5 bg-background/80 rounded-full overflow-hidden border border-border/20">
-                              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${ram}%`, background: ramTone, boxShadow: `0 0 6px ${ramTone}50` }} />
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wide w-9 shrink-0">RAM</span>
+                            <div className="flex-1 h-2 bg-background/80 rounded-full overflow-hidden border border-border/20">
+                              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${ram}%`, background: `linear-gradient(90deg, ${ramTone}99, ${ramTone})`, boxShadow: `0 0 8px ${ramTone}60` }} />
                             </div>
-                            <span className="text-[9px] font-black w-7 text-right" style={{ color: ramTone }}>{ram}%</span>
+                            <span className="text-[10px] font-black w-8 text-right shrink-0" style={{ color: ramTone }}>{ram}%</span>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wide w-9 shrink-0">DISK</span>
+                            <div className="flex-1 h-2 bg-background/80 rounded-full overflow-hidden border border-border/20">
+                              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${disk}%`, background: `linear-gradient(90deg, ${diskTone}99, ${diskTone})`, boxShadow: `0 0 8px ${diskTone}60` }} />
+                            </div>
+                            <span className="text-[10px] font-black w-8 text-right shrink-0" style={{ color: diskTone }}>{disk}%</span>
                           </div>
                         </div>
                       </div>
                     );
                   })}
+                {!state?.targets?.some(t => t.enabled && t.result?.status === "online" && t.result?.metrics) && (
+                  <div className="flex flex-col items-center justify-center py-10 gap-2 text-center">
+                    <Activity className="h-8 w-8 text-muted-foreground/30" />
+                    <p className="text-xs text-muted-foreground">Sin nodos activos con metricas SSH.</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1533,6 +1672,11 @@ export default function ServicesTIDashboard() {
           </div>
         </div>
       )}
+      <SkylabNotification
+        notification={skylabNotification}
+        visible={skylabNotifVisible}
+        onClose={() => setSkylabNotifVisible(false)}
+      />
     </div>
   );
 }
