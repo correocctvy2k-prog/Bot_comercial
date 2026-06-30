@@ -247,7 +247,7 @@ export default function ServicesTIDashboard() {
   const [expandedCards, setExpandedCards] = useState({});
   const [history, setHistory] = useState({});
   const [isAlertDropdownOpen, setIsAlertDropdownOpen] = useState(false);
-  const [isGlobalChartOpen, setIsGlobalChartOpen] = useState(false);
+  const [isGlobalChartOpen, setIsGlobalChartOpen] = useState(true);
 
   const [skylabNotification, setSkylabNotification] = useState(null);
   const [skylabNotifVisible, setSkylabNotifVisible] = useState(false);
@@ -684,16 +684,16 @@ export default function ServicesTIDashboard() {
           <div className="relative">
             <button
               onClick={() => setIsAlertDropdownOpen(!isAlertDropdownOpen)}
-              className={`relative p-2 rounded-lg border transition-all ${
+              className={`relative p-2.5 rounded-xl border transition-all duration-300 shadow-sm flex items-center justify-center hover:scale-105 active:scale-95 ${
                 isAlertDropdownOpen 
-                  ? "bg-primary/10 border-primary/30 text-primary" 
-                  : "border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground"
+                  ? "bg-rose-500/10 border-rose-500/30 text-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.15)]" 
+                  : "border-border/60 bg-background/50 hover:bg-muted/80 text-muted-foreground hover:text-foreground hover:border-primary/45"
               }`}
               title="Alertas Activas"
             >
-              <Bell className="h-4 w-4" />
+              <Bell className={`h-4 w-4 ${state?.smartAlerts?.length > 0 ? "animate-[ring_1.5s_ease-in-out_infinite]" : ""}`} />
               {state?.smartAlerts?.length > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-rose-500 text-[9px] font-black text-white ring-2 ring-background animate-pulse">
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-black text-white ring-2 ring-background shadow-[0_0_8px_rgba(244,63,94,0.6)] animate-pulse">
                   {state.smartAlerts.length}
                 </span>
               )}
@@ -804,7 +804,7 @@ export default function ServicesTIDashboard() {
   }
 
   return (
-    <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-500 -mt-4">
       
       <style>{`
         @keyframes breathe {
@@ -826,6 +826,15 @@ export default function ServicesTIDashboard() {
         }
         .animate-rank-up {
           animation: rank-up-glow 2.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+        @keyframes ring {
+          0%, 100% { transform: rotate(0); }
+          15% { transform: rotate(-15deg); }
+          30% { transform: rotate(12deg); }
+          45% { transform: rotate(-10deg); }
+          60% { transform: rotate(8deg); }
+          75% { transform: rotate(-4deg); }
+          90% { transform: rotate(0); }
         }
       `}</style>
 
@@ -982,7 +991,7 @@ export default function ServicesTIDashboard() {
                     return (
                       <div key={target.id} className={`rounded-xl bg-background/40 border p-3 space-y-2.5 hover:border-border/50 transition-all duration-300 ${isRankUp ? "animate-rank-up border-emerald-500/50 bg-emerald-950/5" : "border-border/20"}`}>
                         <div className="flex items-center gap-3">
-                          <span className={`shrink-0 w-8.5 h-8.5 rounded-full border text-xs font-black flex items-center justify-center ${rankMedal}`}>
+                          <span className={`shrink-0 w-8.5 h-8.5 rounded-full border text-base font-black flex items-center justify-center ${rankMedal}`}>
                             {rankIdx + 1}
                           </span>
                           <div className="flex items-center gap-2 min-w-0 flex-1">
