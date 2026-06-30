@@ -27,7 +27,9 @@ import {
   WifiOff,
   ShieldCheck,
   Bell,
-  TrendingUp
+  TrendingUp,
+  Maximize2,
+  Minimize2
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 import { toast } from "sonner";
@@ -268,6 +270,7 @@ export default function ServicesTIDashboard() {
   const [isAlertDropdownOpen, setIsAlertDropdownOpen] = useState(false);
   const [isGlobalChartOpen, setIsGlobalChartOpen] = useState(true);
 
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [skylabNotification, setSkylabNotification] = useState(null);
   const [skylabNotifVisible, setSkylabNotifVisible] = useState(false);
   const prevStatusesRef = useRef({});
@@ -801,6 +804,14 @@ export default function ServicesTIDashboard() {
           </button>
 
           <button
+            onClick={() => setIsFullscreen(prev => !prev)}
+            className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-background/50 hover:bg-muted/80 px-2.5 py-2 text-xs font-bold transition-all hover:border-primary/45 text-muted-foreground hover:text-foreground"
+            title="Pantalla Completa"
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
+          </button>
+
+          <button
             onClick={() => openModal()}
             className="flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-3 py-2 text-xs font-bold uppercase tracking-wide hover:shadow-[0_0_12px_rgba(59,130,246,0.3)] transition-all"
           >
@@ -811,7 +822,7 @@ export default function ServicesTIDashboard() {
       </div>
     );
     return () => setPageHeader(null);
-  }, [setPageHeader, refreshing, totalServers, onlineServers, degradedServers, offlineServers, isAlertDropdownOpen, isGlobalChartOpen, state?.smartAlerts]);
+  }, [setPageHeader, refreshing, totalServers, onlineServers, degradedServers, offlineServers, isAlertDropdownOpen, isGlobalChartOpen, state?.smartAlerts, isFullscreen]);
 
   if (loading && !state) {
     return (
@@ -823,7 +834,39 @@ export default function ServicesTIDashboard() {
   }
 
   return (
-    <div className="space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-500 -mt-4">
+    <div className={`transition-all duration-500 ${
+      isFullscreen
+        ? "fixed inset-0 z-[200] bg-background overflow-y-auto p-3 space-y-2"
+        : "space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-500 -mt-4"
+    }`}>
+      {/* Fullscreen overlay bar */}
+      {isFullscreen && (
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)] animate-pulse" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Monitoreo TI — Pantalla Completa</span>
+            {state?.smartAlerts?.length > 0 && (
+              <span className="rounded-full bg-rose-500/20 border border-rose-500/30 px-2 py-0.5 text-[9px] font-black text-rose-300">
+                {state.smartAlerts.length} alerta{state.smartAlerts.length > 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 text-[10px] font-black">
+              <span className="text-emerald-400">{onlineServers} online</span>
+              {offlineServers > 0 && <span className="text-rose-400">{offlineServers} offline</span>}
+            </div>
+            <button
+              onClick={() => setIsFullscreen(false)}
+              className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-background/60 hover:bg-muted px-2.5 py-1.5 text-[11px] font-bold text-muted-foreground hover:text-foreground transition-all"
+              title="Salir de pantalla completa"
+            >
+              <Minimize2 className="h-3.5 w-3.5" />
+              Salir
+            </button>
+          </div>
+        </div>
+      )}
       
       <style>{`
         @keyframes breathe {
@@ -879,8 +922,8 @@ export default function ServicesTIDashboard() {
 
       {/* Collapsible APM Premium Chart */}
       {isGlobalChartOpen && (
-        <div className="rounded-xl border border-border bg-card/45 p-5 backdrop-blur-sm animate-in slide-in-from-top-4 duration-300 shadow-xl">
-          <div className="flex flex-col gap-2 border-b border-border/40 pb-3 mb-5 md:flex-row md:items-center md:justify-between">
+        <div className={`rounded-xl border border-border bg-card/45 ${isFullscreen ? "p-3" : "p-5"} backdrop-blur-sm animate-in slide-in-from-top-4 duration-300 shadow-xl`}>
+          <div className={`flex flex-col gap-2 border-b border-border/40 ${isFullscreen ? "pb-1.5 mb-2" : "pb-3 mb-5"} md:flex-row md:items-center md:justify-between`}>
             <div>
               <h2 className="text-sm font-black text-foreground flex items-center gap-2 uppercase tracking-widest">
                 <TrendingUp className="h-4 w-4 text-primary" />
@@ -906,7 +949,7 @@ export default function ServicesTIDashboard() {
                     <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">CPU por servidor (%)</span>
                   </div>
                 </div>
-                <div className="h-48">
+                <div className={isFullscreen ? "h-36" : "h-48"}>
                   {globalChartData.length >= 2 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={globalChartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
@@ -986,7 +1029,7 @@ export default function ServicesTIDashboard() {
                   CPU desc
                 </span>
               </div>
-              <div className="space-y-2 max-h-72 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-border/40">
+              <div className={`space-y-2 pr-1 scrollbar-thin scrollbar-thumb-border/40 overflow-y-auto ${isFullscreen ? "max-h-52" : "max-h-72"}`}>
                 {state && state.targets && state.targets
                   .filter(t => t.enabled && t.result && t.result.status === "online" && t.result.metrics)
                   .sort((a, b) => (b.result.metrics.cpu && b.result.metrics.cpu.usagePercent || 0) - (a.result.metrics.cpu && a.result.metrics.cpu.usagePercent || 0))
