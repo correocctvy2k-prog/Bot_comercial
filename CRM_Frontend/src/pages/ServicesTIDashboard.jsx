@@ -533,7 +533,7 @@ export default function ServicesTIDashboard() {
     return [
       { id: "correo", title: "CORREO Y COLABORACIÓN", subtitle: "Canales de comunicación internos/externos", servers: correoWeb },
       { id: "core", title: "INFRAESTRUCTURA CORE Y BD", subtitle: "Servicios críticos y almacenamiento central", servers: coreDb },
-      { id: "naos", title: "PLATAFORMA NAOS MIN. TRANSPORTE", subtitle: "Módulos de base y servicios NAOS", servers: naos },
+      { id: "naos", title: "PLATAFORMA NAOS", subtitle: "Módulos de base y servicios NAOS", servers: naos },
       { id: "otros", title: "OTROS SERVIDORES", subtitle: "Equipos y módulos adicionales", servers: otros }
     ].filter(g => g.servers.length > 0);
   }, [sortedTargets]);
