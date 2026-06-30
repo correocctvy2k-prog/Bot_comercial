@@ -86,7 +86,7 @@ const MiniStat = ({ icon, label, value, percent, color = "text-foreground" }) =>
   return (
     <div className="min-w-0 rounded-md border border-border/40 bg-background/35 px-2.5 py-1.5 shadow-sm flex flex-col justify-between min-h-[46px]">
       <div className="flex items-center justify-between gap-1.5">
-        <p className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-muted-foreground [&_svg]:h-3.5 [&_svg]:w-3.5 truncate">
+        <p className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-muted-foreground [&_svg]:h-[17px] [&_svg]:w-[17px] truncate text-[10px]">
           {icon}
           {label}
         </p>
@@ -1147,9 +1147,7 @@ export default function ServicesTIDashboard() {
                                   <span className="text-[10px] font-bold text-emerald-400/80">{res.tcp.latencyMs}ms</span>
                                 )}
                               </div>
-                              <p className="text-[10px] text-muted-foreground truncate uppercase font-bold tracking-wider mt-0.5">
-                                {maskHost(target.host)}:{target.port} &bull; {target.type === "linux" ? "SSH" : "TCP"}
-                              </p>
+
                             </div>
 
                             <div className="flex items-center gap-0.5">
@@ -1213,26 +1211,26 @@ export default function ServicesTIDashboard() {
 
                           <div className="grid grid-cols-2 gap-1.5 mt-2">
                             <MiniStat 
-                              icon={<Clock className="h-3.5 w-3.5" />} 
+                              icon={<Clock className="h-[17px] w-[17px]" />} 
                               label="Uptime" 
                               value={formatUptimeDays(metrics?.uptime)} 
                             />
                             <MiniStat 
-                              icon={<Cpu className="h-3.5 w-3.5" />} 
+                              icon={<Cpu className="h-[17px] w-[17px]" />} 
                               label="CPU" 
                               value={metrics?.cpu?.usagePercent !== undefined && metrics?.cpu?.usagePercent !== null ? `${Math.round(metrics.cpu.usagePercent)}%` : "N/D"} 
                               percent={metrics?.cpu?.usagePercent}
                               color={metrics?.cpu?.usagePercent >= 90 ? "text-rose-400" : metrics?.cpu?.usagePercent >= 75 ? "text-amber-400" : "text-emerald-400"}
                             />
                             <MiniStat 
-                              icon={<Layers className="h-3.5 w-3.5" />} 
+                              icon={<Layers className="h-[17px] w-[17px]" />} 
                               label="RAM" 
                               value={metrics?.memory?.usedPercent !== undefined && metrics?.memory?.usedPercent !== null ? `${Math.round(metrics.memory.usedPercent)}%` : "N/D"} 
                               percent={metrics?.memory?.usedPercent}
                               color={metrics?.memory?.usedPercent >= 90 ? "text-rose-400" : metrics?.memory?.usedPercent >= 75 ? "text-amber-400" : "text-emerald-400"}
                             />
                             <MiniStat 
-                              icon={<HardDrive className="h-3.5 w-3.5" />} 
+                              icon={<HardDrive className="h-[17px] w-[17px]" />} 
                               label={`Disco (${maxFs.name || maxFs.mount || "/"})`} 
                               value={maxFs.usedPercent !== undefined && maxFs.usedPercent !== null ? `${Math.round(maxFs.usedPercent)}%` : "N/D"} 
                               percent={maxFs.usedPercent}
