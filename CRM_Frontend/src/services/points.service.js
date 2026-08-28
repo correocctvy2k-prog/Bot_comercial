@@ -1,5 +1,7 @@
 import { supabase } from './supabase';
 
+const CCTV_API_BASE = (import.meta.env.VITE_CCTV_API_BASE || '').replace(/\/$/, '');
+
 // --- MITIGACIÓN DE ERRORES DE RED (CIRCUIT BREAKER) ---
 let mlServerDown = false;
 let mlServerWarningSent = false;
@@ -82,18 +84,24 @@ export const pointsService = {
         }
     },
 
-    async getPointAnalytics(ip, days = 30) {
-        try {
-            const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-            const resp = await fetch(`${backendUrl}/api/points/${encodeURIComponent(ip)}/analytics?days=${days}`);
-            if (!resp.ok) return null;
-            const data = await resp.json();
-            // v12.2.1: Manejamos respuesta vacía/error de IP no encontrada sin lanzar excepción
-            if (data.error || data.analytics === null) return null;
-            return data;
-        } catch {
-            return null;
-        }
+    async getPointAnalytics(ip, days = 30, siisCode = null) {
+        const today = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit'
+        }).format(new Date());
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+        const baseRequest = ip
+            ? fetch(`${backendUrl}/api/points/${encodeURIComponent(ip)}/analytics?days=${days}`).then(r => r.ok ? r.json() : null).catch(() => null)
+            : Promise.resolve(null);
+        const cctvRequest = siisCode
+            ? fetch(`${CCTV_API_BASE}/api/cctv/behavior/daily?siisCode=${encodeURIComponent(siisCode)}&date=${today}`).then(r => r.ok ? r.json() : null).catch(() => null)
+            : Promise.resolve(null);
+        const [base, cctv] = await Promise.all([baseRequest, cctvRequest]);
+        if (!base && !cctv?.item) return null;
+        return {
+            ...(base && !base.error && base.analytics !== null ? base : {}),
+            cctv_behavior: cctv?.item || null,
+            behavior_date: cctv?.date || today
+        };
     },
 
     async getPointsStats() {

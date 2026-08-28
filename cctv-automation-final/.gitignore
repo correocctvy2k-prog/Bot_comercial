@@ -1,0 +1,13 @@
+.env
+node_modules/
+state.json
+logs/
+output/
+backups/
+audits/*.json
+data/*.db
+data/*.db-*
+data/siis-snapshot-*.json
+reports/reconciliation-latest.json
+reports/siis-reconciliation-latest.json
+2026 programacion anual CCTV.xlsx

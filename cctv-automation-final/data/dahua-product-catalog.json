@@ -1,0 +1,118 @@
+{
+  "meta": {
+    "vendor": "Dahua Technology",
+    "source": "Catálogo y fichas técnicas oficiales de Dahua",
+    "updatedAt": "2026-08-21",
+    "mode": "curated-cache"
+  },
+  "products": [
+    {
+      "model": "DHI-NVR4208-8P-4KS2",
+      "displayModel": "NVR4208-8P-4KS2",
+      "category": "NVR",
+      "family": "Lite NVR",
+      "lifecycle": "EOL",
+      "channels": 8,
+      "image": "DHI-NVR4208-8P-4KS2_Image_20161027_thumb.png",
+      "technologies": ["4K", "H.265", "8 PoE", "SMD Plus por cámara", "Protección perimetral", "Conteo de personas", "Mapa de calor"],
+      "officialUrl": "https://www.dahuasecurity.com/products/Discontinued-Products/Network-Recorders/NVR4208-8P-4KS2",
+      "sourceType": "OFFICIAL_PRODUCT_PAGE",
+      "verifiedAt": "2026-08-21"
+    },
+    {
+      "model": "DHI-NVR5208-EI",
+      "displayModel": "NVR5208-EI",
+      "category": "NVR",
+      "family": "WizSense",
+      "lifecycle": "ACTIVE",
+      "channels": 8,
+      "technologies": ["IA en grabador", "SMD Plus", "AcuPick", "Reconocimiento facial", "Protección perimetral", "ANPR por cámara", "Conteo de personas"],
+      "officialUrl": "https://material.dahuasecurity.com/uploads/cpq/prm-os-srv-res/smart/datasheetzipfiles/NVR5208-EI_S0_datasheet_20240625.pdf",
+      "sourceType": "OFFICIAL_DATASHEET",
+      "verifiedAt": "2026-08-21"
+    },
+    {
+      "model": "DH-IPC-HDBW3441E-AS-S2",
+      "displayModel": "IPC-HDBW3441E-AS-S2",
+      "category": "Cámara IP",
+      "family": "WizSense 3 Series",
+      "lifecycle": "ACTIVE",
+      "resolution": "4 MP",
+      "technologies": ["SMD", "Intrusión", "Tripwire", "WDR 120 dB", "MicroSD", "Micrófono"],
+      "officialUrl": "https://material.dahuasecurity.com/uploads/cpq/prm-os-srv-res/smart/datasheetzipfiles/IPC-HDBW3441E-AS-S2_S2_datasheet_20240120.pdf",
+      "sourceType": "OFFICIAL_DATASHEET",
+      "verifiedAt": "2026-08-21"
+    },
+    {
+      "model": "DHI-NVR4208-4KS2/L",
+      "displayModel": "NVR4208-4KS2/L",
+      "category": "NVR",
+      "family": "Lite NVR",
+      "lifecycle": "POR VERIFICAR",
+      "channels": 8,
+      "technologies": ["4K", "H.265+", "ONVIF", "RTSP", "Gestión remota de cámaras"],
+      "officialUrl": "https://www.dahuasecurity.com/asset/upload/uploads/soft/20200529/DHI-NVR4208-4KS2L_datasheet_20191128_TH.pdf",
+      "sourceType": "OFFICIAL_DATASHEET",
+      "verifiedAt": "2026-08-21"
+    },
+    {
+      "model": "DHI-NVR4208-4KS2",
+      "displayModel": "NVR4208-4KS2",
+      "category": "NVR",
+      "family": "Lite NVR",
+      "lifecycle": "EOL",
+      "channels": 8,
+      "technologies": ["4K", "H.265+", "SMD Plus por cámara", "Protección perimetral", "Conteo de personas"],
+      "officialUrl": "https://www.dahuasecurity.com/products/Discontinued-Products/Network-Recorders/NVR4208/4216/4232-4KS2",
+      "sourceType": "OFFICIAL_PRODUCT_PAGE",
+      "verifiedAt": "2026-08-21"
+    },
+    {
+      "model": "DHI-NVR4232-4KS2",
+      "displayModel": "NVR4232-4KS2",
+      "category": "NVR",
+      "family": "Lite NVR",
+      "lifecycle": "EOL",
+      "channels": 32,
+      "technologies": ["4K", "H.265+", "SMD Plus por cámara", "Protección perimetral", "Conteo de personas"],
+      "officialUrl": "https://www.dahuasecurity.com/products/Discontinued-Products/Network-Recorders/NVR4208/4216/4232-4KS2",
+      "sourceType": "OFFICIAL_PRODUCT_PAGE",
+      "verifiedAt": "2026-08-21"
+    },
+    {
+      "model": "DHI-NVR4208-4KS3",
+      "displayModel": "NVR4208-4KS3",
+      "category": "NVR",
+      "family": "NVR4000-4KS3 Lite",
+      "lifecycle": "ACTIVE",
+      "channels": 8,
+      "technologies": ["SMD Plus en grabador", "SMD Plus por cámara", "Reconocimiento facial por cámara", "Protección perimetral", "4K"],
+      "officialUrl": "https://material.dahuasecurity.com/uploads/cpq/prm-os-srv-res/smart/datasheetzipfiles/NVR4208-4KS3_S0_datasheet_20231027.pdf",
+      "sourceType": "OFFICIAL_DATASHEET",
+      "verifiedAt": "2026-08-21"
+    },
+    {
+      "model": "DHI-ARC3000H-FW2",
+      "displayModel": "ARC3000H-FW2",
+      "category": "Alarma",
+      "family": "ARC3 Series",
+      "lifecycle": "POR VERIFICAR",
+      "technologies": ["150 periféricos inalámbricos", "Ethernet", "Wi-Fi", "Red celular", "Enlace de video", "AES128"],
+      "officialUrl": "https://www.dahuasecurity.com/asset/upload/uploads/cpq/prm-os-srv-res/smart/datasheetzipfiles/ARC3000H-FW2_datasheet_20220628.pdf",
+      "sourceType": "OFFICIAL_DATASHEET",
+      "verifiedAt": "2026-08-21"
+    },
+    {
+      "model": "DHI-NVR4108HS-EI",
+      "displayModel": "NVR4108HS-EI",
+      "category": "NVR",
+      "family": "WizSense Lite",
+      "lifecycle": "POR VERIFICAR",
+      "channels": 8,
+      "technologies": ["IA en grabador", "SMD Plus", "Reconocimiento facial", "Protección perimetral", "Conteo de personas"],
+      "officialUrl": "https://material.dahuasecurity.com/uploads/cpq/prm-os-srv-res/smart/datasheetzipfiles/NVR4108HS-EI_S0_datasheet_20240531.pdf",
+      "sourceType": "OFFICIAL_DATASHEET",
+      "verifiedAt": "2026-08-21"
+    }
+  ]
+}

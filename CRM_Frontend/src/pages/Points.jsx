@@ -43,7 +43,7 @@ const KpiCard = ({ title, value, icon, badge, badgeColor, accent = "from-primary
     </div>
 );
 
-const NodeCard = ({ point, behavior }) => {
+const NodeCard = ({ point, behavior, onUpdate }) => {
     const isOnline = point.active;
     const isSiissOnline = point.siiss_active;
     const hasDiscordance = isOnline !== isSiissOnline && isSiissOnline !== null && isSiissOnline !== undefined;
@@ -61,13 +61,14 @@ const NodeCard = ({ point, behavior }) => {
     const [asesorName, setAsesorName] = useState(point.asesor_nombre || '');
     const [asesorPhone, setAsesorPhone] = useState(point.asesor_telefono || '');
     const [analytics, setAnalytics] = useState(null);
+    const formatCctvTime = value => value ? new Date(value).toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' }) : 'Sin dato';
 
     // Cargar analíticas al expandir
     useEffect(() => {
-        if (isExpanded && point.ip && !analytics) {
-            pointsService.getPointAnalytics(point.ip, 30).then(setAnalytics);
+        if (isExpanded && (point.ip || point.siiss_id) && !analytics) {
+            pointsService.getPointAnalytics(point.ip, 30, point.siiss_id).then(setAnalytics);
         }
-    }, [isExpanded, point.ip]);
+    }, [isExpanded, point.ip, point.siiss_id, analytics]);
 
     // Iconos de tecnología
     const techIcons = [
@@ -177,9 +178,7 @@ const NodeCard = ({ point, behavior }) => {
                         <Button variant="ghost" size="sm" className="h-6 text-xs px-2 text-primary hover:text-primary/80" onClick={(e) => {
                             e.stopPropagation();
                             if (isEditing) {
-                                if (window.onUpdateMultipleNodeAttrs) {
-                                    window.onUpdateMultipleNodeAttrs(point.id, { asesor_nombre: asesorName, asesor_telefono: asesorPhone });
-                                }
+                                onUpdate?.(point.id, { asesor_nombre: asesorName, asesor_telefono: asesorPhone });
                             }
                             setIsEditing(!isEditing);
                         }}>
@@ -252,6 +251,23 @@ const NodeCard = ({ point, behavior }) => {
                                         </span>
                                     </div>
                                 )}
+                                {analytics?.cctv_behavior && (
+                                    <div className="col-span-2 rounded-lg border border-blue-500/20 bg-blue-500/5 p-2.5">
+                                        <div className="mb-2 flex items-center justify-between">
+                                            <span className="flex items-center gap-1.5 text-[10px] font-semibold text-blue-300">
+                                                <Video className="h-3.5 w-3.5" /> Comportamiento CCTV + ping · hoy
+                                            </span>
+                                            <Badge variant="outline" className="h-5 border-blue-500/20 text-[9px] text-blue-300">Integrado</Badge>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                            <div className="rounded-md bg-background/50 px-2 py-1.5"><span className="block text-[9px] text-muted-foreground">Apertura CCTV</span><b className={analytics.cctv_behavior.emailOpening?'text-xs text-emerald-400':'text-xs text-muted-foreground'}>{formatCctvTime(analytics.cctv_behavior.emailOpening)}</b><span className="mt-0.5 block text-[8px] text-muted-foreground">evidencia del correo</span></div>
+                                            <div className="rounded-md bg-background/50 px-2 py-1.5"><span className="block text-[9px] text-muted-foreground">Cierre CCTV</span><b className={analytics.cctv_behavior.emailClosing?'text-xs text-blue-400':'text-xs text-muted-foreground'}>{formatCctvTime(analytics.cctv_behavior.emailClosing)}</b><span className="mt-0.5 block text-[8px] text-muted-foreground">última evidencia</span></div>
+                                            <div className="rounded-md bg-background/50 px-2 py-1.5" title="SIIS se consulta por intervalos; esta es la ventana entre la última muestra offline y la primera online."><span className="block text-[9px] text-muted-foreground">Ventana SIIS inicial</span><b className="text-xs text-violet-400">{analytics.cctv_behavior.firstOnlineWindowStart?`${formatCctvTime(analytics.cctv_behavior.firstOnlineWindowStart)}–${formatCctvTime(analytics.cctv_behavior.firstOnlineWindowEnd)}`:analytics.cctv_behavior.firstOnlineObservedAt?`antes de ${formatCctvTime(analytics.cctv_behavior.firstOnlineObservedAt)}`:'Sin dato'}</b><span className="mt-0.5 block text-[8px] text-muted-foreground">transición observada</span></div>
+                                            <div className="rounded-md bg-background/50 px-2 py-1.5"><span className="block text-[9px] text-muted-foreground">Estado SIIS actual</span><b className={`text-xs ${analytics.cctv_behavior.online===true?'text-emerald-400':analytics.cctv_behavior.online===false?'text-rose-400':'text-muted-foreground'}`}>{analytics.cctv_behavior.online===true?'En línea':analytics.cctv_behavior.online===false?'Sin conexión':'Sin dato'}</b><span className="mt-0.5 block text-[8px] text-muted-foreground">muestra {formatCctvTime(analytics.cctv_behavior.latestObservedAt)}</span></div>
+                                        </div>
+                                        <p className="mt-2 border-t border-blue-500/10 pt-2 text-[8px] leading-relaxed text-blue-200/55">SIIS se observa cada {analytics.cctv_behavior.observationCadenceMinutes||30} min. La ventana indica cuándo el equipo pasó a estar en línea; no representa por sí sola la hora de llegada de la persona.</p>
+                                    </div>
+                                )}
                                 {!point.active && point.last_online_at && (
                                     <div className="col-span-2 flex items-center gap-1.5 bg-red-500/5 border border-red-500/20 rounded px-2 py-1">
                                         <WifiOff className="w-3.5 h-3.5 text-rose-500" />
@@ -263,28 +279,28 @@ const NodeCard = ({ point, behavior }) => {
                                 <div className="flex flex-col">
                                     <span className="text-xs text-muted-foreground">Últ. Apertura</span>
                                     <span className="text-sm font-semibold text-foreground">
-                                        {analytics.analytics?.last_open_time || <span className="text-muted-foreground italic text-xs">Sin datos</span>}
+                                        {analytics?.analytics?.last_open_time || <span className="text-muted-foreground italic text-xs">Sin datos</span>}
                                     </span>
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-xs text-muted-foreground">Últ. Cierre</span>
                                     <span className="text-sm font-semibold text-foreground">
-                                        {analytics.analytics?.last_close_time || <span className="text-muted-foreground italic text-xs">Sin datos</span>}
+                                        {analytics?.analytics?.last_close_time || <span className="text-muted-foreground italic text-xs">Sin datos</span>}
                                     </span>
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-xs text-muted-foreground">Apertura Prom.</span>
                                     <span className="text-sm font-semibold text-emerald-500">
-                                        {analytics.analytics?.avg_open_time || <span className="text-muted-foreground italic text-xs">Sin historial</span>}
+                                        {analytics?.analytics?.avg_open_time || <span className="text-muted-foreground italic text-xs">Sin historial</span>}
                                     </span>
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-xs text-muted-foreground">Cierre Prom.</span>
                                     <span className="text-sm font-semibold text-amber-500">
-                                        {analytics.analytics?.avg_close_time || <span className="text-muted-foreground italic text-xs">Sin historial</span>}
+                                        {analytics?.analytics?.avg_close_time || <span className="text-muted-foreground italic text-xs">Sin historial</span>}
                                     </span>
                                 </div>
-                                {analytics.analytics?.open_on_time_pct !== null && (
+                                {analytics?.analytics?.open_on_time_pct != null && (
                                     <div className="flex flex-col">
                                         <span className="text-xs text-muted-foreground">Abre a tiempo</span>
                                         <span className={`text-sm font-bold ${analytics.analytics.open_on_time_pct >= 80 ? 'text-emerald-500' :
@@ -294,10 +310,13 @@ const NodeCard = ({ point, behavior }) => {
                                 )}
                                 <div className="flex flex-col">
                                     <span className="text-xs text-muted-foreground">Días offline/mes</span>
-                                    <span className={`text-sm font-bold ${(analytics.analytics?.days_offline || 0) > 3 ? 'text-rose-500' : 'text-foreground'}`}>
-                                        {analytics.analytics?.days_offline ?? '—'}
+                                    <span className={`text-sm font-bold ${(analytics?.analytics?.days_offline || 0) > 3 ? 'text-rose-500' : 'text-foreground'}`}>
+                                        {analytics?.analytics?.days_offline ?? '—'}
                                     </span>
                                 </div>
+                                {!analytics?.analytics && analytics?.cctv_behavior && (
+                                    <p className="col-span-2 text-[9px] text-amber-300/80">El histórico de Operación de Puntos no está disponible; CCTV y ping continúan visibles.</p>
+                                )}
                             </div>
                         )}
                     </div>
@@ -392,14 +411,6 @@ export default function Points() {
         onError: (err) => console.error("Error actualizando atributos:", err)
     });
 
-    // Enlazar la mutación al objeto window para que NodeCard la consuma
-    window.onUpdateNodeAttr = (id, attr, val) => {
-        updatePointMutation.mutate({ id, attributes: { [attr]: val } });
-    };
-    window.onUpdateMultipleNodeAttrs = (id, attributes) => {
-        updatePointMutation.mutate({ id, attributes });
-    };
-
     const { data: nodeBehaviors = [] } = useQuery({
         queryKey: ['node-behavior'],
         queryFn: pointsService.getNodeBehavior,
@@ -428,12 +439,6 @@ export default function Points() {
         }
         return matchesSearch;
     });
-
-    // Chart Data Preparation
-    const pieData = [
-        { name: 'Online', value: stats?.active || 0, color: '#22c55e' },
-        { name: 'Offline', value: stats?.inactive || 0, color: '#ef4444' }
-    ];
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 h-full flex flex-col">
@@ -671,7 +676,7 @@ export default function Points() {
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-20">
                             {filteredPoints.map((point) => (
-                                <NodeCard key={point.ip} point={point} behavior={nodeBehaviors.find(b => b.ip === point.ip)} />
+                                <NodeCard key={point.ip} point={point} behavior={nodeBehaviors.find(b => b.ip === point.ip)} onUpdate={(id,attributes)=>updatePointMutation.mutate({id,attributes})} />
                             ))}
                         </div>
                     )}

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { LogIn, Lock, Loader2, Eye, EyeOff, Bot, BarChart3, Shield, Zap, Sparkles } from 'lucide-react';
+import { motion as Motion } from 'framer-motion';
+import { LogIn, Lock, Loader2, Eye, EyeOff, Bot, BarChart3, Shield, Zap, Sparkles, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 import SkylabBot from '../components/SkylabBot';
@@ -44,7 +44,7 @@ const FEATURES = [
 // Floating animated orb
 function Orb({ className, style, animate }) {
     return (
-        <motion.div
+        <Motion.div
             animate={animate}
             transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
             className={`absolute rounded-full blur-[80px] pointer-events-none ${className}`}
@@ -59,11 +59,66 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [requirePasswordChange, setRequirePasswordChange] = useState(false);
+    const [recoveryRequestOpen, setRecoveryRequestOpen] = useState(false);
+    const [recoveryEmail, setRecoveryEmail] = useState('');
+    const [recoverySent, setRecoverySent] = useState(false);
+    const [recoveryLinkError, setRecoveryLinkError] = useState('');
     const { login } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const from = location.state?.from?.pathname || '/';
+
+    useEffect(() => {
+        let mounted = true;
+        const recoveryRequested = new URLSearchParams(window.location.search).get('recovery') === '1'
+            || new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type') === 'recovery';
+        const validateExistingRecoverySession = async () => {
+            if (!recoveryRequested) return;
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (!mounted) return;
+            if (session && !error) {
+                setRequirePasswordChange(true);
+                setRecoveryLinkError('');
+            } else {
+                setRecoveryLinkError('El enlace no contiene una sesión válida. Puede haber vencido o haber sido utilizado anteriormente.');
+            }
+        };
+        validateExistingRecoverySession();
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+            if (event === 'PASSWORD_RECOVERY') {
+                setRequirePasswordChange(true);
+                setRecoveryLinkError('');
+                toast.info('Enlace validado', { description: 'Ahora establece tu nueva contraseña.' });
+            }
+        });
+        return () => { mounted = false; subscription.unsubscribe(); };
+    }, []);
+
+    const handleForgotPassword = async (event) => {
+        event?.preventDefault();
+        const email = recoveryEmail.trim();
+        if (!email) return toast.error('Ingresa el correo asociado a tu cuenta.');
+        setLoading(true);
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/login?recovery=1`,
+            });
+            if (error) throw error;
+            setRecoverySent(true);
+            toast.success('Solicitud enviada', {
+                description: 'Si el correo está registrado, recibirás un enlace para establecer una contraseña nueva.',
+                duration: 8000,
+            });
+        } catch (error) {
+            toast.error('No fue posible solicitar el restablecimiento', {
+                description: error.message || 'Verifica el correo e inténtalo nuevamente.',
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -96,11 +151,19 @@ export default function LoginPage() {
                 setLoading(false);
                 return;
             }
+            if (newPassword !== confirmPassword) {
+                toast.error('Las contraseñas no coinciden.');
+                setLoading(false);
+                return;
+            }
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) throw new Error('La sesión de recuperación venció. Solicita un enlace nuevo.');
             const { error } = await supabase.auth.updateUser({ password: newPassword });
             if (error) throw error;
             toast.success('¡Contraseña actualizada con éxito!', {
                 description: 'Bienvenido al ecosistema Skylab.',
             });
+            window.history.replaceState({}, '', '/login');
             navigate(from, { replace: true });
         } catch (error) {
             toast.error('Error al actualizar contraseña', {
@@ -148,7 +211,7 @@ export default function LoginPage() {
                 <div className="absolute right-0 top-0 h-full w-px bg-gradient-to-b from-transparent via-white/5 to-transparent" />
 
                 {/* Top: Logo */}
-                <motion.div
+                <Motion.div
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.7, delay: 0.1 }}
@@ -163,11 +226,11 @@ export default function LoginPage() {
                         <h1 className="text-2xl font-black tracking-tight text-white">SKYLAB</h1>
                         <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-400/70">Gestión Inteligente</p>
                     </div>
-                </motion.div>
+                </Motion.div>
 
                 {/* Middle: Hero text + features */}
                 <div className="flex-1 flex flex-col justify-center py-12 relative z-10 space-y-10">
-                    <motion.div
+                    <Motion.div
                         initial={{ opacity: 0, x: -30 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.8, delay: 0.25 }}
@@ -184,11 +247,11 @@ export default function LoginPage() {
                         <p className="text-white/40 mt-4 text-base leading-relaxed font-medium max-w-md">
                             Centraliza operaciones, automatiza reportes y toma decisiones con datos en tiempo real.
                         </p>
-                    </motion.div>
+                    </Motion.div>
 
                     <div className="grid grid-cols-1 gap-3">
                         {FEATURES.map((f, i) => (
-                            <motion.div
+                            <Motion.div
                                 key={f.title}
                                 initial={{ opacity: 0, x: -20 }}
                                 animate={{ opacity: 1, x: 0 }}
@@ -202,13 +265,13 @@ export default function LoginPage() {
                                     <p className="font-bold text-sm text-white">{f.title}</p>
                                     <p className="text-[11px] text-white/40 font-medium">{f.desc}</p>
                                 </div>
-                            </motion.div>
+                            </Motion.div>
                         ))}
                     </div>
                 </div>
 
                 {/* Bottom: Badge */}
-                <motion.div
+                <Motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.9, duration: 0.6 }}
@@ -229,12 +292,12 @@ export default function LoginPage() {
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                         <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Sistema activo</span>
                     </div>
-                </motion.div>
+                </Motion.div>
             </div>
 
             {/* ─── RIGHT PANEL — Login Form ────────────────────────────────── */}
             <div className="w-full lg:w-[45%] xl:w-1/2 flex items-center justify-center p-6 sm:p-10 relative">
-                <motion.div
+                <Motion.div
                     initial={{ opacity: 0, y: 24 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.65, delay: 0.15 }}
@@ -259,9 +322,16 @@ export default function LoginPage() {
 
                         {requirePasswordChange ? (
                             <div className="mb-8">
-                                <h2 className="text-2xl font-black text-amber-400 tracking-tight">Cambio Requerido</h2>
+                                <h2 className="text-2xl font-black text-amber-400 tracking-tight">Crea una contraseña nueva</h2>
                                 <p className="text-white/40 text-sm font-medium mt-1">
-                                    Por tu seguridad, debes establecer una nueva contraseña permanente antes de continuar.
+                                    El enlace fue validado. Establece una contraseña permanente para recuperar el acceso.
+                                </p>
+                            </div>
+                        ) : recoveryRequestOpen ? (
+                            <div className="mb-8">
+                                <h2 className="text-2xl font-black text-white tracking-tight">Recuperar acceso</h2>
+                                <p className="text-white/40 text-sm font-medium mt-1">
+                                    Enviaremos un enlace seguro al correo asociado a tu cuenta.
                                 </p>
                             </div>
                         ) : (
@@ -289,6 +359,7 @@ export default function LoginPage() {
                                         <input
                                             type={showPassword ? 'text' : 'password'}
                                             required
+                                            autoComplete="new-password"
                                             value={newPassword}
                                             onChange={(e) => setNewPassword(e.target.value)}
                                             className="w-full bg-white/5 border border-white/8 rounded-2xl py-3.5 pl-11 pr-12 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-amber-500/25 focus:border-amber-500/40 transition-all font-medium text-sm"
@@ -302,6 +373,29 @@ export default function LoginPage() {
                                             {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                         </button>
                                     </div>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black uppercase tracking-[0.18em] text-white/40 ml-1">
+                                        Confirmar contraseña
+                                    </label>
+                                    <div className="relative group">
+                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                            <CheckCircle2 size={16} className="text-white/25 group-focus-within:text-amber-400 transition-colors" />
+                                        </div>
+                                        <input
+                                            type={showPassword ? 'text' : 'password'}
+                                            required
+                                            autoComplete="new-password"
+                                            value={confirmPassword}
+                                            onChange={(e) => setConfirmPassword(e.target.value)}
+                                            className="w-full bg-white/5 border border-white/8 rounded-2xl py-3.5 pl-11 pr-4 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-amber-500/25 focus:border-amber-500/40 transition-all font-medium text-sm"
+                                            placeholder="Repite la nueva clave..."
+                                        />
+                                    </div>
+                                    <p className={`px-1 text-[10px] ${confirmPassword && newPassword !== confirmPassword ? 'text-rose-300' : 'text-white/25'}`}>
+                                        {confirmPassword && newPassword !== confirmPassword ? 'Las contraseñas aún no coinciden.' : 'Mínimo 8 caracteres.'}
+                                    </p>
                                 </div>
 
                                 {/* Submit Change */}
@@ -318,12 +412,26 @@ export default function LoginPage() {
                                         ) : (
                                             <>
                                                 <Shield size={18} className="relative z-10" />
-                                                <span className="relative z-10 tracking-wide">Actualizar Guardar y Entrar</span>
+                                                <span className="relative z-10 tracking-wide">Guardar y entrar</span>
                                             </>
                                         )}
                                     </button>
                                 </div>
                             </form>
+                        ) : recoveryRequestOpen ? (
+                            recoverySent ? (
+                                <div className="space-y-5 text-center">
+                                    <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-300"><Mail size={28}/></div>
+                                    <div><h3 className="font-black text-white">Revisa tu correo</h3><p className="mt-2 text-sm leading-relaxed text-white/40">Enviamos las instrucciones a <b className="text-white/70">{recoveryEmail}</b>. Revisa también spam. El enlace solo puede utilizarse una vez.</p></div>
+                                    <button type="button" onClick={()=>{setRecoverySent(false);setRecoveryRequestOpen(false)}} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 py-3 text-sm font-bold text-white/70 hover:bg-white/5"><ArrowLeft size={15}/> Volver al inicio</button>
+                                </div>
+                            ) : (
+                                <form onSubmit={handleForgotPassword} className="space-y-5">
+                                    <div className="space-y-1.5"><label className="ml-1 text-[10px] font-black uppercase tracking-[0.18em] text-white/40">Correo corporativo</label><div className="relative group"><div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4"><Mail size={16} className="text-white/25 group-focus-within:text-blue-400"/></div><input type="email" required autoComplete="email" value={recoveryEmail} onChange={e=>setRecoveryEmail(e.target.value)} className="w-full rounded-2xl border border-white/8 bg-white/5 py-3.5 pl-11 pr-4 text-sm font-medium text-white placeholder:text-white/20 focus:border-blue-500/40 focus:outline-none focus:ring-2 focus:ring-blue-500/25" placeholder="usuario@empresa.com"/></div></div>
+                                    <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 py-4 font-black text-white shadow-xl shadow-blue-600/20 disabled:opacity-60">{loading?<Loader2 className="animate-spin" size={20}/>:<><Mail size={18}/> Enviar enlace seguro</>}</button>
+                                    <button type="button" onClick={()=>setRecoveryRequestOpen(false)} className="flex w-full items-center justify-center gap-2 py-2 text-xs font-bold text-white/45 hover:text-white/75"><ArrowLeft size={14}/> Volver al inicio de sesión</button>
+                                </form>
+                            )
                         ) : (
                             <form onSubmit={handleLogin} className="space-y-5">
                                 {/* Identifier */}
@@ -357,6 +465,8 @@ export default function LoginPage() {
                                         </label>
                                         <button
                                             type="button"
+                                            onClick={() => { setRecoveryEmail(identifier.includes('@') ? identifier : ''); setRecoveryRequestOpen(true); }}
+                                            disabled={loading}
                                             className="text-[10px] font-bold text-blue-400/70 hover:text-blue-400 transition-colors uppercase tracking-tight"
                                         >
                                             ¿Olvidaste tu contraseña?
@@ -408,6 +518,14 @@ export default function LoginPage() {
                             </form>
                         )}
 
+                        {recoveryLinkError && !requirePasswordChange && (
+                            <div className="mt-5 rounded-2xl border border-rose-500/20 bg-rose-500/[.07] p-4 text-xs leading-relaxed text-rose-200">
+                                <b className="block">No fue posible validar el enlace</b>
+                                <span className="text-rose-200/70">{recoveryLinkError}</span>
+                                <button type="button" onClick={()=>{setRecoveryLinkError('');setRecoveryRequestOpen(true)}} className="mt-3 block font-black text-white underline underline-offset-4">Solicitar un enlace nuevo</button>
+                            </div>
+                        )}
+
                         {/* Footer divider */}
                         <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-center gap-6">
                             <div className="flex items-center gap-2 opacity-40 hover:opacity-80 transition-opacity">
@@ -426,7 +544,7 @@ export default function LoginPage() {
                             </div>
                         </div>
                     </div>
-                </motion.div>
+                </Motion.div>
             </div>
         </div>
     );

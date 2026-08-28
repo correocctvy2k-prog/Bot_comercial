@@ -1,0 +1,80 @@
+{
+  "sites": [
+    {
+      "id": "SITE-EDIFICIO-PPAL-PALMIRA",
+      "name": "Edificio Principal Palmira",
+      "zone": "PALMIRA",
+      "type": "EDIFICIO_PRINCIPAL",
+      "observedChannelsMinimum": 70,
+      "members": [
+        { "siisCode": "2220", "relation": "POINT_OF_SALE", "openingGroup": "OPEN-EDIFICIO-PPAL-DOBLE", "openingPolicy": "ANY_MEMBER_OPENS_ALL" },
+        { "siisCode": "3055", "relation": "POINT_OF_SALE", "openingGroup": "OPEN-EDIFICIO-PPAL-DOBLE", "openingPolicy": "ANY_MEMBER_OPENS_ALL" },
+        { "siisCode": "3761", "relation": "PARKING_AND_POINT", "openingGroup": "OPEN-GANADOR", "openingPolicy": "INDEPENDENT" }
+      ],
+      "deviceIds": ["1000129", "1000142", "1000118", "1000004", "1000175", "1000002", "1000141", "1000150"]
+    },
+    {
+      "id": "SITE-OFICINA-PRADERA",
+      "name": "Oficina Principal Pradera",
+      "zone": "PRADERA",
+      "type": "OFICINA",
+      "members": [
+        { "siisCode": "2039", "relation": "POINT_OF_SALE", "openingGroup": "OPEN-OFICINA-PRADERA-DOBLE", "openingPolicy": "ANY_MEMBER_OPENS_ALL" },
+        { "siisCode": "3061", "relation": "POINT_OF_SALE", "openingGroup": "OPEN-OFICINA-PRADERA-DOBLE", "openingPolicy": "ANY_MEMBER_OPENS_ALL" }
+      ],
+      "deviceIds": ["1000046", "1000055"]
+    },
+    {
+      "id": "SITE-PARQUE-BOLIVAR",
+      "name": "Parqueadero Parque Bolívar",
+      "zone": "PALMIRA",
+      "type": "PARQUEADERO",
+      "members": [
+        { "siisCode": "3333", "relation": "PARKING_AND_POINT", "openingGroup": "OPEN-PARQUE-BOLIVAR", "openingPolicy": "INDEPENDENT" }
+      ],
+      "deviceIds": ["1000012", "1000138", "1000140", "1000143", "1000155", "1000163", "1000167"]
+    },
+    {
+      "id": "SITE-CASA-LA-27",
+      "name": "Casa La 27",
+      "zone": "PALMIRA",
+      "type": "SITIO_TECNICO",
+      "members": [],
+      "deviceIds": ["1000079"]
+    },
+    {
+      "id": "SITE-LA-OCTAVA-FLORIDA",
+      "name": "La Octava Florida",
+      "zone": "FLORIDA",
+      "type": "SITIO_TECNICO",
+      "members": [],
+      "deviceIds": ["1000157"]
+    }
+  ],
+  "deviceMappings": {
+    "1000008": "2306",
+    "1000009": "2422",
+    "1000014": "3761",
+    "1000017": "2316",
+    "1000030": "4061",
+    "1000035": "2923",
+    "1000036": "2133",
+    "1000047": "2054",
+    "1000064": "1729",
+    "1000070": "1719",
+    "1000072": "1690",
+    "1000073": "1743",
+    "1000102": "2443",
+    "1000103": "1672",
+    "1000124": "2237",
+    "1000130": "2081",
+    "1000133": "3123",
+    "1000152": "2073",
+    "1000156": "3827",
+    "1000160": "2243",
+    "1000161": "3290",
+    "1000162": "2919",
+    "1000177": "3931",
+    "1000181": "2420"
+  }
+}

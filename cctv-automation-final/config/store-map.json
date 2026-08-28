@@ -1,0 +1,11 @@
+{
+  "_comentario": "Mapeo opcional: nombre crudo que llega en el correo (desde Alarma o Nombre, lo que haya podido extraer el motor) -> nombre limpio y CONSISTENTE para el Excel. Úsalo cuando el mismo punto de venta aparece con identificadores distintos según el canal (ej. caja fuerte vs tripwire de puerta).",
+  "NVR_Tienda_Uribe": "Tienda Uribe",
+  "NVR_Tienda_Costa-Rica": "Tienda Costa Rica",
+  "La_buitrera": "La Buitrera",
+  "Llanogrande_2306": "Llano Grande",
+  "CC_Llano grande_local308": "Llano Grande",
+  "Americas_Florida": "LAS AMERICAS FLORIDA",
+  "El Saman villagorgona": "EL SAMAN GORGONA V.GORG",
+  "Saman VG": "EL SAMAN GORGONA V.GORG"
+}

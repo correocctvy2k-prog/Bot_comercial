@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, createContext } from 'react';
-import { Bot, MapPin, Users, Settings, LogOut, Cable, Terminal, PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, PieChart, Sparkles, Building2, ShieldCheck, User, Image, UserCircle, Loader2, X, Activity, LayoutDashboard, Server } from 'lucide-react';
+import { Bot, MapPin, Users, Settings, LogOut, Cable, Terminal, PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, PieChart, Sparkles, Building2, ShieldCheck, User, Image, UserCircle, Loader2, X, Activity, LayoutDashboard, Server, Cctv, LockKeyhole } from 'lucide-react';
 import SkylabBot from '../components/SkylabBot';
 import { ModeToggle } from "@/components/mode-toggle";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -29,7 +29,17 @@ const MENU_ITEMS_RAW = [
         section: "Opeación Central",
         items: [
             { to: '/', icon: Bot, label: 'Actividad Bot', module: 'bot-activity' },
-            { to: '/points', icon: MapPin, label: 'Puntos de Venta', module: 'points' },
+            { to: '/points', icon: MapPin, label: 'Operación de Puntos', module: 'points' },
+            {
+                label: 'Seguridad Perimetral',
+                icon: ShieldCheck,
+                module: 'points',
+                subItems: [
+                    { icon: Cable, label: 'Ciberseguridad', module: 'points', comingSoon: true },
+                    { to: '/points/cctv', icon: Cctv, label: 'Seguridad Electrónica', module: 'points' },
+                    { icon: LockKeyhole, label: 'Seguridad de la Información', module: 'points', comingSoon: true }
+                ]
+            },
             { to: '/contacts', icon: Users, label: 'Contactos', module: 'contacts' },
             { to: '/asamblea', icon: AsambleaIcon, label: 'Asamblea 2026', module: 'asamblea' }
         ]
@@ -74,7 +84,7 @@ export default function Layout({ children }) {
     const navigate = useNavigate();
     const { profile, logout, hasPermission, user, refreshProfile } = useAuth();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-    const [openMenus, setOpenMenus] = useState({ 'Configuraciones': true, 'Monitoreo IT': true });
+    const [openMenus, setOpenMenus] = useState({ 'Seguridad Perimetral': true, 'Configuraciones': true, 'Monitoreo IT': true });
     const [pageHeader, setPageHeader] = useState(null);
     
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -244,7 +254,13 @@ export default function Layout({ children }) {
                                         {/* Dropdown Items */}
                                         {isSidebarOpen && openMenus[item.label] && (
                                             <div className="pl-4 pr-1 py-1 space-y-1 border-l-2 border-border/50 ml-5 mt-1">
-                                                {item.subItems.map(subItem => (
+                                                {item.subItems.map(subItem => subItem.comingSoon ? (
+                                                    <div key={subItem.label} className="flex items-center gap-3 rounded-lg p-2.5 text-sm font-medium text-muted-foreground/45" title="Integración futura">
+                                                        <subItem.icon size={16} className="opacity-60" />
+                                                        <span className="min-w-0 flex-1 truncate">{subItem.label}</span>
+                                                        <span className="rounded border border-white/[.06] px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider text-muted-foreground/55">Próximo</span>
+                                                    </div>
+                                                ) : (
                                                     <NavLink
                                                         key={subItem.to}
                                                         to={subItem.to}

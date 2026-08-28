@@ -1,0 +1,48 @@
+{
+  "name": "cctv-automation",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "audit": "node audit.js",
+    "import:staging": "node platform/import-staging.js --inventory \"DATOS CCTV.xlsx\" --annual \"2026 programacion anual CCTV.xlsx\"",
+    "import:siis": "node platform/import-siis-snapshot.js",
+    "fetch:siis": "node scripts/fetch-siis-snapshot.js",
+    "reconcile:siis": "node platform/reconcile-siis-staging.js",
+    "import:location-review": "node platform/import-location-review.mjs",
+    "propose:locations": "node platform/build-canonical-location-proposal.js",
+    "promote:locations": "node platform/promote-canonical-locations.js",
+    "migrate:zone": "node platform/migrate-location-region-to-zone.js",
+    "verify:staging": "node platform/verify-staging.js"
+    ,"reconcile:crm-points": "node scripts/reconcile-crm-points.mjs",
+    "migrate:crm-installations": "node platform/migrate-crm-installations.js",
+    "sync:crm-location-catalog": "node platform/sync-crm-location-catalog.js"
+    ,"api": "node api/server.js"
+    ,"migrate:asset-fields": "node platform/migrate-assets-fixed-code.js"
+    ,"events:daily": "node scripts/event-daily-summary.js"
+    ,"events:backfill": "node scripts/backfill-email-events.js"
+    ,"events:reconcile-ip": "node scripts/reconcile-email-events-by-ip.js"
+    ,"sync:siis-live": "node scripts/sync-siis-live.js"
+    ,"observe:siis": "node scripts/run-siis-observer.js"
+    ,"cycle:operational": "node scripts/run-operational-cycle.js"
+    ,"close:operational": "node scripts/generate-operational-closure.js"
+    ,"import:trello-maintenance": "node platform/import-trello-maintenance.js"
+    ,"refresh:trello-maintenance": "node scripts/refresh-trello-maintenance-cache.js"
+    ,"import:trello-support": "node platform/import-trello-support.js"
+    ,"import:visitors": "node scripts/import-visitor-reports.js"
+    ,"reconcile:dss": "node scripts/reconcile-dss-canonical.js"
+    ,"reconcile:dss:apply": "node scripts/reconcile-dss-canonical.js --apply"
+    ,"worker:operational": "node scripts/run-operational-worker.js"
+    ,"worker:visitors": "node scripts/run-visitor-worker.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "exceljs": "^4.4.0",
+    "imapflow": "^1.7.1",
+    "mailparser": "^3.9.15"
+  }
+}

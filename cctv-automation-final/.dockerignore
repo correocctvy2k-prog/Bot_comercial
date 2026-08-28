@@ -1,0 +1,17 @@
+.env
+node_modules/
+backups/
+logs/
+output/
+outputs/
+reports/
+audits/
+data/*.db
+data/*.db-*
+data/event-snapshots/
+data/support-images/
+state.json
+*.xlsx
+*.xlsx.lnk
+.tmp-*/
+.codex-*/

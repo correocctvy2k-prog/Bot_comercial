@@ -206,3 +206,159 @@
 .ksc-callout-in {
   animation: ksc-callout-in 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+
+/* Jerarquía editorial del dominio Seguridad Electrónica. Se mantiene acotada
+   al módulo para no alterar la identidad visual de las demás áreas de Skylab. */
+.security-electronics-module h1,
+.security-electronics-module h2,
+.security-electronics-module h3 {
+  font-family: inherit;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.18;
+  text-wrap: balance;
+}
+
+.security-electronics-module h1,
+.security-electronics-module h2 {
+  color: rgb(248 250 252);
+}
+
+.security-electronics-module h3 {
+  color: rgb(241 245 249);
+}
+
+.security-electronics-module h1 + p,
+.security-electronics-module h2 + p,
+.security-electronics-module h3 + p {
+  line-height: 1.55;
+}
+
+/* Tema claro de Seguridad Electrónica. El módulo nació con superficies oscuras
+   explícitas; estas reglas traducen sus tokens visuales sin afectar dark mode. */
+.light .security-electronics-module {
+  color: #0f172a;
+}
+
+.light .security-electronics-module h1,
+.light .security-electronics-module h2,
+.light .security-electronics-module h3 {
+  color: #0f172a;
+}
+
+.light .security-electronics-module [class*="text-slate-100"],
+.light .security-electronics-module [class*="text-slate-200"] {
+  color: #172033 !important;
+}
+
+.light .security-electronics-module [class*="text-slate-300"] {
+  color: #334155 !important;
+}
+
+.light .security-electronics-module [class*="text-slate-400"] {
+  color: #475569 !important;
+}
+
+.light .security-electronics-module [class*="text-slate-500"],
+.light .security-electronics-module [class*="text-slate-600"] {
+  color: #64748b !important;
+}
+
+.light .security-electronics-module [class*="text-cyan-200"],
+.light .security-electronics-module [class*="text-cyan-300"],
+.light .security-electronics-module [class*="text-cyan-400"] {
+  color: #0e7490 !important;
+}
+
+.light .security-electronics-module [class*="text-blue-200"],
+.light .security-electronics-module [class*="text-blue-300"],
+.light .security-electronics-module [class*="text-blue-400"] {
+  color: #1d4ed8 !important;
+}
+
+.light .security-electronics-module [class*="text-emerald-200"],
+.light .security-electronics-module [class*="text-emerald-300"],
+.light .security-electronics-module [class*="text-emerald-400"] {
+  color: #047857 !important;
+}
+
+.light .security-electronics-module [class*="text-violet-200"],
+.light .security-electronics-module [class*="text-violet-300"],
+.light .security-electronics-module [class*="text-violet-400"] {
+  color: #6d28d9 !important;
+}
+
+.light .security-electronics-module [class*="text-amber-200"],
+.light .security-electronics-module [class*="text-amber-300"],
+.light .security-electronics-module [class*="text-amber-400"] {
+  color: #a94b08 !important;
+}
+
+.light .security-electronics-module [class*="text-rose-200"],
+.light .security-electronics-module [class*="text-rose-300"],
+.light .security-electronics-module [class*="text-rose-400"] {
+  color: #be123c !important;
+}
+
+.light .security-electronics-module [class*="bg-[#07101f]"],
+.light .security-electronics-module [class*="bg-slate-950"],
+.light .security-electronics-module [class*="bg-slate-900"] {
+  background-color: #ffffff !important;
+}
+
+.light .security-electronics-module [class*="bg-black/"],
+.light .security-electronics-module [class*="bg-white/[.0"] {
+  background-color: rgba(241, 245, 249, 0.78) !important;
+}
+
+.light .security-electronics-module [class*="bg-[linear-gradient"] {
+  background-color: #f8fafc !important;
+  background-image: linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #eef6ff 100%) !important;
+}
+
+.light .security-electronics-module [class*="border-white/"],
+.light .security-electronics-module [class*="border-slate-7"],
+.light .security-electronics-module [class*="border-slate-8"] {
+  border-color: #dbe4f0 !important;
+}
+
+.light .security-electronics-module [class*="bg-card/"],
+.light .security-electronics-module .bg-card {
+  background-color: rgba(255, 255, 255, 0.94) !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.035);
+}
+
+.light .security-electronics-module select,
+.light .security-electronics-module input {
+  color: #172033;
+}
+
+.light .security-electronics-module select option {
+  color: #172033;
+  background: #ffffff;
+}
+
+.light .security-electronics-module .recharts-cartesian-grid line {
+  stroke: rgba(100, 116, 139, 0.18);
+}
+
+.light .security-electronics-module .recharts-text,
+.light .security-electronics-module .recharts-cartesian-axis-tick-value {
+  fill: #526176;
+}
+
+.light ::-webkit-scrollbar-track {
+  background: #eef2f7;
+}
+
+.light ::-webkit-scrollbar-thumb {
+  background: #bdc8d6;
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.light ::-webkit-scrollbar-corner {
+  background: #eef2f7;
+}

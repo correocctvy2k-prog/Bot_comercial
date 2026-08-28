@@ -1,0 +1,5 @@
+[
+  { "estacodi": "001", "estanomb": "Punto Uno", "estaping": 1 },
+  { "estacodi": "002", "estanomb": "Punto Dos", "estaping": 0 },
+  { "estacodi": "003", "estanomb": "Punto Tres", "estaping": null }
+]

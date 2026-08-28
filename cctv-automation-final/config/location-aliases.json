@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "status": "seed-review-required",
+  "notes": "Estos alias son candidatos conservadores observados en los libros. Deben asociarse a un código SIIS antes de promoverse al catálogo canónico.",
+  "aliases": [
+    { "alias": "Cigarra", "canonicalCandidate": "La Cigarra" },
+    { "alias": "Buitrera", "canonicalCandidate": "LaBuitrera" },
+    { "alias": "ParquePradera", "canonicalCandidate": "Parque Pradera" },
+    { "alias": "GaleriaCande", "canonicalCandidate": "Galeria Cande" },
+    { "alias": "Frai Luis", "canonicalCandidate": "Fray Luis" },
+    { "alias": "CC Llanogrande", "canonicalCandidate": "CC Llanogrande plaza" },
+    { "alias": "Portal Palmas III", "canonicalCandidate": "PPalmasIII" },
+    { "alias": "Zamorano III", "canonicalCandidate": "ZamoranoIII" },
+    { "alias": "Uribe", "canonicalCandidate": "Tienda Uribe" },
+    { "alias": "Guanabanal", "canonicalCandidate": "Crucero guanabanal" },
+    { "alias": "Esmeralda", "canonicalCandidate": "EsmeraldaFlorida" },
+    { "alias": "Las Americas", "canonicalCandidate": "Americas" }
+  ]
+}

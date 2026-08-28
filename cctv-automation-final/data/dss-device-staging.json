@@ -1,0 +1,1901 @@
+{
+  "generatedAt": "2026-08-20T16:53:13.267Z",
+  "summary": {
+    "exportedDevices": 111,
+    "ocrRows": 133,
+    "uniqueDeviceIds": 111,
+    "withModel": 111,
+    "matchedToExport": 111,
+    "confident": 111,
+    "unmatchedIds": []
+  },
+  "devices": [
+    {
+      "deviceIdDss": "1000002",
+      "model": "DHI-NVR5864-4KS2",
+      "sourceCapture": "Edificio Ppal.png",
+      "rawLine": "® 1000002 10220156 Edificio Ppal Palmira NVR DHI-NVR5864-4K52",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 7,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Edificio Ppal Palmira",
+        "address": "10.220.1.56",
+        "port": "37777",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/EDIFICIO PPAL"
+      }
+    },
+    {
+      "deviceIdDss": "1000004",
+      "model": "DHI-NVR4416-4KS2",
+      "sourceCapture": "Edificio Ppal.png",
+      "rawLine": "® 1000004 10220181 Tesoreria Conteo NVR DHI-NVR4416-4K52",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 9,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Tesoreria Conteo",
+        "address": "10.220.1.81",
+        "port": "37777",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/EDIFICIO PPAL"
+      }
+    },
+    {
+      "deviceIdDss": "1000005",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "Red 44.png",
+      "rawLine": "[J 1000005 1921684445 Licores | NVR DHI-NVR4208-8P-4K52 RED 44",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 99,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Licores I",
+        "address": "192.168.44.45",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 44"
+      }
+    },
+    {
+      "deviceIdDss": "1000008",
+      "model": "DHI-NVR4208-4KS2",
+      "sourceCapture": "red 20 1.png",
+      "rawLine": "[J 1000008 192.16820.190 Lanogrande Plaza NVR DHI-NVR4208-4KS2 RED 20",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 43,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Llanogrande Plaza",
+        "address": "192.168.20.190",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 20"
+      }
+    },
+    {
+      "deviceIdDss": "1000009",
+      "model": "DHI-NVR5208-EI",
+      "sourceCapture": "Red 44.png",
+      "rawLine": "[J 1000009 19216845175 19 con 35 NVR DHI-NVR5208-El RED 44",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 107,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "19 con 35",
+        "address": "192.168.45.175",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 44"
+      }
+    },
+    {
+      "deviceIdDss": "1000011",
+      "model": "DHI-NVR4208-4KS2/L",
+      "sourceCapture": "red 20 1.png",
+      "rawLine": "[J 1000011 192.16820.105 Mercedes II NVR DHI-NVR4208-4KS2/L RED 20",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 38,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Mercedes II",
+        "address": "192.168.20.105",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 20"
+      }
+    },
+    {
+      "deviceIdDss": "1000012",
+      "model": "DHI-NVR4232-4KS2",
+      "sourceCapture": "red 36.png",
+      "rawLine": "[J 1000012 192.168.3636 Parque Bolivar Cajas Ptoventa ~~ NVR DHI-NVR4232-4K52 RED 36",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 85,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Parque Bolivar Cajas PtoVenta",
+        "address": "192.168.36.36",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 36"
+      }
+    },
+    {
+      "deviceIdDss": "1000014",
+      "model": "DHI-NVR4208-4KS2",
+      "sourceCapture": "red 36.png",
+      "rawLine": "[J 1000014 192.16836.16 El Ganador NVR DHI-NVR4208-4KS2 RED 36",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 78,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "El Ganador",
+        "address": "192.168.36.16",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 36"
+      }
+    },
+    {
+      "deviceIdDss": "1000015",
+      "model": "DHI-NVR4208-4KS2/L",
+      "sourceCapture": "Red 44.png",
+      "rawLine": "[J 1000015 19216845235 Tienda Costa Rica NVR DHI-NVR4208-4KS2/L RED 44",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 112,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Tienda Costa Rica",
+        "address": "192.168.45.235",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 44"
+      }
+    },
+    {
+      "deviceIdDss": "1000016",
+      "model": "DHI-NVR5208-E",
+      "sourceCapture": "Red 44.png",
+      "rawLine": "[J 1000016 192.16844.188 Drogueria Prado Il NVR DHI-NVR5208-E RED 44",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 102,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Drogueria Prado II",
+        "address": "192.168.44.188",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 44"
+      }
+    },
+    {
+      "deviceIdDss": "1000017",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "Red 44.png",
+      "rawLine": "[J 1000017 19216845222 Fray Luis NVR DHI-NVR4208-8P-4K52 RED 44",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 110,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Fray Luis",
+        "address": "192.168.45.222",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 44"
+      }
+    },
+    {
+      "deviceIdDss": "1000018",
+      "model": "DHI-NVR4208-4KS2/L",
+      "sourceCapture": "Red 44.png",
+      "rawLine": "[J 1000018 19216844178 Antigua Ppal NVR DHI-NVR4208-4KS2/L RED 44",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 100,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Antigua Ppal",
+        "address": "192.168.44.178",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 44"
+      }
+    },
+    {
+      "deviceIdDss": "1000019",
+      "model": "DHI-NVR4208-4KS2",
+      "sourceCapture": "red 20 1.png",
+      "rawLine": "[J 1000019 192.16820.140 Colombia Taxis NVR DHI-NVR4208-4K52 RED 20",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 40,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Colombia Taxis",
+        "address": "192.168.20.140",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 20"
+      }
+    },
+    {
+      "deviceIdDss": "1000020",
+      "model": "DHI-NVR2208-8P-4KS2",
+      "sourceCapture": "red 20.png",
+      "rawLine": "[J 1000020 19216821155 CC Carrefour Metro NVR DHI-NVR2208-8P-4K52 RED 20",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 49,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "CC Carrefour Metro",
+        "address": "192.168.21.155",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 20"
+      }
+    },
+    {
+      "deviceIdDss": "1000021",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "red 20 1.png",
+      "rawLine": "[J 1000021 192.168.2056 Cementerio NVR DHI-NVR4208-8P-4K52 RED 20",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 37,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Cementerio",
+        "address": "192.168.20.56",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 20"
+      }
+    },
+    {
+      "deviceIdDss": "1000023",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "red 20 1.png",
+      "rawLine": "[J 1000023 19216820150 Obrero | NVR DHI-NVR4208-8P-4K52 RED 20",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 41,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Obrero I",
+        "address": "192.168.20.150",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 20"
+      }
+    },
+    {
+      "deviceIdDss": "1000025",
+      "model": "DHI-NVR4208-4KS2",
+      "sourceCapture": "red 20 1.png",
+      "rawLine": "[J 1000025 192.168.2041 Parques de la Italia Ppal NVR DHI-NVR4208-4KS2 RED 20",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 35,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Parques de la Italia Ppal",
+        "address": "192.168.20.41",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 20"
+      }
+    },
+    {
+      "deviceIdDss": "1000030",
+      "model": "DHI-NVR2208-8P-4KS2",
+      "sourceCapture": "red 20 1.png",
+      "rawLine": "[J 1000030 1921682152 Galeria NVR DHI-NVR2208-8P-4K52 RED 20",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 47,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Galeria",
+        "address": "192.168.21.52",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 20"
+      }
+    },
+    {
+      "deviceIdDss": "1000031",
+      "model": "DHI-NVR4208-4KS2/L",
+      "sourceCapture": "occidente.png",
+      "rawLine": "[J 1000031 1921681013 Aeropuerto NVR DHI-NVR4208-4KS2/L OCCIDENTE",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 14,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Aeropuerto",
+        "address": "192.168.10.13",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/OCCIDENTE"
+      }
+    },
+    {
+      "deviceIdDss": "1000032",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "occidente.png",
+      "rawLine": "[J 1000032 1921681025 Crucero Guanabanal NVR DHI-NVR4208-8P-4K52 OCCIDENTE",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 15,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Crucero Guanabanal",
+        "address": "192.168.10.25",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/OCCIDENTE"
+      }
+    },
+    {
+      "deviceIdDss": "1000033",
+      "model": "DHI-NVR4232-4KS2",
+      "sourceCapture": "red 20.png",
+      "rawLine": "[J 1000033 19216821144 Empresarios NVR DHI-NVR4232-4K52 RED 20",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 48,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Empresarios",
+        "address": "192.168.21.144",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 20"
+      }
+    },
+    {
+      "deviceIdDss": "1000034",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "occidente.png",
+      "rawLine": "[J 1000034 19216834190 La Buitrera NVR DHI-NVR4208-8P-4K52 OCCIDENTE",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 76,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "La Buitrera",
+        "address": "192.168.34.190",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/OCCIDENTE"
+      }
+    },
+    {
+      "deviceIdDss": "1000035",
+      "model": "DHI-NVR4108HS-EI",
+      "sourceCapture": "Red 44.png",
+      "rawLine": "[J 1000035 19216844227 Pikos NVR DHI-NVR4108HS-EI RED 44",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 104,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Pikos",
+        "address": "192.168.44.227",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 44"
+      }
+    },
+    {
+      "deviceIdDss": "1000036",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "occidente.png",
+      "rawLine": "[J 1000036 192.16846.100 Oficina Bolo Alaska NVR DHI-NVR4208-8P-4K52 OCCIDENTE",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 113,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Oficina Bolo Alaska",
+        "address": "192.168.46.100",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/OCCIDENTE"
+      }
+    },
+    {
+      "deviceIdDss": "1000037",
+      "model": "DHI-HCVR5108HS-53",
+      "sourceCapture": "amaime.png",
+      "rawLine": "[J 1000037 1921681215 Oficina Amaime DVR/XVR DHI-HCVR5108HS-53 AMAIME",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 16,
+        "category": "Encoder",
+        "type": "DVR/XVR",
+        "name": "Oficina Amaime",
+        "address": "192.168.12.15",
+        "port": "37777",
+        "organization": "Current Site/GANE PALMIRA/AMAIME"
+      }
+    },
+    {
+      "deviceIdDss": "1000038",
+      "model": "DHI-NVR4208-4KS2",
+      "sourceCapture": "amaime.png",
+      "rawLine": "[J 1000038 1921681258 Amaime | NVR DHI-NVR4208-4K52 AMAIME",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 18,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Amaime I",
+        "address": "192.168.12.58",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/AMAIME"
+      }
+    },
+    {
+      "deviceIdDss": "1000039",
+      "model": "DH-IPC-HDBW2441E-S",
+      "sourceCapture": "amaime.png",
+      "rawLine": "[J 1000039 1921681248 Los Parrales IPC DH-IPC-HDBW2441E-S AMAIME",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 17,
+        "category": "Encoder",
+        "type": "IPC",
+        "name": "Los Parrales",
+        "address": "192.168.12.48",
+        "port": "37777",
+        "organization": "Current Site/GANE PALMIRA/AMAIME"
+      }
+    },
+    {
+      "deviceIdDss": "1000040",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "amaime.png",
+      "rawLine": "[J 1000040 1921681283 Tienda Joel NVR DHI-NVR4208-8P-4K52 AMAIME",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 20,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Tienda Joel",
+        "address": "192.168.12.83",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/AMAIME"
+      }
+    },
+    {
+      "deviceIdDss": "1000041",
+      "model": "DHI-NVR4208-4KS2/L",
+      "sourceCapture": "rozo.png",
+      "rawLine": "1000041 1921681811 Antigua Ppal Rozo NVR DHI-NVR4208-4KS2/L ROZO",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 31,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Antigua Ppal Rozo",
+        "address": "192.168.18.11",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/ROZO"
+      }
+    },
+    {
+      "deviceIdDss": "1000042",
+      "model": "DHI-NVR4216-16P-4KS2",
+      "sourceCapture": "rozo.png",
+      "rawLine": "[J 1000042 192.168.1850 Oficina Ppal Rozo NVR DHI-NVR4216-16P-4KS2 ~~ ROZO",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 32,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Oficina Ppal Rozo",
+        "address": "192.168.18.50",
+        "port": "37777",
+        "organization": "Current Site/GANE PALMIRA/ROZO"
+      }
+    },
+    {
+      "deviceIdDss": "1000043",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "red 14.png",
+      "rawLine": "[J 1000043 1921681432 Marden la 47 NVR DHI-NVR4208-8P-4K52 RED 14",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 22,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Marden la 47",
+        "address": "192.168.14.32",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 14"
+      }
+    },
+    {
+      "deviceIdDss": "1000044",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "red 14.png",
+      "rawLine": "[J 1000044 1921681481 Casa Alameda NVR DHI-NVR4208-8P-4K52 RED 14",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 25,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Casa Alameda",
+        "address": "192.168.14.81",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 14"
+      }
+    },
+    {
+      "deviceIdDss": "1000045",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "pradera.png",
+      "rawLine": "[J 1000045 192.168.2488 Bingo la Sexta NVR DHI-NVR4208-8P-4K52 PRADERA",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 56,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Bingo la Sexta",
+        "address": "192.168.24.88",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PRADERA"
+      }
+    },
+    {
+      "deviceIdDss": "1000046",
+      "model": "DH-XVR5216AN-4KL-X",
+      "sourceCapture": "pradera.png",
+      "rawLine": "[J 1000046 1921682517 DVR Ofi Pradera DVR/XVR DH-XVR5216AN-4KL-X PRADERA",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 62,
+        "category": "Encoder",
+        "type": "DVR/XVR",
+        "name": "DVR Ofi Pradera",
+        "address": "192.168.25.17",
+        "port": "37777",
+        "organization": "Current Site/GANE PALMIRA/PRADERA"
+      }
+    },
+    {
+      "deviceIdDss": "1000047",
+      "model": "DHI-NVR4208-4KS2/L",
+      "sourceCapture": "pradera.png",
+      "rawLine": "[J 1000047 19216824203 La Bodega Pradera NVR DHI-NVR4208-4KS2/L PRADERA",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 59,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "La Bodega Pradera",
+        "address": "192.168.24.203",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PRADERA"
+      }
+    },
+    {
+      "deviceIdDss": "1000048",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "red 14.png",
+      "rawLine": "[J 1000048 192.168.1437 Portal Palmas Ill NVR DHI-NVR4208-8P-4K52 RED 14",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 23,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Portal Palmas III",
+        "address": "192.168.14.37",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 14"
+      }
+    },
+    {
+      "deviceIdDss": "1000050",
+      "model": "DHI-NVR4208-4KS3",
+      "sourceCapture": "red 14.png",
+      "rawLine": "[J 1000050 192.168.1587 La Cosecha lll NVR DHI-NVR4208-4KS3 RED 14",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 30,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "La Cosecha III",
+        "address": "192.168.15.87",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 14"
+      }
+    },
+    {
+      "deviceIdDss": "1000051",
+      "model": "DHI-NVR4208-4KS2/L",
+      "sourceCapture": "red 14.png",
+      "rawLine": "[J 1000051 1921681415 Alameda V/ NVR DHI-NVR4208-4KS2/L RED 14",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 21,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Alameda V",
+        "address": "192.168.14.15",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 14"
+      }
+    },
+    {
+      "deviceIdDss": "1000052",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "red 14.png",
+      "rawLine": "[J 1000052 1921681484 Zamorano ll NVR DHI-NVR4208-8P-4K52 RED 14",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 26,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Zamorano III",
+        "address": "192.168.14.84",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 14"
+      }
+    },
+    {
+      "deviceIdDss": "1000053",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "red 34.png",
+      "rawLine": "[J 1000053 192.168.3424 Mariacano NVR DHI-NVR4208-8P-4K52 RED 34",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 73,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Mariacano",
+        "address": "192.168.34.24",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 34"
+      }
+    },
+    {
+      "deviceIdDss": "1000054",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "pradera.png",
+      "rawLine": "[J 1000054 192.16824.204 Maxitodo NVR DHI-NVR4208-8P-4K52 PRADERA",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 60,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Maxitodo",
+        "address": "192.168.24.204",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PRADERA"
+      }
+    },
+    {
+      "deviceIdDss": "1000055",
+      "model": "DHI-NVR4208-4KS2/L",
+      "sourceCapture": "pradera.png",
+      "rawLine": "[J 1000055 192.168.2516 NVR Ofi Pradera NVR DHI-NVR4208-4KS2/L PRADERA",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 61,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "NVR Ofi Pradera",
+        "address": "192.168.25.16",
+        "port": "37777",
+        "organization": "Current Site/GANE PALMIRA/PRADERA"
+      }
+    },
+    {
+      "deviceIdDss": "1000056",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "pradera.png",
+      "rawLine": "[J 1000056 192.16824201 Panchinita NVR DHI-NVR4208-8P-4K52 PRADERA",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 58,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Panchinita",
+        "address": "192.168.24.201",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PRADERA"
+      }
+    },
+    {
+      "deviceIdDss": "1000057",
+      "model": "DHI-NVR4108HS-EI",
+      "sourceCapture": "florida.png",
+      "rawLine": "[J 1000057 192.168.3262 Antigua Ppal Florida NVR DHI-NVR4108HS-EI FLORIDA",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 68,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Antigua Ppal Florida",
+        "address": "192.168.32.62",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/FLORIDA"
+      }
+    },
+    {
+      "deviceIdDss": "1000060",
+      "model": "DH-IPC-HDBW2441E-S",
+      "sourceCapture": "florida.png",
+      "rawLine": "[J 1000060 192.16832.182 Las Americas IPC DH-IPC-HDBW2441E-S FLORIDA",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 72,
+        "category": "Encoder",
+        "type": "IPC",
+        "name": "Las Americas",
+        "address": "192.168.32.182",
+        "port": "37777",
+        "organization": "Current Site/GANE PALMIRA/FLORIDA"
+      }
+    },
+    {
+      "deviceIdDss": "1000062",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "florida.png",
+      "rawLine": "[J 1000062 192.16832.106 La Novena Florida NVR DHI-NVR4208-8P-4K52 FLORIDA",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 69,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "La Novena Florida",
+        "address": "192.168.32.106",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/FLORIDA"
+      }
+    },
+    {
+      "deviceIdDss": "1000063",
+      "model": "DHI-NVR4208-4KS2",
+      "sourceCapture": "cande.png",
+      "rawLine": "[J 1000063 192.16840.30 20 de Julio VG NVR DHI-NVR4208-4K52 CANDELARIA|",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 88,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "20 de Julio VG",
+        "address": "192.168.40.30",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/CANDELARIA"
+      }
+    },
+    {
+      "deviceIdDss": "1000064",
+      "model": "DHI-NVR4232-4KS2",
+      "sourceCapture": "cande.png",
+      "rawLine": "Corrección visual controlada",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 89,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Ofi Cabuyal",
+        "address": "192.168.40.79",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/CANDELARIA"
+      }
+    },
+    {
+      "deviceIdDss": "1000070",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "cande.png",
+      "rawLine": "[J 1000070 192.16842.50 La pereira Torre NVR DHI-NVR4208-8P-4K52 CANDELARIA|",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 95,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "La pereira Torre",
+        "address": "192.168.42.50",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/CANDELARIA"
+      }
+    },
+    {
+      "deviceIdDss": "1000071",
+      "model": "DHI-NVR4208-4KS2",
+      "sourceCapture": "cande.png",
+      "rawLine": "[J 1000071 1921684222 Ofi Ciudad del Campo NVR DHI-NVR4208-4K52 CANDELARIA|",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 94,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Ofi Ciudad del Campo",
+        "address": "192.168.42.22",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/CANDELARIA"
+      }
+    },
+    {
+      "deviceIdDss": "1000072",
+      "model": "DHI-NVR5208-EI",
+      "sourceCapture": "cande.png",
+      "rawLine": "[J 1000072 19216840201 Oficina Ppal VilaGorgona NVR DHI-NVR5208-El CANDELARIA|",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 93,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Oficina Ppal VillaGorgona",
+        "address": "192.168.40.201",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/CANDELARIA"
+      }
+    },
+    {
+      "deviceIdDss": "1000073",
+      "model": "DHI-NVR4232-4KS2",
+      "sourceCapture": "cande.png",
+      "rawLine": "[J 1000073 192.16840.124 Ofi Poblado Campestre NVR DHI-NVR4232-4K52 CANDELARIA|",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 91,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Ofi Poblado Campestre",
+        "address": "192.168.40.124",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/CANDELARIA"
+      }
+    },
+    {
+      "deviceIdDss": "1000074",
+      "model": "DHI-NVR4208-4KS2/L",
+      "sourceCapture": "cande.png",
+      "rawLine": "[J 1000074 192.16840.142 Saman VG NVR DHI-NVR4208-4KS2/L CANDELARIA|",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 92,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Saman VG",
+        "address": "192.168.40.142",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/CANDELARIA"
+      }
+    },
+    {
+      "deviceIdDss": "1000079",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "Red 44.png",
+      "rawLine": "[J 1000079 19216845225 Casala27 NVR DHI-NVR4208-8P-4K52 RED 44",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 111,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Casa La 27",
+        "address": "192.168.45.225",
+        "port": "37777",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 44"
+      }
+    },
+    {
+      "deviceIdDss": "1000084",
+      "model": "IPC-K35",
+      "sourceCapture": "Red 44.png",
+      "rawLine": "[J 1000084 1921684079 Ofi Cabuyal NVR DHI-NVR4232-4K52 CANDELARIA|",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 101,
+        "category": "Encoder",
+        "type": "IPC",
+        "name": "Colombia Cabinas",
+        "address": "192.168.44.181",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 44"
+      }
+    },
+    {
+      "deviceIdDss": "1000086",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "red 34.png",
+      "rawLine": "[J 1000086 192.168.3450 Popular Modelo NVR DHI-NVR4208-8P-4K52 RED 34",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 74,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Popular Modelo",
+        "address": "192.168.34.50",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 34"
+      }
+    },
+    {
+      "deviceIdDss": "1000090",
+      "model": "DHI-NVR4208-4KS2/L",
+      "sourceCapture": "red 20.png",
+      "rawLine": "[J 1000090 192.16821.202 Oasis de la Italia NVR DHI-NVR4208-4KS2/L RED 20",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 53,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Oasis de la Italia",
+        "address": "192.168.21.202",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 20"
+      }
+    },
+    {
+      "deviceIdDss": "1000091",
+      "model": "DHI-NVR4208-4KS2/L",
+      "sourceCapture": "red 20.png",
+      "rawLine": "Corrección visual controlada",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 46,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Reservas de la Italia",
+        "address": "192.168.21.41",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 20"
+      }
+    },
+    {
+      "deviceIdDss": "1000098",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "pradera.png",
+      "rawLine": "[J 1000098 192.168.2476 Manhatan NVR DHI-NVR4208-8P-4K52 PRADERA",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 55,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Manhatan",
+        "address": "192.168.24.76",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PRADERA"
+      }
+    },
+    {
+      "deviceIdDss": "1000100",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "florida.png",
+      "rawLine": "[J 1000100 192.168.3236 La Esmeralda Florida NVR DHI-NVR4208-8P-4K52 FLORIDA",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 66,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "La Esmeralda Florida",
+        "address": "192.168.32.36",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/FLORIDA"
+      }
+    },
+    {
+      "deviceIdDss": "1000102",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "cande.png",
+      "rawLine": "[J 1000102 192.168.2652 Registraduria Candelaria NVR DHI-NVR4208-8P-4K52 CANDELARIA|",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 63,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Registraduria Candelaria",
+        "address": "192.168.26.52",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/CANDELARIA"
+      }
+    },
+    {
+      "deviceIdDss": "1000103",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "cande.png",
+      "rawLine": "[J 1000103 192.168.2752 Galeria Candelaria NVR DHI-NVR4208-8P-4K52 CANDELARIA|",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 64,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Galeria Candelaria",
+        "address": "192.168.27.52",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/CANDELARIA"
+      }
+    },
+    {
+      "deviceIdDss": "1000109",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "red 20 1.png",
+      "rawLine": "[J 1000109 192.168.2048 Las Americas Palmira NVR DHI-NVR4208-8P-4K52 RED 20",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 36,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Las Americas Palmira",
+        "address": "192.168.20.48",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 20"
+      }
+    },
+    {
+      "deviceIdDss": "1000114",
+      "model": "DH-IPC-HDBW3441E-AS-S2",
+      "sourceCapture": "red 14.png",
+      "rawLine": "[J 1000114 1921681473 Ignacio Torres IPC DH-IPC-HDBW3441E-AS-S2 RED 14",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 24,
+        "category": "Encoder",
+        "type": "IPC",
+        "name": "Ignacio Torres",
+        "address": "192.168.14.73",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 14"
+      }
+    },
+    {
+      "deviceIdDss": "1000115",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "red 20 1.png",
+      "rawLine": "[J 1000115 192.168.2039 Papayal NVR DHI-NVR4208-8P-4K52 RED 20",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 34,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Papayal",
+        "address": "192.168.20.39",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 20"
+      }
+    },
+    {
+      "deviceIdDss": "1000116",
+      "model": "DHI-NVR4208-4KS3",
+      "sourceCapture": "red vpn.png",
+      "rawLine": "[J 1000116 10100130 Olimpico ll NVR DHI-NVR4208-4KS3 VPN",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 4,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Olimpico III",
+        "address": "10.100.1.30",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/VPN"
+      }
+    },
+    {
+      "deviceIdDss": "1000118",
+      "model": "DH-IPC-HDBW5241E-ZE",
+      "sourceCapture": "Edificio Ppal.png",
+      "rawLine": "® 1000118 10220194 Deteccion Rostros IPC DH-IPC-HDBWS5241E-ZE",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 10,
+        "category": "Encoder",
+        "type": "IPC",
+        "name": "Detección Rostros",
+        "address": "10.220.1.94",
+        "port": "37777",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/EDIFICIO PPAL"
+      }
+    },
+    {
+      "deviceIdDss": "1000119",
+      "model": "DH-IPC-HDBW3441E-AS-S2",
+      "sourceCapture": "occidente.png",
+      "rawLine": "[J 1000119 1921682231 Tienda Nueva IPC DH-IPC-HDBW3441E-AS-S2  OCCIDENTE",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 54,
+        "category": "Encoder",
+        "type": "IPC",
+        "name": "Tienda Nueva",
+        "address": "192.168.22.31",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/OCCIDENTE"
+      }
+    },
+    {
+      "deviceIdDss": "1000123",
+      "model": "DH-T4A-PV",
+      "sourceCapture": "occidente.png",
+      "rawLine": "[J 1000123 1921681584 La Herradura IPC DH-T4A-PV OCCIDENTE",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 29,
+        "category": "Encoder",
+        "type": "IPC",
+        "name": "La Herradura",
+        "address": "192.168.15.84",
+        "port": "37777",
+        "organization": "Current Site/GANE PALMIRA/OCCIDENTE"
+      }
+    },
+    {
+      "deviceIdDss": "1000124",
+      "model": "DHI-NVR4216-4KS2/L",
+      "sourceCapture": "Red 44.png",
+      "rawLine": "[J 1000124 19216845199 Caja Agraria NVR DHI-NVR4216-4KS2/L RED 44",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 109,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Caja Agraria",
+        "address": "192.168.45.199",
+        "port": "37777",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 44"
+      }
+    },
+    {
+      "deviceIdDss": "1000126",
+      "model": "DHI-NVR4208-4KS2",
+      "sourceCapture": "red 34.png",
+      "rawLine": "[J 1000126 19216834147 Marden del bosque NVR DHI-NVR4208-4K52 RED 34",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 75,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Marden del bosque",
+        "address": "192.168.34.147",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 34"
+      }
+    },
+    {
+      "deviceIdDss": "1000129",
+      "model": "DHI-NVR5864-EI",
+      "sourceCapture": "Edificio Ppal.png",
+      "rawLine": "® 1000129 10220199 Parqueadero_Cuarto-Elect NVR DHI-NVR5864-EI",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 12,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Parqueadero_Cuarto-Elect",
+        "address": "10.220.1.99",
+        "port": "37777",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/EDIFICIO PPAL"
+      }
+    },
+    {
+      "deviceIdDss": "1000130",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "florida.png",
+      "rawLine": "[J 1000130 19216832136 Libardo Florida NVR DHI-NVR4208-8P-4K52 FLORIDA",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 70,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Libardo Florida",
+        "address": "192.168.32.136",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/FLORIDA"
+      }
+    },
+    {
+      "deviceIdDss": "1000132",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "red 20 1.png",
+      "rawLine": "[J 1000132 1921682139 Caicelandia NVR DHI-NVR4208-8P-4K52 RED 20",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 45,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Caicelandia",
+        "address": "192.168.21.39",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 20"
+      }
+    },
+    {
+      "deviceIdDss": "1000133",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "red 20 1.png",
+      "rawLine": "[J 1000133 19216820125 CC_Unicentro NVR DHI-NVR4208-8P-4K52 RED 20",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 39,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "CC_Unicentro",
+        "address": "192.168.20.125",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 20"
+      }
+    },
+    {
+      "deviceIdDss": "1000134",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "red 14.png",
+      "rawLine": "[J 1000134 192.168.1537 Santa Teresita Il NVR DHI-NVR4208-8P-4K52 RED 14",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 28,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Santa Teresita II",
+        "address": "192.168.15.37",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 14"
+      }
+    },
+    {
+      "deviceIdDss": "1000138",
+      "model": "ITC415-PW6M-IZ-C2",
+      "sourceCapture": "red 36.png",
+      "rawLine": "[J 1000138 192.168.3636 ANPR out Parq Bolivar Access ANPR Cam... [TC415-PW6M-Z-C2 RED 36",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 84,
+        "category": "ANPR Device",
+        "type": "Access ANPR Camera",
+        "name": "ANPR out Parq Bolivar",
+        "address": "192.168.36.36",
+        "port": "4454",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 36"
+      }
+    },
+    {
+      "deviceIdDss": "1000139",
+      "model": "DHI-NVR5208-EI",
+      "sourceCapture": "Red 44.png",
+      "rawLine": "[J 1000139 1921684545 19 con 3711 NVR DHI-NVR5208-El RED 44",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 106,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "19 con 37 II",
+        "address": "192.168.45.45",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 44"
+      }
+    },
+    {
+      "deviceIdDss": "1000140",
+      "model": "ITC415-PW6M-IZ-C2",
+      "sourceCapture": "red 36.png",
+      "rawLine": "[J 1000140 192.168.3636 ANPR In-Out Calle 32 Access ANPR Cam... [TC415-PW6M-Z-C2 RED 36",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 83,
+        "category": "ANPR Device",
+        "type": "Access ANPR Camera",
+        "name": "ANPR In-Out Calle 32",
+        "address": "192.168.36.36",
+        "port": "4460",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 36"
+      }
+    },
+    {
+      "deviceIdDss": "1000141",
+      "model": "ITC413-PWA4D-1Z1",
+      "sourceCapture": "Edificio Ppal.png",
+      "rawLine": "® 1000141 10220145 OUT Parqueadero Ganador ~~ Access ANPR Cam... ITC413-PWA4D-1Z1",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 6,
+        "category": "ANPR Device",
+        "type": "Access ANPR Camera",
+        "name": "OUT Parqueadero Ganador",
+        "address": "10.220.1.45",
+        "port": "37777",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/EDIFICIO PPAL"
+      }
+    },
+    {
+      "deviceIdDss": "1000142",
+      "model": "ITC413-PWA4D-IZ1",
+      "sourceCapture": "Edificio Ppal.png",
+      "rawLine": "® 1000142 10220198 IN Parqueadero Gane Access ANPR Cam... ITC413-PWA4D-IZ1",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 11,
+        "category": "ANPR Device",
+        "type": "Access ANPR Camera",
+        "name": "IN Parqueadero Gane",
+        "address": "10.220.1.98",
+        "port": "37777",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/EDIFICIO PPAL"
+      }
+    },
+    {
+      "deviceIdDss": "1000143",
+      "model": "ITC415-PW6M-IZ-C2",
+      "sourceCapture": "red 36.png",
+      "rawLine": "[J 1000143 192.168.3636 ANPR In Motos Parque Bolivar Access ANPR Cam... ITC415-PW6M-IZ-C2 RED 36",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 82,
+        "category": "ANPR Device",
+        "type": "Access ANPR Camera",
+        "name": "ANPR In Motos Parque Bolivar",
+        "address": "192.168.36.36",
+        "port": "4461",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 36"
+      }
+    },
+    {
+      "deviceIdDss": "1000144",
+      "model": "DH-IPC-HDBW3441R-AS-P",
+      "sourceCapture": "Red 44.png",
+      "rawLine": "[J 1000144 1921684545 Cam SMD 19 con 37 II IPC DH-IPC-HDBW3441R-AS-P RED 44",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 105,
+        "category": "Encoder",
+        "type": "IPC",
+        "name": "Cam SMD 19 con 37 II",
+        "address": "192.168.45.45",
+        "port": "4457",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 44"
+      }
+    },
+    {
+      "deviceIdDss": "1000146",
+      "model": "DHI-NVR4208-4KS3",
+      "sourceCapture": "red 20.png",
+      "rawLine": "[J 1000146 19216821195 Rivera Escobar NVR DHI-NVR4208-4KS3 RED 20",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 52,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Rivera Escobar",
+        "address": "192.168.21.195",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 20"
+      }
+    },
+    {
+      "deviceIdDss": "1000150",
+      "model": "DHI-ARC3000H-FW2",
+      "sourceCapture": "Edificio Ppal.png",
+      "rawLine": "® 1000150 1021028 Parqueadero Ganador Alarm Controller DHI-ARC3000H-FW2",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 3,
+        "category": "Alarm Controller",
+        "type": "Alarm Controller",
+        "name": "Parqueadero Ganador",
+        "address": "10.2.10.28",
+        "port": "37777",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/EDIFICIO PPAL"
+      }
+    },
+    {
+      "deviceIdDss": "1000151",
+      "model": "DHI-NVR4208-4KS2/L",
+      "sourceCapture": "Red 44.png",
+      "rawLine": "[J 1000151 192.16845.181 Tienda Uribe NVR DHI-NVR4208-4KS2/L RED 44",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 108,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Tienda Uribe",
+        "address": "192.168.45.181",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 44"
+      }
+    },
+    {
+      "deviceIdDss": "1000152",
+      "model": "DH-IPC-HDBW3441E-AS-S2",
+      "sourceCapture": "florida.png",
+      "rawLine": "[J 1000152 192.168.3262 Cam SMD Ant Ppal Florida IPC DH-IPC-HDBW3441E-AS-S2 FLORIDA",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 67,
+        "category": "Encoder",
+        "type": "IPC",
+        "name": "Cam SMD Ant Ppal Florida",
+        "address": "192.168.32.62",
+        "port": "4458",
+        "organization": "Current Site/GANE PALMIRA/FLORIDA"
+      }
+    },
+    {
+      "deviceIdDss": "1000153",
+      "model": "DHI-NVR5232-E1",
+      "sourceCapture": "cande.png",
+      "rawLine": "[J 1000153 192.168.2817 Oficina Candelaria NVR DHI-NVR5232-E1 CANDELARIA|",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 65,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Oficina Candelaria",
+        "address": "192.168.28.17",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/CANDELARIA"
+      }
+    },
+    {
+      "deviceIdDss": "1000155",
+      "model": "ITC415-PW6M-IZ-C2",
+      "sourceCapture": "red 36.png",
+      "rawLine": "[J 1000155 192.168.3636 ANPR in calle 31 Access ANPR Cam... [TC415-PW6M-Z-C2 RED 36",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 81,
+        "category": "ANPR Device",
+        "type": "Access ANPR Camera",
+        "name": "ANPR in calle 31",
+        "address": "192.168.36.36",
+        "port": "4459",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 36"
+      }
+    },
+    {
+      "deviceIdDss": "1000156",
+      "model": "DHI-NVR5432-4KS2",
+      "sourceCapture": "florida.png",
+      "rawLine": "[J 1000156 10220452 Oficina Ppal Florida NVR DHI-NVR5432-4K52 FLORIDA",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 13,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Oficina Ppal Florida",
+        "address": "10.220.45.2",
+        "port": "37777",
+        "organization": "Current Site/GANE PALMIRA/FLORIDA"
+      }
+    },
+    {
+      "deviceIdDss": "1000157",
+      "model": "DHI-NVR4216-16P-4KS2",
+      "sourceCapture": "florida.png",
+      "rawLine": "[J 1000157 19216832177 La Octava Florida NVR DHI-NVR4216-16P-4KS2 FLORIDA",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 71,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "La Octava Florida",
+        "address": "192.168.32.177",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/FLORIDA"
+      }
+    },
+    {
+      "deviceIdDss": "1000158",
+      "model": "DHI-NVR5208-EI2",
+      "sourceCapture": "red 36.png",
+      "rawLine": "[J 1000158 192168369 La Cigarra NVR DHI-NVR5208-E12 RED 36",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 77,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "La Cigarra",
+        "address": "192.168.36.9",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 36"
+      }
+    },
+    {
+      "deviceIdDss": "1000159",
+      "model": "DHI-NVR4208-4KS2/L",
+      "sourceCapture": "cande.png",
+      "rawLine": "[J 1000159 192.16840.19 La Virgen Vilagorgona NVR DHI-NVR4208-4KS2/L CANDELARIA|",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 87,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "La Virgen Villagorgona",
+        "address": "192.168.40.19",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/CANDELARIA"
+      }
+    },
+    {
+      "deviceIdDss": "1000160",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "red 20.png",
+      "rawLine": "[J 1000160 19216821192 Berlin Palmira NVR DHI-NVR4208-8P-4K52 RED 20",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 51,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Berlín Palmira",
+        "address": "192.168.21.192",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 20"
+      }
+    },
+    {
+      "deviceIdDss": "1000161",
+      "model": "IPC-K35",
+      "sourceCapture": "amaime.png",
+      "rawLine": "[J 1000161 1921681281 Calle del Comercio IPC IPC-K35 AMAIME",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 19,
+        "category": "Encoder",
+        "type": "IPC",
+        "name": "Calle del Comercio",
+        "address": "192.168.12.81",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/AMAIME"
+      }
+    },
+    {
+      "deviceIdDss": "1000162",
+      "model": "DHI-ARC3000H-FW2",
+      "sourceCapture": "cande.png",
+      "rawLine": "[J 1000162 1921684255 Alama Torre Juanchito Alarm Controller DHI-ARC3000H-FW2 CANDELARIA|",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 96,
+        "category": "Alarm Controller",
+        "type": "Alarm Controller",
+        "name": "Alarma Torre Juanchito",
+        "address": "192.168.42.55",
+        "port": "37777",
+        "organization": "Current Site/GANE PALMIRA/CANDELARIA"
+      }
+    },
+    {
+      "deviceIdDss": "1000163",
+      "model": "DHI-ARC3000H-FW2",
+      "sourceCapture": "red 36.png",
+      "rawLine": "[J 1000163 192.168.3627 Parque Bolivar Cajas-Pto_Venta Alarm Controller DHI-ARC3000H-FW2 RED 36",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 79,
+        "category": "Alarm Controller",
+        "type": "Alarm Controller",
+        "name": "Parque Bolivar Cajas-Pto_Venta",
+        "address": "192.168.36.27",
+        "port": "37777",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 36"
+      }
+    },
+    {
+      "deviceIdDss": "1000164",
+      "model": "DHI-NVR5208-EI",
+      "sourceCapture": "red 20 1.png",
+      "rawLine": "[J 1000164 192.168.2029 Guayacanes del Ingenio NVR DHI-NVR5208-El RED 20",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 33,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Guayacanes del Ingenio",
+        "address": "192.168.20.29",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 20"
+      }
+    },
+    {
+      "deviceIdDss": "1000165",
+      "model": "DHI-NVR4208-4KS2/L",
+      "sourceCapture": "red 14.png",
+      "rawLine": "[J 1000165 192.168.1487 Zamorano ll Oficina NVR DHI-NVR4208-4KS2/L RED 14",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 27,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Zamorano II Oficina",
+        "address": "192.168.14.87",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 14"
+      }
+    },
+    {
+      "deviceIdDss": "1000166",
+      "model": "DHI-NVR4208-4KS2/L",
+      "sourceCapture": "cande.png",
+      "rawLine": "[J 1000166 192.16840.18 Iglesia VillaGorgona NVR DHI-NVR4208-4KS2/L CANDELARIA|",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 86,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Iglesia VillaGorgona",
+        "address": "192.168.40.18",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/CANDELARIA"
+      }
+    },
+    {
+      "deviceIdDss": "1000167",
+      "model": "DHI-NVR4232-4KS2/L",
+      "sourceCapture": "red 36.png",
+      "rawLine": "[J 1000167 192.168.3636 NVR Parqueadero Parque Bo. NVR DHI-NVR4232-4KS2/L RED 36",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 80,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "NVR Parqueadero Parque Bolivar",
+        "address": "192.168.36.36",
+        "port": "4458",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 36"
+      }
+    },
+    {
+      "deviceIdDss": "1000168",
+      "model": "DHI-NVR4208-4KS2",
+      "sourceCapture": "pradera.png",
+      "rawLine": "[J 1000168 1921682496 La Colina Pradera NVR DHI-NVR4208-4KS2 PRADERA",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 57,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "La Colina Pradera",
+        "address": "192.168.24.96",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PRADERA"
+      }
+    },
+    {
+      "deviceIdDss": "1000169",
+      "model": "DHI-NVR4208-4KS2",
+      "sourceCapture": "Red 44.png",
+      "rawLine": "[J 1000169 1921684441 Prado Iglesia NVR DHI-NVR4208-4K52 RED 44",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 98,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Prado Iglesia",
+        "address": "192.168.44.41",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 44"
+      }
+    },
+    {
+      "deviceIdDss": "1000170",
+      "model": "DHI-NVR5208-EI2",
+      "sourceCapture": "red vpn.png",
+      "rawLine": "[J 1000170 192.16821.186 Parque Prado NVR DHI-NVR5208-E12 VPN",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 50,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Parque Prado",
+        "address": "192.168.21.186",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/VPN"
+      }
+    },
+    {
+      "deviceIdDss": "1000174",
+      "model": "DHI-NVR5208-E",
+      "sourceCapture": "cande.png",
+      "rawLine": "[J 1000174 192.16840.108 Oficina Carmelo NVR DHI-NVR5208-E CANDELARIA|",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 90,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Oficina Carmelo",
+        "address": "192.168.40.108",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/CANDELARIA"
+      }
+    },
+    {
+      "deviceIdDss": "1000175",
+      "model": "DHI-NVR5864-EI",
+      "sourceCapture": "Edificio Ppal.png",
+      "rawLine": "® 1000175 10220180 Ofi Ppal-Cajas_Pto_Venta NVR DHI-NVR5864-EI",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 8,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Ofi Ppal-Cajas_Pto_Venta",
+        "address": "10.220.1.80",
+        "port": "37777",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/EDIFICIO PPAL"
+      }
+    },
+    {
+      "deviceIdDss": "1000177",
+      "model": "DHI-NVR4208-4KS2/L",
+      "sourceCapture": "Red 44.png",
+      "rawLine": "[J 1000177 19216844218 La independencia NVR DHI-NVR4208-4KS2/L RED 44",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 103,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "La independencia",
+        "address": "192.168.44.218",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 44"
+      }
+    },
+    {
+      "deviceIdDss": "1000178",
+      "model": "DHI-NVR5208-E",
+      "sourceCapture": "red 20 1.png",
+      "rawLine": "[J 1000178 192.16820.163 19 con 33 NVR DHI-NVR5208-E RED 20",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 42,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "19 con 33",
+        "address": "192.168.20.163",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 20"
+      }
+    },
+    {
+      "deviceIdDss": "1000179",
+      "model": "DHI-NVR4208-8P-4KS2",
+      "sourceCapture": "red vpn.png",
+      "rawLine": "[J 1000179 10.1001.101 Heladeria Sembrador NVR DHI-NVR4208-8P-4K52 VPN",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 5,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Heladería Sembrador",
+        "address": "10.100.1.101",
+        "port": "4456",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/VPN"
+      }
+    },
+    {
+      "deviceIdDss": "1000180",
+      "model": "DH-IPC-HDBW3441R-AS-P",
+      "sourceCapture": "red 44 1.png",
+      "rawLine": "[J 1000180 1921684419 Sembrador Plaza IPC DH-IPC-HDBW3441R-AS-P RED 44",
+      "matchMethod": "VISUAL_OVERRIDE",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 97,
+        "category": "Encoder",
+        "type": "IPC",
+        "name": "Sembrador Plaza",
+        "address": "192.168.44.19",
+        "port": "37777",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 44"
+      }
+    },
+    {
+      "deviceIdDss": "1000181",
+      "model": "DHI-NVR4208-4KS2/L",
+      "sourceCapture": "red 20 1.png",
+      "rawLine": "[J 1000181 19216820203 Petruc NVR DHI-NVR4208-4KS2/L RED 20",
+      "matchMethod": "ADDRESS_EXACT",
+      "matchScore": 1,
+      "export": {
+        "exportRow": 44,
+        "category": "Encoder",
+        "type": "NVR",
+        "name": "Petruc",
+        "address": "192.168.20.203",
+        "port": "4455",
+        "organization": "Current Site/GANE PALMIRA/PALMIRA/RED 20"
+      }
+    }
+  ]
+}

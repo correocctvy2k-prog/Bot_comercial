@@ -10,6 +10,7 @@ import Dashboard from './pages/Dashboard'
 import Connections from './pages/Connections'
 import BotConfig from './pages/BotConfig'
 import Points from './pages/Points'
+import CctvModule from './pages/CctvModule'
 import Contacts from './pages/Contacts'
 import ContactDetail from './pages/ContactDetail'
 import CommandCenter from './pages/CommandCenter'
@@ -42,6 +43,8 @@ function App() {
                     <Routes>
                       <Route path="/" element={<ProtectedRoute module="bot-activity"><Dashboard /></ProtectedRoute>} />
                       <Route path="/points" element={<ProtectedRoute module="points"><Points /></ProtectedRoute>} />
+                      <Route path="/points/cctv" element={<ProtectedRoute module="points"><CctvModule /></ProtectedRoute>} />
+                      <Route path="/points/cctv/:siisCode" element={<ProtectedRoute module="points"><CctvModule /></ProtectedRoute>} />
                       <Route path="/connections" element={<ProtectedRoute module="settings"><Connections /></ProtectedRoute>} />
                       <Route path="/connections/:id/config" element={<ProtectedRoute module="settings"><BotConfig /></ProtectedRoute>} />
                       <Route path="/contacts" element={<ProtectedRoute module="contacts"><Contacts /></ProtectedRoute>} />

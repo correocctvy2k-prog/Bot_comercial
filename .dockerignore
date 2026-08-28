@@ -1,0 +1,19 @@
+.git
+**/node_modules
+**/dist
+**/.env
+**/.env.local
+cctv-automation-final/backups
+cctv-automation-final/logs
+cctv-automation-final/output
+cctv-automation-final/outputs
+cctv-automation-final/reports
+cctv-automation-final/audits
+cctv-automation-final/data/*.db
+cctv-automation-final/data/*.db-*
+cctv-automation-final/data/event-snapshots
+cctv-automation-final/data/support-images
+cctv-automation-final/state.json
+cctv-automation-final/*.xlsx
+cctv-automation-final/*.xlsx.lnk
+CRM_Frontend/Table Trello/backend/data

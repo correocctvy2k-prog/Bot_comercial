@@ -22,8 +22,23 @@ const ProtectedRoute = ({ children, module }) => {
     }
 
     if (module && !hasPermission(module)) {
-        // Redirigir a la home si no tiene permiso para el módulo específico
-        return <Navigate to="/" replace />;
+        // No redirigir a `/`: si la ruta inicial también exige un permiso se
+        // produce un ciclo sin contenido. Mostrar un estado recuperable.
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-background p-6">
+                <div className="w-full max-w-lg rounded-2xl border border-amber-500/20 bg-card p-8 text-center shadow-2xl">
+                    <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full bg-amber-500/10 text-amber-400 text-xl">!</div>
+                    <h1 className="text-xl font-black">Perfil sin acceso disponible</h1>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                        La sesión existe, pero no fue posible cargar el permiso <span className="font-mono text-foreground">{module}</span>.
+                    </p>
+                    <div className="mt-6 flex justify-center gap-2">
+                        <button onClick={() => window.location.reload()} className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">Reintentar</button>
+                        <button onClick={() => window.location.assign('/login')} className="rounded-lg border border-border px-4 py-2 text-sm font-bold">Volver al login</button>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return children;

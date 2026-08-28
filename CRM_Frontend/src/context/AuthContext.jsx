@@ -11,6 +11,13 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         let mounted = true;
+        // La autenticación nunca debe bloquear indefinidamente toda la interfaz.
+        const loadingSafetyTimer = window.setTimeout(() => {
+            if (mounted) {
+                console.warn('Auth initialization timeout: liberando la interfaz.');
+                setLoading(false);
+            }
+        }, 8000);
 
         const initAuth = async () => {
             try {
@@ -27,22 +34,32 @@ export const AuthProvider = ({ children }) => {
 
         initAuth();
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'PASSWORD_RECOVERY') {
                 if (session && mounted) {
-                    await fetchProfileAndPermissions(session.user);
+                    // No ejecutar consultas Supabase dentro del callback de Auth:
+                    // puede producir un bloqueo mientras el cliente procesa el evento.
+                    setUser(session.user);
+                    window.setTimeout(async () => {
+                        if (!mounted) return;
+                        try {
+                            await fetchProfileAndPermissions(session.user);
+                        } finally {
+                            if (mounted) setLoading(false);
+                        }
+                    }, 0);
                 }
             } else if (event === 'SIGNED_OUT') {
                 setUser(null);
                 setProfile(null);
                 setPermissions([]);
+                setLoading(false);
             }
-            
-            if (mounted) setLoading(false);
         });
 
         return () => {
             mounted = false;
+            window.clearTimeout(loadingSafetyTimer);
             subscription.unsubscribe();
         };
     }, []);

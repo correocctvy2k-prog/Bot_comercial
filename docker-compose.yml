@@ -1,18 +1,39 @@
-version: '3.8'
+x-cctv-environment: &cctv-environment
+  TZ: America/Bogota
+  CCTV_API_HOST: 0.0.0.0
+  CCTV_API_PORT: 3003
+  CCTV_DATA_ROOT: /var/lib/skylab-security/data
+  CCTV_DB: /var/lib/skylab-security/data/cctv-staging.db
+  IMAP_STATE_PATH: /var/lib/skylab-security/state/state.json
+  EVENT_SNAPSHOT_DIR: /var/lib/skylab-security/data/event-snapshots
+  SUPPORT_IMAGE_DIR: /var/lib/skylab-security/data/support-images
+  CCTV_LOG_DIR: /var/lib/skylab-security/logs
+  CCTV_REPORT_DIR: /var/lib/skylab-security/reports
+  CCTV_OUTPUT_DIR: /var/lib/skylab-security/output
+  EXCEL_OUTPUT_PATH: /var/lib/skylab-security/output/CCTV_Eventos.xlsx
+  SIIS_SNAPSHOT_PATH: /var/lib/skylab-security/data/siis-snapshot-latest.json
+  TRELLO_CACHE_DB: /var/lib/skylab-security/trello/skylab-tareas.db
+  TRELLO_ENV_FILE: /run/secrets/trello.env
+  TRELLO_BACKEND_ROOT: /opt/trello-backend
+  DATABASE_PATH: /var/lib/skylab-security/trello/skylab-tareas.db
+
+x-cctv-volumes: &cctv-volumes
+  - ./cctv-automation-final/data:/var/lib/skylab-security/data
+  - ./cctv-automation-final/state.json:/var/lib/skylab-security/state/state.json
+  - ./cctv-automation-final/logs:/var/lib/skylab-security/logs
+  - ./cctv-automation-final/reports:/var/lib/skylab-security/reports
+  - ./cctv-automation-final/output:/var/lib/skylab-security/output
+  - ./CRM_Frontend/Table Trello/backend/data:/var/lib/skylab-security/trello
+  - ./CRM_Frontend/Table Trello/backend/.env:/run/secrets/trello.env:ro
 
 services:
-  # ==========================================
-  # MICROSERVICIO 1: COMERCIAL (Bot Principal)
-  # ==========================================
   comercial-bot:
     build:
       context: .
     container_name: comercial-bot
     restart: always
-    env_file:
-      - .env
-    ports:
-      - "3001:3001"
+    env_file: [.env]
+    ports: ["3001:3001"]
     volumes:
       - .:/app
       - /app/node_modules
@@ -25,8 +46,7 @@ services:
       context: .
     container_name: comercial-worker
     restart: always
-    env_file:
-      - .env
+    env_file: [.env]
     volumes:
       - .:/app
       - /app/node_modules
@@ -34,18 +54,13 @@ services:
       - TZ=America/Bogota
     command: node src/worker.js
 
-  # ==========================================
-  # MICROSERVICIO 2: ASAMBLEA (Eventos)
-  # ==========================================
   asamblea-bot:
     build:
       context: ./Asamblea
     container_name: asamblea-bot
     restart: always
-    env_file:
-      - ./Asamblea/.env
-    ports:
-      - "3002:3002"
+    env_file: [./Asamblea/.env]
+    ports: ["3002:3002"]
     volumes:
       - ./Asamblea:/app
       - /app/node_modules
@@ -58,8 +73,7 @@ services:
       context: ./Asamblea
     container_name: asamblea-worker
     restart: always
-    env_file:
-      - ./Asamblea/.env
+    env_file: [./Asamblea/.env]
     volumes:
       - ./Asamblea:/app
       - /app/node_modules
@@ -67,9 +81,6 @@ services:
       - TZ=America/Bogota
     command: node src/worker.js
 
-  # ==========================================
-  # MICROSERVICIO 3: CRM FRONTEND (Vite/React)
-  # ==========================================
   crm-frontend:
     build:
       context: ./CRM_Frontend
@@ -77,26 +88,64 @@ services:
         - VITE_BACKEND_URL=http://192.168.8.65:3001
         - VITE_MONITORING_BACKEND_URL=http://192.168.8.65:3001
         - VITE_SUPABASE_URL=https://fxlbqlzsbrgnkpcduzxt.supabase.co
-        - VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4bGJxbHpzYnJnbmtwY2R1enh0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIwNzg3NiwiZXhwIjoyMDg1NzgzODc2fQ.odcV7pu9oD6l3UgFTY97AljC7lCxZskuxRrd4m2Nl5Y
+        - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
         - VITE_SERVICES_TI_BACKEND_URL=http://192.168.8.65:3004
+        - VITE_CCTV_API_BASE=
     container_name: crm-frontend
     restart: always
-    ports:
-      - "3003:80"
+    ports: ["3003:80"]
     environment:
       - TZ=America/Bogota
+    depends_on:
+      cctv-api:
+        condition: service_healthy
 
-  # ==========================================
-  # MICROSERVICIO 4: MONITOR DE SERVICIOS TI
-  # ==========================================
+  cctv-api:
+    build:
+      context: .
+      dockerfile: cctv-automation-final/Dockerfile
+    container_name: cctv-api
+    restart: unless-stopped
+    env_file: [./cctv-automation-final/.env]
+    environment: *cctv-environment
+    expose: ["3003"]
+    volumes: *cctv-volumes
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3003/api/cctv/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  cctv-operational-worker:
+    build:
+      context: .
+      dockerfile: cctv-automation-final/Dockerfile
+    container_name: cctv-operational-worker
+    restart: unless-stopped
+    env_file: [./cctv-automation-final/.env]
+    environment: *cctv-environment
+    volumes: *cctv-volumes
+    command: npm run worker:operational
+
+  cctv-visitor-worker:
+    build:
+      context: .
+      dockerfile: cctv-automation-final/Dockerfile
+    container_name: cctv-visitor-worker
+    restart: unless-stopped
+    env_file: [./cctv-automation-final/.env]
+    environment: *cctv-environment
+    volumes: *cctv-volumes
+    command: npm run worker:visitors
+
   monitoreo-ti:
     build:
       context: ./monitoreo servicios
     container_name: monitoreo-ti
     restart: always
     stop_grace_period: 60s
-    ports:
-      - "3004:3004"
+    ports: ["3004:3004"]
     volumes:
       - ./monitoreo servicios:/app
       - /app/node_modules
