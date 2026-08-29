@@ -169,8 +169,18 @@ function classify(email, storeMap = {}) {
   }
 
   if (/tripwire/i.test(tipoEvento)) {
+    const tripwireFinal = /fin/i.test(tipoEvento);
+
     if (!alarma) {
-      return { categoria: "EVENTO_ADICIONAL", tipo: "TRIPWIRE", fase: /fin/i.test(tipoEvento) ? "FIN" : "INICIO", tienda: nombre, canal, alarma: alarmaRaw, tipoEvento, timestamp, email };
+      return { categoria: "EVENTO_ADICIONAL", tipo: "TRIPWIRE", fase: tripwireFinal ? "FIN" : "INICIO", tienda: nombre, canal, alarma: alarmaRaw, tipoEvento, timestamp, email };
+    }
+
+    // El tipo técnico explícito tiene prioridad sobre el nombre configurado
+    // de la alarma. Algunos equipos usan nombres como "Cierre Tienda ..."
+    // también para el cruce de línea de entrada; si el correo reporta el
+    // inicio del Tripwire, operacionalmente corresponde a la apertura.
+    if (!tripwireFinal) {
+      return { categoria: "APERTURA", fase: "INICIO", tienda: nombre, canal, timestamp, alarma: alarmaRaw, tipoEvento, email };
     }
 
     // IMPORTANTE (corregido tras validar con correo real de Llanogrande):
@@ -187,7 +197,7 @@ function classify(email, storeMap = {}) {
       return { categoria: "CIERRE", tienda: nombre, canal, timestamp, alarma, email };
     }
 
-    return { categoria: "EVENTO_ADICIONAL", tipo: "TRIPWIRE", fase: /fin/i.test(tipoEvento) ? "FIN" : "INICIO", tienda: nombre, canal, alarma: alarmaRaw, tipoEvento, timestamp, email };
+    return { categoria: "EVENTO_ADICIONAL", tipo: "TRIPWIRE", fase: "FIN", tienda: nombre, canal, alarma: alarmaRaw, tipoEvento, timestamp, email };
   }
 
   if (/detec\.?\s*moci[oó]n/i.test(tipoEvento)) {

@@ -22,6 +22,14 @@ test("acepta fecha Dahua D/M/A de inicio", () => {
   assert.equal(c.timestamp.getHours(), 7);
 });
 
+test("un Tripwire de inicio prevalece sobre un nombre de alarma que contiene Cierre", () => {
+  const c = classify(correo(93152, base("Tripwire", "Cierre Tienda Uribe", "Hora de inicio de alarma (D/M/A H:M:S)", "29/08/2026 07:55:10", "Pto_Venta-21469")), {});
+  assert.equal(c.categoria, "APERTURA");
+  assert.equal(c.fase, "INICIO");
+  assert.equal(c.tipoEvento, "Tripwire");
+  assert.equal(c.alarma, "Cierre Tienda Uribe");
+});
+
 test("acepta variante D/M/Y de finalización", () => {
   const c = classify(correo(2, base("Tripwire fin", "Cierre Sede 001", "Fecha de Finalizacion de Alarma(D/M/Y H:M:S)", "10/08/2026 21:15:03")), map);
   assert.equal(c.categoria, "CIERRE");
