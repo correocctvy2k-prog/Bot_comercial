@@ -18,7 +18,7 @@ let payload = {};
 try { payload = JSON.parse(row.payload_json || '{}'); } catch {}
 const expected = row.source_system === 'EMAIL_DAHUA'
   && row.event_type === 'CLOSING'
-  && row.occurred_at === '2026-08-29T12:55:10Z'
+  && new Date(row.occurred_at).getTime() === new Date('2026-08-29T12:55:10Z').getTime()
   && payload.canonicalName === 'URIBE'
   && payload.alarm === 'Cierre Tienda Uribe';
 if (!expected) throw new Error(`${sourceEventId} no coincide con las precondiciones auditadas`);
