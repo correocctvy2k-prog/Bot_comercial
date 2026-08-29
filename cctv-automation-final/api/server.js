@@ -10,7 +10,7 @@ const { observerPolicy } = require('../platform/siis-observer-policy');
 const { scopeAudit } = require('../platform/project-scope');
 const { evidenceByLocation } = require('../platform/project-evidence');
 const { normalizeName } = require('../platform/normalize');
-const { isOperationalOpeningSignal, asOperationalOpeningEvidence } = require('../platform/operational-event-policy');
+const { isOperationalOpeningSignal, asOperationalOpeningEvidence, isOperationalOpeningEvidence } = require('../platform/operational-event-policy');
 const { runtimePaths, ensureRuntimeDirectories } = require('../config/runtime-paths');
 
 ensureRuntimeDirectories();
@@ -330,7 +330,7 @@ function dailyEventsData(dateValue){
   const correlatedEvidence=[];
   for(const item of [...evidenceMap.values()].sort((a,b)=>eventStamp(a)-eventStamp(b))){
     const prior=correlatedEvidence.at(-1),sameLocation=prior?.locationId&&item.locationId===prior.locationId,openingTripwire=new Set([prior?.evidenceType||prior?.eventType,item.evidenceType||item.eventType]).has('OPENING')&&new Set([prior?.eventType,item.eventType]).has('TRIPWIRE');
-    if(sameLocation&&openingTripwire&&eventStamp(item)-eventStamp(prior)<=30*60*1000){const preferred=prior.eventType==='OPENING'?prior:item;correlatedEvidence[correlatedEvidence.length-1]={...preferred,correlationCount:(prior.correlationCount||1)+(item.correlationCount||1),correlatedEventIds:[...(prior.correlatedEventIds||[prior.id]),...(item.correlatedEventIds||[item.id])],correlatedTypes:[...new Set([...(prior.correlatedTypes||[prior.eventType]),...(item.correlatedTypes||[item.eventType])])]};}else correlatedEvidence.push(item);
+    if(sameLocation&&openingTripwire&&eventStamp(item)-eventStamp(prior)<=30*60*1000){const preferred=isOperationalOpeningEvidence(prior)?prior:item;correlatedEvidence[correlatedEvidence.length-1]={...preferred,correlationCount:(prior.correlationCount||1)+(item.correlationCount||1),correlatedEventIds:[...(prior.correlatedEventIds||[prior.id]),...(item.correlatedEventIds||[item.id])],correlatedTypes:[...new Set([...(prior.correlatedTypes||[prior.eventType]),...(item.correlatedTypes||[item.eventType])])]};}else correlatedEvidence.push(item);
   }
   const evidenceItems=correlatedEvidence.sort((a,b)=>eventStamp(b)-eventStamp(a));
   const latestSiisRun=db.prepare("SELECT id,completed_at AS capturedAt,summary_json AS summary FROM siis_sync_runs WHERE status='SUCCESS' ORDER BY id DESC LIMIT 1").get();

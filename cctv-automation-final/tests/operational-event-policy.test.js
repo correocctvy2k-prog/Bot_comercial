@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const {
   isOperationalOpeningSignal,
   asOperationalOpeningEvidence,
+  isOperationalOpeningEvidence,
 } = require('../platform/operational-event-policy');
 
 test('conserva apertura explícita como señal operacional', () => {
@@ -28,4 +29,9 @@ test('deriva la interpretación sin perder el tipo técnico original', () => {
   assert.equal(evidence.operationalInterpretation, 'FIRST_OPENING');
   assert.equal(evidence.operationalSourceType, 'TRIPWIRE');
   assert.equal(evidence.eventType, 'TRIPWIRE');
+});
+
+test('reconoce una evidencia derivada como apertura durante la correlación', () => {
+  assert.equal(isOperationalOpeningEvidence({ eventType: 'TRIPWIRE', evidenceType: 'OPENING' }), true);
+  assert.equal(isOperationalOpeningEvidence({ eventType: 'TRIPWIRE' }), false);
 });

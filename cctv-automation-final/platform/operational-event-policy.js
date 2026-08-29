@@ -17,4 +17,8 @@ function asOperationalOpeningEvidence(event) {
   };
 }
 
-module.exports = { isOperationalOpeningSignal, asOperationalOpeningEvidence };
+function isOperationalOpeningEvidence(event) {
+  return (event?.evidenceType || event?.eventType) === 'OPENING';
+}
+
+module.exports = { isOperationalOpeningSignal, asOperationalOpeningEvidence, isOperationalOpeningEvidence };
