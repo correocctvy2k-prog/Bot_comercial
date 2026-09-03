@@ -1,0 +1,8 @@
+# Docker build context exclusions
+node_modules
+.env
+*.log
+.git
+.vscode
+dist
+build
