@@ -21,6 +21,8 @@ import UsersDashboard from './pages/UsersDashboard'
 import Monitoring from './pages/Monitoring'
 import MonitoringDashboard from './pages/MonitoringDashboard'
 import ServicesTIDashboard from './pages/ServicesTIDashboard'
+import SupportDashboard from './pages/SupportDashboard'
+import SupportWidget from './components/support/SupportWidget'
 import Layout from './layout/Layout'
 
 const queryClient = new QueryClient()
@@ -54,12 +56,14 @@ function App() {
                       <Route path="/monitoring/dashboard" element={<ProtectedRoute module="bot-activity"><MonitoringDashboard /></ProtectedRoute>} />
                       <Route path="/monitoring/services-ti" element={<ProtectedRoute module="bot-activity"><ServicesTIDashboard /></ProtectedRoute>} />
                       <Route path="/monitoring" element={<ProtectedRoute module="bot-activity"><Monitoring /></ProtectedRoute>} />
+                      <Route path="/support" element={<SupportDashboard />} />
                       <Route path="/users" element={<ProtectedRoute module="users-management"><UsersDashboard /></ProtectedRoute>} />
                       <Route path="/test-wa" element={<ProtectedRoute module="settings"><PruebaWhatsApp /></ProtectedRoute>} />
                       
                       {/* Fallback */}
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
+                    <SupportWidget />
                   </Layout>
                 </ProtectedRoute>
               } />

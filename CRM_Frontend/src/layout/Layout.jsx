@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, createContext } from 'react';
-import { Bot, MapPin, Users, Settings, LogOut, Cable, Terminal, PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, PieChart, Sparkles, Building2, ShieldCheck, User, Image, UserCircle, Loader2, X, Activity, LayoutDashboard, Server, Cctv, LockKeyhole } from 'lucide-react';
+import { Bot, MapPin, Users, Settings, LogOut, Cable, Terminal, PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, PieChart, Sparkles, Building2, ShieldCheck, User, Image, UserCircle, Loader2, X, Activity, LayoutDashboard, Server, Cctv, LockKeyhole, LifeBuoy } from 'lucide-react';
 import SkylabBot from '../components/SkylabBot';
 import { ModeToggle } from "@/components/mode-toggle";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -23,12 +23,12 @@ const AsambleaIcon = ({ size = 24, className = "" }) => (
 
 export const PageHeaderContext = createContext(null);
 
-// ─── ESTRUCTURA CENTRAL DE MENÚS ─────────────────────────────────────────────
+// --- ESTRUCTURA CENTRAL DE MENÚS ---------------------------------------------
 const MENU_ITEMS_RAW = [
     {
         section: "Opeación Central",
         items: [
-            { to: '/', icon: Bot, label: 'Actividad Bot', module: 'bot-activity' },
+            { to: '/', icon: Bot, label: 'Analítica de Agentes', module: 'bot-activity' },
             { to: '/points', icon: MapPin, label: 'Operación de Puntos', module: 'points' },
             {
                 label: 'Seguridad Perimetral',
@@ -55,6 +55,7 @@ const MENU_ITEMS_RAW = [
         section: "Sistema Operativo",
         items: [
             { to: '/command-center', icon: Terminal, label: 'Centro de Mando', module: 'command-center' },
+            { to: '/support', icon: LifeBuoy, label: 'Centro de Soporte', module: 'bot-activity' },
             {
                 label: 'Monitoreo IT',
                 icon: Activity,
@@ -398,7 +399,7 @@ export default function Layout({ children }) {
                     </header>
                 )}
 
-                <div className={`flex-1 overflow-auto ${location.pathname === '/command-center' ? 'p-0' : location.pathname.startsWith('/monitoring') ? 'p-5' : 'p-8'}`}>
+                <div className={`flex-1 overflow-auto ${location.pathname === '/command-center' ? 'p-0' : location.pathname.startsWith('/monitoring') ? 'p-5' : 'p-4 sm:p-6 lg:p-7'}`}>
                     <PageHeaderContext.Provider value={setPageHeader}>
                         {children}
                     </PageHeaderContext.Provider>
