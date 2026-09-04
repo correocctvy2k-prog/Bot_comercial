@@ -1,5 +1,5 @@
 const crypto = require('node:crypto');
-const { openCyberDatabase } = require('./db/open-database');
+const { openCyberDatabase } = require('../db/open-database');
 const { protectedAlias } = require('./cybersecurity-read-model');
 
 function argument(name) {
@@ -109,21 +109,19 @@ function promoteObservationToAsset(db, candidateKey, body, actorId) {
   // Create the asset
   const assetClass = body.assetClass || 'OTHER';
   const criticality = body.criticality || 'MEDIUM';
+  const canonicalName = body.canonicalName || `Activo promovido ${observation.id.slice(-8).toUpperCase()}`;
   
   db.prepare(`
     INSERT INTO cyber_assets (id, canonical_name, asset_class, criticality, lifecycle_status, reconciliation_status, created_at, updated_at)
     VALUES (?, ?, ?, ?, 'CONFIRMED_ACTIVE', 'HUMAN_VERIFIED', ?, ?)
   `).run(
-    `asset_${crypto.randomBytes(8).toString('hex')}`,
-    body.canonicalName || `Activo promovido ${observation.id.slice(-8).toUpperCase()}`,
+    assetId,
+    canonicalName,
     assetClass,
-    body.criticality || 'MEDIUM',
-    new Date().toISOString(),
-    new Date().toISOString()
+    criticality,
+    now,
+    now
   );
-  
-  const assetIdResult = db.prepare('SELECT id FROM cyber_assets WHERE canonical_name = ? ORDER BY created_at DESC LIMIT 1').get(body.canonicalName || `Activo promovido ${observation.id.slice(-8).toUpperCase()}`);
-  const assetId = assetIdResult.id;
   
   // Link observation to asset
   db.prepare(`
@@ -258,19 +256,17 @@ function markObservationAsProtected(db, candidateKey, body, actorId) {
   // Create a protected target asset
   const assetId = `asset_${crypto.randomBytes(8).toString('hex')}`;
   const now = new Date().toISOString();
+  const canonicalName = `Objetivo protegido ${observation.id.slice(-8).toUpperCase()}`;
   
   db.prepare(`
     INSERT INTO cyber_assets (id, canonical_name, asset_class, criticality, lifecycle_status, reconciliation_status, created_at, updated_at)
     VALUES (?, ?, 'OTHER', 'HIGH', 'CONFIRMED_ACTIVE', 'HUMAN_VERIFIED', ?, ?)
   `).run(
-    `asset_${crypto.randomBytes(8).toString('hex')}`,
-    `Objetivo protegido ${observation.id.slice(-8).toUpperCase()}`,
-    new Date().toISOString(),
-    new Date().toISOString()
+    assetId,
+    canonicalName,
+    now,
+    now
   );
-  
-  const assetIdResult = db.prepare('SELECT id FROM cyber_assets WHERE canonical_name LIKE ? ORDER BY created_at DESC LIMIT 1').get(`Objetivo protegido ${observation.id.slice(-8).toUpperCase()}%`);
-  const assetId = assetIdResult.id;
   
   // Link observation to protected asset
   db.prepare(`
