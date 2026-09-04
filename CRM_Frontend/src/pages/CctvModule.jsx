@@ -55,6 +55,7 @@ import {
   YAxis,
 } from "recharts";
 import { pointsService } from "@/services/points.service";
+import { evaluateOperationalSchedule, observedTimeToMinutes } from "@/utils/operationalSchedule";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -1828,24 +1829,6 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
     list.push(point);
     nodesBySiis.set(code, list);
   }
-  const minutes = (value) => {
-    if (!value) return null;
-    const match = String(value).match(/^(\d{1,2}):(\d{2})/);
-    return match ? Number(match[1]) * 60 + Number(match[2]) : null;
-  };
-  const observedMinutes = (value) => {
-    if (!value) return null;
-    const parts = new Intl.DateTimeFormat("en-GB", {
-      timeZone: "America/Bogota",
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23",
-    })
-      .format(new Date(value))
-      .split(":")
-      .map(Number);
-    return parts[0] * 60 + parts[1];
-  };
   const isToday = date === today;
   const scheduleRows = (data.operationalCoverage || []).map((signal) => {
     const nodes = nodesBySiis.get(String(signal.siisCode || "")) || [],
@@ -1866,60 +1849,39 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
         point?.custom_close_time ||
         "21:00",
       tolerance = Number(zoneSchedule?.tolerance_minutes || 15),
-      firstPingAt = signal.firstOnlineWindowEnd || signal.firstPing || null,
+      firstPingAt = signal.firstOnlineObservedAt || signal.firstPing || null,
       lastPingAt = signal.lastPing || null,
-      cctvAt = signal.emailOpening || null,
-      arrivalAt = [cctvAt, firstPingAt]
-        .filter(Boolean)
-        .sort((a, b) => new Date(a) - new Date(b))[0] || null,
-      arrivalSource = cctvAt && firstPingAt
-        ? "CCTV + ping SIIS"
-        : cctvAt
-          ? "CCTV"
-          : firstPingAt
-            ? "Ping SIIS"
-            : "Sin señal",
-      observed = observedMinutes(arrivalAt),
-      deadline = (minutes(expectedOpen) || 420) + tolerance,
-      closeThreshold = (minutes(expectedClose) || 1260) - tolerance,
-      pingCloseAt = lastPingAt && observedMinutes(lastPingAt) >= closeThreshold
-        ? lastPingAt
-        : null,
-      observedCloseAt = [signal.emailClosing, pingCloseAt]
-        .filter(Boolean)
-        .sort((a, b) => new Date(b) - new Date(a))[0] || null,
-      closeSource = signal.emailClosing && pingCloseAt
-        ? "CCTV + último ping SIIS"
-        : signal.emailClosing
-          ? "CCTV"
-          : pingCloseAt
-            ? "Último ping SIIS"
-            : "Sin señal de cierre",
-      delay =
-        observed == null ? null : observed - (minutes(expectedOpen) || 420);
-    let status = "NO_EVIDENCE";
-    if (observed != null) status = observed <= deadline ? "ON_TIME" : "LATE";
-    else if (isToday && signal.online === true) status = "SIIS_ACTIVE";
-    else if (isToday && signal.online === false) status = "OFFLINE";
+      evaluation = evaluateOperationalSchedule({
+        expectedOpen,
+        expectedClose,
+        tolerance,
+        firstPingAt,
+        cctvOpeningAt: signal.emailOpening || null,
+        cctvClosingAt: signal.emailClosing || null,
+        lastPingAt,
+        isToday,
+      });
     return {
       ...signal,
       nodes: nodes.length,
       isDouble: nodes.length > 1 || nodes.some((node) => node.is_double),
       botOnline: nodes.some((node) => node.active),
       latency: point?.latency || null,
-      expectedOpen: String(expectedOpen).slice(0, 5),
-      expectedClose: String(expectedClose).slice(0, 5),
-      tolerance,
+      expectedOpen: evaluation.expectedOpen,
+      expectedClose: evaluation.expectedClose,
+      tolerance: evaluation.tolerance,
       customSchedule: custom,
       observedOpen: signal.emailOpening,
-      observedClose: observedCloseAt,
-      pingCloseAt,
-      closeSource,
-      arrivalAt,
-      arrivalSource,
-      firstPingAt,
-      delay,
-      status,
+      observedClose: evaluation.lunchCloseAt,
+      pingCloseAt: null,
+      closeSource: evaluation.lunchCloseSource,
+      arrivalAt: evaluation.arrivalAt,
+      arrivalSource: evaluation.arrivalSource,
+      firstPingAt: evaluation.firstPingAt,
+      delay: evaluation.delay,
+      status: evaluation.status,
+      scheduleAlerts: evaluation.alerts,
+      lastActivityAt: evaluation.lastPingAt || evaluation.cctvClosingAt || null,
     };
   });
   const filteredScheduleRows = scheduleRows.filter(
@@ -1927,7 +1889,8 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
       matchesSearch(row.name,row.zone,row.siisCode) && (
         scheduleFilter === "ALL" ||
         (scheduleFilter === "LATE" && row.status === "LATE") ||
-        (scheduleFilter === "NO_EVIDENCE" && !row.arrivalAt) ||
+        (scheduleFilter === "EARLY" && row.status === "EARLY") ||
+        (scheduleFilter === "NO_ENTRY" && row.status === "NO_ENTRY") ||
         (scheduleFilter === "NO_PING" && !row.firstPingAt) ||
         (scheduleFilter === "NO_CCTV" && !row.hasCctv)
       ),
@@ -1935,13 +1898,15 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
   const arrivalsObserved = scheduleRows.filter((row) => row.arrivalAt).length;
   const arrivalsOnTime = scheduleRows.filter((row) => row.status === "ON_TIME").length;
   const arrivalsLate = scheduleRows.filter((row) => row.status === "LATE").length;
+  const arrivalsEarly = scheduleRows.filter((row) => row.status === "EARLY").length;
+  const noEntry = scheduleRows.filter((row) => row.status === "NO_ENTRY").length;
   const pointsWithoutPing = scheduleRows.filter((row) => !row.firstPingAt).length;
   const activityHourly = (data.hourly || []).map((row) => ({
     ...row,
     firstPings: 0,
   }));
   for (const row of scheduleRows) {
-    const pingMinute = observedMinutes(row.firstPingAt);
+    const pingMinute = observedTimeToMinutes(row.firstPingAt);
     if (pingMinute == null) continue;
     const hour = Math.floor(pingMinute / 60);
     if (activityHourly[hour]) activityHourly[hour].firstPings += 1;
@@ -2310,7 +2275,8 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
                 {[
                   ["ALL", "Todos"],
                   ["LATE", "Tardíos"],
-                  ["NO_EVIDENCE", "Sin señal de llegada"],
+                  ["EARLY", "Tempranos"],
+                  ["NO_ENTRY", "No ingresó"],
                   ["NO_PING", "Sin aperturar"],
                   ["NO_CCTV", "Sin CCTV"],
                 ].map(([value, label]) => (
@@ -2353,8 +2319,8 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
                   {
                     scheduleRows.filter(
                       (row) =>
-                        row.status === "SIIS_ACTIVE" && !row.arrivalAt,
-                    ).length
+                        row.status === "NO_ENTRY",
+                      ).length
                   }
                 </p>
                 <p className="text-[9px] uppercase text-slate-500">
@@ -2402,17 +2368,13 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
                       label: `Tarde ${Math.max(0, point.delay)} min`,
                       tone: "text-amber-300 bg-amber-500/10 border-amber-500/20",
                     },
-                    SIIS_ACTIVE: {
-                      label: "Actividad SIIS",
-                      tone: "text-violet-300 bg-violet-500/10 border-violet-500/20",
+                    EARLY: {
+                      label: `Temprano ${Math.abs(point.delay || 0)} min`,
+                      tone: "text-cyan-300 bg-cyan-500/10 border-cyan-500/20",
                     },
-                    OFFLINE: {
-                      label: "Sin conexión SIIS",
+                    NO_ENTRY: {
+                      label: "No ingresó",
                       tone: "text-rose-300 bg-rose-500/10 border-rose-500/20",
-                    },
-                    NO_EVIDENCE: {
-                      label: "Sin evidencia",
-                      tone: "text-slate-300 bg-slate-500/10 border-slate-500/20",
                     },
                   }[point.status];
                   return (
@@ -2529,6 +2491,16 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
                           <p className="text-[8px] text-slate-600">{point.customSchedule ? "personalizado" : "zona/base"}</p>
                         </div>
                       </div>
+                      {point.scheduleAlerts?.length > 0 && (
+                        <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-amber-500/15 pt-3">
+                          <AlertTriangle size={12} className="text-amber-300" />
+                          {point.scheduleAlerts.map((alert) => (
+                            <span key={alert} className="rounded-md border border-amber-500/20 bg-amber-500/[.06] px-1.5 py-1 text-[8px] font-bold text-amber-300">
+                              {alert === "OPENING_BEFORE_SCHEDULE" ? "Apertura temprana" : alert === "OPENING_AFTER_SCHEDULE" ? "Apertura tardía" : alert === "CCTV_OPENING_BEFORE_PING" ? "CCTV antes del ping" : "Ping fuera de horario"}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       {(point.openingEvidence || point.closingEvidence) && (
                         <div className="mt-3 grid grid-cols-2 gap-2 border-t border-white/[.06] pt-3">
                           {[['Apertura visual', point.openingEvidence, 'text-emerald-300'], ['Cierre visual', point.closingEvidence, 'text-blue-300']].map(([label, event, tone]) => event ? (
@@ -4338,6 +4310,27 @@ function SourceHealth({ syncStatus }) {
   return <Card className="overflow-hidden border-white/[.07] bg-gradient-to-r from-[#0d1523]/95 to-[#09101b]/95"><CardHeader className="border-b border-white/[.05] pb-3"><div className="flex items-center justify-between gap-3"><div><CardTitle className="text-base font-black uppercase tracking-wide">Salud de las fuentes</CardTitle><CardDescription>Última evidencia de ejecución del ciclo operativo</CardDescription></div><Badge variant="outline" className={syncStatus.overall==='HEALTHY'?'border-emerald-500/20 text-emerald-300':'border-amber-500/20 text-amber-300'}>{syncStatus.overall==='HEALTHY'?'Todo sincronizado':'Requiere atención'}</Badge></div></CardHeader><CardContent className="grid gap-3 pt-4 md:grid-cols-3">{syncStatus.sources.map(source=>{const visual=config[source.key],Icon=visual.icon,status=state[source.status]||state.NO_DATA;return <div key={source.key} className="rounded-xl border border-white/[.07] bg-white/[.025] p-4"><div className="flex items-start justify-between"><span className={`grid h-12 w-12 place-items-center rounded-xl ${visual.surface} ${visual.tone}`}><Icon size={25}/></span><span className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wide ${status.text}`}><i className={`h-1.5 w-1.5 rounded-full ${status.dot}`}/>{status.label}</span></div><div className="mt-3 flex items-end justify-between gap-2"><div><b className="text-base text-slate-100">{source.name}</b><p className="mt-1 text-[11px] font-medium text-slate-400">{age(source.ageMinutes)} · {source.cadenceMinutes?`cada ${source.cadenceMinutes} min`:'fuera de horario'}</p></div><div className="text-right"><b className="text-2xl font-black text-white">{source.detail}</b><p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">{source.detailLabel}</p></div></div><p className="mt-3 border-t border-white/[.05] pt-2 text-[10px] text-slate-300">{source.message}</p></div>})}</CardContent></Card>;
 }
 
+function ApiHealthIndicator({ health, checking, onCheck }) {
+  const connected = health?.ok === true;
+  const degraded = health?.status === 'DEGRADED';
+  const tone = connected && !degraded
+    ? 'border-emerald-500/20 bg-emerald-500/[.06] text-emerald-300'
+    : degraded
+      ? 'border-amber-500/20 bg-amber-500/[.06] text-amber-300'
+      : 'border-rose-500/20 bg-rose-500/[.06] text-rose-300';
+  return <div className={`flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2 ${tone}`}>
+    <span className={`h-2 w-2 rounded-full ${connected && !degraded ? 'bg-emerald-400' : degraded ? 'bg-amber-400' : 'bg-rose-400'}`} />
+    <div className="mr-1">
+      <p className="text-[10px] font-black uppercase tracking-wide">API Trello</p>
+      <p className="text-[10px] opacity-80">{connected && !degraded ? `Conectada · ${health.database === 'connected' ? 'base conectada' : 'base no confirmada'}` : degraded ? 'Respuesta lenta, servicio disponible' : (health?.error || 'Sin respuesta')}</p>
+    </div>
+    <Button variant="ghost" size="sm" onClick={onCheck} disabled={checking} className="h-8 px-2 text-[10px]">
+      <RefreshCw size={13} className={`mr-1.5 ${checking ? 'animate-spin' : ''}`} />
+      {checking ? 'Probando…' : 'Probar conexión'}
+    </Button>
+  </div>;
+}
+
 function OperationsNotificationCenter({items,onRead,onAttend,onReadAll,onNavigate,mode,onModeChange}){
   const [open,setOpen]=useState(false),unread=items.filter(item=>!item.read).length,openItems=items.filter(item=>!item.attended).length;
   const tone={critical:'border-rose-500/20 bg-rose-500/[.04] text-rose-300',warning:'border-amber-500/20 bg-amber-500/[.04] text-amber-300',info:'border-cyan-500/15 bg-cyan-500/[.03] text-cyan-300'};
@@ -4520,23 +4513,30 @@ function bogotaDateOffset(days=0){
   return date.toISOString().slice(0,10);
 }
 function readNotificationStore(){try{return JSON.parse(window.localStorage.getItem('skylab-security-notifications')||'[]')}catch{return []}}
+const DASHBOARD_CACHE_KEY = 'skylab-security-dashboard-cache';
+function readDashboardCache(){try{const value=JSON.parse(window.localStorage.getItem(DASHBOARD_CACHE_KEY)||'null');return value?.data||null}catch{return null}}
+function writeDashboardCache(data){try{window.localStorage.setItem(DASHBOARD_CACHE_KEY,JSON.stringify({savedAt:new Date().toISOString(),data}))}catch{} }
+function normalizeSupportData(data){return {...data,items:(data?.items||[]).map(item=>({...item,image:item.image?{...item.image,url:`${CCTV_API_BASE}/api/cctv/support/${encodeURIComponent(item.id)}/image`}:null}))}}
 
 function Overview() {
+  const [initialCache] = useState(readDashboardCache);
   const [tab, setTab] = useState("operations"),
     [search, setSearch] = useState(""),
     [zone, setZone] = useState("Todas"),
     [state, setState] = useState("Todos"),
     [showWizard, setShowWizard] = useState(false),
     [installationTarget, setInstallationTarget] = useState(null),
-    [overview, setOverview] = useState(null),
-    [technology, setTechnology] = useState(null),
-    [quality, setQuality] = useState(null),
-    [alarms, setAlarms] = useState(null),
-    [project, setProject] = useState(null),
-    [maintenance, setMaintenance] = useState(null),
-    [support, setSupport] = useState(null),
-    [visitorSummary, setVisitorSummary] = useState(null),
-    [syncStatus, setSyncStatus] = useState(null),
+    [overview, setOverview] = useState(initialCache?.overview || null),
+    [technology, setTechnology] = useState(initialCache?.technology || null),
+    [quality, setQuality] = useState(initialCache?.quality || null),
+    [alarms, setAlarms] = useState(initialCache?.alarms || null),
+    [project, setProject] = useState(initialCache?.project || null),
+    [maintenance, setMaintenance] = useState(initialCache?.maintenance || null),
+    [support, setSupport] = useState(initialCache?.support ? normalizeSupportData(initialCache.support) : null),
+    [visitorSummary, setVisitorSummary] = useState(initialCache?.visitorSummary || null),
+    [syncStatus, setSyncStatus] = useState(initialCache?.syncStatus || null),
+    [apiHealth, setApiHealth] = useState(null),
+    [checkingApi, setCheckingApi] = useState(false),
     [dailyEvents, setDailyEvents] = useState(null),
     [eventDate, setEventDate] = useState(
       new Intl.DateTimeFormat("en-CA", {
@@ -4546,23 +4546,48 @@ function Overview() {
         day: "2-digit",
       }).format(new Date()),
     ),
-    [inventory, setInventory] = useState([]),
+    [inventory, setInventory] = useState(initialCache?.inventory || []),
     [apiError, setApiError] = useState(""),
+    [refreshing, setRefreshing] = useState(false),
     [pointContext, setPointContext] = useState({ points: [], schedules: [] }),
     [notifications,setNotifications]=useState(readNotificationStore),
     [notificationMode,setNotificationMode]=useState(()=>window.localStorage.getItem('skylab-security-notification-mode')||'ALL');
   const notificationState = useRef({eventsReady:false,supportReady:false,eventIds:new Set(),supportKeys:new Set()});
+  const apiHealthFailures = useRef(0);
   const notificationActor='skylab-local-user',notificationHeaders={'Content-Type':'application/json','X-Actor':notificationActor};
+  const checkApiHealth = async () => {
+    setCheckingApi(true);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 10000);
+    try {
+      const response = await fetch(`${CCTV_API_BASE}/api/cctv/health`, { cache: 'no-store', signal: controller.signal });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      apiHealthFailures.current = 0;
+      setApiHealth(data);
+    } catch (error) {
+      apiHealthFailures.current += 1;
+      const message = error.name === 'AbortError' ? 'Respuesta lenta' : error.message;
+      setApiHealth((previous) => previous?.ok && apiHealthFailures.current < 3
+        ? { ...previous, status: 'DEGRADED', error: message }
+        : { ok: false, error: message });
+    } finally {
+      window.clearTimeout(timeout);
+      setCheckingApi(false);
+    }
+  };
   const addNotification=item=>setNotifications(current=>[item,...current.filter(row=>row.id!==item.id)].slice(0,60));
   const updateNotification=(id,change)=>setNotifications(current=>current.map(item=>item.id===id?{...item,...change}:item));
   useEffect(()=>{window.localStorage.setItem('skylab-security-notifications',JSON.stringify(notifications))},[notifications]);
   useEffect(()=>{window.localStorage.setItem('skylab-security-notification-mode',notificationMode)},[notificationMode]);
+  useEffect(()=>{checkApiHealth();const timer=window.setInterval(checkApiHealth,30000);return()=>window.clearInterval(timer)},[]);
   useEffect(()=>{let active=true;const refresh=()=>fetch(`${CCTV_API_BASE}/api/cctv/notifications`,{cache:'no-store',headers:{'X-Actor':notificationActor}}).then(r=>r.json()).then(data=>{if(active){setNotifications(data.items||[]);if(data.preference)setNotificationMode(data.preference)}}).catch(()=>{});refresh();const timer=window.setInterval(refresh,60_000);return()=>{active=false;window.clearInterval(timer)}},[]);
   const changeNotificationMode=mode=>{setNotificationMode(mode);fetch(`${CCTV_API_BASE}/api/cctv/notifications/preferences`,{method:'POST',headers:notificationHeaders,body:JSON.stringify({mode})}).catch(()=>{})};
   const markNotification=(id,change)=>{updateNotification(id,change);fetch(`${CCTV_API_BASE}/api/cctv/notifications/${encodeURIComponent(id)}/state`,{method:'POST',headers:notificationHeaders,body:JSON.stringify(change)}).catch(()=>{})};
   const markAllNotificationsRead=()=>{setNotifications(current=>current.map(item=>({...item,read:true})));fetch(`${CCTV_API_BASE}/api/cctv/notifications/read-all`,{method:'POST',headers:notificationHeaders,body:'{}'}).catch(()=>{})};
-  const load = () =>
-    Promise.all([
+  const load = () => {
+    setRefreshing(true);
+    return Promise.all([
       fetch(`${CCTV_API_BASE}/api/cctv/overview`).then((r) => r.json()),
       fetch(`${CCTV_API_BASE}/api/cctv/inventory`).then((r) => r.json()),
       fetch(`${CCTV_API_BASE}/api/cctv/technology`).then((r) => r.json()),
@@ -4593,22 +4618,14 @@ function Overview() {
         setSyncStatus(s);
         setVisitorSummary(visitorsData);
         setAlarms(alarmsData);
-        setSupport({
-          ...supportData,
-          items: (supportData.items || []).map((item) => ({
-            ...item,
-            image: item.image
-              ? {
-                  ...item.image,
-                  url: `${CCTV_API_BASE}/api/cctv/support/${encodeURIComponent(item.id)}/image`,
-                }
-              : null,
-          })),
-        });
+        setSupport(normalizeSupportData(supportData));
+        writeDashboardCache({overview:o,inventory:i.items||[],technology:t,quality:q,project:p,maintenance:m,syncStatus:s,support:supportData,visitorSummary:visitorsData,alarms:alarmsData});
       })
       .catch(() =>
         setApiError("La API CCTV no está disponible en el puerto 3003."),
-      );
+      )
+      .finally(() => setRefreshing(false));
+  };
   useEffect(() => {
     load();
   }, []);
@@ -4720,12 +4737,14 @@ function Overview() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Snapshot generatedAt={overview?.generatedAt} />
-          <Button variant="outline" size="sm" onClick={load}>
-            <RefreshCw size={14} className="mr-2" />
-            Actualizar datos
+          <ApiHealthIndicator health={apiHealth} checking={checkingApi} onCheck={checkApiHealth} />
+          <Button variant="outline" size="sm" onClick={load} disabled={refreshing}>
+            <RefreshCw size={14} className={`mr-2 ${refreshing ? "animate-spin" : ""}`} />
+            {refreshing ? "Actualizando…" : "Actualizar datos"}
           </Button>
         </div>
       </div>
+      {(refreshing || initialCache) && <div className="flex items-center gap-2 text-[10px] text-slate-500"><span className={`h-1.5 w-1.5 rounded-full ${refreshing ? "animate-pulse bg-cyan-400" : "bg-emerald-400"}`} />{refreshing ? "Actualizando datos canónicos en segundo plano…" : "Mostrando la última captura mientras se verifica la información actual."}</div>}
       {apiError && (
         <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-sm text-rose-400">
           {apiError}

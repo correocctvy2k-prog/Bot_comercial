@@ -1,0 +1,39 @@
+#!/bin/sh
+set -eu
+
+REPORT_UUID=${1:-}
+AUTHORIZATION_REFERENCE=${2:-}
+COMPOSE_DIRECTORY=${GREENBONE_COMPOSE_DIRECTORY:-/home/skylabadmin/greenbone-community-edition}
+QUERY_FILE=${GREENBONE_READ_REPORT_SQL:-/usr/local/lib/skylab-cyber/skylab-greenbone-read-report.sql}
+
+case "$REPORT_UUID" in
+  ????????-????-????-????-????????????) ;;
+  *) echo '{"status":"FAILED","errorCode":"INVALID_REPORT_UUID"}' >&2; exit 64 ;;
+esac
+case "$REPORT_UUID" in
+  *[!0-9A-Fa-f-]*) echo '{"status":"FAILED","errorCode":"INVALID_REPORT_UUID"}' >&2; exit 64 ;;
+esac
+case "$AUTHORIZATION_REFERENCE" in
+  ''|*[!A-Za-z0-9._:-]*)
+    echo '{"status":"FAILED","errorCode":"INVALID_AUTHORIZATION_REFERENCE"}' >&2
+    exit 64
+    ;;
+esac
+
+test -r "$QUERY_FILE" || {
+  echo '{"status":"FAILED","errorCode":"QUERY_FILE_NOT_READABLE"}' >&2
+  exit 66
+}
+cd "$COMPOSE_DIRECTORY"
+
+OUTPUT=$(docker compose exec -T pg-gvm \
+  psql -X -q -v ON_ERROR_STOP=1 -U gvmd -d gvmd -At \
+    -v report_uuid="$REPORT_UUID" \
+    -v authorization_reference="$AUTHORIZATION_REFERENCE" \
+    -f - < "$QUERY_FILE")
+
+test -n "$OUTPUT" || {
+  echo '{"status":"FAILED","errorCode":"REPORT_NOT_FOUND_OR_NOT_EXPORTABLE"}' >&2
+  exit 65
+}
+printf '%s\n' "$OUTPUT"

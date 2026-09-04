@@ -1,0 +1,76 @@
+services:
+  greenbone-protected-receiver:
+    build:
+      context: .
+      dockerfile: Dockerfile.receiver
+    image: skylab/cyber-protected-receiver:0.2.0
+    user: "${CYBER_INGEST_UID:?CYBER_INGEST_UID required}:${CYBERDROP_GID:?CYBERDROP_GID required}"
+    network_mode: none
+    read_only: true
+    init: true
+    entrypoint:
+      - node
+      - scripts/receive-greenbone-protected.js
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m,mode=1770
+    volumes:
+      - /var/lib/skylab-sftp/skylabgreenbone/incoming:/data/incoming
+      - /var/lib/skylab-cyber:/data/state
+    command:
+      - --incoming
+      - /data/incoming
+      - --state-root
+      - /data/state
+      - --db
+      - /data/state/data/cyber-inventory.db
+    restart: "no"
+
+  ksc-protected-receiver:
+    build:
+      context: .
+      dockerfile: Dockerfile.receiver
+    image: skylab/ksc-protected-receiver:0.1.2
+    user: "${CYBER_INGEST_UID:?CYBER_INGEST_UID required}:${CYBERDROP_GID:?CYBERDROP_GID required}"
+    network_mode: none
+    read_only: true
+    init: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m,mode=1770
+    volumes:
+      - /var/lib/skylab-sftp/skylabksc/incoming:/data/incoming
+      - /var/lib/skylab-cyber:/data/state
+    command:
+      - --incoming
+      - /data/incoming
+      - --state-root
+      - /data/state
+      - --db
+      - /data/state/data/cyber-inventory.db
+    restart: "no"
+
+  cyber-state-backup:
+    image: skylab/ksc-protected-receiver:0.1.2
+    user: "${CYBER_INGEST_UID:?CYBER_INGEST_UID required}:${CYBERDROP_GID:?CYBERDROP_GID required}"
+    network_mode: none
+    read_only: true
+    init: true
+    entrypoint:
+      - node
+      - scripts/backup-cyber-state.js
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m,mode=1770
+    volumes:
+      - /var/lib/skylab-cyber:/data/state
+    restart: "no"

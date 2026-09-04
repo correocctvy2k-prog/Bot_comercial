@@ -1,0 +1,7 @@
+data/*.db
+data/*.db-*
+data/*.sqlite
+data/*.sqlite-*
+exports/
+raw/
+fixtures/private/

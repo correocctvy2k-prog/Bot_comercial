@@ -15,8 +15,9 @@ const { runtimePaths, ensureRuntimeDirectories } = require('../config/runtime-pa
 
 ensureRuntimeDirectories();
 const db = new DatabaseSync(runtimePaths.dbPath);
+try { db.exec('PRAGMA journal_mode=WAL'); } catch (e) { console.warn('WAL mode setup note:', e.message); }
 db.exec('PRAGMA foreign_keys=ON');
-db.exec('PRAGMA busy_timeout=5000');
+db.exec('PRAGMA busy_timeout=15000');
 db.exec(fs.readFileSync(path.resolve(__dirname,'..','platform','schema.sql'),'utf8'));
 db.exec(`CREATE TABLE IF NOT EXISTS cctv_location_overrides(
   location_id TEXT PRIMARY KEY REFERENCES locations(id), camera_count INTEGER, solution_kind TEXT,
@@ -29,9 +30,9 @@ function isAllowedOrigin(origin) {
   if (!origin) return false;
   if (allowedOrigins.has(origin)) return true;
   try {
-    const { protocol, hostname, port } = new URL(origin);
-    const privateLan = /^10\./.test(hostname) || /^192\.168\./.test(hostname) || /^172\.(1[6-9]|2\d|3[01])\./.test(hostname);
-    return protocol === 'http:' && privateLan && (port === '5173' || port === '5174');
+    const { protocol, hostname } = new URL(origin);
+    const privateLan = /^10\./.test(hostname) || /^192\.168\./.test(hostname) || /^172\.(1[6-9]|2\d|3[01])\./.test(hostname) || hostname === 'localhost' || hostname === '127.0.0.1';
+    return (protocol === 'http:' || protocol === 'https:') && privateLan;
   } catch { return false; }
 }
 const dssFile = path.resolve(__dirname, '..', 'data', 'dss-device-staging.json');
@@ -400,7 +401,8 @@ function syncStatusData(){
   const clockParts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Bogota',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,Number(x.value)])),siisPolicy=observerPolicy(clockParts.hour*60+clockParts.minute,process.env);
   const cycleLog=path.join(runtimePaths.logDir,'operational-cycle.jsonl');let cycle=null,emailCycle=null;
   if(fs.existsSync(cycleLog)){
-    const lines=fs.readFileSync(cycleLog,'utf8').trim().split(/\r?\n/).filter(Boolean);
+    const raw = fs.readFileSync(cycleLog, 'utf8').slice(-64000);
+    const lines = raw.trim().split(/\r?\n/).filter(Boolean);
     for(let index=lines.length-1;index>=0;index--){
       try{
         const entry=JSON.parse(lines[index]);

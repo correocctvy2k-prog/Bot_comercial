@@ -1,0 +1,12 @@
+FROM node:24.8.0-alpine3.22
+
+WORKDIR /app
+
+COPY package.json ./
+COPY db ./db
+COPY src ./src
+COPY scripts/serve-cybersecurity-api.js ./scripts/serve-cybersecurity-api.js
+
+EXPOSE 3005
+
+ENTRYPOINT ["node", "scripts/serve-cybersecurity-api.js"]

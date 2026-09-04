@@ -1,0 +1,10 @@
+**
+!package.json
+!Dockerfile.receiver
+!db/
+!db/**
+!src/
+!src/**
+!scripts/
+!scripts/receive-ksc-protected.js
+!scripts/backup-cyber-state.js

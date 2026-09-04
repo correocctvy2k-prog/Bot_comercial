@@ -1,0 +1,7 @@
+RED 34
++ Add t [€ Import [2 Export C More v 2
+Ba Al >] Ll Tr
+[] DevicelD 1P Address { Device Name Device Type Device Model Organization
+[J 1000126 19216834147 Marden del bosque NVR DHI-NVR4208-4K52 RED 34
+[J 1000086 192.168.3450 Popular Modelo NVR DHI-NVR4208-8P-4K52 RED 34
+[J 1000053 192.168.3424 Mariacano NVR DHI-NVR4208-8P-4K52 RED 34

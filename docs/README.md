@@ -12,6 +12,7 @@ El repositorio es un monorepo con estos bloques principales:
 | Bot Asamblea | `Asamblea/` | Bot y procesos para Asamblea 2026 |
 | CRM Frontend | `CRM_Frontend/` | Panel React/Vite para operacion, monitoreo y administracion |
 | Monitoreo IT | `CRM_Frontend/src/pages/Monitoring.jsx` + `CRM_Frontend/Monitoreo/` | Dashboard de infraestructura, scripts PowerShell y heartbeat |
+| Ciberseguridad | `docs/modulos/ciberseguridad/` | Inventario de activos, exposicion, vulnerabilidades y riesgo |
 | Datos runtime | `data/` | Persistencia local de reportes y datos generados |
 
 ## Documentacion por modulo
@@ -20,6 +21,8 @@ El repositorio es un monorepo con estos bloques principales:
 - [Bot Asamblea](./modulos/bot-asamblea.md)
 - [CRM Frontend](./modulos/crm-frontend.md)
 - [Monitoreo IT](./modulos/monitoreo-it.md)
+- [Ciberseguridad](./modulos/ciberseguridad/README.md)
+- [Continuidad: Seguridad Electronica y eventos diarios](./CONTINUIDAD-SEGURIDAD-ELECTRONICA-EVENTOS.md)
 
 ## Operacion
 
@@ -40,4 +43,3 @@ Cuando se cree o cambie un modulo:
 2. Enlazar documentacion profunda si existe.
 3. Actualizar este indice si cambia el mapa del ecosistema.
 4. Mantener `DOCUMENTACION.md` como puerta de entrada estable.
-

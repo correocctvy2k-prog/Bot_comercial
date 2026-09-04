@@ -20,6 +20,10 @@ export default defineConfig(({ mode }) => {
         target: env.VITE_CCTV_PROXY_TARGET || 'http://127.0.0.1:3003',
         changeOrigin: true,
       },
+      '/api/cybersecurity': {
+        target: env.VITE_CYBERSECURITY_PROXY_TARGET || 'http://127.0.0.1:3005',
+        changeOrigin: true,
+      },
     },
   },
   }

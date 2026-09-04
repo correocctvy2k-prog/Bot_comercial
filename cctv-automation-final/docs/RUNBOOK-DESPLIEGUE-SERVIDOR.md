@@ -1,6 +1,6 @@
 # Runbook de despliegue — Seguridad Electrónica Skylab
 
-**Corte documental:** 27 de agosto de 2026  
+**Corte documental:** 2 de septiembre de 2026
 **Zona horaria operativa:** `America/Bogota`  
 **Estado recomendado:** apto para piloto controlado en intranet; producción condicionada a los controles de la sección 3.
 
@@ -18,6 +18,22 @@ Este documento cubre el traslado al servidor de:
 3. La caché de Trello utilizada por mantenimiento y el acceso API empleado por soporte.
 
 No cubre la administración de DSS, paneles Paradox, BabyWare, ZK ni SIIS. Skylab consume señales y metadatos; no debe enviar comandos a estos sistemas.
+
+## 1.1 Cambios del corte 2 de septiembre de 2026
+
+- El refresco de mantenimiento Trello carga las credenciales desde
+      `TRELLO_ENV_FILE`, incluido por Docker como secreto de solo lectura. Sin esta
+      carga, el cliente recibe `401` y puede conservar una caché antigua.
+- La caché Trello se refresca antes de ejecutar `import:trello-maintenance`;
+      ambos pasos deben ejecutarse con un único escritor de la base SQLite para
+      evitar `database is locked`.
+- El frontend integrado conserva la última respuesta válida en
+      `localStorage`, muestra esa captura mientras actualiza y expone el indicador
+      **API Trello**. Los fallos aislados de latencia se muestran como degradación;
+      el rojo requiere tres fallos consecutivos.
+- El host `192.168.8.65:3003` continúa reservado para `crm-frontend`; no se
+      debe levantar el proyecto standalone `CRM_Frontend/Table Trello` en ese
+      puerto. Su backend auxiliar, si se necesita, debe usar otro puerto.
 
 ## 2. Arquitectura de despliegue objetivo
 
@@ -145,6 +161,26 @@ Conservar el resultado de las pruebas y el hash/commit de la versión desplegada
 
 No ejecutar `npm run import:staging` automáticamente en cada arranque: crea un nuevo corte de importación y debe corresponder a fuentes revisadas.
 
+### 8.1 Actualización Docker del corte
+
+Desde la raíz del repositorio, con la clave de despliegue autorizada:
+
+```bash
+git pull --ff-only origin main
+docker compose config --quiet
+docker compose build cctv-api cctv-operational-worker crm-frontend
+docker compose up -d cctv-api crm-frontend
+docker compose stop cctv-operational-worker
+docker compose run --rm cctv-operational-worker npm run refresh:trello-maintenance
+docker compose run --rm cctv-operational-worker npm run import:trello-maintenance
+docker compose up -d cctv-operational-worker cctv-visitor-worker
+```
+
+No ejecutar en paralelo el backend standalone de `CRM_Frontend/Table Trello`,
+porque comparte la caché SQLite de Trello y puede bloquear la importación. La
+ruta `TRELLO_ENV_FILE` debe existir y contener únicamente las credenciales
+necesarias para leer Trello.
+
 ## 9. Variables de entorno
 
 Usar [`.env.example`](../.env.example) como contrato. Las categorías son:
@@ -228,6 +264,18 @@ Invoke-RestMethod http://127.0.0.1:3003/api/cctv/overview
 Invoke-RestMethod http://127.0.0.1:3003/api/cctv/alarms
 npm run cycle:operational -- --dry-run
 ```
+
+Para validar específicamente la actualización Trello:
+
+```bash
+curl --fail http://127.0.0.1:3003/api/cctv/health
+curl --fail http://127.0.0.1:3003/api/cctv/maintenance
+docker compose logs --since=10m cctv-operational-worker
+```
+
+La respuesta de mantenimiento debe incluir `cacheUpdatedAt` reciente y el
+conteo esperado de actividades. Los logs no deben contener `401`,
+`database is locked` ni `TRELLO_API_KEY o TRELLO_TOKEN no están configurados`.
 
 Comprobar en la interfaz:
 

@@ -25,3 +25,12 @@ build/
 # Monitoring runtime artifacts and server scripts
 /data/monitoring/
 CRM_Frontend/Monitoreo/AD/
+/cybersecurity/runtime/
+/cctv-automation-final/data/event-snapshots/
+/cctv-automation-final/data/support-images/
+/cctv-automation-final/reports/
+/cctv-automation-final/outputs/
+/cctv-automation-final/audits/
+*.xlsx.lnk
+~$*.xlsx
+*.html

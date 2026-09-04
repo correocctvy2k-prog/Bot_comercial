@@ -1,0 +1,22 @@
+{
+  "SchemaVersion": 1,
+  "SourceSystem": "KSC_HARDWARE_PROTECTED",
+  "GeneratedAt": "2026-08-29T16:00:00.000Z",
+  "IdentityKeyVersion": "fixture-v1",
+  "SourceReportSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "DeviceCount": 1,
+  "Devices": [
+    {
+      "RecordFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "HostnameFingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "MacFingerprints": [
+        "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      ],
+      "SerialFingerprint": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "HardwareFingerprint": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "OperatingSystem": "Example OS",
+      "IsVirtual": false,
+      "LastSeen": "2026-08-29T15:55:00.000Z"
+    }
+  ]
+}

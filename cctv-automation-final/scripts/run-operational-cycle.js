@@ -92,7 +92,8 @@ function maintenanceDue() {
 
 function operationalSourceDue(source, intervalMinutes = 5) {
   if (!fs.existsSync(auditPath)) return { due: true, reason: 'NO_AUDIT' };
-  const lines = fs.readFileSync(auditPath, 'utf8').trim().split(/\r?\n/).reverse();
+  const raw = fs.readFileSync(auditPath, 'utf8').slice(-64000);
+  const lines = raw.trim().split(/\r?\n/).reverse();
   for (const line of lines) {
     try {
       const entry = JSON.parse(line);

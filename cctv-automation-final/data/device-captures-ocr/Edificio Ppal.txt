@@ -1,0 +1,14 @@
+EDIFICIO PPAL
+
++ Add WDeete [€impot [Export 3 MoveTo  % ChangePassword ~~ More v
+Ba Al >] Ll Tr
+
+¥  DevicelD 1P Address { Device Name Device Type Device Model
+® 1000129 10220199 Parqueadero_Cuarto-Elect NVR DHI-NVR5864-EI
+® 1000142 10220198 IN Parqueadero Gane Access ANPR Cam... ITC413-PWA4D-IZ1
+® 1000118 10220194 Deteccion Rostros IPC DH-IPC-HDBWS5241E-ZE
+® 1000004 10220181 Tesoreria Conteo NVR DHI-NVR4416-4K52
+® 1000175 10220180 Ofi Ppal-Cajas_Pto_Venta NVR DHI-NVR5864-EI
+® 1000002 10220156 Edificio Ppal Palmira NVR DHI-NVR5864-4K52
+® 1000141 10220145 OUT Parqueadero Ganador ~~ Access ANPR Cam... ITC413-PWA4D-1Z1
+® 1000150 1021028 Parqueadero Ganador Alarm Controller DHI-ARC3000H-FW2

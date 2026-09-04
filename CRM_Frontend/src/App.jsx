@@ -21,6 +21,7 @@ import UsersDashboard from './pages/UsersDashboard'
 import Monitoring from './pages/Monitoring'
 import MonitoringDashboard from './pages/MonitoringDashboard'
 import ServicesTIDashboard from './pages/ServicesTIDashboard'
+import CybersecurityDashboard from './pages/CybersecurityDashboard'
 import Layout from './layout/Layout'
 
 const queryClient = new QueryClient()
@@ -35,6 +36,7 @@ function App() {
             <Routes>
               {/* Ruta pública */}
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/dev/cybersecurity" element={import.meta.env.DEV ? <CybersecurityDashboard /> : <Navigate to="/login" replace />} />
 
               {/* Rutas protegidas envueltas en Layout */}
               <Route path="/*" element={
@@ -45,6 +47,7 @@ function App() {
                       <Route path="/points" element={<ProtectedRoute module="points"><Points /></ProtectedRoute>} />
                       <Route path="/points/cctv" element={<ProtectedRoute module="points"><CctvModule /></ProtectedRoute>} />
                       <Route path="/points/cctv/:siisCode" element={<ProtectedRoute module="points"><CctvModule /></ProtectedRoute>} />
+                      <Route path="/points/cybersecurity" element={<ProtectedRoute module="points"><CybersecurityDashboard /></ProtectedRoute>} />
                       <Route path="/connections" element={<ProtectedRoute module="settings"><Connections /></ProtectedRoute>} />
                       <Route path="/connections/:id/config" element={<ProtectedRoute module="settings"><BotConfig /></ProtectedRoute>} />
                       <Route path="/contacts" element={<ProtectedRoute module="contacts"><Contacts /></ProtectedRoute>} />

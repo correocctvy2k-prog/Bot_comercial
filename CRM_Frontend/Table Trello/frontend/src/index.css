@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#0a0a0f] text-slate-100 selection:bg-brand-500 selection:text-white;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.05) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(124, 58, 237, 0.05) 0px, transparent 50%);
+  }
+
+  /* Scrollbar elegante */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-dark-bg;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-[#1f1f2e] rounded-full hover:bg-brand-600 transition-colors;
+  }
+}
+
+/* Glassmorphism Classes */
+.glass-panel {
+  @apply bg-[#11111a]/80 backdrop-blur-md border border-[#1f1f2e] shadow-lg;
+}
+
+.glass-card {
+  @apply bg-[#161622]/60 backdrop-blur-sm border border-[#1f1f2e]/70 hover:border-brand-500/50 hover:shadow-glow-purple transition-all duration-300;
+}
+
+.glass-input {
+  @apply bg-[#161622]/80 border border-[#1f1f2e] rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all;
+}
+
+/* Animations helper */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(124, 58, 237, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(124, 58, 237, 0.3);
+  }
+}
+
+.glow-active {
+  animation: pulseGlow 3s infinite;
+}

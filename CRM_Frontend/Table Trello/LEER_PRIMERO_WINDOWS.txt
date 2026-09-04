@@ -1,0 +1,247 @@
+═══════════════════════════════════════════════════════════════════════════════
+  🚀 SKYLAB TAREAS MVP - PARA WINDOWS
+═══════════════════════════════════════════════════════════════════════════════
+
+📁 ARCHIVOS EN DESCARGAS
+─────────────────────────────────────────────────────────────────────────────
+
+✅ backend/              ← Servidor Node.js
+✅ frontend/             ← Dashboard React
+✅ START_HERE.md         ← LEE ESTO PRIMERO
+✅ DESARROLLO_LOCAL.md   ← Guía completa
+✅ API.md                ← Referencia endpoints
+✅ .env.example          ← Template variables
+✅ start-dev.bat         ← Script para Windows
+✅ docker-compose.yml    ← Para después
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🔑 PASO 1: OBTENER CREDENCIALES TRELLO
+─────────────────────────────────────────────────────────────────────────────
+
+1. Abre navegador: https://trello.com/app-key
+2. Copia tu "API Key" (está en la página)
+3. Haz clic en "Token" → Genera uno nuevo
+4. Copia el Token
+5. Guarda ambos (los usarás en 5 minutos)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📁 PASO 2: PREPARAR CARPETA
+─────────────────────────────────────────────────────────────────────────────
+
+1. Copia todo lo que está en Descargas a una carpeta en tu PC
+   Ejemplo: C:\proyectos\skylab-tareas
+
+2. La estructura debería quedar así:
+
+   C:\proyectos\skylab-tareas\
+   ├── backend/
+   ├── frontend/
+   ├── START_HERE.md
+   ├── DESARROLLO_LOCAL.md
+   ├── .env.example
+   ├── start-dev.bat
+   └── ... otros archivos
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🔑 PASO 3: CREAR backend/.env
+─────────────────────────────────────────────────────────────────────────────
+
+1. Abre la carpeta: C:\proyectos\skylab-tareas\backend\
+
+2. Crea un archivo llamado ".env" (SIN extensión)
+   
+   Si no ves la opción de crear .env:
+   - Abre un editor (Notepad)
+   - Pega lo siguiente:
+   
+   ───────────────────────────────────────
+   TRELLO_API_KEY=tu_api_key_aqui
+   TRELLO_TOKEN=tu_token_aqui
+   NODE_ENV=development
+   PORT=3003
+   HOST=localhost
+   DATABASE_PATH=./data/skylab-tareas.db
+   VITE_API_URL=http://localhost:3003
+   ───────────────────────────────────────
+
+3. Reemplaza:
+   - tu_api_key_aqui → Tu API Key de Trello
+   - tu_token_aqui → Tu Token de Trello
+
+4. Guarda como ".env" (Sin extensión)
+
+   En Notepad: Archivo → Guardar Como
+   - Nombre: .env
+   - Tipo: Todos los archivos
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ PASO 4: INSTALAR NODE.JS (Si no lo tienes)
+─────────────────────────────────────────────────────────────────────────────
+
+1. Verifica si lo tienes:
+   - Abre CMD (Cmd + R → "cmd")
+   - Escribe: node --version
+   
+2. Si ves v18.x.x o superior → Ya tienes ✅
+
+3. Si no lo tienes:
+   - Descarga: https://nodejs.org (LTS)
+   - Instala normalmente
+   - Reinicia CMD
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🚀 PASO 5: EJECUTAR (2 CMD diferentes)
+─────────────────────────────────────────────────────────────────────────────
+
+💻 OPCIÓN A - Script automático (MÁS FÁCIL):
+
+1. Ve a la carpeta: C:\proyectos\skylab-tareas\
+2. Haz doble clic en: start-dev.bat
+3. Se abrirá una ventana con instrucciones
+4. Luego sigue los pasos manuales de abajo
+
+💻 OPCIÓN B - Manual:
+
+⭐ Terminal 1:
+
+1. Abre CMD
+2. Ve a la carpeta:
+   cd C:\proyectos\skylab-tareas\backend
+
+3. Instala dependencias (primera vez):
+   npm install
+
+4. Inicia servidor:
+   npm run dev
+
+   Esperado:
+   🚀 Servidor Skylab Tareas corriendo en http://localhost:3003
+
+⭐ Terminal 2:
+
+1. Abre OTRO CMD (Ctrl + Shift + Esc → CMD)
+2. Ve a la carpeta:
+   cd C:\proyectos\skylab-tareas\frontend
+
+3. Instala dependencias (primera vez):
+   npm install
+
+4. Inicia servidor:
+   npm run dev
+
+   Esperado:
+   ➜  Local:   http://localhost:5173/
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🌐 PASO 6: ACCEDER A LA APLICACIÓN
+─────────────────────────────────────────────────────────────────────────────
+
+Abre tu navegador (Chrome, Edge, Firefox):
+
+   http://localhost:5173
+
+Debería ver:
+- Selector de tableros Trello
+- Al seleccionar uno → Vista Kanban
+- Botones para crear/editar/eliminar tarjetas
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ VERIFICAR QUE TODO FUNCIONA
+─────────────────────────────────────────────────────────────────────────────
+
+✓ ¿Ves los tableros Trello?
+  → Backend está conectado a Trello ✅
+
+✓ ¿Puedes crear una tarjeta?
+  → CRUD funcionando ✅
+
+✓ ¿Se actualiza en tiempo real?
+  → Crea tarjeta en Trello app → Debe aparecer en dashboard ✅
+
+Si algo falla → Revisa DESARROLLO_LOCAL.md (sección troubleshooting)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🛠️ COMANDOS ÚTILES (En CMD)
+─────────────────────────────────────────────────────────────────────────────
+
+Backend:
+  npm run dev      → Inicia en desarrollo (auto-reload)
+  npm start        → Inicia normal
+
+Frontend:
+  npm run dev      → Inicia servidor de desarrollo
+  npm run build    → Crea versión para producción
+
+Detener:
+  Ctrl + C en cualquier terminal
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📚 DOCUMENTACIÓN
+─────────────────────────────────────────────────────────────────────────────
+
+1. START_HERE.md          → Guía rápida (2-3 min)
+2. DESARROLLO_LOCAL.md    → Guía completa + solución problemas
+3. API.md                 → Referencia de endpoints
+4. RESUMEN_EJECUTIVO.md   → Resumen técnico
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🐛 PROBLEMAS COMUNES
+─────────────────────────────────────────────────────────────────────────────
+
+❌ "npm: comando no reconocido"
+   → Node.js no está instalado
+   → Descarga e instala: https://nodejs.org
+
+❌ "Port 3003 already in use"
+   → Otro programa usa el puerto
+   → Cambia en backend/.env: PORT=3004
+
+❌ "Cannot find module 'express'"
+   → Las dependencias no se instalaron
+   → Ejecuta nuevamente: npm install
+
+❌ Tableros no aparecen
+   → Las credenciales Trello son inválidas
+   → Verifica backend/.env
+   → Abre DevTools (F12) → Console para ver errores
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🔐 IMPORTANTE
+─────────────────────────────────────────────────────────────────────────────
+
+⚠️  NUNCA compartas el archivo backend/.env
+    Contiene tus credenciales Trello
+
+⚠️  Las carpetas node_modules/ son GRANDES
+    No las subas a Git/GitHub
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✨ ¡LISTO!
+─────────────────────────────────────────────────────────────────────────────
+
+Ya tienes todo para empezar:
+1. Credenciales Trello ✅
+2. Código backend + frontend ✅
+3. Documentación completa ✅
+
+Pasos:
+1. Crear backend/.env
+2. Abrir 2 CMD
+3. npm install + npm run dev en cada uno
+4. Abrir http://localhost:5173
+
+¡Que disfrutes desarrollando! 🚀
+
+═══════════════════════════════════════════════════════════════════════════════

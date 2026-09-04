@@ -99,6 +99,45 @@ services:
     depends_on:
       cctv-api:
         condition: service_healthy
+      cybersecurity-api:
+        condition: service_healthy
+
+  cybersecurity-api:
+    build:
+      context: ./cybersecurity
+      dockerfile: Dockerfile.api
+    container_name: cybersecurity-api
+    restart: unless-stopped
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - CYBER_POLICY_DB=/admin-data/network-policies.db
+    user: "${CYBER_INGEST_UID:-996}:${CYBERDROP_GID:-987}"
+    read_only: true
+    init: true
+    expose: ["3005"]
+    cap_drop: ["ALL"]
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m,mode=1770
+    volumes:
+      - ${CYBER_DATA_DIR:-./cybersecurity/data}:/data:ro
+      - ./cybersecurity/admin-data:/admin-data:rw
+    command:
+      - --db
+      - /data/cyber-inventory.db
+      - --host
+      - 0.0.0.0
+      - --port
+      - "3005"
+      - --immutable
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3005/api/cybersecurity/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   cctv-api:
     build:

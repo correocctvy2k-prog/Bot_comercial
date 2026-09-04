@@ -1,0 +1,12 @@
+FROM node:24.8.0-alpine3.22
+
+WORKDIR /app
+
+COPY package.json ./
+COPY src/greenbone-protected-contract.js ./src/greenbone-protected-contract.js
+COPY src/greenbone-protected-exporter.js ./src/greenbone-protected-exporter.js
+COPY scripts/export-greenbone-protected.js ./scripts/export-greenbone-protected.js
+
+USER node
+
+ENTRYPOINT ["node", "scripts/export-greenbone-protected.js"]

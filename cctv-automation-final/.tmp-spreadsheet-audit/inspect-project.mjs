@@ -1,0 +1,21 @@
+import { FileBlob, SpreadsheetFile } from '@oai/artifact-tool';
+
+const input = await FileBlob.load('../2026 programacion anual CCTV.xlsx');
+const workbook = await SpreadsheetFile.importXlsx(input);
+const sheets = await workbook.inspect({ kind: 'sheet', include: 'id,name', maxChars: 10000 });
+console.log('SHEETS');
+console.log(sheets.ndjson);
+const overview = await workbook.inspect({ kind: 'workbook,sheet,table', maxChars: 16000, tableMaxRows: 8, tableMaxCols: 12, tableMaxCellChars: 120 });
+console.log('OVERVIEW');
+console.log(overview.ndjson);
+const project = workbook.worksheets.getItem('2026');
+console.log('PROJECT_VALUES');
+console.log(JSON.stringify(project.getRange('A1:X75').values));
+const inventoryInput=await FileBlob.load('../DATOS_CCTV_v2.xlsx');
+const inventory=await SpreadsheetFile.importXlsx(inventoryInput);
+console.log('INVENTORY_SHEETS');
+console.log((await inventory.inspect({kind:'sheet',include:'id,name',maxChars:10000})).ndjson);
+console.log('PROJECT_SOURCE');
+console.log(JSON.stringify(inventory.worksheets.getItem('Proyecto Actualizacion').getRange('A1:K59').values));
+console.log('PROJECT_STRUCTURED');
+console.log(JSON.stringify(inventory.worksheets.getItem('Proyecto_Estructurado').getRange('A1:P118').values));

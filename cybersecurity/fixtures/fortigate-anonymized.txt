@@ -1,0 +1,28 @@
+FW-LAB $ get system status
+Version: FortiGate-LAB v7.2.0,build0000 (GA)
+Hostname: FW-LAB
+System time: Sat Aug 29 11:00:00 2026
+
+FW-LAB $ get router info routing-table all
+Routing table for VRF=0
+C       192.0.2.0/25 is directly connected, VLAN-Workstations
+S       198.51.100.0/24 [10/0] via 192.0.2.1, uplink, [1/0]
+C       203.0.113.0/28 is directly connected, VLAN-Lab
+
+FW-LAB $ diagnose user device list
+  00:11:22:33:44:55  gen 100 req 0
+    created 86400s  gen 90  seen 10s  VLAN-Workstations  gen 99
+    ip 192.0.2.10  src arp
+    hardware vendor 'Example Vendor'  src mac  id 1  weight 128
+    type 'Computer'  src dhcp  id 2  weight 200
+    os 'Windows'  src dhcp  id 2  weight 200
+    software version '11'  src dhcp  id 2  weight 200
+    host 'WS-LAB-01  '  src dhcp
+    user 'redacted.user'  src kerberos
+  02:aa:bb:cc:dd:ee  gen 101 req 0
+    created 3600s  gen 91  seen 300s  VLAN-Lab  gen 100
+    ip 203.0.113.5  src mac
+    hardware vendor 'Example Mobile'  src http  id 3  weight 128
+    type 'Phone'  src dhcp  id 4  weight 220
+    os 'Android'  src dhcp  id 4  weight 220
+    host 'MOBILE-LAB'  src dhcp

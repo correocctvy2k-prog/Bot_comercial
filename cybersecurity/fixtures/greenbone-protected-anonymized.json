@@ -1,0 +1,74 @@
+{
+  "SchemaVersion": 1,
+  "SourceSystem": "GREENBONE_RESULTS_PROTECTED",
+  "GeneratedAt": "2026-08-31T21:30:00.000Z",
+  "ScanStartedAt": "2026-08-31T19:45:50.000Z",
+  "ScanCompletedAt": "2026-08-31T21:27:55.000Z",
+  "IdentityKeyVersion": "greenbone-target-hmac-2026-01",
+  "AuthorizationReference": "scan-auth-pilot-it-2026-08",
+  "ReportFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "ScanProfile": "VULNERABILITY_SAFE",
+  "ResultCount": 5,
+  "Results": [
+    {
+      "ResultFingerprint": "1111111111111111111111111111111111111111111111111111111111111111",
+      "TargetFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "Port": 1105,
+      "Transport": "TCP",
+      "NvtOid": "1.3.6.1.4.1.25623.1.0.117295",
+      "Title": "Mort Bay / Eclipse Jetty End of Life (EOL) Detection - Windows",
+      "Severity": 10,
+      "QoD": 80,
+      "CVEs": [],
+      "Evidence": "Installed version: 9.2; EOL date: 2018-12-31"
+    },
+    {
+      "ResultFingerprint": "2222222222222222222222222222222222222222222222222222222222222222",
+      "TargetFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "Port": 1105,
+      "Transport": "TCP",
+      "NvtOid": "1.3.6.1.4.1.25623.1.0.117488",
+      "Title": "Eclipse Jetty DoS Vulnerability - Windows",
+      "Severity": 7.5,
+      "QoD": 80,
+      "CVEs": ["CVE-2021-28165"],
+      "Evidence": "Installed version: 9.2; fixed version: 9.4.39"
+    },
+    {
+      "ResultFingerprint": "3333333333333333333333333333333333333333333333333333333333333333",
+      "TargetFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "Port": 1105,
+      "Transport": "TCP",
+      "NvtOid": "1.3.6.1.4.1.25623.1.0.148413",
+      "Title": "Eclipse Jetty Multiple Vulnerabilities (Jul 2022) - Windows",
+      "Severity": 7.5,
+      "QoD": 80,
+      "CVEs": ["CVE-2022-2047", "CVE-2022-2048"],
+      "Evidence": "Installed version: 9.2; fixed version: 9.4.47"
+    },
+    {
+      "ResultFingerprint": "4444444444444444444444444444444444444444444444444444444444444444",
+      "TargetFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "Port": 1105,
+      "Transport": "TCP",
+      "NvtOid": "1.3.6.1.4.1.25623.1.0.153231",
+      "Title": "Eclipse Jetty DoS Vulnerability - Windows",
+      "Severity": 7.5,
+      "QoD": 80,
+      "CVEs": ["CVE-2024-9823"],
+      "Evidence": "Installed version: 9.2; fixed version: 9.4.54"
+    },
+    {
+      "ResultFingerprint": "5555555555555555555555555555555555555555555555555555555555555555",
+      "TargetFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "Port": 22002,
+      "Transport": "TCP",
+      "NvtOid": "1.3.6.1.4.1.25623.1.0.117840",
+      "Title": "Diffie-Hellman Ephemeral Key Exchange DoS Vulnerability (SSL/TLS, D(HE)ater)",
+      "Severity": 7.5,
+      "QoD": 30,
+      "CVEs": ["CVE-2002-20001", "CVE-2022-40735", "CVE-2024-41996"],
+      "Evidence": "DHE cipher suites accepted via TLSv1.1 and TLSv1.2"
+    }
+  ]
+}

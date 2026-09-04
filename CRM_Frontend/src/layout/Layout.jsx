@@ -35,7 +35,7 @@ const MENU_ITEMS_RAW = [
                 icon: ShieldCheck,
                 module: 'points',
                 subItems: [
-                    { icon: Cable, label: 'Ciberseguridad', module: 'points', comingSoon: true },
+                    { to: '/points/cybersecurity', icon: Cable, label: 'Ciberseguridad', module: 'points' },
                     { to: '/points/cctv', icon: Cctv, label: 'Seguridad Electrónica', module: 'points' },
                     { icon: LockKeyhole, label: 'Seguridad de la Información', module: 'points', comingSoon: true }
                 ]

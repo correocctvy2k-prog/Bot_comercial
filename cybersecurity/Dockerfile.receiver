@@ -1,0 +1,12 @@
+FROM node:24.8.0-alpine3.22
+
+WORKDIR /app
+
+COPY package.json ./
+COPY db ./db
+COPY src ./src
+COPY scripts/receive-ksc-protected.js ./scripts/receive-ksc-protected.js
+COPY scripts/receive-greenbone-protected.js ./scripts/receive-greenbone-protected.js
+COPY scripts/backup-cyber-state.js ./scripts/backup-cyber-state.js
+
+ENTRYPOINT ["node", "scripts/receive-ksc-protected.js"]

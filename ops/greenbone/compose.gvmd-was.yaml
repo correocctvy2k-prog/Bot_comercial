@@ -1,0 +1,5 @@
+services:
+  gvmd:
+    image: skylab/gvmd:26.37.0-was
+    environment:
+      GVMD_ENABLE_WEB_APPLICATION_SCANNING: "true"

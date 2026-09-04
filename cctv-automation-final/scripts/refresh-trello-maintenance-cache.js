@@ -3,6 +3,7 @@ const path=require('node:path');
 const {DatabaseSync}=require('node:sqlite');
 const {runtimePaths}=require('../config/runtime-paths');
 
+require('dotenv').config({path:runtimePaths.trelloEnvFile,quiet:true});
 const backendRoot=runtimePaths.trelloBackendRoot;
 const cachePath=runtimePaths.trelloCacheDb;
 const cache=new DatabaseSync(cachePath,{readOnly:true});

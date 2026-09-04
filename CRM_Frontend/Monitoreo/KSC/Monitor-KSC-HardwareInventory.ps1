@@ -24,6 +24,9 @@ param(
     [string]$ReportFile           = "",
     [string]$ServiceName          = "KSC-HARDWARE",
     [string]$NodeName             = "SERV-KSC",
+    [string]$CyberExportFile      = "",
+    [string]$CyberHmacKeyFile     = "",
+    [string]$CyberIdentityKeyVersion = "",
     [switch]$SkipUpload
 )
 
@@ -221,6 +224,130 @@ function Get-FirstRecordValue {
         }
     }
     return $Fallback
+}
+
+function Get-CyberHmacKey {
+    param([string]$KeyFile)
+
+    if (-not (Test-Path -LiteralPath $KeyFile)) {
+        throw "No existe el archivo de clave HMAC de Ciberseguridad."
+    }
+
+    $encoded = (Get-Content -LiteralPath $KeyFile -Raw -Encoding UTF8).Trim()
+    try { $key = [Convert]::FromBase64String($encoded) }
+    catch { throw "La clave HMAC debe estar codificada en Base64." }
+
+    if ($key.Length -lt 32) {
+        throw "La clave HMAC debe contener al menos 32 bytes."
+    }
+    return $key
+}
+
+function Get-CyberHmacFingerprint {
+    param(
+        [byte[]]$Key,
+        [string]$IdentityKeyVersion,
+        [string]$Kind,
+        [string]$Value
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value)) { return $null }
+    $normalized = $Value.Trim().ToUpperInvariant()
+    $message = "SKYLAB-CYBER|$IdentityKeyVersion|$Kind|$normalized"
+    $hmac = [System.Security.Cryptography.HMACSHA256]::new($Key)
+    try {
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($message)
+        return ([Convert]::ToHexString($hmac.ComputeHash($bytes))).ToLowerInvariant()
+    } finally {
+        $hmac.Dispose()
+    }
+}
+
+function Get-NormalizedMacValues {
+    param([string]$Value)
+
+    if ([string]::IsNullOrWhiteSpace($Value)) { return @() }
+    $result = @()
+    foreach ($match in [regex]::Matches($Value, '(?i)(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}')) {
+        $normalized = ($match.Value -replace '[:-]', '').ToUpperInvariant()
+        if ($normalized.Length -eq 12 -and $result -notcontains $normalized) {
+            $result += $normalized
+        }
+    }
+    return @($result)
+}
+
+function Export-CyberHardwareInventory {
+    param(
+        [string]$FilePath,
+        [string]$OutputFile,
+        [string]$HmacKeyFile,
+        [string]$IdentityKeyVersion
+    )
+
+    if ([string]::IsNullOrWhiteSpace($IdentityKeyVersion)) {
+        throw "CyberIdentityKeyVersion es obligatorio para la exportacion protegida."
+    }
+
+    $key = Get-CyberHmacKey -KeyFile $HmacKeyFile
+    $rows = Get-HtmlTableRows -FilePath $FilePath
+    $header = $null
+    $devices = @()
+
+    foreach ($row in $rows) {
+        if (-not $header -and ($row -contains "Nombre") -and ($row -contains "Sistema operativo") -and ($row -contains "Visible por última vez")) {
+            $header = $row
+            continue
+        }
+        if (-not $header -or $row.Count -lt $header.Count) { continue }
+
+        $record = @{}
+        for ($i = 0; $i -lt $header.Count; $i++) { $record[$header[$i]] = $row[$i] }
+        $name = Get-FirstRecordValue -Record $record -Keys @("Nombre")
+        if ([string]::IsNullOrWhiteSpace($name) -or $name -eq "Nombre") { continue }
+
+        $provider = Get-FirstRecordValue -Record $record -Keys @("Proveedor")
+        $serial = Get-FirstRecordValue -Record $record -Keys @("Número de serie", "Numero de serie")
+        $motherboard = Get-FirstRecordValue -Record $record -Keys @("Placa madre")
+        $operatingSystem = Get-FirstRecordValue -Record $record -Keys @("Sistema operativo")
+        $lastSeen = Convert-SpanishKscDate -Value (Get-FirstRecordValue -Record $record -Keys @("Visible por última vez"))
+        $macs = Get-NormalizedMacValues -Value (Get-FirstRecordValue -Record $record -Keys @("Dirección MAC", "Direccion MAC"))
+        $macFingerprints = @($macs | ForEach-Object {
+            Get-CyberHmacFingerprint -Key $key -IdentityKeyVersion $IdentityKeyVersion -Kind "MAC" -Value $_
+        })
+        $recordBasis = "$name|$serial|$($macs -join ',')"
+        $hardwareBasis = "$provider|$motherboard|$serial"
+
+        $devices += [ordered]@{
+            RecordFingerprint   = Get-CyberHmacFingerprint -Key $key -IdentityKeyVersion $IdentityKeyVersion -Kind "RECORD" -Value $recordBasis
+            HostnameFingerprint = Get-CyberHmacFingerprint -Key $key -IdentityKeyVersion $IdentityKeyVersion -Kind "HOSTNAME" -Value $name
+            MacFingerprints      = $macFingerprints
+            SerialFingerprint   = Get-CyberHmacFingerprint -Key $key -IdentityKeyVersion $IdentityKeyVersion -Kind "SERIAL" -Value $serial
+            HardwareFingerprint = Get-CyberHmacFingerprint -Key $key -IdentityKeyVersion $IdentityKeyVersion -Kind "HARDWARE" -Value $hardwareBasis
+            OperatingSystem     = $operatingSystem
+            IsVirtual           = [bool](Test-IsVirtualMachine -Provider $provider -Motherboard $motherboard -Cpu $record["CPU"] -Serial $serial)
+            LastSeen            = if ($lastSeen) { $lastSeen.ToUniversalTime().ToString("o") } else { $null }
+        }
+    }
+
+    $output = [ordered]@{
+        SchemaVersion       = 1
+        SourceSystem        = "KSC_HARDWARE_PROTECTED"
+        GeneratedAt         = (Get-Date).ToUniversalTime().ToString("o")
+        IdentityKeyVersion  = $IdentityKeyVersion
+        SourceReportSha256  = (Get-FileHash -LiteralPath $FilePath -Algorithm SHA256).Hash.ToLowerInvariant()
+        DeviceCount         = $devices.Count
+        Devices             = $devices
+    }
+
+    $parent = Split-Path -Parent $OutputFile
+    if ($parent -and -not (Test-Path -LiteralPath $parent)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
+    $temporaryFile = "$OutputFile.tmp"
+    $output | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $temporaryFile -Encoding UTF8
+    Move-Item -LiteralPath $temporaryFile -Destination $OutputFile -Force
+    return $output
 }
 
 function Parse-HardwareInventory {
@@ -524,6 +651,24 @@ $reportData = @{
     Kaspersky  = @{
         HardwareInventory  = $inventory
         VirusDatabaseUsage = $virusDatabaseUsage
+    }
+}
+
+if ($CyberExportFile -or $CyberHmacKeyFile -or $CyberIdentityKeyVersion) {
+    if (-not $CyberExportFile -or -not $CyberHmacKeyFile -or -not $CyberIdentityKeyVersion) {
+        Write-Host "[ERROR] CyberExportFile, CyberHmacKeyFile y CyberIdentityKeyVersion deben configurarse juntos." -ForegroundColor Red
+        exit 1
+    }
+    try {
+        $cyberExport = Export-CyberHardwareInventory `
+            -FilePath $hardwareReport `
+            -OutputFile $CyberExportFile `
+            -HmacKeyFile $CyberHmacKeyFile `
+            -IdentityKeyVersion $CyberIdentityKeyVersion
+        Write-Host "[OK] Exportacion protegida generada: $($cyberExport.DeviceCount) registros." -ForegroundColor Green
+    } catch {
+        Write-Host "[ERROR] No se pudo generar la exportacion protegida: $($_.Exception.Message)" -ForegroundColor Red
+        exit 1
     }
 }
 

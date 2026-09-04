@@ -1,0 +1,27 @@
+{
+  "name": "skylab-cybersecurity",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Bounded context for Skylab cybersecurity inventory and vulnerability governance",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "db:verify": "node scripts/verify-schema.js",
+    "inventory:verify": "node scripts/verify-inventory.js",
+    "inventory:analyze": "node scripts/analyze-inventory.js",
+    "audit:fortigate": "node scripts/audit-fortigate-file.js",
+    "import:fortigate": "node scripts/import-fortigate.js"
+    ,"import:ksc": "node scripts/import-ksc-hardware.js"
+    ,"match:fortigate-ksc": "node scripts/match-fortigate-ksc.js"
+    ,"validate:ksc-protected": "node scripts/validate-ksc-protected.js"
+    ,"receive:ksc-protected": "node scripts/receive-ksc-protected.js"
+    ,"validate:greenbone-protected": "node scripts/validate-greenbone-protected.js"
+    ,"validate:greenbone-read-model": "node scripts/validate-greenbone-read-model.js"
+    ,"receive:greenbone-protected": "node scripts/receive-greenbone-protected.js"
+    ,"export:greenbone-protected": "node scripts/export-greenbone-protected.js"
+    ,"api:serve": "node scripts/serve-cybersecurity-api.js"
+    ,"demo:create": "node scripts/create-cybersecurity-demo.js"
+    ,"db:migrate": "node scripts/migrate-cybersecurity-db.js"
+    ,"backup:state": "node scripts/backup-cyber-state.js"
+  }
+}

@@ -43,3 +43,20 @@ Los ítems `CODE_NOT_FOUND` o `MISSING_CODE` muestran la acción **Conciliar con
 ## Evolución prevista
 
 La capa canónica permite reemplazar la caché por la API/webhook oficial de Trello sin cambiar el contrato del frontend. Una sincronización bidireccional deberá incorporar control de versiones, cola de reintentos, usuario responsable y política explícita de conflictos antes de habilitar escrituras hacia Trello.
+
+## Reglas de eventos diarios
+
+Los horarios editables pertenecen a Supabase: `zone_schedules` define el
+horario por zona y `puntos_venta` conserva las excepciones por punto. La
+tolerancia se toma de `zone_schedules.tolerance_minutes`, con 15 minutos como
+valor predeterminado.
+
+Para cada punto y día, el estado inicial es `NO_ENTRY`. El primer ping SIIS en
+línea es la evidencia principal de llegada; cualquiera de los nodos de un
+punto doble puede confirmarla. Las detecciones CCTV se conservan como
+corroboración y evidencia visual.
+
+El cierre de almuerzo solo se registra con una detección CCTV de cierre. El
+último ping representa última actividad y no crea por sí mismo un cierre de
+almuerzo. Las señales tempranas, tardías o fuera de horario generan alertas de
+revisión; nunca modifican automáticamente los horarios.

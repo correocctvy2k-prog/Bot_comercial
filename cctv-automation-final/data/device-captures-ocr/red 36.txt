@@ -1,0 +1,22 @@
+RED 36
++ Add t [€ Import [2 Export A C More v v
+Ba Al >] Ll Tr
+
+[| DevicelD IP Address { Device Name Device Type Device Model Organization
+[J 1000167 192.168.3636 NVR Parqueadero Parque Bo. NVR DHI-NVR4232-4KS2/L RED 36
+
+[J 1000155 192.168.3636 ANPR in calle 31 Access ANPR Cam... [TC415-PW6M-Z-C2 RED 36
+
+[J 1000143 192.168.3636 ANPR In Motos Parque Bolivar Access ANPR Cam... ITC415-PW6M-IZ-C2 RED 36
+
+[J 1000140 192.168.3636 ANPR In-Out Calle 32 Access ANPR Cam... [TC415-PW6M-Z-C2 RED 36
+
+[J 1000138 192.168.3636 ANPR out Parq Bolivar Access ANPR Cam... [TC415-PW6M-Z-C2 RED 36
+
+[J 1000012 192.168.3636 Parque Bolivar Cajas Ptoventa ~~ NVR DHI-NVR4232-4K52 RED 36
+
+[J 1000163 192.168.3627 Parque Bolivar Cajas-Pto_Venta Alarm Controller DHI-ARC3000H-FW2 RED 36
+
+[J 1000014 192.16836.16 El Ganador NVR DHI-NVR4208-4KS2 RED 36
+
+[J 1000158 192168369 La Cigarra NVR DHI-NVR5208-E12 RED 36

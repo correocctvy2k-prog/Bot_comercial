@@ -1,0 +1,49 @@
+{
+  "SchemaVersion": 1,
+  "SourceSystem": "GREENBONE_READ_ONLY_EXTRACTION",
+  "ReportId": "6ae82f60-4596-4333-9877-9fdab4eafb0f",
+  "ReportStatus": "DONE",
+  "AuthorizationReference": "scan-auth-pilot-it-2026-08",
+  "GeneratedAt": "2026-08-31T21:30:00.000Z",
+  "ScanStartedAt": "2026-08-31T19:45:50.000Z",
+  "ScanCompletedAt": "2026-08-31T21:27:55.000Z",
+  "ScanProfile": "VULNERABILITY_SAFE",
+  "Results": [
+    {
+      "ResultId": "raw-result-1",
+      "Host": "10.2.6.35",
+      "Port": 1105,
+      "Transport": "TCP",
+      "NvtOid": "1.3.6.1.4.1.25623.1.0.117295",
+      "Title": "Mort Bay / Eclipse Jetty End of Life (EOL) Detection - Windows",
+      "Severity": 10,
+      "QoD": 80,
+      "CVEs": [],
+      "Evidence": "The service at 10.2.6.35 has installed version 9.2; EOL date: 2018-12-31"
+    },
+    {
+      "ResultId": "raw-result-2",
+      "Host": "10.2.6.35",
+      "Port": 1105,
+      "Transport": "TCP",
+      "NvtOid": "1.3.6.1.4.1.25623.1.0.117488",
+      "Title": "Eclipse Jetty DoS Vulnerability - Windows",
+      "Severity": 7.5,
+      "QoD": 80,
+      "CVEs": ["CVE-2021-28165"],
+      "Evidence": "Installed version: 9.2; fixed version: 9.4.39"
+    },
+    {
+      "ResultId": "raw-result-3",
+      "Host": "10.2.6.35",
+      "Port": 22002,
+      "Transport": "TCP",
+      "NvtOid": "1.3.6.1.4.1.25623.1.0.117840",
+      "Title": "Diffie-Hellman Ephemeral Key Exchange DoS Vulnerability (SSL/TLS, D(HE)ater)",
+      "Severity": 7.5,
+      "QoD": 30,
+      "CVEs": ["CVE-2024-41996"],
+      "Evidence": "DHE suites accepted from 10.2.6.30 via TLSv1.2"
+    }
+  ]
+}

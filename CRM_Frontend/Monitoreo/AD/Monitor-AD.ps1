@@ -2,7 +2,7 @@
 .SYNOPSIS
     Script automatizado para monitoreo mensual de Active Directory
 .DESCRIPTION
-    Recopila información crítica del AD y genera reportes en formato TXT, HTML y PDF
+    Recopila informacion critica del AD y genera reportes en formato TXT, HTML y PDF
     Alineado con ISO/IEC 27001:2022 e ISO/IEC 27002:2022
 .AUTHOR
     Sistema de Monitoreo AD - Seguridad Perimetral
@@ -10,10 +10,10 @@
     Octubre 2025
 .COMPLIANCE
     ISO/IEC 27001:2022 - Controles: A.5.1, A.8.2, A.8.3, A.8.5, A.8.8, A.8.12, A.8.15
-    ISO/IEC 27002:2022 - Controles de Seguridad de la Información
+    ISO/IEC 27002:2022 - Controles de Seguridad de la Informacion
 #>
 
-# Configuración inicial
+# Configuracion inicial
 $ErrorActionPreference = "Continue"
 $OutputPath = "C:\AD_Reports"
 $BackupPath = "\\ganepalmir\dpto.informatica\Johnathan.Beltran\OTROS\Chequeos\Active Directory" # Ruta de red (Maestro AD01)
@@ -25,8 +25,8 @@ $ReportName = "Informe_AD_$ReportDate"
 # === CREDENCIALES PARA ACCESO A BACKUPS ===
 # NOTA: Se usa cuenta administrador para acceder a rutas de backup si SYSTEM falla
 # Especificar credenciales: usuario y contraseña para acceso a \\ganepalmi\Backup
-# Si deja vacío, usará credenciales locales (SYSTEM del AD01)
-$BackupCredUsername = "GANEPAL\Administrator"  # O: "GANEPAL\AD01$" (cuenta máquina)
+# Si deja vacio, usara credenciales locales (SYSTEM del AD01)
+$BackupCredUsername = "GANEPAL\Administrator"  # O: "GANEPAL\AD01$" (cuenta maquina)
 $BackupCredPassword = "" # Reemplazar con la contraseña real si es necesario
 $BackupUseCredentials = $false # Cambiar a $true si falla acceso sin credenciales
 
@@ -41,7 +41,7 @@ foreach ($path in @($OutputPath, $BackupPath)) {
     }
 }
 
-# --- Importar Módulos ---
+# --- Importar Modulos ---
 Import-Module ActiveDirectory
 if (Get-Module -ListAvailable GroupPolicy) { Import-Module GroupPolicy }
 
@@ -59,10 +59,10 @@ function Get-UpdateStatus {
     }
 }
 
-# Importar módulo de Active Directory
+# Importar modulo de Active Directory
 try {
     Import-Module ActiveDirectory -ErrorAction Stop
-    Write-Host "✓ Módulo Active Directory cargado" -ForegroundColor Green
+    Write-Host "✓ Modulo Active Directory cargado" -ForegroundColor Green
 } catch {
     Write-Host "✗ Error al cargar Active Directory: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
@@ -71,10 +71,10 @@ try {
 # Intentar cargar GroupPolicy (opcional)
 try {
     Import-Module GroupPolicy -ErrorAction Stop
-    Write-Host "✓ Módulo Group Policy cargado" -ForegroundColor Green
+    Write-Host "✓ Modulo Group Policy cargado" -ForegroundColor Green
     $GPModuleLoaded = $true
 } catch {
-    Write-Host "⚠ Módulo Group Policy no disponible - Se omitirá análisis de GPOs" -ForegroundColor Yellow
+    Write-Host "⚠ Modulo Group Policy no disponible - Se omitira analisis de GPOs" -ForegroundColor Yellow
     $GPModuleLoaded = $false
 }
 
@@ -116,7 +116,7 @@ function Get-DCStatus {
         if (Test-Connection -ComputerName $dc -Count 2 -Quiet) {
             $dcInfo.Pingable = $true
             
-            # Verificar servicios críticos
+            # Verificar servicios criticos
             $services = @('NTDS','DNS','KDC','W32Time','Netlogon','DFSR')
             $localName = $env:COMPUTERNAME
             
@@ -136,7 +136,7 @@ function Get-DCStatus {
                         # Todo OK
                     } else {
                         $dcInfo.ServiceIssues += $service
-                        $issues += "El servicio $service en $dc está en estado - $status"
+                        $issues += "El servicio $service en $dc esta en estado - $status"
                     }
                 } catch {
                     $dcInfo.Services += "$service - Error"
@@ -144,12 +144,12 @@ function Get-DCStatus {
                 }
             }
             
-            # Obtener información del sistema
+            # Obtener informacion del sistema
             try {
                 $os = Get-CimInstance -ComputerName $dc -ClassName Win32_OperatingSystem -ErrorAction SilentlyContinue
                 $lastBoot = [datetime]$os.LastBootUpTime
                 $uptime = (Get-Date) - $lastBoot
-                $dcInfo.Uptime = "$($uptime.Days) días, $($uptime.Hours) horas"
+                $dcInfo.Uptime = "$($uptime.Days) dias, $($uptime.Hours) horas"
                 $dcInfo.LastReboot = $lastBoot.ToString("yyyy-MM-dd HH:mm:ss")
                 $dcInfo.OSVersion = $os.Caption
                 
@@ -202,13 +202,14 @@ function Get-FSMORoles {
         
         $recommendation = ""
         if ($uniqueHolders.Count -eq 1) {
-            $recommendation = "ISO 27002 8.14: Todos los roles FSMO en un único controlador - Riesgo de disponibilidad"
+            $recommendation = "ISO 27002 8.14: Todos los roles FSMO en un unico controlador - Riesgo de disponibilidad"
         }
         
         return @{
             Roles = $fsmoRoles
             Status = if ($recommendation) { "WARNING" } else { "OK" }
             Recommendation = $recommendation
+            Issues = @()
             ISO27001Controls = @(
                 Get-ISO27001Control "A.8.14" "Redundancy of information processing facilities"
             )
@@ -217,13 +218,14 @@ function Get-FSMORoles {
         return @{
             Roles = "Error al obtener roles FSMO: $($_.Exception.Message)"
             Status = "ERROR"
+            Issues = @("Error al obtener roles FSMO")
             Recommendation = "Verifique la conectividad con los controladores de dominio"
         }
     }
 }
 
 function Get-ReplicationStatus {
-    Write-Host "[3/9] Verificando replicación entre controladores..." -ForegroundColor Cyan
+    Write-Host "[3/9] Verificando replicacion entre controladores..." -ForegroundColor Cyan
     
     $replStatus = @{
         Summary = ""
@@ -243,7 +245,7 @@ function Get-ReplicationStatus {
             $replStatus.Status = "CRITICAL"
             $replStatus.Recommendation = "ISO 27001 A.8.12: Datos inconsistentes detectados - Ejecute repadmin /syncall"
         } else {
-            $replStatus.Errors = "No se encontraron errores de replicación"
+            $replStatus.Errors = "No se encontraron errores de replicacion"
         }
     } catch {
         $replStatus.Errors = "No se pudo ejecutar repadmin (posible falta de permisos)"
@@ -263,7 +265,7 @@ function Get-ReplicationStatus {
                 "AD01 - $dc1Objects objetos",
                 "DA02 - $dc2Objects objetos",
                 "AD03 - $dc3Objects objetos",
-                "Diferencia máxima - $difference objetos"
+                "Diferencia maxima - $difference objetos"
             )
             
             if ($difference -gt 10) {
@@ -298,10 +300,10 @@ function Get-BackupStatus {
             UltimoBackup = "N/A"
             ArchivosRecientes = 0
             Status = "ERROR"
-            TamañoTotal = 0
+            TamanoTotal = 0
         }
         
-        # Intentar acceso con credenciales si está habilitado
+        # Intentar acceso con credenciales si esta habilitado
         $testPath = $false
         if ($BackupUseCredentials -and $BackupCredPassword) {
             try {
@@ -322,16 +324,18 @@ function Get-BackupStatus {
             
             if ($archivosRecientes) {
                 $backupInfo.ArchivosRecientes = $archivosRecientes.Count
-                $backupInfo.TamañoTotal = [math]::Round(($archivosRecientes | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
+                $backupInfo.TamanoTotal = [math]::Round(($archivosRecientes | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
                 $backupInfo.UltimoBackup = ($archivosRecientes | Sort-Object LastWriteTime -Descending | 
                     Select-Object -First 1).LastWriteTime.ToString("yyyy-MM-dd HH:mm")
                 $backupInfo.Status = "OK"
             } else {
                 $backupInfo.Status = "WARNING"
-                $issues += "ISO 27001 A.8.13: Sin backups recientes en $ruta"
+                $rutaNum = $backupStatus.Count + 1
+                $issues += "ISO 27001 A.8.13: Sin backups recientes - Almacenamiento $rutaNum"
             }
         } else {
-            $issues += "ISO 27001 A.8.13: No se puede acceder a $ruta"
+            $rutaNum = $backupStatus.Count + 1
+            $issues += "ISO 27001 A.8.13: No se puede acceder al almacenamiento $rutaNum"
         }
         
         $backupStatus += $backupInfo
@@ -352,7 +356,7 @@ function Get-BackupStatus {
 }
 
 function Get-UserStatistics {
-    Write-Host "[5/9] Analizando estadísticas de usuarios..." -ForegroundColor Cyan
+    Write-Host "[5/9] Analizando estadisticas de usuarios..." -ForegroundColor Cyan
     
     $userStats = @{
         Total = 0
@@ -373,6 +377,7 @@ function Get-UserStatistics {
         DetailedDisabled = @()
         DetailedDeleted = @()
         DetailedNeverLoggedIn = @()
+        UsersByOU = @()
     }
     
     try {
@@ -413,7 +418,7 @@ function Get-UserStatistics {
             }
         }
         
-        # Usuarios que nunca iniciaron sesión
+        # Usuarios que nunca iniciaron sesion
         $neverLoggedIn = $allUsers | Where-Object { 
             -not $_.LastLogonDate -and $_.Enabled -eq $true
         }
@@ -426,7 +431,7 @@ function Get-UserStatistics {
             }
         }
         
-        # Buscar usuarios eliminados en AD Recycle Bin (si está habilitado)
+        # Buscar usuarios eliminados en AD Recycle Bin (si esta habilitado)
         try {
             $deletedUsers = Get-ADObject -Filter {ObjectClass -eq "user" -and IsDeleted -eq $true} `
                 -IncludeDeletedObjects -Properties * -ErrorAction SilentlyContinue
@@ -434,7 +439,7 @@ function Get-UserStatistics {
             $userStats.DetailedDeleted = $deletedUsers | Select-Object -First 50 | ForEach-Object {
                 [PSCustomObject]@{
                     Usuario = $_.SamAccountName
-                    Nombre = $_.Name
+                    Nombre = ($_.Name -split '[\r\n]')[0].Trim()
                     FechaEliminacion = if($_.whenChanged){$_.whenChanged.ToString("yyyy-MM-dd HH:mm")}else{"N/A"}
                     UltimaUbicacion = $_.LastKnownParent
                 }
@@ -458,14 +463,54 @@ function Get-UserStatistics {
         $userStats.RecentlyCreated = (Get-ADUser -Filter {Created -gt $lastMonth}).Count
         $userStats.RecentlyModified = (Get-ADUser -Filter {Modified -gt $lastMonth}).Count
         
-        # Análisis ISO 27001
+        # Obtener conteo de usuarios por OU (incluyendo sub-OUs de Palmira)
+        try {
+            $allOUs = Get-ADOrganizationalUnit -Filter *
+            # OUs de primer nivel
+            $rootOUs = $allOUs | Where-Object {$_.DistinguishedName -notmatch "OU=.*,OU="}
+            # Sub-OUs dentro de Palmira
+            $palmiraSubOUs = $allOUs | Where-Object {
+                $_.DistinguishedName -match ",OU=Palmira," -and
+                ($_.DistinguishedName -replace "^OU=[^,]+,","") -match "^OU=Palmira,"
+            }
+            $targetOUs = @($rootOUs) + @($palmiraSubOUs) | Sort-Object DistinguishedName -Unique
+            foreach ($ou in $targetOUs) {
+                $userCount = (Get-ADUser -Filter * -SearchBase $ou.DistinguishedName -SearchScope OneLevel).Count
+                if ($userCount -gt 0) {
+                    $isPalmiraSub = $palmiraSubOUs -and ($palmiraSubOUs | Where-Object {$_.DistinguishedName -eq $ou.DistinguishedName})
+                    $ouLabel = if ($isPalmiraSub) { "Palmira > $($ou.Name)" } else { $ou.Name }
+                    $userStats.UsersByOU += [PSCustomObject]@{
+                        OU = $ouLabel
+                        Users = $userCount
+                        Path = $ou.DistinguishedName
+                    }
+                }
+            }
+            $userStats.UsersByOU = $userStats.UsersByOU | Sort-Object Users -Descending
+            # Fallback si no se obtuvieron OUs
+            if ($userStats.UsersByOU.Count -eq 0) {
+                $allUsersOU = Get-ADUser -Filter * -Properties CanonicalName
+                $ouGroups = $allUsersOU | Group-Object {$_.CanonicalName.Split('/')[1]} | Where-Object {$_.Name}
+                $userStats.UsersByOU = $ouGroups | ForEach-Object {
+                    [PSCustomObject]@{
+                        OU = $_.Name
+                        Users = $_.Count
+                        Path = ""
+                    }
+                } | Sort-Object Users -Descending
+            }
+        } catch {
+            $userStats.UsersByOU = @()
+        }
+        
+        # Analisis ISO 27001
         if ($userStats.Locked -gt 0) {
             $userStats.Issues += "ISO 27001 A.5.17: $($userStats.Locked) cuenta(s) bloqueada(s)"
         }
         
         if ($userStats.Inactive90 -gt 10) {
-            $userStats.Issues += "ISO 27001 A.5.18: $($userStats.Inactive90) usuarios inactivos >90 días"
-            $userStats.Recommendations += "Revisar y deshabilitar cuentas inactivas según política de acceso"
+            $userStats.Issues += "ISO 27001 A.5.18: $($userStats.Inactive90) usuarios inactivos >90 dias"
+            $userStats.Recommendations += "Revisar y deshabilitar cuentas inactivas segun politica de acceso"
         }
         
         if ($userStats.NonExpiringPwd -gt 5) {
@@ -473,7 +518,7 @@ function Get-UserStatistics {
         }
         
     } catch {
-        Write-Host "Error en estadísticas de usuarios: $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host "Error en estadisticas de usuarios: $($_.Exception.Message)" -ForegroundColor Yellow
     }
     
     return $userStats
@@ -491,11 +536,13 @@ function Get-GPOStatus {
         GPODetails = @()
         Issues = @()
         Recommendations = @()
+    Status = "OK"
     }
     
-    # Verificar si el módulo está disponible
+    # Verificar si el modulo esta disponible
     if (-not $GPModuleLoaded) {
-        $gpoStats.Issues += "Módulo Group Policy no disponible - Análisis omitido"
+        $gpoStats.Issues += "Modulo Group Policy no disponible - Analisis omitido"
+    $gpoStats.Status = if ($gpoStats.Issues -match "CRITICO") { "CRITICAL" } elseif ($gpoStats.Issues.Count -gt 0) { "WARNING" } else { "OK" }
         return $gpoStats
     }
     
@@ -506,7 +553,7 @@ function Get-GPOStatus {
         foreach ($gpo in $allGPOs) {
             $gpoReport = [xml](Get-GPOReport -Guid $gpo.Id -ReportType Xml)
             
-            # Detectar GPOs vacías
+            # Detectar GPOs vacias
             $isEmpty = $gpoReport.GPO.Computer.ExtensionData -eq $null -and 
                        $gpoReport.GPO.User.ExtensionData -eq $null
             
@@ -522,7 +569,7 @@ function Get-GPOStatus {
                 $gpoStats.Unlinked++
             }
             
-            # GPOs modificadas recientemente (últimos 30 días)
+            # GPOs modificadas recientemente (ultimos 30 dias)
             if ($gpo.ModificationTime -gt (Get-Date).AddDays(-30)) {
                 $gpoStats.RecentlyModified += [PSCustomObject]@{
                     Nombre = $gpo.DisplayName
@@ -543,10 +590,10 @@ function Get-GPOStatus {
             }
         }
         
-        # Análisis de seguridad
+        # Analisis de seguridad
         if ($gpoStats.Empty -gt 0) {
-            $gpoStats.Issues += "ISO 27002 5.15: $($gpoStats.Empty) GPO(s) vacías detectadas"
-            $gpoStats.Recommendations += "Eliminar GPOs vacías para mantener la higiene del dominio"
+            $gpoStats.Issues += "ISO 27002 5.15: $($gpoStats.Empty) GPO(s) vacias detectadas"
+            $gpoStats.Recommendations += "Eliminar GPOs vacias para mantener la higiene del dominio"
         }
         
         if ($gpoStats.Unlinked -gt 5) {
@@ -554,12 +601,12 @@ function Get-GPOStatus {
             $gpoStats.Recommendations += "Revisar GPOs sin enlazar - pueden ser obsoletas"
         }
         
-        # Verificar GPOs críticas de seguridad
+        # Verificar GPOs criticas de seguridad
         $criticalGPOs = @("Default Domain Policy", "Default Domain Controllers Policy")
         foreach ($criticalGPO in $criticalGPOs) {
             $exists = $allGPOs | Where-Object {$_.DisplayName -eq $criticalGPO}
             if (-not $exists) {
-                $gpoStats.Issues += "CRÍTICO: GPO '$criticalGPO' no encontrada"
+                $gpoStats.Issues += "CRiTICO: GPO '$criticalGPO' no encontrada"
             }
         }
         
@@ -628,6 +675,7 @@ function Get-SecurityEvents {
         PolicyChanges = 0
         Issues = @()
         Recommendations = @()
+        Status = "OK"
     }
     
     try {
@@ -649,12 +697,12 @@ function Get-SecurityEvents {
             LogName='Security'; ID=4724; StartTime=$startDate
         } -ErrorAction SilentlyContinue).Count
         
-        # Cambios en políticas (Event ID 4719)
+        # Cambios en politicas (Event ID 4719)
         $securityEvents.PolicyChanges = (Get-WinEvent -FilterHashtable @{
             LogName='Security'; ID=4719; StartTime=$startDate
         } -ErrorAction SilentlyContinue).Count
         
-        # Análisis ISO 27001
+        # Analisis ISO 27001
         if ($securityEvents.FailedLogins -gt 100) {
             $securityEvents.Issues += "ISO 27001 A.8.15: $($securityEvents.FailedLogins) intentos fallidos"
             $securityEvents.Recommendations += "Posible ataque de fuerza bruta - Revisar Event ID 4625"
@@ -665,19 +713,21 @@ function Get-SecurityEvents {
         }
         
         if ($securityEvents.PolicyChanges -gt 0) {
-            $securityEvents.Issues += "ISO 27001 A.5.1: $($securityEvents.PolicyChanges) cambios en políticas"
-            $securityEvents.Recommendations += "Revisar cambios en políticas de seguridad (Event ID 4719)"
+            $securityEvents.Issues += "ISO 27001 A.5.1: $($securityEvents.PolicyChanges) cambios en politicas"
+            $securityEvents.Recommendations += "Revisar cambios en politicas de seguridad (Event ID 4719)"
         }
         
     } catch {
         Write-Host "Advertencia: No se pudieron obtener todos los eventos de seguridad" -ForegroundColor Yellow
     }
     
+    
+    $securityEvents.Status = if ($securityEvents.Issues.Count -eq 0) { "OK" } elseif ($securityEvents.Issues -match "fuerza bruta") { "CRITICAL" } else { "WARNING" }
     return $securityEvents
 }
 
 function Get-PasswordPolicyCompliance {
-    Write-Host "[9/9] Verificando cumplimiento de políticas de contraseña..." -ForegroundColor Cyan
+    Write-Host "[9/9] Verificando cumplimiento de politicas de contraseña..." -ForegroundColor Cyan
     
     $policyCompliance = @{
         DomainPolicy = $null
@@ -687,7 +737,7 @@ function Get-PasswordPolicyCompliance {
     }
     
     try {
-        # Política de dominio por defecto
+        # Politica de dominio por defecto
         $defaultPolicy = Get-ADDefaultDomainPasswordPolicy
         $policyCompliance.DomainPolicy = [PSCustomObject]@{
             MinPasswordLength = $defaultPolicy.MinPasswordLength
@@ -699,10 +749,10 @@ function Get-PasswordPolicyCompliance {
             LockoutThreshold = $defaultPolicy.LockoutThreshold
         }
         
-        # Análisis de cumplimiento ISO 27002
+        # Analisis de cumplimiento ISO 27002
         if ($defaultPolicy.MinPasswordLength -lt 12) {
-            $policyCompliance.Issues += "ISO 27002 5.17: Longitud mínima de contraseña insuficiente ($($defaultPolicy.MinPasswordLength) caracteres)"
-            $policyCompliance.Recommendations += "ISO 27002 recomienda mínimo 12 caracteres"
+            $policyCompliance.Issues += "ISO 27002 5.17: Longitud minima de contraseña insuficiente ($($defaultPolicy.MinPasswordLength) caracteres)"
+            $policyCompliance.Recommendations += "ISO 27002 recomienda minimo 12 caracteres"
         }
         
         if (-not $defaultPolicy.ComplexityEnabled) {
@@ -710,7 +760,7 @@ function Get-PasswordPolicyCompliance {
         }
         
         if ($defaultPolicy.MaxPasswordAge.Days -gt 90) {
-            $policyCompliance.Issues += "ISO 27002 5.17: Edad máxima de contraseña excede 90 días"
+            $policyCompliance.Issues += "ISO 27002 5.17: Edad maxima de contraseña excede 90 dias"
         }
         
         if ($defaultPolicy.LockoutThreshold -eq 0 -or $defaultPolicy.LockoutThreshold -gt 5) {
@@ -718,7 +768,7 @@ function Get-PasswordPolicyCompliance {
             $policyCompliance.Recommendations += "Configure entre 3-5 intentos fallidos"
         }
         
-        # Políticas de contraseña de grano fino (Fine-Grained Password Policies)
+        # Politicas de contraseña de grano fino (Fine-Grained Password Policies)
         $fineGrainedPolicies = Get-ADFineGrainedPasswordPolicy -Filter * -ErrorAction SilentlyContinue
         if ($fineGrainedPolicies) {
             foreach ($fgpp in $fineGrainedPolicies) {
@@ -733,10 +783,63 @@ function Get-PasswordPolicyCompliance {
         }
         
     } catch {
-        $policyCompliance.Issues += "Error al verificar políticas de contraseña: $($_.Exception.Message)"
+        $policyCompliance.Issues += "Error al verificar politicas de contraseña: $($_.Exception.Message)"
     }
     
     return $policyCompliance
+}
+
+function Get-DCResourceLoad {
+    Write-Host "[7/9] Verificando carga de recursos en controladores..." -ForegroundColor Cyan
+    
+    # Obtener lista de DCs reales del dominio
+    $dcList = try {
+        (Get-ADDomainController -Filter * -ErrorAction SilentlyContinue).HostName | ForEach-Object { $_.Split('.')[0] }
+    } catch {
+        @("AD01", "AD02", "AD03")  # Fallback si no puede obtener los DCs
+    }
+    
+    $resourceLoad = @()
+    
+    foreach ($dc in $dcList) {
+        try {
+            # Obtener CPU y Memoria
+            $cpuLoad = (Get-WmiObject -Class Win32_Processor -ComputerName $dc -ErrorAction SilentlyContinue | Measure-Object -Property LoadPercentage -Average).Average
+            $memory = Get-WmiObject -Class Win32_OperatingSystem -ComputerName $dc -ErrorAction SilentlyContinue
+            
+            if ($memory) {
+                $memUsedPercent = [math]::Round(((($memory.TotalVisibleMemorySize - $memory.FreePhysicalMemory) / $memory.TotalVisibleMemorySize) * 100), 2)
+                $memUsedGB = [math]::Round(($memory.TotalVisibleMemorySize - $memory.FreePhysicalMemory) / 1MB, 2)
+                $memTotalGB = [math]::Round($memory.TotalVisibleMemorySize / 1MB, 2)
+            } else {
+                $memUsedPercent = 0
+                $memUsedGB = 0
+                $memTotalGB = 0
+            }
+            
+            $resourceLoad += [PSCustomObject]@{
+                DC = $dc
+                CPULoad = if($cpuLoad) { [math]::Round($cpuLoad, 1) } else { 0 }
+                MemoryUsed = $memUsedPercent
+                MemoryGB = "$memUsedGB / $memTotalGB"
+                Status = "OK"
+            }
+        } catch {
+            $resourceLoad += [PSCustomObject]@{
+                DC = $dc
+                CPULoad = "N/A"
+                MemoryUsed = "N/A"
+                MemoryGB = "N/A"
+                Status = "Error"
+            }
+        }
+    }
+    
+    return @{
+        Load = $resourceLoad
+        Issues = @()
+        Status = "OK"
+    }
 }
 
 function Get-UpdateStatus {
@@ -762,7 +865,7 @@ function Get-UpdateStatus {
     }
 }
 
-# ==================== RECOPILACIÓN DE DATOS ====================
+# ==================== RECOPILACIoN DE DATOS ====================
 
 Write-Host "`n╔═══════════════════════════════════════════════════════╗" -ForegroundColor Green
 Write-Host "║   MONITOREO AD - ISO 27001:2022 / ISO 27002:2022     ║" -ForegroundColor Green
@@ -776,17 +879,33 @@ $reportData = @{
     Backups = Get-BackupStatus
     Users = Get-UserStatistics
     Updates = Get-UpdateStatus
+    ResourceLoad = Get-DCResourceLoad
     GPOs = Get-GPOStatus
     Disk = Get-DiskSpace
     Security = Get-SecurityEvents
     PasswordPolicy = Get-PasswordPolicyCompliance
 }
 
-# ==================== GENERACIÓN DE REPORTE HTML ====================
+# ==================== GENERACIoN DE REPORTE HTML ====================
 
 Write-Host "`nGenerando reporte HTML con diseño Microsoft Learn..." -ForegroundColor Cyan
 
-$htmlReport = @"
+# Definir variable para guiones dobles (para evitar problemas de parsing en PowerShell)
+$dashdash = '--'
+
+# ==================== GENERACION DE REPORTE HTML ====================
+
+Write-Host "`nGenerando reporte HTML..." -ForegroundColor Cyan
+
+# --- Calcular estado global ---
+$overallStatuses = @($reportData.DCs.OverallStatus, $reportData.FSMO.Status, $reportData.Replication.Status, $reportData.Backups.Status, $reportData.ResourceLoad.Status, $reportData.Disk.Status, $reportData.Security.Status) | Where-Object { $_ }
+$globalStatus = if ($overallStatuses -contains "CRITICAL") { "CRITICAL" } elseif ($overallStatuses -contains "WARNING") { "WARNING" } else { "OK" }
+$globalColor  = if ($globalStatus -eq "CRITICAL") { "#d13438" } elseif ($globalStatus -eq "WARNING") { "#ffb900" } else { "#107c10" }
+$globalIcon   = if ($globalStatus -eq "CRITICAL") { "&#128721;" } elseif ($globalStatus -eq "WARNING") { "&#9888;&#65039;" } else { "&#9989;" }
+
+$htmlReport = ""
+
+$htmlReport += @"
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -795,1204 +914,530 @@ $htmlReport = @"
     <title>Informe AD - ISO 27001/27002 - $ReportDate</title>
     <style>
         :root {
-            --primary-color: #0078d4;
-            --success-color: #107c10;
-            --warning-color: #ffb900;
-            --error-color: #d13438;
-            --bg-gray: #f3f2f1;
-            --border-color: #edebe9;
-            --text-primary: #323130;
-            --text-secondary: #605e5c;
+            --primary-color: #0078d4; --success-color: #107c10; --warning-color: #ffb900;
+            --error-color: #d13438; --bg-gray: #f3f2f1; --border-color: #edebe9;
+            --text-primary: #323130; --text-secondary: #605e5c;
             --shadow-sm: 0 1.6px 3.6px rgba(0,0,0,.13), 0 0.3px 0.9px rgba(0,0,0,.11);
             --shadow-md: 0 3.2px 7.2px rgba(0,0,0,.13), 0 0.6px 1.8px rgba(0,0,0,.11);
         }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
-            line-height: 1.6;
-            color: var(--text-primary);
-            background: var(--bg-gray);
-        }
-
-        .top-bar {
-            background: #ffffff;
-            border-bottom: 1px solid var(--border-color);
-            padding: 12px 0;
-            box-shadow: var(--shadow-sm);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-
-        .top-bar-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 24px;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .logo {
-            font-size: 20px;
-            font-weight: 600;
-            color: var(--primary-color);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .iso-badge {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .main-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: 250px 1fr;
-            gap: 24px;
-            padding: 24px;
-        }
-
-        .sidebar {
-            background: white;
-            padding: 24px;
-            border-radius: 8px;
-            box-shadow: var(--shadow-sm);
-            height: fit-content;
-            position: sticky;
-            top: 80px;
-        }
-
-        .sidebar h3 {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 16px;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-        }
-
-        .sidebar nav ul {
-            list-style: none;
-        }
-
-        .sidebar nav li {
-            margin-bottom: 4px;
-        }
-
-        .sidebar nav a {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            color: var(--text-primary);
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 14px;
-            transition: all 0.2s;
-        }
-
-        .sidebar nav a:hover {
-            background: var(--bg-gray);
-            color: var(--primary-color);
-        }
-
-        .content {
-            background: white;
-            padding: 48px;
-            border-radius: 8px;
-            box-shadow: var(--shadow-sm);
-        }
-
-        .page-header {
-            margin-bottom: 48px;
-            padding-bottom: 24px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .page-header h1 {
-            font-size: 42px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 12px;
-        }
-
-        .page-header .meta {
-            display: flex;
-            gap: 24px;
-            font-size: 14px;
-            color: var(--text-secondary);
-            margin-top: 12px;
-            flex-wrap: wrap;
-        }
-
-        .section {
-            margin-bottom: 48px;
-        }
-
-        .section-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 24px;
-            padding-bottom: 12px;
-            border-bottom: 2px solid var(--border-color);
-        }
-
-        .section-icon {
-            width: 32px;
-            height: 32px;
-            background: var(--primary-color);
-            color: white;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-        }
-
-        .section h2 {
-            font-size: 28px;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .iso-control-badge {
-            background: #e1f5fe;
-            color: #014361;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 600;
-            margin-left: auto;
-        }
-
-        .alert {
-            padding: 16px 20px;
-            border-radius: 6px;
-            margin: 20px 0;
-            border-left: 4px solid;
-            display: flex;
-            gap: 12px;
-            align-items: start;
-        }
-
-        .alert-success {
-            background: #dff6dd;
-            border-color: var(--success-color);
-            color: #0e5a0e;
-        }
-
-        .alert-warning {
-            background: #fff4ce;
-            border-color: var(--warning-color);
-            color: #5d4a00;
-        }
-
-        .alert-error {
-            background: #fde7e9;
-            border-color: var(--error-color);
-            color: #6e0811;
-        }
-
-        .alert-info {
-            background: #e1f5fe;
-            border-color: var(--primary-color);
-            color: #014361;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin: 24px 0;
-        }
-
-        .stat-card {
-            background: var(--bg-gray);
-            padding: 20px;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-        }
-
-        .stat-card-value {
-            font-size: 32px;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .stat-card-value.success { color: var(--success-color); }
-        .stat-card-value.warning { color: var(--warning-color); }
-        .stat-card-value.error { color: var(--error-color); }
-
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 24px 0;
-            background: white;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            overflow: hidden;
-        }
-
-        .data-table thead {
-            background: var(--bg-gray);
-        }
-
-        .data-table th {
-            padding: 12px 16px;
-            text-align: left;
-            font-weight: 600;
-            font-size: 13px;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-        }
-
-        .data-table td {
-            padding: 12px 16px;
-            border-top: 1px solid var(--border-color);
-            font-size: 14px;
-        }
-
-        .data-table tr:hover {
-            background: var(--bg-gray);
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .status-badge.ok {
-            background: #dff6dd;
-            color: var(--success-color);
-        }
-
-        .status-badge.warning {
-            background: #fff4ce;
-            color: #5d4a00;
-        }
-
-        .status-badge.critical {
-            background: #fde7e9;
-            color: var(--error-color);
-        }
-
-        /* Estilos para desplegables */
-        .collapsible {
-            background: var(--bg-gray);
-            color: var(--text-primary);
-            cursor: pointer;
-            padding: 16px;
-            width: 100%;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            text-align: left;
-            outline: none;
-            font-size: 15px;
-            font-weight: 600;
-            margin: 12px 0;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .collapsible:hover {
-            background: #e1e1e1;
-        }
-
-        .collapsible:after {
-            content: '▼';
-            font-size: 12px;
-            margin-left: auto;
-            transition: transform 0.3s;
-        }
-
-        .collapsible.active:after {
-            transform: rotate(-180deg);
-        }
-
-        .collapsible-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease-out;
-            background: white;
-            border: 1px solid var(--border-color);
-            border-top: none;
-            border-radius: 0 0 6px 6px;
-        }
-
-        .collapsible-content.active {
-            max-height: 2000px;
-            transition: max-height 0.5s ease-in;
-        }
-
-        .collapsible-inner {
-            padding: 20px;
-        }
-
-        .recommendation-box {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 24px;
-            border-radius: 8px;
-            margin: 24px 0;
-            box-shadow: var(--shadow-md);
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all 0.2s;
-        }
-
-        .btn:hover {
-            background: #005a9e;
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-md);
-        }
-
-        @media print {
-            .top-bar, .sidebar, .btn { display: none; }
-            .main-container { grid-template-columns: 1fr; }
-            .collapsible-content { max-height: none !important; }
-        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,"Roboto",sans-serif; line-height:1.6; color:var(--text-primary); background:var(--bg-gray); }
+        .top-bar { background:#fff; border-bottom:1px solid var(--border-color); padding:12px 0; box-shadow:var(--shadow-sm); position:sticky; top:0; z-index:1000; }
+        .top-bar-content { max-width:1400px; margin:0 auto; padding:0 24px; display:flex; align-items:center; gap:16px; }
+        .logo { font-size:20px; font-weight:600; color:var(--primary-color); display:flex; align-items:center; gap:8px; }
+        .iso-badge { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; padding:4px 12px; border-radius:12px; font-size:11px; font-weight:600; text-transform:uppercase; }
+        .main-container { max-width:1400px; margin:0 auto; display:grid; grid-template-columns:250px 1fr; gap:24px; padding:24px; }
+        .sidebar { background:#fff; padding:24px; border-radius:8px; box-shadow:var(--shadow-sm); height:fit-content; position:sticky; top:80px; }
+        .sidebar h3 { font-size:14px; font-weight:600; margin-bottom:16px; color:var(--text-secondary); text-transform:uppercase; }
+        .sidebar nav ul { list-style:none; }
+        .sidebar nav li { margin-bottom:4px; }
+        .sidebar a { display:block; padding:8px 12px; border-radius:4px; text-decoration:none; color:var(--text-primary); font-size:14px; transition:all .2s; }
+        .sidebar a:hover { background:var(--bg-gray); color:var(--primary-color); }
+        .content { min-width:0; }
+        .page-header { background:#fff; border-radius:8px; padding:32px; margin-bottom:24px; box-shadow:var(--shadow-sm); border-left:4px solid var(--primary-color); }
+        .page-header h1 { font-size:28px; font-weight:700; color:var(--text-primary); }
+        .meta { display:flex; gap:16px; margin-top:16px; flex-wrap:wrap; }
+        .meta span { background:var(--bg-gray); padding:4px 12px; border-radius:12px; font-size:13px; color:var(--text-secondary); }
+        .section { background:#fff; border-radius:8px; padding:32px; margin-bottom:24px; box-shadow:var(--shadow-sm); }
+        .section-header { display:flex; align-items:center; gap:12px; margin-bottom:24px; padding-bottom:16px; border-bottom:2px solid var(--border-color); }
+        .section-header h2 { font-size:22px; font-weight:700; flex:1; }
+        .section-icon { font-size:24px; }
+        .iso-control-badge { background:#f0f6ff; color:var(--primary-color); padding:4px 10px; border-radius:4px; font-size:12px; font-weight:600; border:1px solid #c7e0f4; white-space:nowrap; }
+        .stats-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:16px; margin-bottom:24px; }
+        .stat-card { background:#fff; border:1px solid var(--border-color); border-radius:8px; padding:20px; text-align:center; box-shadow:var(--shadow-sm); }
+        .stat-card-label { font-size:12px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; font-weight:600; }
+        .stat-card-value { font-size:32px; font-weight:700; color:var(--text-primary); }
+        .stat-card-value.success { color:var(--success-color); }
+        .stat-card-value.warning { color:var(--warning-color); }
+        .stat-card-value.error { color:var(--error-color); }
+        .alert { border-radius:8px; padding:16px 20px; margin-bottom:16px; border-left:4px solid; }
+        .alert-ok, .alert-success { background:#f1faf1; border-color:var(--success-color); }
+        .alert-warning { background:#fffbf0; border-color:var(--warning-color); }
+        .alert-critical, .alert-error { background:#fdf3f3; border-color:var(--error-color); }
+        .alert-info { background:#f0f6ff; border-color:var(--primary-color); }
+        .alert strong { font-size:16px; display:block; margin-bottom:4px; }
+        .data-table { width:100%; border-collapse:collapse; margin:16px 0; font-size:14px; }
+        .data-table th { background:var(--bg-gray); padding:10px 14px; text-align:left; font-weight:600; font-size:12px; text-transform:uppercase; color:var(--text-secondary); border-bottom:2px solid var(--border-color); }
+        .data-table td { padding:10px 14px; border-bottom:1px solid var(--border-color); }
+        .data-table tr:last-child td { border-bottom:none; }
+        .data-table tr:hover td { background:var(--bg-gray); }
+        .status-badge { display:inline-block; padding:3px 10px; border-radius:12px; font-size:12px; font-weight:600; }
+        .status-badge.ok { background:#e6f4e6; color:var(--success-color); }
+        .status-badge.warning { background:#fff8e1; color:#b07800; }
+        .status-badge.critical { background:#fde7e9; color:var(--error-color); }
+        .collapsible { width:100%; text-align:left; background:var(--bg-gray); border:1px solid var(--border-color); border-radius:6px; padding:14px 18px; font-size:15px; font-weight:600; cursor:pointer; margin-top:12px; display:flex; justify-content:space-between; align-items:center; transition:all .2s; }
+        .collapsible::after { content:"\25BC"; font-size:12px; transition:transform .3s; }
+        .collapsible.active::after { transform:rotate(180deg); }
+        .collapsible:hover { background:var(--border-color); }
+        .collapsible-content { max-height:0; overflow:hidden; transition:max-height .4s ease-out; }
+        .collapsible-content.active { max-height:5000px; }
+        .collapsible-inner { padding:16px 4px; }
+        .recommendation-box { background:#f0f6ff; border:1px solid #c7e0f4; border-radius:8px; padding:20px; margin-top:16px; }
+        .recommendation-box h3 { color:var(--primary-color); margin-bottom:12px; font-size:16px; }
+        .recommendation-box ul { padding-left:20px; }
+        .recommendation-box li { margin-bottom:6px; font-size:14px; }
+        .btn { background:var(--primary-color); color:#fff; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; font-size:14px; font-weight:600; margin-bottom:24px; }
+        .btn:hover { background:#005a9e; }
+        .footer { text-align:center; padding:32px; border-top:1px solid var(--border-color); margin-top:48px; }
+        @media print { .top-bar,.sidebar,.btn { display:none; } .main-container { grid-template-columns:1fr; } .collapsible-content { max-height:none !important; } }
     </style>
 </head>
 <body>
-    <div class="top-bar">
-        <div class="top-bar-content">
-            <div class="logo">
-                <span>🛡️</span>
-                <span>Active Directory Monitoring</span>
-            </div>
-            <span class="iso-badge">ISO 27001:2022</span>
-            <span class="iso-badge">ISO 27002:2022</span>
-        </div>
-    </div>
-
+    <div class="top-bar"><div class="top-bar-content">
+        <div class="logo"><span>&#128737;&#65039;</span><span>Active Directory Monitoring</span></div>
+        <span class="iso-badge">ISO 27001:2022</span><span class="iso-badge">ISO 27002:2022</span>
+    </div></div>
     <div class="main-container">
-        <aside class="sidebar">
-            <h3>Contenido</h3>
-            <nav>
-                <ul>
-                    <li><a href="#dc-status">🖥️ Controladores</a></li>
-                    <li><a href="#fsmo">⚙️ Roles FSMO</a></li>
-                    <li><a href="#replication">🔄 Replicación</a></li>
-                    <li><a href="#backups">💾 Backups</a></li>
-                    <li><a href="#users">👥 Usuarios</a></li>
-                    <li><a href="#gpos">📋 GPOs</a></li>
-                    <li><a href="#passwords">🔐 Políticas</a></li>
-                    <li><a href="#disk">💿 Disco</a></li>
-                    <li><a href="#security">🔒 Seguridad</a></li>
-                </ul>
-            </nav>
-        </aside>
-
+        <aside class="sidebar"><h3>Contenido</h3><nav><ul>
+            <li><a href="#health-summary">&#9989; Estado General</a></li>
+            <li><a href="#dc-status">&#128421;&#65039; Controladores</a></li>
+            <li><a href="#fsmo">&#9881;&#65039; Roles FSMO</a></li>
+            <li><a href="#replication">&#128260; Replicacion</a></li>
+            <li><a href="#backups">&#128190; Backups</a></li>
+            <li><a href="#users">&#128101; Usuarios</a></li>
+            <li><a href="#gpos">&#128203; GPOs</a></li>
+            <li><a href="#resource-load">&#9889; Carga de Recursos</a></li>
+            <li><a href="#passwords">&#128272; Politicas Contrasena</a></li>
+            <li><a href="#disk">&#128191; Espacio en Disco</a></li>
+            <li><a href="#security">&#128274; Seguridad</a></li>
+        </ul></nav></aside>
         <main class="content">
             <div class="page-header">
                 <h1>Informe de Monitoreo Active Directory</h1>
-                <p style="font-size: 16px; color: var(--text-secondary); margin-top: 8px;">
-                    Análisis de cumplimiento ISO/IEC 27001:2022 e ISO/IEC 27002:2022
-                </p>
+                <p style="font-size:16px;color:var(--text-secondary);margin-top:8px;">Analisis de cumplimiento ISO/IEC 27001:2022 e ISO/IEC 27002:2022</p>
                 <div class="meta">
-                    <span>📅 $($reportData.Date)</span>
-                    <span>📋 Controles A.5, A.8</span>
-                    <span>🏢 Dominio: $(([System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()).Name)</span>
+                    <span>&#128197; $($reportData.Date)</span>
+                    <span>&#128203; Controles A.5, A.8</span>
+                    <span>&#127970; Dominio: $(([System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()).Name)</span>
                 </div>
             </div>
+            <button class="btn" onclick="window.print()">&#128424;&#65039; Imprimir / Guardar PDF</button>
+"@
 
-            <button class="btn" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+$htmlReport += @"
+            <section id="health-summary" class="section" style="border-left:4px solid $globalColor;">
+                <div class="section-header"><div class="section-icon">$globalIcon</div><h2>Estado General del Sistema</h2></div>
+                <div class="alert alert-$(if($globalStatus){($globalStatus).ToLower()}else{"ok"})" style="margin-bottom:24px;">
+                    <div><strong>Estado Global: $globalStatus</strong>
+                    <p style="font-size:14px;margin-top:4px;">Resumen ejecutivo de todos los componentes monitoreados - $($reportData.Date)</p></div>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card"><div class="stat-card-label">Controladores</div>
+                    <div class="stat-card-value $(if($reportData.DCs.OverallStatus -eq "OK"){"success"}elseif($reportData.DCs.OverallStatus -eq "WARNING"){"warning"}else{"error"})">$($reportData.DCs.OverallStatus)</div></div>
+                    <div class="stat-card"><div class="stat-card-label">Replicacion</div>
+                    <div class="stat-card-value $(if($reportData.Replication.Status -eq "OK"){"success"}elseif($reportData.Replication.Status -eq "WARNING"){"warning"}else{"error"})">$($reportData.Replication.Status)</div></div>
+                    <div class="stat-card"><div class="stat-card-label">Backups</div>
+                    <div class="stat-card-value $(if($reportData.Backups.Status -eq "OK"){"success"}elseif($reportData.Backups.Status -eq "WARNING"){"warning"}else{"error"})">$($reportData.Backups.Status)</div></div>
+                    <div class="stat-card"><div class="stat-card-label">Recursos DC</div>
+                    <div class="stat-card-value $(if($reportData.ResourceLoad.Status -eq "OK"){"success"}elseif($reportData.ResourceLoad.Status -eq "WARNING"){"warning"}else{"error"})">$($reportData.ResourceLoad.Status)</div></div>
+                    <div class="stat-card"><div class="stat-card-label">Disco</div>
+                    <div class="stat-card-value $(if($reportData.Disk.Status -eq "OK"){"success"}elseif($reportData.Disk.Status -eq "WARNING"){"warning"}else{"error"})">$($reportData.Disk.Status)</div></div>
+                    <div class="stat-card"><div class="stat-card-label">Usuarios Bloqueados</div>
+                    <div class="stat-card-value $(if($reportData.Users.Locked -gt 0){"error"}else{"success"})">$($reportData.Users.Locked)</div></div>
+                </div>
+            </section>
+"@
 
-            <!-- SECCIÓN 1: CONTROLADORES DE DOMINIO -->
+$htmlReport += @"
             <section id="dc-status" class="section">
-                <div class="section-header">
-                    <div class="section-icon">🖥️</div>
-                    <h2>Controladores de Dominio</h2>
-                    <span class="iso-control-badge">ISO 27001 A.8.2, A.8.15</span>
-                </div>
-
-                <div class="alert alert-$($reportData.DCs.OverallStatus.ToLower())">
-                    <div>
-                        <strong>Estado General: $($reportData.DCs.OverallStatus)</strong>
-                        $(if($reportData.DCs.Issues.Count -gt 0){
-                            "<ul style='margin-top: 8px;'>" + 
-                            ($reportData.DCs.Issues | ForEach-Object { "<li>$_</li>" }) -join "" + 
-                            "</ul>"
-                        } else {
-                            "<p>Todos los controladores operando normalmente</p>"
-                        })
+                <div class="section-header"><div class="section-icon">&#128421;&#65039;</div><h2>Controladores de Dominio</h2>
+                <span class="iso-control-badge">ISO 27001 A.8.2, A.8.15</span></div>
+                <div class="alert alert-$(if($reportData.DCs.OverallStatus){($reportData.DCs.OverallStatus).ToLower()}else{"ok"})">
+                    <div><strong>Estado General: $($reportData.DCs.OverallStatus)</strong>
+                    $(if($reportData.DCs.Issues.Count -gt 0){ "<ul style='margin-top:8px;'>" + (($reportData.DCs.Issues | ForEach-Object {"<li>$_</li>"}) -join "") + "</ul>" } else { "<p>Todos los controladores operando normalmente</p>" })
                     </div>
                 </div>
-
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Controlador</th>
-                            <th>Estado</th>
-                            <th>Uptime</th>
-                            <th>SO</th>
-                            <th>Último Reinicio</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                <table class="data-table"><thead><tr>
+                    <th>Controlador</th><th>Estado</th><th>Uptime</th><th>Sistema Operativo</th><th>Ultimo Reinicio</th>
+                </tr></thead><tbody>
 "@
-
 foreach ($dc in $reportData.DCs.Status) {
-    $statusBadge = if($dc.Pingable) { 
-        '<span class="status-badge ok">● Online</span>' 
-    } else { 
-        '<span class="status-badge critical">● Offline</span>' 
-    }
-    
-    $htmlReport += @"
-                        <tr>
-                            <td><strong>$($dc.DC)</strong></td>
-                            <td>$statusBadge</td>
-                            <td>$($dc.Uptime)</td>
-                            <td style="font-size: 12px;">$($dc.OSVersion)</td>
-                            <td>$($dc.LastReboot)</td>
-                        </tr>
-"@
+    $dcBadge = if($dc.Pingable) { '<span class="status-badge ok">&#9679; Online</span>' } else { '<span class="status-badge critical">&#9679; Offline</span>' }
+    $htmlReport += "                    <tr><td><strong>$($dc.DC)</strong></td><td>$dcBadge</td><td>$($dc.Uptime)</td><td style='font-size:12px;'>$($dc.OSVersion)</td><td>$($dc.LastReboot)</td></tr>`r`n"
 }
+$htmlReport += @"
+                </tbody></table>
+            </section>
+"@
 
 $htmlReport += @"
-                    </tbody>
-                </table>
-
-                $(if($reportData.Disk.Issues.Count -gt 0) {
-                    "<div class='recommendation-box'>" +
-                    "<h3>💡 Acciones Inmediatas Requeridas</h3><ul>" +
-                    "<li>Libere espacio eliminando archivos temporales y logs antiguos</li>" +
-                    "<li>Use - <code>cleanmgr.exe</code> para limpieza de disco</li>" +
-                    "<li>Revise tamaño de logs en C:\\Windows\\NTDS\\ y C:\\Windows\\Logs\\</li>" +
-                    "<li>Considere compactar la base de datos NTDS.dit si está muy grande</li>" +
-                    "<li>Implemente alertas cuando el espacio libre sea menor al 20%</li>" +
-                    "<li>Planifique expansión de almacenamiento si el crecimiento es constante</li>" +
-                    "</ul></div>"
-                })
-            </section>
-
-            <!-- SECCIÓN 2: ROLES FSMO -->
             <section id="fsmo" class="section">
-                <div class="section-header">
-                    <div class="section-icon">⚙️</div>
-                    <h2>Roles FSMO (Flexible Single Master Operations)</h2>
-                    <span class="iso-control-badge">ISO 27001 A.8.14</span>
-                </div>
-
-                <div class="alert alert-$($reportData.FSMO.Status.ToLower())">
-                    <div>
-                        <strong>Estado de Roles FSMO - $($reportData.FSMO.Status)</strong>
-                        <p style="margin-top: 8px;">$(if($reportData.FSMO.Recommendation){$reportData.FSMO.Recommendation}else{"La distribución de roles FSMO es adecuada."})</p>
+                <div class="section-header"><div class="section-icon">&#9881;&#65039;</div><h2>Roles FSMO (Flexible Single Master Operations)</h2>
+                <span class="iso-control-badge">ISO 27001 A.8.14</span></div>
+                <div class="alert alert-$(if($reportData.FSMO.Status){($reportData.FSMO.Status).ToLower()}else{"ok"})">
+                    <div><strong>Estado de Roles FSMO - $($reportData.FSMO.Status)</strong>
+                    $(if($reportData.FSMO.Issues.Count -gt 0){ "<ul style='margin-top:8px;'>" + (($reportData.FSMO.Issues | ForEach-Object {"<li>$_</li>"}) -join "") + "</ul>" } else { "<p>Todos los roles FSMO asignados correctamente</p>" })
                     </div>
                 </div>
-
-                <div style="background: var(--bg-gray); padding: 20px; border-radius: 6px; margin: 20px 0;">
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr style="border-bottom: 1px solid var(--border-color);">
-                            <td style="padding: 12px; font-weight: 600; width: 250px;">PDC Emulator</td>
-                            <td style="padding: 12px;">$($reportData.FSMO.Roles.PDCEmulator)</td>
-                        </tr>
-                        <tr style="border-bottom: 1px solid var(--border-color);">
-                            <td style="padding: 12px; font-weight: 600;">RID Master</td>
-                            <td style="padding: 12px;">$($reportData.FSMO.Roles.RIDMaster)</td>
-                        </tr>
-                        <tr style="border-bottom: 1px solid var(--border-color);">
-                            <td style="padding: 12px; font-weight: 600;">Infrastructure Master</td>
-                            <td style="padding: 12px;">$($reportData.FSMO.Roles.InfrastructureMaster)</td>
-                        </tr>
-                        <tr style="border-bottom: 1px solid var(--border-color);">
-                            <td style="padding: 12px; font-weight: 600;">Schema Master</td>
-                            <td style="padding: 12px;">$($reportData.FSMO.Roles.SchemaMaster)</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 12px; font-weight: 600;">Domain Naming Master</td>
-                            <td style="padding: 12px;">$($reportData.FSMO.Roles.DomainNamingMaster)</td>
-                        </tr>
-                    </table>
-                </div>
-
-                $(if($reportData.FSMO.Recommendation) {
-                    "<div class='recommendation-box'>" +
-                    "<h3>💡 Recomendaciones ISO 27002</h3><ul>" +
-                    "<li>Considere transferir algunos roles FSMO al controlador secundario para balancear la carga</li>" +
-                    "<li>Documente el procedimiento de transferencia de roles FSMO para DR</li>" +
-                    "<li>Use el comando - <code>netdom query fsmo</code> para verificar roles</li>" +
-                    "<li>Mantenga un respaldo de los roles FSMO en la documentación</li>" +
-                    "</ul></div>"
-                })
+                <table class="data-table"><thead><tr><th>Rol FSMO</th><th>Controlador</th><th>Estado</th></tr></thead><tbody>
+                    <tr><td>PDC Emulator</td><td><strong>$($reportData.FSMO.Roles.PDCEmulator)</strong></td><td>$(if($reportData.FSMO.Roles.PDCEmulator -ne "No disponible"){"<span class='status-badge ok'>&#9679; Online</span>"}else{"<span class='status-badge critical'>&#9679; Error</span>"})</td></tr>
+                    <tr><td>RID Master</td><td><strong>$($reportData.FSMO.Roles.RIDMaster)</strong></td><td>$(if($reportData.FSMO.Roles.RIDMaster -ne "No disponible"){"<span class='status-badge ok'>&#9679; Online</span>"}else{"<span class='status-badge critical'>&#9679; Error</span>"})</td></tr>
+                    <tr><td>Infrastructure Master</td><td><strong>$($reportData.FSMO.Roles.InfrastructureMaster)</strong></td><td>$(if($reportData.FSMO.Roles.InfrastructureMaster -ne "No disponible"){"<span class='status-badge ok'>&#9679; Online</span>"}else{"<span class='status-badge critical'>&#9679; Error</span>"})</td></tr>
+                    <tr><td>Schema Master</td><td><strong>$($reportData.FSMO.Roles.SchemaMaster)</strong></td><td>$(if($reportData.FSMO.Roles.SchemaMaster -ne "No disponible"){"<span class='status-badge ok'>&#9679; Online</span>"}else{"<span class='status-badge critical'>&#9679; Error</span>"})</td></tr>
+                    <tr><td>Domain Naming Master</td><td><strong>$($reportData.FSMO.Roles.DomainNamingMaster)</strong></td><td>$(if($reportData.FSMO.Roles.DomainNamingMaster -ne "No disponible"){"<span class='status-badge ok'>&#9679; Online</span>"}else{"<span class='status-badge critical'>&#9679; Error</span>"})</td></tr>
+                </tbody></table>
             </section>
+"@
 
-            <!-- SECCIÓN 3: REPLICACIÓN -->
+$htmlReport += @"
             <section id="replication" class="section">
-                <div class="section-header">
-                    <div class="section-icon">🔄</div>
-                    <h2>Estado de Replicación</h2>
-                    <span class="iso-control-badge">ISO 27001 A.8.12</span>
-                </div>
-
-                <div class="alert alert-$($reportData.Replication.Status.ToLower())">
-                    <div>
-                        <strong>Estado de Replicación - $($reportData.Replication.Status)</strong>
-                        <p style="margin-top: 8px;">$($reportData.Replication.Errors)</p>
+                <div class="section-header"><div class="section-icon">&#128260;</div><h2>Estado de Replicacion AD</h2>
+                <span class="iso-control-badge">ISO 27001 A.8.14</span></div>
+                <div class="alert alert-$(if($reportData.Replication.Status){($reportData.Replication.Status).ToLower()}else{"ok"})">
+                    <div><strong>Replicacion AD - $($reportData.Replication.Status)</strong>
+                    $(if($reportData.Replication.Errors -and $reportData.Replication.Errors -ne "Sin errores de replicacion") { "<p style='margin-top:6px;'>$($reportData.Replication.Errors)</p>" } else { "<p>Sin errores de replicacion detectados</p>" })
                     </div>
                 </div>
-
-                <h3 style="margin: 24px 0 12px; font-size: 18px;">Conteo de Objetos entre Controladores</h3>
-                <div style="background: var(--bg-gray); padding: 20px; border-radius: 6px;">
-                    $(foreach($count in $reportData.Replication.ObjectCount) {
-                        "<p style='margin: 8px 0; font-size: 15px;'>$count</p>"
-                    })
+                <h3 style="margin:24px 0 12px;font-size:18px;">Conteo de Objetos entre Controladores</h3>
+                <div style="background:var(--bg-gray);padding:20px;border-radius:6px;">
+                $($reportData.Replication.ObjectCount | ForEach-Object { "<p style='margin:8px 0;font-size:15px;'>$_</p>" })
                 </div>
-
                 $(if($reportData.Replication.Recommendation) {
-                    "<div class='recommendation-box'>" +
-                    "<h3>💡 Acciones Recomendadas</h3><ul>" +
+                    "<div class='recommendation-box'><h3>&#128161; Acciones Recomendadas</h3><ul>" +
                     "<li>$($reportData.Replication.Recommendation)</li>" +
-                    "<li>Ejecute - <code>repadmin /showrepl</code> para ver detalles</li>" +
-                    "<li>Use - <code>repadmin /syncall /AdeP</code> para forzar sincronización</li>" +
-                    "<li>Verifique conectividad de red entre DCs</li>" +
-                    "<li>Revise puertos - 389 (LDAP), 636 (LDAPS), 3268 (GC), 88 (Kerberos)</li>" +
+                    "<li>Ejecute: <code>repadmin /showrepl</code></li>" +
+                    "<li>Use: <code>repadmin /syncall /AdeP</code> para forzar sincronizacion</li>" +
                     "</ul></div>"
                 })
             </section>
+"@
 
-            <!-- SECCIÓN 4: BACKUPS -->
+$htmlReport += @"
             <section id="backups" class="section">
-                <div class="section-header">
-                    <div class="section-icon">💾</div>
-                    <h2>Estado de Backups</h2>
-                    <span class="iso-control-badge">ISO 27001 A.8.13</span>
-                </div>
-
-                <div class="alert alert-$($reportData.Backups.Status.ToLower())">
-                    <div>
-                        <strong>Estado de Backups - $($reportData.Backups.Status)</strong>
-                        $(if($reportData.Backups.Issues.Count -gt 0){
-                            "<ul style='margin-top: 8px;'>" + 
-                            ($reportData.Backups.Issues | ForEach-Object { "<li>$_</li>" }) -join "" + 
-                            "</ul>"
-                        } else {
-                            "<p style='margin-top: 8px;'>Todos los backups están funcionando correctamente.</p>"
-                        })
+                <div class="section-header"><div class="section-icon">&#128190;</div><h2>Estado de Backups</h2>
+                <span class="iso-control-badge">ISO 27001 A.8.13</span></div>
+                <div class="alert alert-$(if($reportData.Backups.Status){($reportData.Backups.Status).ToLower()}else{"ok"})">
+                    <div><strong>Estado de Backups - $($reportData.Backups.Status)</strong>
+                    $(if($reportData.Backups.Issues.Count -gt 0){ "<ul style='margin-top:8px;'>" + (($reportData.Backups.Issues | ForEach-Object {"<li>$_</li>"}) -join "") + "</ul>" } else { "<p style='margin-top:8px;'>Todos los backups funcionando correctamente.</p>" })
                     </div>
                 </div>
-
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Ruta de Backup</th>
-                            <th>Accesible</th>
-                            <th>Último Backup</th>
-                            <th>Archivos (24h)</th>
-                            <th>Tamaño Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                <table class="data-table"><thead><tr>
+                    <th>Almacenamiento</th><th>Accesible</th><th>Ultimo Backup</th><th>Archivos (24h)</th><th>Tamano Total</th>
+                </tr></thead><tbody>
 "@
-
+$bkpNum = 0
 foreach ($backup in $reportData.Backups.Backups) {
-    $accessBadge = if($backup.Accesible) { 
-        '<span class="status-badge ok">● Accesible</span>' 
-    } else { 
-        '<span class="status-badge critical">● No Accesible</span>' 
-    }
-    
-    $htmlReport += @"
-                        <tr>
-                            <td style="font-size: 11px;">$($backup.Ruta)</td>
-                            <td>$accessBadge</td>
-                            <td>$($backup.UltimoBackup)</td>
-                            <td>$($backup.ArchivosRecientes)</td>
-                            <td>$($backup.TamañoTotal) GB</td>
-                        </tr>
-"@
+    $bkpNum++
+    $bkpBadge = if($backup.Accesible) { '<span class="status-badge ok">&#9679; Accesible</span>' } else { '<span class="status-badge critical">&#9679; No Accesible</span>' }
+    $bkpLabel = if($backup.Accesible) { "Almacenamiento Remoto $bkpNum" } else { "Almacenamiento $bkpNum (No disponible)" }
+    $htmlReport += "                    <tr><td>$bkpLabel</td><td>$bkpBadge</td><td>$($backup.UltimoBackup)</td><td>$($backup.ArchivosRecientes)</td><td>$($backup.TamanoTotal) GB</td></tr>`r`n"
 }
-
 $htmlReport += @"
-                    </tbody>
-                </table>
-
+                </tbody></table>
                 $(if($reportData.Backups.Issues.Count -gt 0) {
-                    "<div class='recommendation-box'>" +
-                    "<h3>💡 Acciones Requeridas</h3><ul>" +
+                    "<div class='recommendation-box'><h3>&#128161; Acciones Requeridas</h3><ul>" +
                     "<li>Verifique la conectividad con el NAS y el estado del servicio de backup</li>" +
-                    "<li>Asegúrese de que las tareas programadas estén activas</li>" +
-                    "<li>Pruebe la restauración de un backup al menos mensualmente</li>" +
-                    "<li>Implemente la regla 3-2-1 - 3 copias, 2 tipos de medios, 1 offsite</li>" +
-                    "<li>Documente el procedimiento de restauración de Active Directory</li>" +
+                    "<li>Asegurese de que las tareas programadas esten activas</li>" +
+                    "<li>Pruebe la restauracion de un backup al menos mensualmente</li>" +
+                    "<li>Implemente la regla 3-2-1: 3 copias, 2 tipos de medios, 1 offsite</li>" +
                     "</ul></div>"
                 })
             </section>
-
-            <!-- SECCIÓN 5: USUARIOS CON DESPLEGABLES -->
-            <section id="users" class="section">
-                <div class="section-header">
-                    <div class="section-icon">👥</div>
-                    <h2>Estadísticas de Usuarios</h2>
-                    <span class="iso-control-badge">ISO 27001 A.5.17, A.5.18</span>
-                </div>
-
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-card-label">Total de Usuarios</div>
-                        <div class="stat-card-value">$($reportData.Users.Total)</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-label">Habilitados</div>
-                        <div class="stat-card-value success">$($reportData.Users.Enabled)</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-label">Deshabilitados</div>
-                        <div class="stat-card-value">$($reportData.Users.Disabled)</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-label">Bloqueados</div>
-                        <div class="stat-card-value $(if($reportData.Users.Locked -gt 0){"error"}else{""})">$($reportData.Users.Locked)</div>
-                    </div>
-                </div>
-
-                <!-- Desplegable: Usuarios Inactivos 90+ días -->
-                <button class="collapsible">
-                    ⚠️ Usuarios Inactivos (+90 días): $($reportData.Users.Inactive90) usuarios
-                </button>
-                <div class="collapsible-content">
-                    <div class="collapsible-inner">
-                        $(if($reportData.Users.DetailedInactive90.Count -gt 0) {
-                            "<table class='data-table'><thead><tr>" +
-                            "<th>Usuario</th><th>Nombre</th><th>Último Acceso</th><th>Días Inactivo</th><th>Departamento</th>" +
-                            "</tr></thead><tbody>" +
-                            ($reportData.Users.DetailedInactive90 | ForEach-Object {
-                                "<tr><td>$($_.Usuario)</td><td>$($_.Nombre)</td><td>$($_.UltimoAcceso)</td>" +
-                                "<td><strong>$($_.DiasInactivo)</strong></td><td>$($_.Departamento)</td></tr>"
-                            }) -join "" +
-                            "</tbody></table>"
-                        } else {
-                            "<p style='color: var(--success-color);'>✓ No hay usuarios inactivos por más de 90 días</p>"
-                        })
-                    </div>
-                </div>
-
-                <!-- Desplegable: Usuarios Deshabilitados -->
-                <button class="collapsible">
-                    🚫 Usuarios Deshabilitados: $($reportData.Users.Disabled) usuarios
-                </button>
-                <div class="collapsible-content">
-                    <div class="collapsible-inner">
-                        $(if($reportData.Users.DetailedDisabled.Count -gt 0) {
-                            "<table class='data-table'><thead><tr>" +
-                            "<th>Usuario</th><th>Nombre</th><th>Última Modificación</th><th>Departamento</th>" +
-                            "</tr></thead><tbody>" +
-                            ($reportData.Users.DetailedDisabled | ForEach-Object {
-                                "<tr><td>$($_.Usuario)</td><td>$($_.Nombre)</td><td>$($_.UltimaModificacion)</td>" +
-                                "<td>$($_.Departamento)</td></tr>"
-                            }) -join "" +
-                            "</tbody></table>" +
-                            "<p style='margin-top: 16px;'><em>Mostrando primeros 50 usuarios</em></p>"
-                        } else {
-                            "<p>No hay usuarios deshabilitados</p>"
-                        })
-                    </div>
-                </div>
-
-                <!-- Desplegable: Usuarios Eliminados -->
-                <button class="collapsible">
-                    🗑️ Usuarios Eliminados (Papelera AD): $($reportData.Users.DetailedDeleted.Count) usuarios
-                </button>
-                <div class="collapsible-content">
-                    <div class="collapsible-inner">
-                        $(if($reportData.Users.DetailedDeleted.Count -gt 0) {
-                            "<table class='data-table'><thead><tr>" +
-                            "<th>Usuario</th><th>Nombre</th><th>Fecha Eliminación</th><th>Última Ubicación</th>" +
-                            "</tr></thead><tbody>" +
-                            ($reportData.Users.DetailedDeleted | ForEach-Object {
-                                "<tr><td>$($_.Usuario)</td><td>$($_.Nombre)</td><td>$($_.FechaEliminacion)</td>" +
-                                "<td style='font-size: 11px;'>$($_.UltimaUbicacion)</td></tr>"
-                            }) -join "" +
-                            "</tbody></table>"
-                        } else {
-                            "<p style='color: var(--text-secondary);'>No hay usuarios en la papelera de reciclaje de AD</p>"
-                        })
-                    </div>
-                </div>
-
-                <!-- Desplegable: Usuarios que Nunca Iniciaron Sesión -->
-                <button class="collapsible">
-                    ❓ Nunca Iniciaron Sesión: $($reportData.Users.DetailedNeverLoggedIn.Count) usuarios
-                </button>
-                <div class="collapsible-content">
-                    <div class="collapsible-inner">
-                        $(if($reportData.Users.DetailedNeverLoggedIn.Count -gt 0) {
-                            "<table class='data-table'><thead><tr>" +
-                            "<th>Usuario</th><th>Nombre</th><th>Fecha Creación</th><th>Departamento</th>" +
-                            "</tr></thead><tbody>" +
-                            ($reportData.Users.DetailedNeverLoggedIn | ForEach-Object {
-                                "<tr><td>$($_.Usuario)</td><td>$($_.Nombre)</td><td>$($_.FechaCreacion)</td>" +
-                                "<td>$($_.Departamento)</td></tr>"
-                            }) -join "" +
-                            "</tbody></table>"
-                        } else {
-                            "<p style='color: var(--success-color);'>✓ Todos los usuarios activos han iniciado sesión</p>"
-                        })
-                    </div>
-                </div>
-
-                $(if($reportData.Users.Issues.Count -gt 0) {
-                    "<div class='alert alert-warning' style='margin-top: 24px;'>" +
-                    "<div><strong>⚠️ Problemas Detectados</strong>" +
-                    "<ul style='margin-top: 8px;'>" +
-                    ($reportData.Users.Issues | ForEach-Object { "<li>$_</li>" }) -join "" +
-                    "</ul></div></div>"
-                })
-
-                $(if($reportData.Users.Recommendations.Count -gt 0) {
-                    "<div class='recommendation-box'>" +
-                    "<h3>💡 Recomendaciones ISO 27001/27002</h3><ul>" +
-                    ($reportData.Users.Recommendations | ForEach-Object { "<li>$_</li>" }) -join "" +
-                    "<li>Revise mensualmente las cuentas inactivas y deshabilítelas</li>" +
-                    "<li>Implemente rotación de contraseñas para cuentas administrativas</li>" +
-                    "<li>Use - <code>Search-ADAccount -AccountInactive -TimeSpan 90</code></li>" +
-                    "<li>Considere implementar Privileged Access Management (PAM)</li>" +
-                    "<li>Documente la matriz de accesos y permisos</li>" +
-                    "</ul></div>"
-                })
-            </section>
-
-            <!-- SECCIÓN 6: GPOs -->
-            <section id="gpos" class="section">
-                <div class="section-header">
-                    <div class="section-icon">📋</div>
-                    <h2>Group Policy Objects (GPOs)</h2>
-                    <span class="iso-control-badge">ISO 27001 A.8.3, A.5.15</span>
-                </div>
-
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-card-label">Total GPOs</div>
-                        <div class="stat-card-value">$($reportData.GPOs.Total)</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-label">GPOs Vinculadas</div>
-                        <div class="stat-card-value success">$($reportData.GPOs.Linked)</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-label">GPOs Sin Vincular</div>
-                        <div class="stat-card-value warning">$($reportData.GPOs.Unlinked)</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-label">GPOs Vacías</div>
-                        <div class="stat-card-value $(if($reportData.GPOs.Empty -gt 0){"warning"}else{""})">$($reportData.GPOs.Empty)</div>
-                    </div>
-                </div>
-
-                $(if($reportData.GPOs.Issues.Count -gt 0) {
-                    "<div class='alert alert-warning'><div>" +
-                    "<strong>Problemas Detectados en GPOs</strong>" +
-                    "<ul style='margin-top: 8px;'>" +
-                    ($reportData.GPOs.Issues | ForEach-Object { "<li>$_</li>" }) -join "" +
-                    "</ul></div></div>"
-                } else {
-                    "<div class='alert alert-success'><div>" +
-                    "<strong>✓ Estado de GPOs Normal</strong>" +
-                    "<p>No se detectaron problemas en las políticas de grupo</p></div></div>"
-                })
-
-                <!-- Desplegable: Todas las GPOs -->
-                $(if($reportData.GPOs.Total -gt 0) {
-                    "<button class='collapsible'>" +
-                    "📄 Lista Completa de GPOs ($($reportData.GPOs.Total) políticas)" +
-                    "</button>" +
-                    "<div class='collapsible-content'>" +
-                    "<div class='collapsible-inner'>" +
-                    "<table class='data-table'><thead><tr>" +
-                    "<th>Nombre</th><th>Estado</th><th>Creación</th><th>Última Modificación</th><th>Enlaces</th><th>Vacía</th>" +
-                    "</tr></thead><tbody>" +
-                    ($reportData.GPOs.GPODetails | ForEach-Object {
-                        $emptyBadge = if($_.Vacia) { '<span class="status-badge warning">Sí</span>' } else { '<span class="status-badge ok">No</span>' }
-                        "<tr>" +
-                        "<td><strong>$($_.Nombre)</strong></td>" +
-                        "<td>$($_.Estado)</td>" +
-                        "<td>$($_.Creacion)</td>" +
-                        "<td>$($_.Modificacion)</td>" +
-                        "<td>$($_.Enlaces)</td>" +
-                        "<td>$emptyBadge</td>" +
-                        "</tr>"
-                    }) -join "" +
-                    "</tbody></table></div></div>"
-                } else {
-                    "<div class='alert alert-info'><div>" +
-                    "<strong>ℹ️ Análisis de GPOs No Disponible</strong>" +
-                    "<p>El módulo Group Policy no está instalado o no hay GPOs para analizar.</p>" +
-                    "<p style='margin-top: 8px;'>Para habilitar el análisis de GPOs, instale RSAT:</p>" +
-                    "<code style='display: block; margin-top: 8px; padding: 8px; background: #f5f5f5;'>" +
-                    "Install-WindowsFeature GPMC -IncludeManagementTools</code>" +
-                    "</div></div>"
-                })
-
-                <!-- Desplegable: GPOs Modificadas Recientemente -->
-                $(if($reportData.GPOs.RecentlyModified.Count -gt 0) {
-                    "<button class='collapsible'>" +
-                    "🔄 GPOs Modificadas (Últimos 30 días): $($reportData.GPOs.RecentlyModified.Count) políticas" +
-                    "</button>" +
-                    "<div class='collapsible-content'>" +
-                    "<div class='collapsible-inner'>" +
-                    "<table class='data-table'><thead><tr>" +
-                    "<th>Nombre GPO</th><th>Fecha Modificación</th><th>Modificado Por</th>" +
-                    "</tr></thead><tbody>" +
-                    ($reportData.GPOs.RecentlyModified | ForEach-Object {
-                        "<tr><td><strong>$($_.Nombre)</strong></td><td>$($_.FechaModificacion)</td><td>$($_.ModificadoPor)</td></tr>"
-                    }) -join "" +
-                    "</tbody></table></div></div>"
-                })
-
-                $(if($reportData.GPOs.Recommendations.Count -gt 0) {
-                    "<div class='recommendation-box'>" +
-                    "<h3>💡 Recomendaciones ISO 27002</h3><ul>" +
-                    ($reportData.GPOs.Recommendations | ForEach-Object { "<li>$_</li>" }) -join "" +
-                    "<li>Auditar cambios en GPOs críticas regularmente</li>" +
-                    "<li>Implementar versionado y respaldo de GPOs</li>" +
-                    "<li>Revisar permisos de edición de GPOs (principio de mínimo privilegio)</li>" +
-                    "</ul></div>"
-                })
-            </section>
-
-            <!-- SECCIÓN 7: POLÍTICAS DE CONTRASEÑA -->
-            <section id="passwords" class="section">
-                <div class="section-header">
-                    <div class="section-icon">🔐</div>
-                    <h2>Políticas de Contraseña</h2>
-                    <span class="iso-control-badge">ISO 27002 5.17</span>
-                </div>
-
-                <h3 style="margin-bottom: 16px; font-size: 20px;">Política de Dominio Predeterminada</h3>
-                
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-card-label">Longitud Mínima</div>
-                        <div class="stat-card-value $(if($reportData.PasswordPolicy.DomainPolicy.MinPasswordLength -lt 12){"warning"}else{"success"})">
-                            $($reportData.PasswordPolicy.DomainPolicy.MinPasswordLength) caracteres
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-label">Edad Máxima</div>
-                        <div class="stat-card-value $(if($reportData.PasswordPolicy.DomainPolicy.MaxPasswordAge -gt 90){"warning"}else{"success"})">
-                            $($reportData.PasswordPolicy.DomainPolicy.MaxPasswordAge) días
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-label">Historial</div>
-                        <div class="stat-card-value">$($reportData.PasswordPolicy.DomainPolicy.PasswordHistoryCount) contraseñas</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-label">Umbral Bloqueo</div>
-                        <div class="stat-card-value $(if($reportData.PasswordPolicy.DomainPolicy.LockoutThreshold -eq 0 -or $reportData.PasswordPolicy.DomainPolicy.LockoutThreshold -gt 5){"warning"}else{"success"})">
-                            $($reportData.PasswordPolicy.DomainPolicy.LockoutThreshold) intentos
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-label">Complejidad</div>
-                        <div class="stat-card-value $(if($reportData.PasswordPolicy.DomainPolicy.ComplexityEnabled){"success"}else{"error"})">
-                            $(if($reportData.PasswordPolicy.DomainPolicy.ComplexityEnabled){"✓ Habilitada"}else{"✗ Deshabilitada"})
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-label">Duración Bloqueo</div>
-                        <div class="stat-card-value">$($reportData.PasswordPolicy.DomainPolicy.LockoutDuration) min</div>
-                    </div>
-                </div>
-
-                $(if($reportData.PasswordPolicy.FineGrainedPolicies.Count -gt 0) {
-                    "<h3 style='margin: 32px 0 16px; font-size: 20px;'>Políticas de Grano Fino (PSOs)</h3>" +
-                    "<table class='data-table'><thead><tr>" +
-                    "<th>Nombre</th><th>Precedencia</th><th>Long. Mínima</th><th>Complejidad</th><th>Aplica A</th>" +
-                    "</tr></thead><tbody>" +
-                    ($reportData.PasswordPolicy.FineGrainedPolicies | ForEach-Object {
-                        "<tr><td><strong>$($_.Name)</strong></td><td>$($_.Precedence)</td>" +
-                        "<td>$($_.MinPasswordLength)</td><td>$(if($_.ComplexityEnabled){"✓"}else{"✗"})</td>" +
-                        "<td>$($_.AppliesTo) usuarios/grupos</td></tr>"
-                    }) -join "" +
-                    "</tbody></table>"
-                })
-
-                $(if($reportData.PasswordPolicy.Issues.Count -gt 0) {
-                    "<div class='alert alert-warning' style='margin-top: 24px;'>" +
-                    "<div><strong>Incumplimientos ISO 27002 5.17</strong>" +
-                    "<ul style='margin-top: 8px;'>" +
-                    ($reportData.PasswordPolicy.Issues | ForEach-Object { "<li>$_</li>" }) -join "" +
-                    "</ul></div></div>"
-                } else {
-                    "<div class='alert alert-success' style='margin-top: 24px;'>" +
-                    "<div><strong>✓ Políticas de Contraseña Conformes</strong>" +
-                    "<p>Las políticas cumplen con las recomendaciones de ISO 27002:2022</p></div></div>"
-                })
-
-                $(if($reportData.PasswordPolicy.Recommendations.Count -gt 0) {
-                    "<div class='recommendation-box'>" +
-                    "<h3>💡 Recomendaciones ISO 27002</h3><ul>" +
-                    ($reportData.PasswordPolicy.Recommendations | ForEach-Object { "<li>$_</li>" }) -join "" +
-                    "</ul></div>"
-                })
-            </section>
-
-            <!-- SECCIÓN 8: ESPACIO EN DISCO -->
-            <section id="disk" class="section">
-                <div class="section-header">
-                    <div class="section-icon">💿</div>
-                    <h2>Espacio en Disco</h2>
-                    <span class="iso-control-badge">ISO 27001 A.8.6</span>
-                </div>
-
-                <div class="alert alert-$($reportData.Disk.Status.ToLower())">
-                    <div>
-                        <strong>Estado: $($reportData.Disk.Status)</strong>
-                        $(if($reportData.Disk.Issues.Count -gt 0){
-                            "<ul style='margin-top: 8px;'>" + 
-                            ($reportData.Disk.Issues | ForEach-Object { "<li>$_</li>" }) -join "" + 
-                            "</ul>"
-                        } else {
-                            "<p>Espacio en disco adecuado en todos los controladores</p>"
-                        })
-                    </div>
-                </div>
-
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Controlador</th>
-                            <th>Unidad</th>
-                            <th>Tamaño Total</th>
-                            <th>Espacio Libre</th>
-                            <th>% Libre</th>
-                            <th>Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody>
 "@
-
-foreach ($disk in $reportData.Disk.Disks) {
-    $statusBadge = if($disk.PercentFree -ge 25) { 
-        '<span class="status-badge ok">● Saludable</span>' 
-    } elseif($disk.PercentFree -ge 15) { 
-        '<span class="status-badge warning">● Advertencia</span>' 
-    } else { 
-        '<span class="status-badge critical">● Crítico</span>' 
-    }
-    
-    $htmlReport += @"
-                        <tr>
-                            <td><strong>$($disk.DC)</strong></td>
-                            <td>$($disk.Drive)</td>
-                            <td>$($disk.SizeGB) GB</td>
-                            <td>$($disk.FreeGB) GB</td>
-                            <td><strong>$($disk.PercentFree)%</strong></td>
-                            <td>$statusBadge</td>
-                        </tr>
-"@
-}
 
 $htmlReport += @"
-                    </tbody>
-                </table>
-            </section>
-
-            <!-- SECCIÓN 9: EVENTOS DE SEGURIDAD -->
-            <section id="security" class="section">
-                <div class="section-header">
-                    <div class="section-icon">🔒</div>
-                    <h2>Eventos de Seguridad (Últimos 7 Días)</h2>
-                    <span class="iso-control-badge">ISO 27001 A.8.15, A.8.16</span>
-                </div>
-
+            <section id="users" class="section">
+                <div class="section-header"><div class="section-icon">&#128101;</div><h2>Estadisticas de Usuarios</h2>
+                <span class="iso-control-badge">ISO 27001 A.5.17, A.5.18</span></div>
                 <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-card-label">Inicios Fallidos</div>
-                        <div class="stat-card-value $(if($reportData.Security.FailedLogins -gt 100){"error"}elseif($reportData.Security.FailedLogins -gt 50){"warning"}else{""})">
-                            $($reportData.Security.FailedLogins)
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-label">Inicios Exitosos</div>
-                        <div class="stat-card-value success">$($reportData.Security.SuccessfulLogins)</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-label">Bloqueos de Cuenta</div>
-                        <div class="stat-card-value $(if($reportData.Security.AccountLockouts -gt 10){"error"}elseif($reportData.Security.AccountLockouts -gt 5){"warning"}else{""})">
-                            $($reportData.Security.AccountLockouts)
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-label">Cambios Contraseña</div>
-                        <div class="stat-card-value">$($reportData.Security.PasswordChanges)</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-label">Cambios en Políticas</div>
-                        <div class="stat-card-value $(if($reportData.Security.PolicyChanges -gt 0){"warning"}else{""})">
-                            $($reportData.Security.PolicyChanges)
-                        </div>
+                    <div class="stat-card"><div class="stat-card-label">Total de Usuarios</div><div class="stat-card-value">$($reportData.Users.Total)</div></div>
+                    <div class="stat-card"><div class="stat-card-label">Habilitados</div><div class="stat-card-value success">$($reportData.Users.Enabled)</div></div>
+                    <div class="stat-card"><div class="stat-card-label">Deshabilitados</div><div class="stat-card-value">$($reportData.Users.Disabled)</div></div>
+                    <div class="stat-card"><div class="stat-card-label">Bloqueados</div><div class="stat-card-value $(if($reportData.Users.Locked -gt 0){"error"}else{""})">$($reportData.Users.Locked)</div></div>
+                </div>
+                <h3 style="margin:24px 0 12px;font-size:18px;color:var(--primary-color);font-weight:600;">&#128202; Usuarios por Unidad Organizativa</h3>
+                $(if($reportData.Users.UsersByOU.Count -gt 0) {
+                    "<table class='data-table'><thead><tr>" +
+                    "<th>Unidad Organizativa</th><th>Numero de Usuarios</th><th>% del Total</th>" +
+                    "</tr></thead><tbody>" +
+                    (($reportData.Users.UsersByOU | ForEach-Object {
+                        $pct = if($reportData.Users.Total -gt 0) { [math]::Round(([int]$_.Users / $reportData.Users.Total) * 100, 1) } else { 0 }
+                        "<tr><td><strong>$($_.OU)</strong></td><td>$([int]$_.Users)</td><td>$pct%</td></tr>"
+                    }) -join "") +
+                    "</tbody></table>"
+                } else { "<p style='color:var(--text-secondary);padding:12px;'>No se encontraron datos de OU</p>" })
+"@
+$htmlReport += "<button class='collapsible'>&#9888;&#65039; Usuarios Inactivos (+90 dias): $($reportData.Users.Inactive90) usuarios</button>"
+$htmlReport += "<div class='collapsible-content'><div class='collapsible-inner'>"
+if ($reportData.Users.DetailedInactive90.Count -gt 0) {
+    $htmlReport += "<table class='data-table'><thead><tr><th>Usuario</th><th>Nombre</th><th>Ultimo Acceso</th><th>Dias Inactivo</th><th>Departamento</th></tr></thead><tbody>"
+    foreach ($u in $reportData.Users.DetailedInactive90) {
+        $htmlReport += "<tr><td>$($u.Usuario)</td><td>$($u.Nombre)</td><td>$($u.UltimoAcceso)</td><td><strong>$($u.DiasInactivo)</strong></td><td>$($u.Departamento)</td></tr>"
+    }
+    $htmlReport += "</tbody></table>"
+} else { $htmlReport += "<p style='color:var(--success-color);'>&#9989; No hay usuarios inactivos por mas de 90 dias</p>" }
+$htmlReport += "</div></div>"
+
+$htmlReport += "<button class='collapsible'>&#128683; Usuarios Deshabilitados: $($reportData.Users.Disabled) usuarios</button>"
+$htmlReport += "<div class='collapsible-content'><div class='collapsible-inner'>"
+if ($reportData.Users.DetailedDisabled.Count -gt 0) {
+    $htmlReport += "<table class='data-table'><thead><tr><th>Usuario</th><th>Nombre</th><th>Ultima Modificacion</th><th>Departamento</th></tr></thead><tbody>"
+    foreach ($u in $reportData.Users.DetailedDisabled) {
+        $htmlReport += "<tr><td>$($u.Usuario)</td><td>$($u.Nombre)</td><td>$($u.UltimaModificacion)</td><td>$($u.Departamento)</td></tr>"
+    }
+    $htmlReport += "</tbody></table><p style='margin-top:12px;'><em>Mostrando primeros 50 usuarios</em></p>"
+} else { $htmlReport += "<p>No hay usuarios deshabilitados</p>" }
+$htmlReport += "</div></div>"
+
+$htmlReport += "<button class='collapsible'>&#128465;&#65039; Usuarios Eliminados (Papelera AD): $($reportData.Users.DetailedDeleted.Count) usuarios</button>"
+$htmlReport += "<div class='collapsible-content'><div class='collapsible-inner'>"
+if ($reportData.Users.DetailedDeleted.Count -gt 0) {
+    $htmlReport += "<table class='data-table'><thead><tr><th>Usuario</th><th>Nombre</th><th>Fecha Eliminacion</th><th>Ultima Ubicacion</th></tr></thead><tbody>"
+    foreach ($u in $reportData.Users.DetailedDeleted) {
+        $htmlReport += "<tr><td>$($u.Usuario)</td><td>$($u.Nombre)</td><td>$($u.FechaEliminacion)</td><td style='font-size:11px;'>$($u.UltimaUbicacion)</td></tr>"
+    }
+    $htmlReport += "</tbody></table>"
+} else { $htmlReport += "<p style='color:var(--text-secondary);'>No hay usuarios en la papelera de reciclaje de AD</p>" }
+$htmlReport += "</div></div>"
+
+$htmlReport += "<button class='collapsible'>&#10067; Nunca Iniciaron Sesion: $($reportData.Users.DetailedNeverLoggedIn.Count) usuarios</button>"
+$htmlReport += "<div class='collapsible-content'><div class='collapsible-inner'>"
+if ($reportData.Users.DetailedNeverLoggedIn.Count -gt 0) {
+    $htmlReport += "<table class='data-table'><thead><tr><th>Usuario</th><th>Nombre</th><th>Fecha Creacion</th><th>Departamento</th></tr></thead><tbody>"
+    foreach ($u in $reportData.Users.DetailedNeverLoggedIn) {
+        $htmlReport += "<tr><td>$($u.Usuario)</td><td>$($u.Nombre)</td><td>$($u.FechaCreacion)</td><td>$($u.Departamento)</td></tr>"
+    }
+    $htmlReport += "</tbody></table>"
+} else { $htmlReport += "<p>No hay usuarios sin inicio de sesion</p>" }
+$htmlReport += "</div></div>"
+
+if ($reportData.Users.Recommendations.Count -gt 0 -or $reportData.Users.Issues.Count -gt 0) {
+    $htmlReport += "<div class='recommendation-box'><h3>&#128161; Recomendaciones ISO 27001</h3><ul>"
+    $htmlReport += "<li>Revisar mensualmente las cuentas inactivas y deshabilitarlas</li>"
+    $htmlReport += "<li>Implementar rotacion de contrase�as para cuentas administrativas</li>"
+    $htmlReport += "<li>Use: <code>Search-ADAccount -AccountInactive -TimeSpan 90</code></li>"
+    $htmlReport += "<li>Considere implementar Privileged Access Management (PAM)</li>"
+    $htmlReport += "</ul></div>"
+}
+$htmlReport += "            </section>"
+
+$htmlReport += @"
+            <section id="gpos" class="section">
+                <div class="section-header"><div class="section-icon">&#128203;</div><h2>Group Policy Objects (GPOs)</h2>
+                <span class="iso-control-badge">ISO 27001 A.8.3, A.5.15</span></div>
+                <div class="stats-grid">
+                    <div class="stat-card"><div class="stat-card-label">Total GPOs</div><div class="stat-card-value">$($reportData.GPOs.Total)</div></div>
+                    <div class="stat-card"><div class="stat-card-label">GPOs Vinculadas</div><div class="stat-card-value success">$($reportData.GPOs.Linked)</div></div>
+                    <div class="stat-card"><div class="stat-card-label">Sin Vincular</div><div class="stat-card-value warning">$($reportData.GPOs.Unlinked)</div></div>
+                    <div class="stat-card"><div class="stat-card-label">GPOs Vacias</div><div class="stat-card-value $(if($reportData.GPOs.Empty -gt 0){"warning"}else{""})">$($reportData.GPOs.Empty)</div></div>
+                </div>
+                $(if($reportData.GPOs.Issues.Count -gt 0) {
+                    "<div class='alert alert-warning'><div><strong>Problemas Detectados en GPOs</strong>" +
+                    "<ul style='margin-top:8px;'>" + ((($reportData.GPOs.Issues | ForEach-Object {"<li>$_</li>"}) -join "")) + "</ul></div></div>"
+                } else {
+                    "<div class='alert alert-success'><div><strong>&#9989; Estado de GPOs Normal</strong><p>No se detectaron problemas en las politicas de grupo</p></div></div>"
+                })
+"@
+# Lista completa de GPOs
+if ($reportData.GPOs.Total -gt 0) {
+    $htmlReport += "<button class='collapsible'>&#128203; Lista Completa de GPOs ($($reportData.GPOs.Total) politicas)</button>"
+    $htmlReport += "<div class='collapsible-content'><div class='collapsible-inner'>"
+    $htmlReport += "<table class='data-table'><thead><tr><th>Nombre</th><th>Estado</th><th>Creacion</th><th>Ultima Modificacion</th><th>Enlaces</th><th>Vacia</th></tr></thead><tbody>"
+    foreach ($g in $reportData.GPOs.GPODetails) {
+        $gEmptyBadge = if($g.Vacia) { '<span class="status-badge warning">Si</span>' } else { '<span class="status-badge ok">No</span>' }
+        $htmlReport += "<tr><td><strong>$($g.Nombre)</strong></td><td>$($g.Estado)</td><td>$($g.Creacion)</td><td>$($g.Modificacion)</td><td>$($g.Enlaces)</td><td>$gEmptyBadge</td></tr>"
+    }
+    $htmlReport += "</tbody></table></div></div>"
+} else {
+    $htmlReport += "<div class='alert alert-info'><div><strong>Analisis de GPOs No Disponible</strong><p>Instale RSAT: <code>Install-WindowsFeature GPMC</code></p></div></div>"
+}
+if ($reportData.GPOs.RecentlyModified.Count -gt 0) {
+    $htmlReport += "<button class='collapsible'>&#128260; GPOs Modificadas (ultimos 30 dias): $($reportData.GPOs.RecentlyModified.Count) politicas</button>"
+    $htmlReport += "<div class='collapsible-content'><div class='collapsible-inner'>"
+    $htmlReport += "<table class='data-table'><thead><tr><th>Nombre GPO</th><th>Fecha Modificacion</th><th>Modificado Por</th></tr></thead><tbody>"
+    foreach ($g in $reportData.GPOs.RecentlyModified) {
+        $htmlReport += "<tr><td><strong>$($g.Nombre)</strong></td><td>$($g.FechaModificacion)</td><td>$($g.ModificadoPor)</td></tr>"
+    }
+    $htmlReport += "</tbody></table></div></div>"
+}
+$htmlReport += "<div class='recommendation-box'><h3>&#128161; Recomendaciones ISO 27002</h3><ul>"
+$htmlReport += "<li>Auditar cambios en GPOs criticas regularmente</li>"
+$htmlReport += "<li>Implementar versionado y respaldo de GPOs (Backup-GPO)</li>"
+$htmlReport += "<li>Revisar permisos de edicion de GPOs (minimo privilegio)</li>"
+$htmlReport += "<li>Eliminar o vincular GPOs sin vincular</li>"
+$htmlReport += "</ul></div>"
+$htmlReport += "            </section>"
+
+$htmlReport += @"
+            <section id="resource-load" class="section">
+                <div class="section-header"><div class="section-icon">&#9889;</div><h2>Carga de Recursos de Controladores</h2>
+                <span class="iso-control-badge">ISO 27001 A.8.6</span></div>
+                <div class="alert alert-$(if($reportData.ResourceLoad.Status){($reportData.ResourceLoad.Status).ToLower()}else{"ok"})">
+                    <div><strong>Monitoreo de Recursos - $($reportData.ResourceLoad.Status)</strong>
+                    <p style="margin-top:8px;">Estado actual de CPU y memoria en todos los controladores</p></div>
+                </div>
+                <table class="data-table"><thead><tr>
+                    <th>Controlador</th><th>CPU (%)</th><th>Memoria (%)</th><th>Memoria (GB)</th><th>Estado</th>
+                </tr></thead><tbody>
+"@
+foreach ($rl in $reportData.ResourceLoad.Load) {
+    $cpuBadge = if([double]$rl.CPULoad -lt 50) { "ok" } elseif([double]$rl.CPULoad -lt 80) { "warning" } else { "critical" }
+    $memBadge = if([double]$rl.MemoryUsed -lt 50) { "ok" } elseif([double]$rl.MemoryUsed -lt 80) { "warning" } else { "critical" }
+    $rlBadge  = if($rl.Status -eq "OK") { '<span class="status-badge ok">&#9679; Normal</span>' } else { '<span class="status-badge critical">&#9679; Error</span>' }
+    $htmlReport += "                    <tr><td><strong>$($rl.DC)</strong></td><td><span class='status-badge $cpuBadge'>$($rl.CPULoad)%</span></td><td><span class='status-badge $memBadge'>$($rl.MemoryUsed)%</span></td><td>$($rl.MemoryGB)</td><td>$rlBadge</td></tr>`r`n"
+}
+$htmlReport += @"
+                </tbody></table>
+                <div class="recommendation-box"><h3>&#128161; Monitoreo de Recursos</h3><ul>
+                    <li>CPU > 80%: Puede afectar el rendimiento del DC</li>
+                    <li>Memoria > 80%: Considere ampliar RAM o revisar procesos</li>
+                    <li>Revisar procesos: <code>Get-Process | Sort-Object CPU -Descending | Select -First 10</code></li>
+                    <li>Implemente alertas automaticas con monitoreo continuo</li>
+                </ul></div>
+            </section>
+"@
+
+$htmlReport += @"
+            <section id="passwords" class="section">
+                <div class="section-header"><div class="section-icon">&#128272;</div><h2>Politicas de Contrasena</h2>
+                <span class="iso-control-badge">ISO 27002 5.17</span></div>
+                <h3 style="margin-bottom:16px;font-size:20px;color:var(--primary-color);font-weight:700;">Politica de Dominio Predeterminada</h3>
+                <div class="stats-grid">
+                    <div class="stat-card"><div class="stat-card-label" style="color:#0078d4;font-weight:700;border-bottom:2px solid #0078d4;padding-bottom:8px;">Longitud Minima</div>
+                    <div class="stat-card-value $(if($reportData.PasswordPolicy.DomainPolicy.MinPasswordLength -lt 12){"warning"}else{"success"})">$($reportData.PasswordPolicy.DomainPolicy.MinPasswordLength) car.</div></div>
+                    <div class="stat-card"><div class="stat-card-label" style="color:#0078d4;font-weight:700;border-bottom:2px solid #0078d4;padding-bottom:8px;">Edad Maxima</div>
+                    <div class="stat-card-value $(if($reportData.PasswordPolicy.DomainPolicy.MaxPasswordAge -gt 90){"warning"}else{"success"})">$($reportData.PasswordPolicy.DomainPolicy.MaxPasswordAge) dias</div></div>
+                    <div class="stat-card"><div class="stat-card-label" style="color:#0078d4;font-weight:700;border-bottom:2px solid #0078d4;padding-bottom:8px;">Historial</div>
+                    <div class="stat-card-value">$($reportData.PasswordPolicy.DomainPolicy.PasswordHistoryCount) contrasenas</div></div>
+                    <div class="stat-card"><div class="stat-card-label" style="color:#0078d4;font-weight:700;border-bottom:2px solid #0078d4;padding-bottom:8px;">Umbral Bloqueo</div>
+                    <div class="stat-card-value $(if($reportData.PasswordPolicy.DomainPolicy.LockoutThreshold -eq 0 -or $reportData.PasswordPolicy.DomainPolicy.LockoutThreshold -gt 5){"warning"}else{"success"})">$($reportData.PasswordPolicy.DomainPolicy.LockoutThreshold) intentos</div></div>
+                    <div class="stat-card"><div class="stat-card-label" style="color:#0078d4;font-weight:700;border-bottom:2px solid #0078d4;padding-bottom:8px;">Complejidad</div>
+                    <div class="stat-card-value $(if($reportData.PasswordPolicy.DomainPolicy.ComplexityEnabled){"success"}else{"error"})">$(if($reportData.PasswordPolicy.DomainPolicy.ComplexityEnabled){"&#9989; Habilitada"}else{"&#10007; Deshabilitada"})</div></div>
+                    <div class="stat-card"><div class="stat-card-label" style="color:#0078d4;font-weight:700;border-bottom:2px solid #0078d4;padding-bottom:8px;">Duracion Bloqueo</div>
+                    <div class="stat-card-value">$($reportData.PasswordPolicy.DomainPolicy.LockoutDuration) min</div></div>
+                </div>
+                $(if($reportData.PasswordPolicy.FineGrainedPolicies.Count -gt 0) {
+                    "<h3 style='margin:32px 0 16px;font-size:20px;'>Politicas de Grano Fino (PSOs)</h3>" +
+                    "<table class='data-table'><thead><tr><th>Nombre</th><th>Precedencia</th><th>Long. Minima</th><th>Complejidad</th><th>Aplica A</th></tr></thead><tbody>" +
+                    (($reportData.PasswordPolicy.FineGrainedPolicies | ForEach-Object {
+                        "<tr><td><strong>$($_.Name)</strong></td><td>$($_.Precedence)</td><td>$($_.MinPasswordLength)</td><td>$(if($_.ComplexityEnabled){"&#9989;"}else{"&#10007;"})</td><td>$($_.AppliesTo)</td></tr>"
+                    }) -join "") + "</tbody></table>"
+                })
+                $(if($reportData.PasswordPolicy.Issues.Count -gt 0) {
+                    "<div class='alert alert-warning' style='margin-top:24px;'><div><strong>Incumplimientos ISO 27002 5.17</strong>" +
+                    "<ul style='margin-top:8px;'>" + ((($reportData.PasswordPolicy.Issues | ForEach-Object {"<li>$_</li>"}) -join "")) + "</ul></div></div>"
+                } else {
+                    "<div class='alert alert-success' style='margin-top:24px;'><div><strong>&#9989; Politicas de Contrasena Conformes</strong><p>Las politicas cumplen ISO 27002:2022</p></div></div>"
+                })
+            </section>
+"@
+
+$htmlReport += @"
+            <section id="disk" class="section">
+                <div class="section-header"><div class="section-icon">&#128191;</div><h2>Espacio en Disco</h2>
+                <span class="iso-control-badge">ISO 27001 A.8.6</span></div>
+                <div class="alert alert-$(if($reportData.Disk.Status){($reportData.Disk.Status).ToLower()}else{"ok"})">
+                    <div><strong>Estado: $($reportData.Disk.Status)</strong>
+                    $(if($reportData.Disk.Issues.Count -gt 0){ "<ul style='margin-top:8px;'>" + (($reportData.Disk.Issues | ForEach-Object {"<li>$_</li>"}) -join "") + "</ul>" } else { "<p>Espacio en disco adecuado en todos los controladores</p>" })
                     </div>
                 </div>
-
-                $(if($reportData.Security.Issues.Count -gt 0) {
-                    "<div class='alert alert-warning' style='margin-top: 24px;'>" +
-                    "<div><strong>Alertas de Seguridad ISO 27001</strong>" +
-                    "<ul style='margin-top: 8px;'>" +
-                    ($reportData.Security.Issues | ForEach-Object { "<li>$_</li>" }) -join "" +
-                    "</ul></div></div>"
-                } else {
-                    "<div class='alert alert-success' style='margin-top: 24px;'>" +
-                    "<div><strong>✓ Estado de Seguridad Normal</strong>" +
-                    "<p>No se detectaron patrones anómalos en los últimos 7 días</p></div></div>"
-                })
-
-                $(if($reportData.Security.Recommendations.Count -gt 0) {
-                    "<div class='recommendation-box'>" +
-                    "<h3>💡 Acciones Recomendadas</h3><ul>" +
-                    ($reportData.Security.Recommendations | ForEach-Object { "<li>$_</li>" }) -join "" +
-                    "<li>Implementar monitoreo continuo con SIEM</li>" +
-                    "<li>Configurar alertas automáticas para eventos críticos</li>" +
-                    "<li>Revisar Event IDs: 4625 (fallos), 4740 (bloqueos), 4719 (políticas)</li>" +
+                <table class="data-table"><thead><tr>
+                    <th>Controlador</th><th>Unidad</th><th>Tamano Total</th><th>Espacio Libre</th><th>% Libre</th><th>Estado</th>
+                </tr></thead><tbody>
+"@
+foreach ($disk in $reportData.Disk.Disks) {
+    $diskBadge = if($disk.PercentFree -ge 25) { '<span class="status-badge ok">&#9679; Saludable</span>' } elseif($disk.PercentFree -ge 15) { '<span class="status-badge warning">&#9679; Advertencia</span>' } else { '<span class="status-badge critical">&#9679; Critico</span>' }
+    $htmlReport += "                    <tr><td><strong>$($disk.DC)</strong></td><td>$($disk.Drive)</td><td>$($disk.SizeGB) GB</td><td>$($disk.FreeGB) GB</td><td><strong>$($disk.PercentFree)%</strong></td><td>$diskBadge</td></tr>`r`n"
+}
+$htmlReport += @"
+                </tbody></table>
+                $(if($reportData.Disk.Issues.Count -gt 0) {
+                    "<div class='recommendation-box'><h3>&#128161; Acciones Inmediatas</h3><ul>" +
+                    "<li>Libere espacio eliminando archivos temporales y logs antiguos</li>" +
+                    "<li>Use <code>cleanmgr.exe</code> para limpieza de disco</li>" +
+                    "<li>Revise logs en C:\\Windows\\NTDS\\ y C:\\Windows\\Logs\\</li>" +
+                    "<li>Implemente alertas cuando el espacio libre sea menor al 20%</li>" +
                     "</ul></div>"
                 })
             </section>
+"@
 
-            <!-- SECCIÓN: RESUMEN ISO 27001 -->
-            <section class="section">
-                <div class="section-header">
-                    <div class="section-icon">📊</div>
-                    <h2>Resumen de Cumplimiento ISO 27001:2022</h2>
+$htmlReport += @"
+            <section id="security" class="section">
+                <div class="section-header"><div class="section-icon">&#128274;</div><h2>Eventos de Seguridad (ultimos 7 dias)</h2>
+                <span class="iso-control-badge">ISO 27001 A.8.15, A.8.16</span></div>
+                <div class="stats-grid">
+                    <div class="stat-card"><div class="stat-card-label">Inicios Fallidos</div>
+                    <div class="stat-card-value $(if($reportData.Security.FailedLogins -gt 100){"error"}elseif($reportData.Security.FailedLogins -gt 20){"warning"}else{""})">$($reportData.Security.FailedLogins)</div></div>
+                    <div class="stat-card"><div class="stat-card-label">Bloqueos de Cuenta</div>
+                    <div class="stat-card-value $(if($reportData.Security.AccountLockouts -gt 10){"error"}elseif($reportData.Security.AccountLockouts -gt 0){"warning"}else{""})">$($reportData.Security.AccountLockouts)</div></div>
+                    <div class="stat-card"><div class="stat-card-label">Cambios de Contrasena</div>
+                    <div class="stat-card-value">$($reportData.Security.PasswordChanges)</div></div>
+                    <div class="stat-card"><div class="stat-card-label">Cambios de Politica</div>
+                    <div class="stat-card-value $(if($reportData.Security.PolicyChanges -gt 0){"warning"}else{"success"})">$($reportData.Security.PolicyChanges)</div></div>
                 </div>
-
-                <div class="alert alert-info">
-                    <div>
-                        <strong>Controles Evaluados</strong>
-                        <p style="margin-top: 12px;">Este informe cubre los siguientes controles de ISO/IEC 27001:2022:</p>
-                        <ul style="margin-top: 8px; column-count: 2;">
-                            <li><strong>A.5.1</strong> - Políticas de seguridad</li>
-                            <li><strong>A.5.15</strong> - Control de acceso</li>
-                            <li><strong>A.5.17</strong> - Autenticación</li>
-                            <li><strong>A.5.18</strong> - Derechos de acceso</li>
-                            <li><strong>A.8.2</strong> - Acceso privilegiado</li>
-                            <li><strong>A.8.3</strong> - Restricción de acceso</li>
-                            <li><strong>A.8.6</strong> - Gestión de capacidad</li>
-                            <li><strong>A.8.12</strong> - Prevención de fuga de datos</li>
-                            <li><strong>A.8.13</strong> - Respaldo de información</li>
-                            <li><strong>A.8.14</strong> - Redundancia</li>
-                            <li><strong>A.8.15</strong> - Registro de eventos</li>
-                            <li><strong>A.8.16</strong> - Monitoreo de actividades</li>
-                        </ul>
+                <div class="alert alert-$(if($reportData.Security.Status){($reportData.Security.Status).ToLower()}else{"ok"})">
+                    <div><strong>Estado de Seguridad: $($reportData.Security.Status)</strong>
+                    $(if($reportData.Security.Issues.Count -gt 0){ "<ul style='margin-top:8px;'>" + (($reportData.Security.Issues | ForEach-Object {"<li>$_</li>"}) -join "") + "</ul>" } else { "<p>No se detectaron amenazas criticas en el periodo analizado</p>" })
                     </div>
                 </div>
-
-                <div class="recommendation-box">
-                    <h3>📋 Próximas Acciones</h3>
-                    <ul>
-                        <li>Revisar y atender todos los problemas marcados como CRÍTICOS</li>
-                        <li>Planificar remediación de advertencias en los próximos 30 días</li>
-                        <li>Documentar cambios realizados para auditorías ISO 27001</li>
-                        <li>Agendar próxima revisión mensual de Active Directory</li>
-                        <li>Actualizar matriz de riesgos de seguridad de la información</li>
-                        <li>Compartir hallazgos con el Comité de Seguridad</li>
-                    </ul>
-                </div>
+                $(if($reportData.Security.Recommendations.Count -gt 0) {
+                    "<div class='recommendation-box'><h3>&#128161; Recomendaciones de Seguridad</h3><ul>" +
+                    (($reportData.Security.Recommendations | ForEach-Object {"<li>$_</li>"}) -join "") +
+                    "<li>Monitorear patrones de inicio de sesion fallidos</li>" +
+                    "<li>Implementar SIEM para correlacion de eventos</li>" +
+                    "</ul></div>"
+                })
             </section>
+"@
 
-            <div class="footer" style="text-align: center; padding: 32px; border-top: 1px solid var(--border-color); margin-top: 48px;">
-                <p style="font-weight: 600; margin-bottom: 8px;">Fin del Informe de Monitoreo</p>
+$htmlReport += @"
+            <section class="section">
+                <div class="section-header"><div class="section-icon">&#128202;</div><h2>Resumen de Cumplimiento ISO 27001:2022</h2></div>
+                <div class="alert alert-info"><div>
+                    <strong>Controles Evaluados en este Informe</strong>
+                    <p style="margin-top:12px;">Cobertura de controles ISO/IEC 27001:2022:</p>
+                    <ul style="margin-top:8px;column-count:2;">
+                        <li><strong>A.5.1</strong> - Politicas de seguridad</li>
+                        <li><strong>A.5.15</strong> - Control de acceso</li>
+                        <li><strong>A.5.17</strong> - Autenticacion</li>
+                        <li><strong>A.5.18</strong> - Derechos de acceso</li>
+                        <li><strong>A.8.2</strong> - Acceso privilegiado</li>
+                        <li><strong>A.8.3</strong> - Restriccion de acceso</li>
+                        <li><strong>A.8.6</strong> - Gestion de capacidad</li>
+                        <li><strong>A.8.13</strong> - Respaldo de informacion</li>
+                        <li><strong>A.8.14</strong> - Redundancia</li>
+                        <li><strong>A.8.15</strong> - Registro de eventos</li>
+                        <li><strong>A.8.16</strong> - Monitoreo de actividades</li>
+                    </ul>
+                </div></div>
+                <div class="recommendation-box"><h3>&#128203; Proximas Acciones</h3><ul>
+                    <li>Revisar y atender todos los problemas marcados como CRITICOS</li>
+                    <li>Planificar remediacion de advertencias en los proximos 30 dias</li>
+                    <li>Documentar cambios realizados para auditorias ISO 27001</li>
+                    <li>Agendar proxima revision mensual de Active Directory</li>
+                    <li>Actualizar matriz de riesgos de seguridad de la informacion</li>
+                </ul></div>
+            </section>
+            <div class="footer">
+                <p style="font-weight:600;margin-bottom:8px;">Fin del Informe de Monitoreo</p>
                 <p>Generado por Sistema de Monitoreo AD - Seguridad Perimetral</p>
-                <p style="margin-top: 8px;">📋 Cumplimiento: ISO/IEC 27001:2022 e ISO/IEC 27002:2022</p>
-                <p style="margin-top: 16px; color: var(--text-secondary); font-size: 12px;">
-                    ⚠️ CONFIDENCIAL - Distribución restringida al personal autorizado
-                </p>
+                <p style="margin-top:8px;">&#128203; Cumplimiento: ISO/IEC 27001:2022 e ISO/IEC 27002:2022</p>
+                <p style="margin-top:16px;color:var(--text-secondary);font-size:12px;">&#9888;&#65039; CONFIDENCIAL - Distribucion restringida al personal autorizado</p>
             </div>
         </main>
     </div>
-
     <script>
-        // Funcionalidad de desplegables
-        document.addEventListener('DOMContentLoaded', function() {
-            const collapsibles = document.querySelectorAll('.collapsible');
-            
-            collapsibles.forEach(button => {
-                button.addEventListener('click', function() {
-                    this.classList.toggle('active');
-                    const content = this.nextElementSibling;
-                    content.classList.toggle('active');
+        document.addEventListener("DOMContentLoaded", function() {
+            document.querySelectorAll(".collapsible").forEach(function(btn) {
+                btn.addEventListener("click", function() {
+                    this.classList.toggle("active");
+                    var content = this.nextElementSibling;
+                    if (content) content.classList.toggle("active");
                 });
             });
-
-            // Smooth scroll
-            document.querySelectorAll('.sidebar a').forEach(anchor => {
-                anchor.addEventListener('click', function (e) {
+            document.querySelectorAll(".sidebar a").forEach(function(a) {
+                a.addEventListener("click", function(e) {
                     e.preventDefault();
-                    const target = document.querySelector(this.getAttribute('href'));
-                    if (target) {
-                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
+                    var t = document.querySelector(this.getAttribute("href"));
+                    if (t) t.scrollIntoView({ behavior: "smooth", block: "start" });
                 });
-            });
-
-            // Resaltar sección activa
-            const observerOptions = {
-                root: null,
-                rootMargin: '-20% 0px -70% 0px',
-                threshold: 0
-            };
-
-            const observer = new IntersectionObserver(entries => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        document.querySelectorAll('.sidebar a').forEach(link => {
-                            link.style.background = '';
-                            link.style.color = '';
-                            if (link.getAttribute('href') === '#' + entry.target.id) {
-                                link.style.background = 'var(--bg-gray)';
-                                link.style.color = 'var(--primary-color)';
-                            }
-                        });
-                    }
-                });
-            }, observerOptions);
-
-            document.querySelectorAll('.section').forEach(section => {
-                observer.observe(section);
             });
         });
     </script>
 </body>
 </html>
 "@
-
 # Guardar HTML
 $htmlPath = Join-Path $OutputPath "$ReportName.html"
 $htmlReport | Out-File -FilePath $htmlPath -Encoding UTF8
@@ -2007,7 +1452,7 @@ try {
     Write-Host "⚠ No se pudo guardar copia en: $BackupPath" -ForegroundColor Yellow
 }
 
-# ==================== ENVÍO AL CRM (LOCAL) ====================
+# ==================== ENViO AL CRM (LOCAL) ====================
 
 Write-Host "`nEnviando datos al CRM local..." -ForegroundColor Cyan
 
@@ -2019,7 +1464,7 @@ try {
     }
     
     $jsonPayload = $payload | ConvertTo-Json -Depth 10
-    Write-Host "   - Tamaño del reporte: $([Math]::Round($jsonPayload.Length / 1KB, 2)) KB" -ForegroundColor Gray
+    Write-Host "   - Tamano del reporte: $([Math]::Round($jsonPayload.Length / 1KB, 2)) KB" -ForegroundColor Gray
     
     $response = Invoke-RestMethod -Method Post -Uri $BackendUrl -Body $jsonPayload -ContentType "application/json" -TimeoutSec 60
     Write-Host "✓ Datos enviados exitosamente al CRM: $($response.message)" -ForegroundColor Green
@@ -2032,7 +1477,7 @@ try {
 # ==================== RESUMEN FINAL ====================
 
 Write-Host "`n╔═══════════════════════════════════════════════════════╗" -ForegroundColor Green
-Write-Host "║          GENERACIÓN DE REPORTES COMPLETADA           ║" -ForegroundColor Green
+Write-Host "║          GENERACIoN DE REPORTES COMPLETADA           ║" -ForegroundColor Green
 Write-Host "╚═══════════════════════════════════════════════════════╝`n" -ForegroundColor Green
 
 Write-Host "📁 Archivos generados:" -ForegroundColor Cyan
@@ -2042,12 +1487,18 @@ Write-Host "`n📊 Resumen Ejecutivo:`n" -ForegroundColor Cyan
 # Mostrar resumen
 Write-Host "🖥️  Controladores: $($reportData.DCs.OverallStatus)" -ForegroundColor $(if($reportData.DCs.OverallStatus -eq "OK"){"Green"}else{"Red"})
 Write-Host "👥 Usuarios:" -ForegroundColor White
-Write-Host "   - Inactivos 90+ días: $($reportData.Users.Inactive90)" -ForegroundColor Yellow
+Write-Host "   - Total: $($reportData.Users.Total)" -ForegroundColor Green
+Write-Host "   - Inactivos 90+ dias: $($reportData.Users.Inactive90)" -ForegroundColor Yellow
 Write-Host "   - Deshabilitados: $($reportData.Users.Disabled)" -ForegroundColor Gray
 Write-Host "   - Bloqueados: $($reportData.Users.Locked)" -ForegroundColor $(if($reportData.Users.Locked -gt 0){"Red"}else{"Green"})
-Write-Host "📋 GPOs: $($reportData.GPOs.Total) total, $($reportData.GPOs.Empty) vacías" -ForegroundColor White
-Write-Host "🔐 Política Contraseña: $(if($reportData.PasswordPolicy.DomainPolicy.MinPasswordLength -ge 12){"✓ Conforme"}else{"⚠ Revisar"})" -ForegroundColor $(if($reportData.PasswordPolicy.DomainPolicy.MinPasswordLength -ge 12){"Green"}else{"Yellow"})
+Write-Host "📊 Usuarios por OU: $($reportData.Users.UsersByOU.Count) OU(s) detectadas" -ForegroundColor Cyan
+Write-Host "📋 GPOs: $($reportData.GPOs.Total) total, $($reportData.GPOs.Empty) vacias" -ForegroundColor White
+$avgCPU = ($reportData.ResourceLoad.Load.CPULoad | Where-Object {$_ -ne "N/A"} | Measure-Object -Average).Average
+Write-Host "⚡ Carga Promedio CPU: $([math]::Round($avgCPU, 1))%" -ForegroundColor $(if($avgCPU -lt 50){"Green"}elseif($avgCPU -lt 80){"Yellow"}else{"Red"})
+Write-Host "🔐 Politica Contraseña: $(if($reportData.PasswordPolicy.DomainPolicy.MinPasswordLength -ge 12){"✓ Conforme"}else{"⚠ Revisar"}) " -ForegroundColor $(if($reportData.PasswordPolicy.DomainPolicy.MinPasswordLength -ge 12){"Green"}else{"Yellow"})
 Write-Host "🔒 Eventos Seguridad: $($reportData.Security.FailedLogins) intentos fallidos" -ForegroundColor $(if($reportData.Security.FailedLogins -gt 100){"Red"}else{"Green"})
 
 Write-Host "`n✓ Script completado exitosamente." -ForegroundColor Green
 # No se requiere pausa ni apertura de navegador para tareas programadas
+
+

@@ -1,0 +1,35 @@
+{
+  "Role": "Kaspersky Security Center Hardware Inventory",
+  "Node": "KSC-LAB",
+  "ReportDate": "2026-08-29 09:00:00",
+  "Kaspersky": {
+    "HardwareInventory": {
+      "SourcePath": "C:\\restricted\\source.html",
+      "SourceFile": "hardware-report.html",
+      "ParsedAt": "2026-08-29 09:00:00",
+      "TotalDevices": 2,
+      "Devices": [
+        {
+          "Name": "WS-LAB-01",
+          "Provider": "Example Vendor",
+          "OperatingSystem": "Windows 11 Enterprise",
+          "OsBucket": "Windows 11",
+          "IsVirtual": false,
+          "LastSeen": "2026-08-29 08:55:00",
+          "LastSeenDays": 0.01,
+          "VisibilityBucket": "UltimoDia"
+        },
+        {
+          "Name": "VM-LAB-01",
+          "Provider": "Example Hypervisor",
+          "OperatingSystem": "Windows Server 2022",
+          "OsBucket": "Windows Server",
+          "IsVirtual": true,
+          "LastSeen": "2026-07-01 08:00:00",
+          "LastSeenDays": 59,
+          "VisibilityBucket": "MasDeUnMes"
+        }
+      ]
+    }
+  }
+}
