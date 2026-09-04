@@ -90,6 +90,7 @@ services:
         - VITE_SUPABASE_URL=https://fxlbqlzsbrgnkpcduzxt.supabase.co
         - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
         - VITE_SERVICES_TI_BACKEND_URL=http://192.168.8.65:3004
+        - VITE_SUPPORT_BOT_URL=http://192.168.8.65:3006
         - VITE_CCTV_API_BASE=
     container_name: crm-frontend
     restart: always
@@ -101,6 +102,22 @@ services:
         condition: service_healthy
       cybersecurity-api:
         condition: service_healthy
+      chatbot-soporte:
+        condition: service_started
+
+  chatbot-soporte:
+    build:
+      context: ./ChatBotSoporte
+    container_name: chatbot-soporte
+    restart: always
+    env_file: [./ChatBotSoporte/.env]
+    ports: ["3006:3006"]
+    volumes:
+      - ./ChatBotSoporte:/app
+      - /app/node_modules
+    environment:
+      - TZ=America/Bogota
+    command: npm run start
 
   cybersecurity-api:
     build:
