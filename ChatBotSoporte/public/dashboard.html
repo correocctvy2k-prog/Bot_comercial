@@ -3,8 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <title>Dashboard Bot Soporte Técnico</title>
+    <link rel="stylesheet" href="dashboard-crm-theme.css">
 </head>
 <body>
-    <div id="app">Panel de Gestión Bot Soporte</div>
+    <div id="app">
+        <h2>Panel de Gestión Bot Soporte</h2>
+        <p>El bot de soporte técnico está funcionando correctamente en el puerto asignado.</p>
+    </div>
+    <script>
+        // Notificar al CRM padre que el dashboard incrustado cargó con éxito
+        window.parent.postMessage({
+            source: "skylab-support",
+            type: "ready"
+        }, "*");
+        
+        // Escuchar cambios de tema (dark/light) desde el CRM padre
+        window.addEventListener("message", (event) => {
+            if (event.data?.source === "skylab-crm" && event.data?.type === "theme") {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+            }
+        });
+    </script>
 </body>
 </html>
