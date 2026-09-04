@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  chatbot-soporte:
+    build: .
+    ports:
+      - "3004:3004"
+    environment:
+      - PORT=3004
+    env_file:
+      - .env
+    restart: always

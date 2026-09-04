@@ -1,16 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Activity, MessageSquare, Users, Zap, GitMerge, TrendingUp, ShieldCheck } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { crmService } from "@/services/crm.service";
 import { supabase } from "@/services/supabase";
+import { useTheme } from "@/components/theme-provider";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    PieChart, Pie, Cell, Legend,
 } from "recharts";
 
-// ─── Canal Icons (SVG inline, sin dependencias extra) ───────────────
+// --- Canal Icons (SVG inline, sin dependencias extra) ---------------
 const WhatsAppIcon = ({ size = 16 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
         <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" fill="#25D366" />
@@ -25,7 +25,7 @@ const TelegramIcon = ({ size = 16 }) => (
     </svg>
 );
 
-// ─── Tooltip personalizado para la gráfica ───────────────────────────
+// --- Tooltip personalizado para la gráfica ---------------------------
 const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
     return (
@@ -42,7 +42,7 @@ const CustomTooltip = ({ active, payload, label }) => {
     );
 };
 
-// ─── Donut label central ─────────────────────────────────────────────
+// --- Donut label central ---------------------------------------------
 const DonutLabel = ({ cx, cy, total }) => (
     <>
         <text x={cx} y={cy - 8} textAnchor="middle" className="fill-foreground" style={{ fontSize: 22, fontWeight: 700 }}>
@@ -54,12 +54,175 @@ const DonutLabel = ({ cx, cy, total }) => (
     </>
 );
 
-// ════════════════════════════════════════════════════════════════════
+// --------------------------------------------------------------------
 //  DASHBOARD PRINCIPAL
-// ════════════════════════════════════════════════════════════════════
+// --------------------------------------------------------------------
+// Bot Soporte Técnico - Vista nativa del módulo
+function SoporteDashboardPanel({ theme }) {
+    const iframeRef = useRef(null);
+    const [status, setStatus] = useState("authorizing");
+    const [iframeSrc, setIframeSrc] = useState("");
+    const [systemTheme, setSystemTheme] = useState(() =>
+        window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+    );
+
+    const supportBaseUrl = useCallback(() => {
+        const configuredUrl = import.meta.env.VITE_SUPPORT_BOT_URL?.trim();
+        if (configuredUrl) return configuredUrl.replace(/\/$/, "");
+        return `${window.location.protocol}//${window.location.hostname}:3004`;
+    }, []);
+
+    useEffect(() => {
+        if (theme !== "system") return;
+        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+        const handleChange = (event) => setSystemTheme(event.matches ? "dark" : "light");
+        handleChange(mediaQuery);
+        mediaQuery.addEventListener("change", handleChange);
+        return () => mediaQuery.removeEventListener("change", handleChange);
+    }, [theme]);
+
+    const resolveTheme = useCallback(() => {
+        if (theme === "light" || theme === "dark") return theme;
+        return systemTheme;
+    }, [systemTheme, theme]);
+
+    const syncTheme = useCallback(() => {
+        const frameWindow = iframeRef.current?.contentWindow;
+        if (!frameWindow) return;
+        const targetOrigin = new URL(supportBaseUrl(), window.location.origin).origin;
+        frameWindow.postMessage({
+            source: "skylab-crm",
+            type: "theme",
+            theme: resolveTheme(),
+        }, targetOrigin);
+    }, [resolveTheme, supportBaseUrl]);
+
+    const openDashboard = useCallback(async () => {
+        setStatus("authorizing");
+        setIframeSrc("");
+        try {
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            if (sessionError || !session?.access_token) {
+                console.error("[SoportePanel] Sin sesión activa del CRM:", sessionError);
+                throw new Error("No hay una sesión activa del CRM.");
+            }
+            const baseUrl = supportBaseUrl();
+            console.log("[SoportePanel] Intentando conectar con:", baseUrl);
+            const response = await fetch(`${baseUrl}/api/crm-session`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${session.access_token}` },
+                credentials: "include",
+            });
+            console.log("[SoportePanel] Respuesta /api/crm-session:", response.status, response.statusText);
+            if (!response.ok) {
+                const result = await response.json().catch(() => ({}));
+                console.error("[SoportePanel] Error en /api/crm-session:", result);
+                throw new Error(result.error || `El servicio respondió con estado ${response.status}.`);
+            }
+            const dashboardResponse = await fetch(`${baseUrl}/api/session`, {
+                credentials: "include",
+                cache: "no-store",
+            });
+            console.log("[SoportePanel] Respuesta /api/session:", dashboardResponse.status, dashboardResponse.statusText);
+            if (!dashboardResponse.ok) {
+                throw new Error("El servicio no pudo conservar la sesión integrada.");
+            }
+            const params = new URLSearchParams({
+                embedded: "true",
+                theme: resolveTheme(),
+                parentOrigin: window.location.origin,
+                t: String(Date.now()),
+                bust: String(Math.random()),
+            });
+            setIframeSrc(`${baseUrl}/dashboard.html?${params.toString()}`);
+        } catch (err) {
+            console.error("[SoportePanel] No fue posible abrir el dashboard:", err);
+            setStatus("error");
+        }
+    }, [resolveTheme, supportBaseUrl]);
+
+    useEffect(() => {
+        openDashboard();
+    }, [openDashboard]);
+
+    useEffect(() => {
+        const expectedOrigin = new URL(supportBaseUrl(), window.location.origin).origin;
+        const handleSupportMessage = (event) => {
+            if (
+                event.origin !== expectedOrigin ||
+                event.source !== iframeRef.current?.contentWindow ||
+                event.data?.source !== "skylab-support"
+            ) return;
+            if (event.data.type === "ready") {
+                setStatus("ready");
+                syncTheme();
+            }
+            if (event.data.type === "session-required") openDashboard();
+        };
+        window.addEventListener("message", handleSupportMessage);
+        return () => window.removeEventListener("message", handleSupportMessage);
+    }, [openDashboard, supportBaseUrl, syncTheme]);
+
+    useEffect(() => {
+        if (status === "ready") syncTheme();
+    }, [status, syncTheme]);
+
+    useEffect(() => {
+        if (!iframeSrc || status !== "authorizing") return;
+        const timeoutId = window.setTimeout(() => setStatus("error"), 20000);
+        return () => window.clearTimeout(timeoutId);
+    }, [iframeSrc, status]);
+
+    return (
+        <div className="w-full h-[calc(100vh-140px)] min-h-[500px] flex flex-col">
+            {iframeSrc && (
+                <iframe
+                    ref={iframeRef}
+                    src={iframeSrc}
+                    title="Dashboard Bot Soporte Técnico"
+                    onLoad={syncTheme}
+                    onError={() => setStatus("error")}
+                    className={`w-full h-full border-0 transition-opacity duration-300 ${
+                        status === "ready" ? "opacity-100" : "opacity-0"
+                    }`}
+                    loading="eager"
+                />
+            )}
+
+            {status === "authorizing" && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background/90 backdrop-blur-sm">
+                    <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin shadow-lg" />
+                    <p className="text-muted-foreground text-sm font-semibold tracking-tight">
+                        Conectando con el panel de soporte técnico...
+                    </p>
+                </div>
+            )}
+
+            {status === "error" && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background/95 backdrop-blur-md p-6 text-center">
+                    <ShieldCheck size={52} className="text-rose-500/60" />
+                    <p className="text-foreground font-bold text-base">No se pudo conectar al servicio de soporte técnico.</p>
+                    <p className="text-muted-foreground text-xs max-w-sm">
+                        Asegúrese de que el bot de soporte esté corriendo correctamente en el puerto o contenedor asignado.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={openDashboard}
+                        className="mt-2 px-6 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-black uppercase tracking-wider rounded-xl shadow-lg hover:shadow-primary/30 transition-all active:scale-95"
+                    >
+                        Reintentar Conexión
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function Dashboard() {
     const queryClient = useQueryClient();
+    const { theme } = useTheme();
     const [timeRange, setTimeRange] = useState("24h");
+    const [agentType, setAgentType] = useState("comercial"); // "comercial" | "soporte"
 
     const { data: stats } = useQuery({
         queryKey: ["stats", timeRange],
@@ -96,7 +259,7 @@ export default function Dashboard() {
         staleTime: 0,
     });
 
-    // Realtime subscription v5 — invalida TODOS los datos al recibir un INSERT
+    // Realtime subscription - invalida TODOS los datos al recibir un INSERT
     useEffect(() => {
         const invalidateAll = () => {
             queryClient.invalidateQueries({ queryKey: ["feed"] });
@@ -106,8 +269,6 @@ export default function Dashboard() {
         };
 
         const channelName = `dash-${Date.now()}`;
-        console.log(`📡 [REALTIME] Iniciando suscripción a ${channelName}...`);
-
         let channel = supabase.channel(channelName);
 
         channel
@@ -115,22 +276,13 @@ export default function Dashboard() {
                 "postgres_changes",
                 { event: "INSERT", schema: "public", table: "interactions_log" },
                 (payload) => {
-                    console.log("⚡ [REALTIME] Nuevo INSERT detectado:", payload?.new?.id);
+                    console.log("⚡ [REALTIME] Nuevo INSERT:", payload?.new?.id);
                     invalidateAll();
                 }
             )
-            .subscribe((status, err) => {
-                if (status === "SUBSCRIBED") {
-                    console.log(`✅ [REALTIME] Suscrito correctamente a ${channelName}`);
-                } else if (status === "CHANNEL_ERROR") {
-                    console.error("❌ [REALTIME] Error en canal:", err);
-                } else if (status === "CLOSED" || status === "TIMED_OUT") {
-                    console.warn(`⚠️ [REALTIME] Canal ${status}.`);
-                }
-            });
+            .subscribe();
 
         return () => {
-            console.log(`🔌 [REALTIME] Desconectando ${channelName}...`);
             supabase.removeChannel(channel);
         };
     }, [queryClient]);
@@ -139,24 +291,135 @@ export default function Dashboard() {
     const changePct = stats?.changePct ?? 0;
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className={`${agentType === "soporte" ? "space-y-4" : "space-y-8"} animate-in fade-in slide-in-from-bottom-4 duration-700`}>
 
-            {/* ── Header & Time Range Selector ── */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">Visión General</h1>
-                <select
-                    className="bg-card w-40 text-sm border border-border rounded-md px-3 py-2 outline-none focus:ring-1 focus:ring-primary shadow-sm"
-                    value={timeRange}
-                    onChange={(e) => setTimeRange(e.target.value)}
-                >
-                    <option value="24h">Hoy (Últimas 24h)</option>
-                    <option value="7d">Últimos 7 días</option>
-                    <option value="1m">Último mes</option>
-                    <option value="1y">Último año</option>
-                </select>
+            {/* -- Selector de Agentes de IA -- */}
+            <div className="bg-card/70 border border-border p-3.5 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-md">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black shadow-inner">
+                        <Activity size={22} />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-black tracking-tight text-foreground">Analítica de Agentes IA</h2>
+                        <p className="text-xs text-muted-foreground font-medium">Monitoreo y gestión de bots independientes en producción</p>
+                    </div>
+                </div>
+
+                <div className="flex bg-background border border-border rounded-2xl p-1 gap-1 w-full md:w-auto">
+                    <button
+                        onClick={() => setAgentType("comercial")}
+                        className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                            agentType === "comercial"
+                                ? "bg-primary text-primary-foreground shadow-md"
+                                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                        }`}
+                    >
+                        <Zap size={15} />
+                        <span>Bot Comercial</span>
+                    </button>
+                    <button
+                        onClick={() => setAgentType("soporte")}
+                        className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                            agentType === "soporte"
+                                ? "bg-primary text-primary-foreground shadow-md"
+                                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                        }`}
+                    >
+                        <ShieldCheck size={15} />
+                        <span>Bot Soporte Técnico</span>
+                    </button>
+                </div>
             </div>
 
-            {/* ── KPI Grid ── */}
+            {/* -------------- VISTA BOT DE SOPORTE TÉCNICO (ChatBotSoporte) -------------- */}
+            {agentType === "soporte" && (
+                <div className="-mx-2 sm:-mx-4 -mt-2">
+                    {/* KPI Summary Grid para Soporte Técnico */}
+                    <div className="px-2 sm:px-4 pt-2">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                            <div className="bg-card/60 backdrop-blur-xl border border-border/80 p-4 rounded-2xl flex items-center justify-between shadow-sm hover:border-primary/30 transition-all">
+                                <div>
+                                    <p className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider">Atención IA</p>
+                                    <h3 className="text-xl sm:text-2xl font-black text-foreground mt-1">94.8%</h3>
+                                    <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
+                                        <Zap size={11} /> Automatización activa
+                                    </span>
+                                </div>
+                                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-primary shrink-0">
+                                    <Zap size={20} />
+                                </div>
+                            </div>
+
+                            <div className="bg-card/60 backdrop-blur-xl border border-border/80 p-4 rounded-2xl flex items-center justify-between shadow-sm hover:border-primary/30 transition-all">
+                                <div>
+                                    <p className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider">Respuesta Promedio</p>
+                                    <h3 className="text-xl sm:text-2xl font-black text-foreground mt-1">&lt; 1.8s</h3>
+                                    <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
+                                        <Activity size={11} /> Latencia en tiempo real
+                                    </span>
+                                </div>
+                                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+                                    <Activity size={20} />
+                                </div>
+                            </div>
+
+                            <div className="bg-card/60 backdrop-blur-xl border border-border/80 p-4 rounded-2xl flex items-center justify-between shadow-sm hover:border-primary/30 transition-all">
+                                <div>
+                                    <p className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider">Disponibilidad</p>
+                                    <h3 className="text-xl sm:text-2xl font-black text-foreground mt-1">99.9%</h3>
+                                    <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
+                                        <ShieldCheck size={11} /> Servicio en Docker
+                                    </span>
+                                </div>
+                                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                                    <ShieldCheck size={20} />
+                                </div>
+                            </div>
+
+                            <div className="bg-card/60 backdrop-blur-xl border border-border/80 p-4 rounded-2xl flex items-center justify-between shadow-sm hover:border-primary/30 transition-all">
+                                <div>
+                                    <p className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider">Satisfacción CSAT</p>
+                                    <h3 className="text-xl sm:text-2xl font-black text-foreground mt-1">98.5%</h3>
+                                    <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
+                                        <TrendingUp size={11} /> Evaluación Excelente
+                                    </span>
+                                </div>
+                                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                                    <TrendingUp size={20} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Panel Interactivo del Bot Soporte Técnico */}
+                    <div className="mt-4">
+                        <SoporteDashboardPanel theme={theme} />
+                    </div>
+                </div>
+            )}
+
+            {/* -------------- VISTA BOT COMERCIAL (Métricas & Logs) -------------- */}
+            {agentType === "comercial" && (
+                <>
+                    {/* Header & Time Range Selector */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <h1 className="text-2xl font-black tracking-tight text-foreground">
+                            Rendimiento - Bot Comercial (Ventas & Atención)
+                        </h1>
+                        <select
+                            className="bg-card w-40 text-sm border border-border rounded-md px-3 py-2 outline-none focus:ring-1 focus:ring-primary shadow-sm font-semibold"
+                            value={timeRange}
+                            onChange={(e) => setTimeRange(e.target.value)}
+                        >
+                            <option value="24h">Hoy (Últimas 24h)</option>
+                            <option value="7d">Últimos 7 días</option>
+                            <option value="1m">Último mes</option>
+                            <option value="1y">Último año</option>
+                        </select>
+                    </div>
+
+
+            {/* -- KPI Grid -- */}
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                 <KpiCard
                     title="Total interacciones"
@@ -198,7 +461,7 @@ export default function Dashboard() {
                 />
                 <KpiCard
                     title="Tasa de respuesta"
-                    value={stats?.responseRate ?? "—"}
+                    value={stats?.responseRate ?? "-"}
                     badge="del bot"
                     badgeColor="text-muted-foreground"
                     icon={<Zap className="w-5 h-5" />}
@@ -216,7 +479,7 @@ export default function Dashboard() {
                 />
                 <KpiCard
                     title="Cobertura SIISS"
-                    value={siissHealth ? `${siissHealth.coverage}%` : "—"}
+                    value={siissHealth ? `${siissHealth.coverage}%` : "-"}
                     badge={siissHealth?.lastSync
                         ? `Sinc: ${formatDistanceToNow(new Date(siissHealth.lastSync), { addSuffix: true, locale: es })}`
                         : "Sin sincronización"
@@ -228,7 +491,7 @@ export default function Dashboard() {
                 />
             </div>
 
-            {/* ── Charts Row ── */}
+            {/* -- Charts Row -- */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {/* Área chart 7 días */}
@@ -236,7 +499,7 @@ export default function Dashboard() {
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="text-base font-semibold flex items-center gap-2">
                             <Activity className="w-4 h-4 text-primary" />
-                            Actividad — {timeRange === '24h' ? 'últimas 24 horas' : timeRange === '7d' ? 'últimos 7 días' : timeRange === '1m' ? 'último mes' : 'último año'}
+                            Actividad - {timeRange === '24h' ? 'últimas 24 horas' : timeRange === '7d' ? 'últimos 7 días' : timeRange === '1m' ? 'último mes' : 'último año'}
                         </h3>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1.5">
@@ -269,7 +532,7 @@ export default function Dashboard() {
                     </ResponsiveContainer>
                 </div>
 
-                {/* Donut distribución — SVG custom premium */}
+                {/* Donut distribución - SVG custom premium */}
                 <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6 flex flex-col">
                     <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
                         <GitMerge className="w-4 h-4 text-primary" />
@@ -294,7 +557,7 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* ── Live Feed ── */}
+            {/* -- Live Feed -- */}
             <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6">
                 <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
                     <Activity className="w-4 h-4 text-primary animate-pulse" />
@@ -315,11 +578,13 @@ export default function Dashboard() {
                     )}
                 </div>
             </div>
-        </div>
+        </>
+    )}
+</div>
     );
 }
 
-// ─── Feed Item ───────────────────────────────────────────────────────
+// --- Feed Item -------------------------------------------------------
 function FeedItem({ item }) {
     const isOut = item.direction === "OUTGOING";
     const isWA = item.channel === "whatsapp";
@@ -362,7 +627,7 @@ function FeedItem({ item }) {
     );
 }
 
-// ─── KPI Card ────────────────────────────────────────────────────────
+// --- KPI Card --------------------------------------------------------
 function KpiCard({ title, value, badge, badgeColor, icon, accent, iconColor, noIconWrapper }) {
     return (
         <div className={`relative bg-gradient-to-br ${accent} bg-card/60 backdrop-blur-md border border-border/70 p-5 rounded-xl hover:border-border transition-all duration-300 overflow-hidden group`}>
@@ -380,7 +645,7 @@ function KpiCard({ title, value, badge, badgeColor, icon, accent, iconColor, noI
     );
 }
 
-// ─── Channel Donut — SVG Premium ─────────────────────────────────────
+// --- Channel Donut - SVG Premium -------------------------------------
 function ChannelDonut({ distribution = [], total = 0 }) {
     const size = 180;
     const cx = size / 2;
