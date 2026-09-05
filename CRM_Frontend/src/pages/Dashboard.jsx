@@ -1,7 +1,8 @@
-import { useEffect, useState, useRef, useCallback } from "react";
-import { Activity, MessageSquare, Users, Zap, GitMerge, TrendingUp, ShieldCheck } from "lucide-react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import { Activity, MessageSquare, Users, Zap, GitMerge, TrendingUp, ShieldCheck, Trophy, Crown, Medal, Award, MapPin, Calendar, Search, ChevronDown, ChevronUp, Filter, Sparkles } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { crmService } from "@/services/crm.service";
+
 import { supabase } from "@/services/supabase";
 import { useTheme } from "@/components/theme-provider";
 import { formatDistanceToNow } from "date-fns";
@@ -217,7 +218,6 @@ function SoporteDashboardPanel({ theme }) {
         </div>
     );
 }
-
 export default function Dashboard() {
     const queryClient = useQueryClient();
     const { theme } = useTheme();
@@ -259,6 +259,13 @@ export default function Dashboard() {
         staleTime: 0,
     });
 
+    const { data: userRanking = [] } = useQuery({
+        queryKey: ["userRanking", timeRange],
+        queryFn: () => crmService.getUserRanking(timeRange),
+        refetchInterval: 15000,
+        staleTime: 0,
+    });
+
     // Realtime subscription - invalida TODOS los datos al recibir un INSERT
     useEffect(() => {
         const invalidateAll = () => {
@@ -266,6 +273,7 @@ export default function Dashboard() {
             queryClient.invalidateQueries({ queryKey: ["stats"] });
             queryClient.invalidateQueries({ queryKey: ["activity"] });
             queryClient.invalidateQueries({ queryKey: ["distribution"] });
+            queryClient.invalidateQueries({ queryKey: ["userRanking"] });
         };
 
         const channelName = `dash-${Date.now()}`;
@@ -557,6 +565,9 @@ export default function Dashboard() {
                 </div>
             </div>
 
+            {/* -- Ranking de Usuarios & Zonas Escaneadas -- */}
+            <RankingSection ranking={userRanking} />
+
             {/* -- Live Feed -- */}
             <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6">
                 <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
@@ -749,3 +760,361 @@ function ChannelDonut({ distribution = [], total = 0 }) {
         </div>
     );
 }
+
+// --- Ranking Section (Personas, Días de interacción & Zonas escaneadas) ----
+function RankingSection({ ranking = [] }) {
+    const [search, setSearch] = useState("");
+    const [expandedUser, setExpandedUser] = useState(null);
+
+    const filtered = ranking.filter(item => {
+        const q = search.toLowerCase();
+        const matchesUser = item.user.toLowerCase().includes(q) || item.phone.toLowerCase().includes(q);
+        const matchesZone = item.scannedZones?.some(z => z.name.toLowerCase().includes(q) || z.code.toLowerCase().includes(q));
+        const matchesDay = item.topDay.toLowerCase().includes(q);
+        return matchesUser || matchesZone || matchesDay;
+    });
+
+    const top1 = ranking[0];
+    const top2 = ranking[1];
+    const top3 = ranking[2];
+
+    const getRankBadgeStyle = (rank) => {
+        switch (rank) {
+            case 1:
+                return "bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-black shadow-[0_0_15px_rgba(245,158,11,0.5)] border-amber-300";
+            case 2:
+                return "bg-gradient-to-r from-slate-300 to-slate-400 text-black font-black shadow-[0_0_15px_rgba(148,163,184,0.4)] border-slate-200";
+            case 3:
+                return "bg-gradient-to-r from-amber-700 to-orange-600 text-white font-black shadow-[0_0_15px_rgba(180,83,9,0.4)] border-orange-400";
+            default:
+                return "bg-muted/80 text-foreground font-bold border-border";
+        }
+    };
+
+    return (
+        <div className="space-y-6 my-8">
+            {/* Header del Ranking & Buscador */}
+            <div className="bg-card/50 backdrop-blur-md border border-border/80 p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-500 flex items-center justify-center text-black font-black shadow-inner shrink-0">
+                        <Trophy size={22} />
+                    </div>
+                    <div>
+                        <h3 className="text-base font-black tracking-tight text-foreground flex items-center gap-2">
+                            Ranking de Usuarios & Zonas Escaneadas
+                            <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-0.5 rounded-full font-bold uppercase">
+                                Bot Comercial
+                            </span>
+                        </h3>
+                        <p className="text-xs text-muted-foreground font-medium">
+                            Conteo numérico de frecuencia de interacción por persona, días de la semana y zonas consultadas
+                        </p>
+                    </div>
+                </div>
+
+                {/* Buscador */}
+                <div className="relative w-full md:w-72">
+                    <Search className="absolute left-3.5 top-2.5 text-muted-foreground" size={15} />
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Buscar por persona, día o zona..."
+                        className="w-full bg-background border border-border rounded-xl pl-9 pr-4 py-2 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all"
+                    />
+                </div>
+            </div>
+
+            {/* Podio Top 3 Showcase */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* TOP 1 */}
+                {top1 && (
+                    <div className="relative bg-gradient-to-b from-amber-500/15 via-card/80 to-card/60 backdrop-blur-xl border border-amber-500/40 p-5 rounded-2xl shadow-lg hover:border-amber-500/60 transition-all group overflow-hidden">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-xl bg-amber-500 text-black font-black flex items-center justify-center text-sm shadow-md">
+                                    #1
+                                </div>
+                                <Crown size={20} className="text-amber-400 animate-bounce" />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
+                                🥇 Líder de Consultas
+                            </span>
+                        </div>
+
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-300 text-black font-black text-base flex items-center justify-center shadow-lg border-2 border-amber-400 shrink-0">
+                                {top1.avatar}
+                            </div>
+                            <div className="min-w-0">
+                                <h4 className="font-extrabold text-base text-foreground truncate">{top1.user}</h4>
+                                <p className="text-xs text-muted-foreground truncate">{top1.phone}</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 bg-background/50 border border-border/50 p-3 rounded-xl mb-3 text-xs">
+                            <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+                                    <MessageSquare size={13} className="text-amber-400" /> Total Interacciones:
+                                </span>
+                                <strong className="text-amber-400 font-black text-sm">{top1.totalCount} veces</strong>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+                                    <Calendar size={13} className="text-amber-400" /> Día con más actividad:
+                                </span>
+                                <strong className="text-foreground font-bold">{top1.topDay}</strong>
+                            </div>
+                        </div>
+
+                        <div>
+                            <span className="text-[10px] font-extrabold uppercase text-muted-foreground tracking-wider block mb-1.5 flex items-center gap-1">
+                                <MapPin size={12} className="text-amber-400" /> Principales Zonas Escaneadas:
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                                {top1.scannedZones?.slice(0, 3).map((z, idx) => (
+                                    <span key={idx} className="bg-amber-500/10 text-amber-300 border border-amber-500/20 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1">
+                                        <span>📍 {z.name}</span>
+                                        <span className="bg-amber-500/20 text-amber-200 px-1.5 py-0.2 rounded text-[10px]">({z.count}x)</span>
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* TOP 2 */}
+                {top2 && (
+                    <div className="relative bg-gradient-to-b from-slate-400/15 via-card/80 to-card/60 backdrop-blur-xl border border-slate-400/30 p-5 rounded-2xl shadow-lg hover:border-slate-400/50 transition-all group overflow-hidden">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-xl bg-slate-300 text-black font-black flex items-center justify-center text-sm shadow-md">
+                                    #2
+                                </div>
+                                <Medal size={20} className="text-slate-300" />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-300 bg-slate-400/10 px-2.5 py-1 rounded-full border border-slate-400/20">
+                                🥈 2º Posición
+                            </span>
+                        </div>
+
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-slate-300 to-slate-100 text-black font-black text-base flex items-center justify-center shadow-lg border-2 border-slate-300 shrink-0">
+                                {top2.avatar}
+                            </div>
+                            <div className="min-w-0">
+                                <h4 className="font-extrabold text-base text-foreground truncate">{top2.user}</h4>
+                                <p className="text-xs text-muted-foreground truncate">{top2.phone}</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 bg-background/50 border border-border/50 p-3 rounded-xl mb-3 text-xs">
+                            <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+                                    <MessageSquare size={13} className="text-slate-300" /> Total Interacciones:
+                                </span>
+                                <strong className="text-slate-200 font-black text-sm">{top2.totalCount} veces</strong>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+                                    <Calendar size={13} className="text-slate-300" /> Día con más actividad:
+                                </span>
+                                <strong className="text-foreground font-bold">{top2.topDay}</strong>
+                            </div>
+                        </div>
+
+                        <div>
+                            <span className="text-[10px] font-extrabold uppercase text-muted-foreground tracking-wider block mb-1.5 flex items-center gap-1">
+                                <MapPin size={12} className="text-slate-300" /> Principales Zonas Escaneadas:
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                                {top2.scannedZones?.slice(0, 3).map((z, idx) => (
+                                    <span key={idx} className="bg-slate-400/10 text-slate-200 border border-slate-400/20 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1">
+                                        <span>📍 {z.name}</span>
+                                        <span className="bg-slate-400/20 text-slate-100 px-1.5 py-0.2 rounded text-[10px]">({z.count}x)</span>
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* TOP 3 */}
+                {top3 && (
+                    <div className="relative bg-gradient-to-b from-orange-500/15 via-card/80 to-card/60 backdrop-blur-xl border border-orange-500/30 p-5 rounded-2xl shadow-lg hover:border-orange-500/50 transition-all group overflow-hidden">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-xl bg-orange-600 text-white font-black flex items-center justify-center text-sm shadow-md">
+                                    #3
+                                </div>
+                                <Award size={20} className="text-orange-400" />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-orange-400 bg-orange-500/10 px-2.5 py-1 rounded-full border border-orange-500/20">
+                                🥉 3º Posición
+                            </span>
+                        </div>
+
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 text-white font-black text-base flex items-center justify-center shadow-lg border-2 border-orange-400 shrink-0">
+                                {top3.avatar}
+                            </div>
+                            <div className="min-w-0">
+                                <h4 className="font-extrabold text-base text-foreground truncate">{top3.user}</h4>
+                                <p className="text-xs text-muted-foreground truncate">{top3.phone}</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 bg-background/50 border border-border/50 p-3 rounded-xl mb-3 text-xs">
+                            <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+                                    <MessageSquare size={13} className="text-orange-400" /> Total Interacciones:
+                                </span>
+                                <strong className="text-orange-300 font-black text-sm">{top3.totalCount} veces</strong>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+                                    <Calendar size={13} className="text-orange-400" /> Día con más actividad:
+                                </span>
+                                <strong className="text-foreground font-bold">{top3.topDay}</strong>
+                            </div>
+                        </div>
+
+                        <div>
+                            <span className="text-[10px] font-extrabold uppercase text-muted-foreground tracking-wider block mb-1.5 flex items-center gap-1">
+                                <MapPin size={12} className="text-orange-400" /> Principales Zonas Escaneadas:
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                                {top3.scannedZones?.slice(0, 3).map((z, idx) => (
+                                    <span key={idx} className="bg-orange-500/10 text-orange-200 border border-orange-500/20 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1">
+                                        <span>📍 {z.name}</span>
+                                        <span className="bg-orange-500/20 text-orange-100 px-1.5 py-0.2 rounded text-[10px]">({z.count}x)</span>
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Tabla General Numerada (#1 al #N) */}
+            <div className="bg-card/40 backdrop-blur-sm border border-border rounded-2xl overflow-hidden shadow-md">
+                <div className="p-4 border-b border-border/80 bg-white/5 flex items-center justify-between">
+                    <h4 className="font-bold text-sm text-foreground flex items-center gap-2">
+                        <Users size={16} className="text-primary" />
+                        Tabla Completa de Posiciones & Desglose ({filtered.length} usuarios)
+                    </h4>
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr className="border-b border-border/60 bg-white/5 text-muted-foreground font-extrabold uppercase tracking-wider text-[10px]">
+                                <th className="py-3.5 px-4 w-16 text-center"># Posición</th>
+                                <th className="py-3.5 px-4">Persona / Contacto</th>
+                                <th className="py-3.5 px-4">Frecuencia por Día de la Semana</th>
+                                <th className="py-3.5 px-4">Zonas / Puntos Escaneados</th>
+                                <th className="py-3.5 px-4 text-center">Total Mensajes</th>
+                                <th className="py-3.5 px-4 text-right">Última Actividad</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/40">
+                            {filtered.map((item) => {
+                                const isExpanded = expandedUser === item.rank;
+                                return (
+                                    <React.Fragment key={item.rank}>
+                                        <tr
+                                            onClick={() => setExpandedUser(isExpanded ? null : item.rank)}
+                                            className="hover:bg-white/5 transition-colors cursor-pointer group"
+                                        >
+                                            <td className="py-3.5 px-4 text-center">
+                                                <span className={`inline-flex items-center justify-center w-7 h-7 rounded-xl border text-xs font-black ${getRankBadgeStyle(item.rank)}`}>
+                                                    #{item.rank}
+                                                </span>
+                                            </td>
+                                            <td className="py-3.5 px-4">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-primary text-xs shrink-0">
+                                                        {item.avatar}
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-extrabold text-foreground text-sm flex items-center gap-1.5">
+                                                            {item.user}
+                                                            {item.channel === "whatsapp" ? <WhatsAppIcon size={14} /> : <TelegramIcon size={14} />}
+                                                        </div>
+                                                        <span className="text-[10px] text-muted-foreground">{item.phone}</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="py-3.5 px-4">
+                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                    <span className="bg-primary/15 text-primary border border-primary/20 px-2.5 py-1 rounded-lg text-[11px] font-black">
+                                                        🗓️ {item.topDay}
+                                                    </span>
+                                                    <button className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1 underline ml-1">
+                                                        {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                                                        <span>Ver días</span>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            <td className="py-3.5 px-4">
+                                                <div className="flex flex-wrap gap-1">
+                                                    {item.scannedZones?.map((z, idx) => (
+                                                        <span key={idx} className="bg-card border border-border/80 px-2 py-0.5 rounded-md text-[10px] font-semibold text-foreground/90 flex items-center gap-1">
+                                                            <span className="text-primary font-bold">📍 {z.code}</span>
+                                                            <span className="opacity-80">{z.name}</span>
+                                                            <span className="bg-primary/20 text-primary px-1 rounded text-[9px] font-bold">({z.count}x)</span>
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </td>
+                                            <td className="py-3.5 px-4 text-center">
+                                                <span className="font-black text-sm text-foreground bg-white/5 px-3 py-1 rounded-xl border border-white/10">
+                                                    {item.totalCount}
+                                                </span>
+                                            </td>
+                                            <td className="py-3.5 px-4 text-right text-[11px] text-muted-foreground font-medium">
+                                                {item.lastSeen}
+                                            </td>
+                                        </tr>
+
+                                        {/* Fila expandible con el desglose detallado de días */}
+                                        {isExpanded && (
+                                            <tr className="bg-primary/5 border-b border-primary/20">
+                                                <td colSpan={6} className="p-4">
+                                                    <div className="space-y-3 pl-12 pr-4">
+                                                        <h5 className="font-bold text-xs text-primary uppercase tracking-wider flex items-center gap-1.5">
+                                                            <Calendar size={14} /> Desglose detallado de interacciones por día de la semana para {item.user}:
+                                                        </h5>
+                                                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+                                                            {item.dayBreakdown?.map((d, idx) => (
+                                                                <div key={idx} className="bg-card border border-border/80 p-2.5 rounded-xl text-center shadow-xs">
+                                                                    <span className="text-[10px] font-bold text-muted-foreground block uppercase">{d.day}</span>
+                                                                    <span className="text-base font-black text-primary block mt-0.5">{d.count}</span>
+                                                                    <span className="text-[9px] text-muted-foreground">interacciones</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </React.Fragment>
+                                );
+                            })}
+
+                            {filtered.length === 0 && (
+                                <tr>
+                                    <td colSpan={6} className="text-center py-10 text-muted-foreground text-xs">
+                                        No se encontraron usuarios o zonas coincidentes con "{search}".
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+}
+
