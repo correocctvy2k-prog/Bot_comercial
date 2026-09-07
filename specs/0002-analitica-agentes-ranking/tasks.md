@@ -23,15 +23,25 @@ Marcar `[x]` al completar. Mantener actualizado durante toda la tarea.
       en los archivos tocados (el `npm run lint` global tiene 407 errores preexistentes en otros
       archivos, fuera del alcance de 0002).
 - [x] `cd CRM_Frontend && npm run build` — verde (`✓ built in ~21s`).
-- [ ] `docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build crm-frontend`
-- [ ] Smoke test en `http://127.0.0.1:3003/` (ver `docs/operacion/despliegue-local.md`):
-  - [ ] Selector de rango: `24h`/`7d`/`1m`/`1y` cambia los totales del Ranking.
-  - [ ] Paginación 15/pág, Anterior/Siguiente, indicadores.
-  - [ ] Filtro de canal acota y vuelve a página 1.
-  - [ ] Orden de columnas alterna asc/desc y vuelve a página 1.
-  - [ ] "Exportar CSV" descarga y abre bien en Excel (acentos, columnas).
-  - [ ] Tema claro y oscuro sin superficies rotas.
-  - [ ] Consola del navegador sin errores nuevos respecto a `main`.
+- [x] `docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build crm-frontend`
+- [x] Smoke test en `http://127.0.0.1:3003/` (Playwright + login de prueba, 2026-09-07):
+  - [x] Selector de rango: 4 opciones (`Hoy (Últimas 24h)` / `Últimos 7 días` / `Último mes` /
+        `Último año`), todas seleccionables y refrescan los datos.
+  - [~] Paginación: barra oculta correctamente con ≤ 15 usuarios; **no verificable visualmente**
+        con los datos de prueba (solo 3 usuarios). Lógica revisada en código.
+  - [x] Filtro de canal: `Todos`/`WhatsApp`/`Telegram` acotan la tabla, el contador
+        (`… (N usuarios)`) se actualiza, estado vacío controlado, "Exportar CSV" se deshabilita
+        sin filas.
+  - [x] Orden de columnas: `# Pos.` y `Total Mensajes` clicables, alternan asc/desc.
+  - [x] "Exportar CSV": descarga `ranking-agentes-2026-09-07.csv`, BOM UTF-8, cabeceras OK,
+        acentos correctos, respeta el orden actual.
+  - [x] Buscador resetea a página 1 (código; no visible con 3 usuarios).
+  - [x] Tema oscuro y claro: la Tabla Completa se ve bien en ambos.
+  - [x] Consola del navegador: sin errores; solo el warning benigno preexistente
+        "Auth initialization timeout".
+  - [ ] **Nota (fuera de 0002):** los chips de zona del **podio TOP 1-3** tienen bajo contraste
+        en tema claro (`text-amber-300` sobre `bg-amber-500/10`). Es preexistente (commit
+        `8b10183`, ya en producción) → se aborda en el frente de estandarización de interfaz.
 
 ## Documentación (Definition of Done)
 
