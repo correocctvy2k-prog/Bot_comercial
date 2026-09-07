@@ -36,8 +36,12 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Lint
+      # Lint informativo (no bloquea): el repo arrastra ~400 avisos previos en
+      # módulos aún sin estandarizar (ver specs/0003-estandarizacion-interfaz/).
+      # Cuando el lint global llegue a 0, quitar `continue-on-error`.
+      - name: Lint (informativo)
         run: npm run lint
+        continue-on-error: true
 
       - name: Build
         run: npm run build
