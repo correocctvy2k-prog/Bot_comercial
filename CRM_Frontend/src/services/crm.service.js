@@ -457,12 +457,17 @@ export const crmService = {
      */
     async getUserRanking(range = '7d') {
         const now = new Date();
-        let days = 7;
-        if (range === '1m') days = 30;
-        else if (range === '1y') days = 365;
 
-        // Usar rango amplio para asegurar histórico completo
-        const startDate = formatISO(startOfDay(subDays(now, Math.max(days, 30))));
+        // Respetar el rango de tiempo real seleccionado (mismo criterio que getDashboardStats)
+        let startDate;
+        if (range === '24h') {
+            startDate = formatISO(new Date(now.getTime() - 24 * 60 * 60 * 1000));
+        } else {
+            let days = 7;
+            if (range === '1m') days = 30;
+            else if (range === '1y') days = 365;
+            startDate = formatISO(startOfDay(subDays(now, days - 1)));
+        }
 
         const { data: logs } = await supabase
             .from("interactions_log")

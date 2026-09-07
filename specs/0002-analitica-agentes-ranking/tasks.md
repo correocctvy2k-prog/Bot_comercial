@@ -7,20 +7,22 @@ Marcar `[x]` al completar. Mantener actualizado durante toda la tarea.
 
 - [x] Crear rama `feat/0002-analitica-agentes-ranking`.
 - [x] Escribir spec retroactiva (`spec.md`, `plan.md`, `tasks.md`).
-- [ ] `git stash pop` del WIP en esta rama.
-- [ ] Re-stashear `CRM_Frontend/src/pages/CybersecurityDashboard.jsx` (ajeno a esta spec).
-- [ ] `crm.service.js` → `getUserRanking`: `startDate` según rango real (`24h`/`7d`/`1m`/`1y`).
-- [ ] `Dashboard.jsx` / `RankingSection`: paginación (`RANKING_PAGE_SIZE = 15`).
-- [ ] `RankingSection`: filtro por canal (`Todos`/`WhatsApp`/`Telegram`), reset a página 1.
-- [ ] `RankingSection`: orden por `# Pos.` y `Total Mensajes` (asc/desc), reset a página 1.
-- [ ] `RankingSection`: exportar CSV del ranking filtrado + ordenado (BOM UTF-8, escape).
-- [ ] `RankingSection`: buscador resetea a página 1.
-- [ ] `RankingSection`: pase de diseño (tokens de tema, sin `bg-white/5` / `border-white/10`).
+- [x] `git stash pop` del WIP en esta rama.
+- [x] Re-stashear `CRM_Frontend/src/pages/CybersecurityDashboard.jsx` (ajeno a esta spec).
+- [x] `crm.service.js` → `getUserRanking`: `startDate` según rango real (`24h`/`7d`/`1m`/`1y`).
+- [x] `Dashboard.jsx` / `RankingSection`: paginación (`RANKING_PAGE_SIZE = 15`).
+- [x] `RankingSection`: filtro por canal (`Todos`/`WhatsApp`/`Telegram`), reset a página 1.
+- [x] `RankingSection`: orden por `# Pos.` y `Total Mensajes` (asc/desc), reset a página 1.
+- [x] `RankingSection`: exportar CSV del ranking filtrado + ordenado (BOM UTF-8, escape).
+- [x] `RankingSection`: buscador resetea a página 1.
+- [x] `RankingSection`: pase de diseño (tokens de tema, sin `bg-white/5` / `border-white/10`).
 
 ## Verificación
 
-- [ ] `cd CRM_Frontend && npm run lint`
-- [ ] `cd CRM_Frontend && npm run build`
+- [x] `cd CRM_Frontend && npx eslint src/pages/Dashboard.jsx src/services/crm.service.js` — 0 errores
+      en los archivos tocados (el `npm run lint` global tiene 407 errores preexistentes en otros
+      archivos, fuera del alcance de 0002).
+- [x] `cd CRM_Frontend && npm run build` — verde (`✓ built in ~21s`).
 - [ ] `docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build crm-frontend`
 - [ ] Smoke test en `http://127.0.0.1:3003/` (ver `docs/operacion/despliegue-local.md`):
   - [ ] Selector de rango: `24h`/`7d`/`1m`/`1y` cambia los totales del Ranking.

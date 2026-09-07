@@ -20,15 +20,16 @@ a una versión fechada.
   `CRM_Frontend/docs/design-system.md`. Sin impacto en producción.
 
 ### CRM_Frontend — Analítica de Agentes
-- Ranking de Usuarios: `getUserRanking` respeta el rango de tiempo real (`24h`/`7d`/`1m`/`1y`)
-  en vez de forzar mínimo 30 días.
-- Ranking: paginación de la tabla completa (15 por página).
-- Ranking: pase de diseño para unificar superficies y tipografía con el ADN premium de la
-  cabecera; tokens de tema en vez de `bg-white/5`.
-- Ranking: filtro por canal (Todos / WhatsApp / Telegram), orden por columnas
-  (`# Pos.`, `Total Mensajes`) y exportación a CSV del ranking filtrado.
-- _Nota: este bloque se implementó antes de adoptar SDD. Pendiente spec retroactiva
-  `specs/0002-analitica-agentes-ranking/` antes de mover a una versión publicada._
+- **Ranking de Usuarios & Zonas** (`specs/0002-analitica-agentes-ranking/`, spec retroactiva):
+  - `getUserRanking` respeta el rango de tiempo real (`24h`/`7d`/`1m`/`1y`) en vez de forzar
+    mínimo 30 días; mismo criterio que `getDashboardStats`.
+  - Paginación de la tabla completa (15 por página) con controles e indicadores; se oculta
+    con ≤ 15 usuarios.
+  - Filtro por canal (Todos / WhatsApp / Telegram), orden por columnas (`# Pos.`,
+    `Total Mensajes`) y exportación a CSV del ranking filtrado y ordenado (BOM UTF-8).
+  - Buscador y todos los filtros resetean la paginación a la página 1.
+  - Pase de diseño: superficies y tipografía alineadas con el ADN premium de la cabecera;
+    tokens de tema en vez de `bg-white/5` / `border-white/10`.
 
 ---
 

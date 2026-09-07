@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { Activity, MessageSquare, Users, Zap, GitMerge, TrendingUp, ShieldCheck, Trophy, Crown, Medal, Award, MapPin, Calendar, Search, ChevronDown, ChevronUp, Filter, Sparkles } from "lucide-react";
+import { Activity, MessageSquare, Users, Zap, GitMerge, TrendingUp, ShieldCheck, Trophy, Crown, Medal, Award, MapPin, Calendar, Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Download, Filter, Sparkles } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { crmService } from "@/services/crm.service";
 
@@ -762,17 +762,73 @@ function ChannelDonut({ distribution = [], total = 0 }) {
 }
 
 // --- Ranking Section (Personas, Días de interacción & Zonas escaneadas) ----
+const RANKING_PAGE_SIZE = 15;
+
+const SortIcon = ({ active, dir }) => (
+    <span className={active ? "text-primary" : "opacity-30"}>
+        {active && dir === "asc" ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+    </span>
+);
+
 function RankingSection({ ranking = [] }) {
     const [search, setSearch] = useState("");
     const [expandedUser, setExpandedUser] = useState(null);
+    const [page, setPage] = useState(1);
+    const [channelFilter, setChannelFilter] = useState("all"); // all | whatsapp | telegram
+    const [sort, setSort] = useState({ key: "rank", dir: "asc" }); // key: rank | totalCount
 
     const filtered = ranking.filter(item => {
+        if (channelFilter !== "all" && item.channel !== channelFilter) return false;
         const q = search.toLowerCase();
+        if (!q) return true;
         const matchesUser = item.user.toLowerCase().includes(q) || item.phone.toLowerCase().includes(q);
         const matchesZone = item.scannedZones?.some(z => z.name.toLowerCase().includes(q) || z.code.toLowerCase().includes(q));
         const matchesDay = item.topDay.toLowerCase().includes(q);
         return matchesUser || matchesZone || matchesDay;
     });
+
+    const sorted = [...filtered].sort((a, b) => {
+        const res = sort.key === "totalCount" ? a.totalCount - b.totalCount : a.rank - b.rank;
+        return sort.dir === "asc" ? res : -res;
+    });
+
+    const toggleSort = (key) => {
+        setSort(s => s.key === key
+            ? { key, dir: s.dir === "asc" ? "desc" : "asc" }
+            : { key, dir: key === "totalCount" ? "desc" : "asc" });
+        setPage(1);
+    };
+
+    const changeChannel = (ch) => { setChannelFilter(ch); setPage(1); };
+
+    const exportCSV = () => {
+        const headers = ["Posicion", "Persona", "Contacto", "Canal", "Total Mensajes", "Dia con mas actividad", "Zonas escaneadas", "Ultima actividad"];
+        const esc = (v) => {
+            const s = String(v ?? "");
+            return /[",\n\r;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+        };
+        const lines = sorted.map(i => [
+            i.rank, i.user, i.phone, i.channel, i.totalCount, i.topDay,
+            (i.scannedZones || []).map(z => `${z.code} ${z.name} (${z.count}x)`).join(" | "),
+            i.lastSeen,
+        ].map(esc).join(","));
+        const BOM = String.fromCharCode(0xFEFF); // Excel detecta UTF-8 (acentos correctos)
+        const csv = BOM + [headers.join(","), ...lines].join("\r\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `ranking-agentes-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+    // Paginación de la tabla completa
+    const totalPages = Math.max(1, Math.ceil(sorted.length / RANKING_PAGE_SIZE));
+    const currentPage = Math.min(page, totalPages);
+    const paginated = sorted.slice((currentPage - 1) * RANKING_PAGE_SIZE, currentPage * RANKING_PAGE_SIZE);
 
     const top1 = ranking[0];
     const top2 = ranking[1];
@@ -794,13 +850,13 @@ function RankingSection({ ranking = [] }) {
     return (
         <div className="space-y-6 my-8">
             {/* Header del Ranking & Buscador */}
-            <div className="bg-card/50 backdrop-blur-md border border-border/80 p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+            <div className="bg-card/60 backdrop-blur-xl border border-border/80 p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-500 flex items-center justify-center text-black font-black shadow-inner shrink-0">
                         <Trophy size={22} />
                     </div>
                     <div>
-                        <h3 className="text-base font-black tracking-tight text-foreground flex items-center gap-2">
+                        <h3 className="text-lg font-black tracking-tight text-foreground flex items-center gap-2">
                             Ranking de Usuarios & Zonas Escaneadas
                             <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-0.5 rounded-full font-bold uppercase">
                                 Bot Comercial
@@ -818,7 +874,7 @@ function RankingSection({ ranking = [] }) {
                     <input
                         type="text"
                         value={search}
-                        onChange={(e) => setSearch(e.target.value)}
+                        onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                         placeholder="Buscar por persona, día o zona..."
                         className="w-full bg-background border border-border rounded-xl pl-9 pr-4 py-2 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all"
                     />
@@ -887,6 +943,7 @@ function RankingSection({ ranking = [] }) {
                 {/* TOP 2 */}
                 {top2 && (
                     <div className="relative bg-gradient-to-b from-slate-400/15 via-card/80 to-card/60 backdrop-blur-xl border border-slate-400/30 p-5 rounded-2xl shadow-lg hover:border-slate-400/50 transition-all group overflow-hidden">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-slate-400/10 rounded-full blur-2xl pointer-events-none" />
                         <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
                                 <div className="w-8 h-8 rounded-xl bg-slate-300 text-black font-black flex items-center justify-center text-sm shadow-md">
@@ -943,6 +1000,7 @@ function RankingSection({ ranking = [] }) {
                 {/* TOP 3 */}
                 {top3 && (
                     <div className="relative bg-gradient-to-b from-orange-500/15 via-card/80 to-card/60 backdrop-blur-xl border border-orange-500/30 p-5 rounded-2xl shadow-lg hover:border-orange-500/50 transition-all group overflow-hidden">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/10 rounded-full blur-2xl pointer-events-none" />
                         <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
                                 <div className="w-8 h-8 rounded-xl bg-orange-600 text-white font-black flex items-center justify-center text-sm shadow-md">
@@ -998,34 +1056,75 @@ function RankingSection({ ranking = [] }) {
             </div>
 
             {/* Tabla General Numerada (#1 al #N) */}
-            <div className="bg-card/40 backdrop-blur-sm border border-border rounded-2xl overflow-hidden shadow-md">
-                <div className="p-4 border-b border-border/80 bg-white/5 flex items-center justify-between">
+            <div className="bg-card/60 backdrop-blur-xl border border-border/80 rounded-2xl overflow-hidden shadow-sm">
+                <div className="p-4 border-b border-border/80 bg-muted/40 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                     <h4 className="font-bold text-sm text-foreground flex items-center gap-2">
                         <Users size={16} className="text-primary" />
                         Tabla Completa de Posiciones & Desglose ({filtered.length} usuarios)
                     </h4>
+                    <div className="flex flex-wrap items-center gap-2">
+                        {/* Filtro por canal */}
+                        <div className="flex bg-background border border-border rounded-xl p-1 gap-1">
+                            {[
+                                { id: "all", label: "Todos", icon: null },
+                                { id: "whatsapp", label: "WhatsApp", icon: <WhatsAppIcon size={12} /> },
+                                { id: "telegram", label: "Telegram", icon: <TelegramIcon size={12} /> },
+                            ].map(ch => (
+                                <button
+                                    key={ch.id}
+                                    type="button"
+                                    onClick={() => changeChannel(ch.id)}
+                                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 ${
+                                        channelFilter === ch.id
+                                            ? "bg-primary text-primary-foreground shadow-sm"
+                                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                    }`}
+                                >
+                                    {ch.icon}
+                                    <span>{ch.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                        {/* Exportar CSV */}
+                        <button
+                            type="button"
+                            onClick={exportCSV}
+                            disabled={sorted.length === 0}
+                            className="px-3 py-1.5 rounded-lg border border-border bg-card text-[11px] font-bold text-foreground hover:border-primary/40 hover:bg-muted/60 transition-all disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1.5"
+                        >
+                            <Download size={13} /> Exportar CSV
+                        </button>
+                    </div>
                 </div>
 
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs border-collapse">
                         <thead>
-                            <tr className="border-b border-border/60 bg-white/5 text-muted-foreground font-extrabold uppercase tracking-wider text-[10px]">
-                                <th className="py-3.5 px-4 w-16 text-center"># Posición</th>
+                            <tr className="border-b border-border/60 bg-muted/40 text-muted-foreground font-extrabold uppercase tracking-wider text-[10px]">
+                                <th className="py-3.5 px-4 w-20 text-center">
+                                    <button type="button" onClick={() => toggleSort("rank")} className="inline-flex items-center gap-1 uppercase tracking-wider hover:text-foreground transition-colors">
+                                        # Pos. <SortIcon active={sort.key === "rank"} dir={sort.dir} />
+                                    </button>
+                                </th>
                                 <th className="py-3.5 px-4">Persona / Contacto</th>
                                 <th className="py-3.5 px-4">Frecuencia por Día de la Semana</th>
                                 <th className="py-3.5 px-4">Zonas / Puntos Escaneados</th>
-                                <th className="py-3.5 px-4 text-center">Total Mensajes</th>
+                                <th className="py-3.5 px-4 text-center">
+                                    <button type="button" onClick={() => toggleSort("totalCount")} className="inline-flex items-center gap-1 uppercase tracking-wider hover:text-foreground transition-colors">
+                                        Total Mensajes <SortIcon active={sort.key === "totalCount"} dir={sort.dir} />
+                                    </button>
+                                </th>
                                 <th className="py-3.5 px-4 text-right">Última Actividad</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border/40">
-                            {filtered.map((item) => {
+                            {paginated.map((item) => {
                                 const isExpanded = expandedUser === item.rank;
                                 return (
                                     <React.Fragment key={item.rank}>
                                         <tr
                                             onClick={() => setExpandedUser(isExpanded ? null : item.rank)}
-                                            className="hover:bg-white/5 transition-colors cursor-pointer group"
+                                            className="hover:bg-muted/40 transition-colors cursor-pointer group"
                                         >
                                             <td className="py-3.5 px-4 text-center">
                                                 <span className={`inline-flex items-center justify-center w-7 h-7 rounded-xl border text-xs font-black ${getRankBadgeStyle(item.rank)}`}>
@@ -1069,7 +1168,7 @@ function RankingSection({ ranking = [] }) {
                                                 </div>
                                             </td>
                                             <td className="py-3.5 px-4 text-center">
-                                                <span className="font-black text-sm text-foreground bg-white/5 px-3 py-1 rounded-xl border border-white/10">
+                                                <span className="font-black text-sm text-foreground bg-muted/50 px-3 py-1 rounded-xl border border-border">
                                                     {item.totalCount}
                                                 </span>
                                             </td>
@@ -1088,7 +1187,7 @@ function RankingSection({ ranking = [] }) {
                                                         </h5>
                                                         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
                                                             {item.dayBreakdown?.map((d, idx) => (
-                                                                <div key={idx} className="bg-card border border-border/80 p-2.5 rounded-xl text-center shadow-xs">
+                                                                <div key={idx} className="bg-card border border-border/80 p-2.5 rounded-xl text-center shadow-sm">
                                                                     <span className="text-[10px] font-bold text-muted-foreground block uppercase">{d.day}</span>
                                                                     <span className="text-base font-black text-primary block mt-0.5">{d.count}</span>
                                                                     <span className="text-[9px] text-muted-foreground">interacciones</span>
@@ -1106,13 +1205,47 @@ function RankingSection({ ranking = [] }) {
                             {filtered.length === 0 && (
                                 <tr>
                                     <td colSpan={6} className="text-center py-10 text-muted-foreground text-xs">
-                                        No se encontraron usuarios o zonas coincidentes con "{search}".
+                                        No se encontraron usuarios o zonas con los filtros actuales{search ? ` ("${search}")` : ""}.
                                     </td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
                 </div>
+
+                {/* Paginación */}
+                {filtered.length > RANKING_PAGE_SIZE && (
+                    <div className="p-4 border-t border-border/80 bg-muted/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                        <span className="text-muted-foreground font-medium">
+                            Mostrando{" "}
+                            <strong className="text-foreground">{(currentPage - 1) * RANKING_PAGE_SIZE + 1}</strong>
+                            {"–"}
+                            <strong className="text-foreground">{Math.min(currentPage * RANKING_PAGE_SIZE, filtered.length)}</strong>
+                            {" "}de <strong className="text-foreground">{filtered.length}</strong> usuarios
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                type="button"
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                disabled={currentPage <= 1}
+                                className="px-3 py-1.5 rounded-lg border border-border bg-card font-bold text-foreground hover:border-primary/40 hover:bg-muted/60 transition-all disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1"
+                            >
+                                <ChevronLeft size={13} /> Anterior
+                            </button>
+                            <span className="px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary font-black">
+                                {currentPage} / {totalPages}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                disabled={currentPage >= totalPages}
+                                className="px-3 py-1.5 rounded-lg border border-border bg-card font-bold text-foreground hover:border-primary/40 hover:bg-muted/60 transition-all disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1"
+                            >
+                                Siguiente <ChevronRight size={13} />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

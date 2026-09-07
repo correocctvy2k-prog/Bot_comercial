@@ -43,8 +43,7 @@ Ver `CHANGELOG.md` (sección CRM_Frontend — Analítica de Agentes). Resumen:
 - Pase de diseño: superficies y tipografía alineadas con `../design-system.md`; tokens de
   tema en vez de `bg-white/5`.
 
-> Pendiente: spec retroactiva `specs/0002-analitica-agentes-ranking/` para formalizar lo
-> anterior bajo SDD.
+Formalizado bajo SDD en `specs/0002-analitica-agentes-ranking/` (spec retroactiva).
 
 ## Pendientes / ideas
 
