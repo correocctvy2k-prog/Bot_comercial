@@ -1,0 +1,44 @@
+# docker-compose.local.yml
+# -----------------------------------------------------------------------------
+# Override SOLO para desarrollo local. NO reemplaza a docker-compose.yml: lo
+# complementa. El archivo base NO se modifica (regla de ADR-0001).
+#
+# Uso mínimo (frontend + sus dependencias directas):
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build crm-frontend
+#
+# Uso completo (todos los backends que consume el CRM):
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build \
+#     crm-frontend comercial-bot asamblea-bot monitoreo-ti chatbot-soporte cctv-api cybersecurity-api
+#
+# Resultado: CRM_Frontend servido en http://127.0.0.1:3003/
+#
+# Por qué un override y no editar el base: la configuración del frontend es
+# build-time (VITE_* incrustadas por Vite en el bundle). Cambiar de entorno =
+# rebuild con otros build.args. Ver docs/lecciones-aprendidas/LL-0001-config-build-time-vite.md
+# -----------------------------------------------------------------------------
+
+services:
+  crm-frontend:
+    build:
+      # Estos build.args se fusionan por clave sobre los del base y ganan.
+      # Apuntan al host local porque el navegador (fuera de Docker) resuelve
+      # estas URLs directamente. cctv-api / cybersecurity-api NO llevan URL:
+      # el frontend los alcanza por ruta relativa vía nginx dentro de la red.
+      args:
+        VITE_BACKEND_URL: "http://127.0.0.1:3001"
+        VITE_MONITORING_BACKEND_URL: "http://127.0.0.1:3001"
+        VITE_SUPABASE_URL: "https://fxlbqlzsbrgnkpcduzxt.supabase.co"
+        VITE_SUPABASE_ANON_KEY: "${VITE_SUPABASE_ANON_KEY}"
+        VITE_SERVICES_TI_BACKEND_URL: "http://127.0.0.1:3004"
+        VITE_SUPPORT_BOT_URL: "http://127.0.0.1:3006"
+        VITE_CCTV_API_BASE: ""
+    # En local no bloqueamos el arranque del frontend por el healthcheck de las
+    # APIs de CCTV/Ciberseguridad: si están degradadas, esas secciones muestran
+    # error pero el resto de la app (incl. Analítica de Agentes) funciona.
+    depends_on:
+      cctv-api:
+        condition: service_started
+      cybersecurity-api:
+        condition: service_started
+      chatbot-soporte:
+        condition: service_started
