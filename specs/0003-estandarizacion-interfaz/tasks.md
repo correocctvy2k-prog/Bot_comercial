@@ -10,13 +10,28 @@ Spec paraguas: cada lote tiene su propia rama y PR. Marcar aquí el avance globa
 - [ ] Confirmar con quien pidió el cambio el orden de lotes (A→E) y el criterio de
       "identidad semántica" que se conserva.
 
-## Lote A — Shell y compartidos
+## Lote A — Shell y compartidos  ·  rama `feat/0003a-shell-compartidos`
 
-- [ ] `layout/Layout.jsx` — 10 `*-white/N`
-- [ ] `components/GerenciaDashboard.jsx` — 2
-- [ ] `components/support/SupportWidget.jsx` — 2
-- [ ] `components/SystemHealthPanel.jsx` — hex crudo
-- [ ] Smoke: todas las rutas montan el shell → recorrer 4-5 rutas en claro y oscuro
+- [x] `layout/Layout.jsx` — 10 `*-white/N` + `bg-black/10` + `border-white/[.06]` → tokens
+      (`hover:bg-muted/50`, `bg-muted/30`, `border-border/80`, chip de usuario `bg-muted/50
+      border-border hover:border-primary/30`). Queda un `shadow-[inset…rgba(255,255,255,.1)]`
+      decorativo en el item activo (no es superficie/borde) — se deja.
+- [x] `components/GerenciaDashboard.jsx` — `KpiCard`: `bg-[#0f111a]/80` → `bg-card/60
+      backdrop-blur-xl border-border/80`, `text-white` → `text-foreground`, `text-slate-500`
+      → `text-muted-foreground`. Colores de series Recharts (`#10b981`, `#8b5cf6`, `#38bdf8`)
+      se dejan (identidad de gráfica, §7).
+- [x] `components/SystemHealthPanel.jsx` — pase completo `zinc-*` → tokens (`text/border/bg
+      -muted*`, `divide-border/60`), `bg-red-950/10` → `bg-rose-500/10`. Se dejan los glows
+      semánticos `shadow-[…#hex]` de los puntos de estado (emerald/yellow/red) y `text-red-*`.
+- [x] `components/support/SupportWidget.jsx` — **sin cambios**: sus `bg-white/15`,
+      `border-white/20`, `text-white/80` están sobre el degradado fijo del header/FAB
+      (blanco sobre gradiente = permitido por §1, no rompe con el tema).
+- [x] Build verde. Lint: 5 errores **preexistentes** en estos archivos (`motion` sin usar,
+      `Date.now` en render, `react-refresh`, `error` sin usar), ninguno introducido por el pase.
+- [x] Smoke Playwright en claro y oscuro: shell (`/`), `/command-center` (SystemHealthPanel),
+      `/points` → pestaña Analítica (GerenciaDashboard). Sin regresiones en oscuro; las
+      `KpiCard` de GerenciaDashboard ahora se ven bien en claro (antes negras sobre blanco).
+      `/command-center` sigue siendo dark-only por diseño (se aborda en Lote B).
 - [ ] PR lote A
 
 ## Lote B — Analítica y Monitoreo
