@@ -47,6 +47,13 @@ export const chatbotAnalyticsService = {
 
     getHealth: (bot, opts) => getJSON(`/api/${bot}/health`, opts),
 
+    /** Fuerza al servicio a releer los logs y recalcular el modelo. */
+    async refresh(bot) {
+        const res = await fetch(`${BASE}/api/${bot}/refresh`, { method: "POST" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+    },
+
     /** URL de descarga CSV (se abre en pestaña nueva). */
     exportCsvUrl(bot, { dataset = "", from = "", to = "" } = {}) {
         const qs = new URLSearchParams(

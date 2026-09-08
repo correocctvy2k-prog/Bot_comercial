@@ -240,7 +240,30 @@ opción A apuntando las rutas al punto de montaje. El sondeo de respaldo cubre q
 
 ---
 
-## Despliegue en un servidor
+## Despliegue dentro del stack Skylab (recomendado)
+
+Este proyecto vive en el monorepo `Bot_comercial` y se despliega como servicio Docker junto
+al resto. Lo consume el módulo **Analítica de Agentes** del CRM (pestañas *Oskitar* y *Betty*),
+que llama a `GET /api/:bot/analytics` y `GET /api/:bot/stream` (SSE) directo, sin pasar por el
+nginx del CRM. Ver `specs/0004-integracion-analitica-chatbots/` y `docs/adr/ADR-0002`.
+
+```bash
+# desde la raíz del repo — host 3008 → contenedor 3000
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build chatbot-analytics
+```
+
+- **`.env` obligatorio** en `./chatbot-analytics/.env` (montado por `env_file`, **no versionado**).
+  Para producción: `LOG_SOURCE=ssh` + credenciales/rutas de los servidores de los bots. Copiar
+  de `.env.example`.
+- El `PORT` interno se fuerza a `3000` desde `docker-compose.yml` (`environment: PORT=3000`);
+  el `PORT` del `.env` se ignora.
+- Histórico acumulativo en el volumen `./chatbot-analytics/data` (`HISTORY_DIR=/app/data`).
+- El servidor manda `Access-Control-Allow-Origin: *` (API de solo lectura). **No trae
+  autenticación**: exponer sólo en la red interna. `MASK_PHONES=1` recomendado dentro del CRM.
+- En producción (`192.168.8.65`): `git pull` + el mismo `docker compose up -d --build
+  chatbot-analytics`, y `crm-frontend` con `VITE_CHATBOT_ANALYTICS_URL=http://192.168.8.65:3008`.
+
+## Despliegue standalone (sin Docker)
 
 Ejemplo para un Linux con systemd (Debian/Ubuntu/RHEL).
 

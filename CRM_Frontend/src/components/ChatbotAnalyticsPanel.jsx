@@ -134,6 +134,9 @@ export default function ChatbotAnalyticsPanel({ bot }) {
     // Live updates por SSE: al recibir 'update' se refresca.
     useEffect(() => api.subscribe(bot, () => query.refetch()), [bot]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // "Actualizar": pide al servicio releer los logs y luego refresca el modelo.
+    const hardRefresh = () => api.refresh(bot).catch(() => {}).finally(() => query.refetch());
+
     const m = query.data;
 
     if (query.isLoading) {
@@ -152,8 +155,8 @@ export default function ChatbotAnalyticsPanel({ bot }) {
     }
 
     return bot === "betty"
-        ? <BettyView m={m} range={range} setRange={setRange} onRefresh={() => query.refetch()} fetching={query.isFetching} />
-        : <OskitarView m={m} range={range} setRange={setRange} category={category} setCategory={setCategory} expanded={expanded} setExpanded={setExpanded} onRefresh={() => query.refetch()} fetching={query.isFetching} />;
+        ? <BettyView m={m} range={range} setRange={setRange} onRefresh={hardRefresh} fetching={query.isFetching} />
+        : <OskitarView m={m} range={range} setRange={setRange} category={category} setCategory={setCategory} expanded={expanded} setExpanded={setExpanded} onRefresh={hardRefresh} fetching={query.isFetching} />;
 }
 
 /* ------------------------------ toolbar ------------------------------ */

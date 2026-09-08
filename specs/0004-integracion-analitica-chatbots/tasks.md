@@ -35,15 +35,15 @@ Referencia: `spec.md` y `plan.md`.
 - [x] Smoke `http://127.0.0.1:3003/`: 3 pestañas, datos reales (Oskitar 40 conv / Betty 33
       clientes), sin errores de consola, claro y oscuro. `/support` redirige a `/`.
       CORS: se añadió middleware abierto a `chatbot-analytics/server.js`.
-- [ ] Pendiente: provocar un `update` real y confirmar el refresco por SSE en vivo (la
-      suscripción está montada; falta el smoke específico).
+- [x] SSE en vivo verificado (Playwright): un `POST /api/oskitar/refresh` externo dispara un
+      refetch del modelo en el panel abierto. Botón "Actualizar" = `POST /refresh` + refetch.
 
 ## Documentación (DoD)
 
 - [x] `docs/adr/ADR-0002-servicio-chatbot-analytics.md`.
 - [x] `CHANGELOG.md` — Analítica de Agentes + Infra.
 - [x] `CRM_Frontend/docs/analitica-agentes/README.md` — 3 pestañas, fuente de datos, SSE.
-- [ ] `chatbot-analytics/README.md` — nota de despliegue dentro del stack Skylab (pendiente).
+- [x] `chatbot-analytics/README.md` — sección "Despliegue dentro del stack Skylab".
 - [ ] Lección aprendida: el SSH desde Docker funcionó sin ajustes (no hizo falta).
 
 ## Cierre
