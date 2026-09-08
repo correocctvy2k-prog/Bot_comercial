@@ -1,0 +1,28 @@
+{
+  "name": "chatbot-analytics",
+  "version": "1.0.0",
+  "description": "Panel gerencial de analítica para los chatbots de Gane Palmira (Oskitar · Betty). Lee los logs (local o por SSH), mantiene un histórico acumulativo y muestra un tablero en vivo.",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  },
+  "optionalDependencies": {
+    "ssh2": "^1.16.0"
+  },
+  "keywords": [
+    "analytics",
+    "dashboard",
+    "chatbot",
+    "whatsapp",
+    "express",
+    "sse"
+  ]
+}

@@ -1,0 +1,30 @@
+# Dependencias
+node_modules/
+
+# Configuración y secretos
+.env
+.env.local
+
+# Datos reales (nunca al repo)
+conversations.log
+messages.log
+state-manager.log
+data/*
+!data/.gitkeep
+*.jsonl
+
+# Logs varios
+*.log
+!conversations.sample.log
+
+# El repo raíz ignora *.html en general; el tablero del panel sí se versiona.
+!public/index.html
+
+# Herramientas / editores
+.qodo/
+.vscode/
+.idea/
+.DS_Store
+
+# Recursos de diseño no necesarios para ejecutar
+Image/

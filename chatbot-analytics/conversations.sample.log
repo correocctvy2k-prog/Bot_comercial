@@ -1,0 +1,28 @@
+{"level":"info","message":{"content":"Hola","direction":"IN","from":"573000000001","messageId":"wamid.SAMPLE0001","type":"text"},"timestamp":"2026-09-01T13:10:05.100Z"}
+{"level":"info","message":{"content":"Hola Juan Perez, Bienvenido al Sistema de Soporte de Gane Palmira 💻🛠️","direction":"OUT","to":"573000000001","type":"text"},"timestamp":"2026-09-01T13:10:05.900Z"}
+{"level":"info","message":{"content":"Por favor ingrese su número de documento sin puntos ni comas","direction":"OUT","to":"573000000001","type":"text"},"timestamp":"2026-09-01T13:10:06.400Z"}
+{"level":"info","message":{"content":"10203040","direction":"IN","from":"573000000001","messageId":"wamid.SAMPLE0002","type":"text"},"timestamp":"2026-09-01T13:10:20.300Z"}
+{"level":"info","message":{"content":"Gracias por validar tu documento JUAN, ¿En qué puedo ayudarte hoy?","direction":"OUT","to":"573000000001","type":"text"},"timestamp":"2026-09-01T13:10:21.000Z"}
+{"level":"info","message":{"content":"Como hago un giro internacional?","direction":"IN","from":"573000000001","messageId":"wamid.SAMPLE0003","type":"text"},"timestamp":"2026-09-01T13:11:02.500Z"}
+{"level":"info","message":{"content":"📤 Video: Envío de giro en SuperFlex","direction":"OUT","mediaUrl":"https://ejemplo.local/videos/EnvioGiro.mp4","to":"573000000001","type":"video"},"timestamp":"2026-09-01T13:11:09.800Z"}
+{"level":"info","message":{"content":"Muchas gracias","direction":"IN","from":"573000000001","messageId":"wamid.SAMPLE0004","type":"text"},"timestamp":"2026-09-01T13:12:40.200Z"}
+{"level":"info","message":{"content":"Buen dia","direction":"IN","from":"573000000002","messageId":"wamid.SAMPLE0005","type":"text"},"timestamp":"2026-09-01T14:52:01.700Z"}
+{"level":"info","message":{"content":"Por favor ingrese su número de documento sin puntos ni comas","direction":"OUT","to":"573000000002","type":"text"},"timestamp":"2026-09-01T14:52:02.600Z"}
+{"level":"info","message":{"content":"41950000","direction":"IN","from":"573000000002","messageId":"wamid.SAMPLE0006","type":"text"},"timestamp":"2026-09-01T14:52:11.300Z"}
+{"level":"info","message":{"content":"Gracias por validar tu documento ANA, ¿En qué puedo ayudarte hoy?","direction":"OUT","to":"573000000002","type":"text"},"timestamp":"2026-09-01T14:52:12.100Z"}
+{"level":"info","message":{"content":"La impresora no imprime la tirilla","direction":"IN","from":"573000000002","messageId":"wamid.SAMPLE0007","type":"text"},"timestamp":"2026-09-01T14:55:34.300Z"}
+{"level":"info","message":{"content":"Revisa que la impresora tenga papel y esté encendida. Si el problema persiste, comunícate con Soporte Informática 📞 3104998495","direction":"OUT","to":"573000000002","type":"text"},"timestamp":"2026-09-01T14:55:39.700Z"}
+{"level":"info","message":{"content":"Hola","direction":"IN","from":"573000000003","messageId":"wamid.SAMPLE0008","type":"text"},"timestamp":"2026-09-02T09:30:00.000Z"}
+{"level":"info","message":{"content":"Hola Carlos Ruiz, Bienvenido al Sistema de Soporte de Gane Palmira 💻🛠️","direction":"OUT","to":"573000000003","type":"text"},"timestamp":"2026-09-02T09:30:00.800Z"}
+{"level":"info","message":{"content":"Por favor ingrese su número de documento sin puntos ni comas","direction":"OUT","to":"573000000003","type":"text"},"timestamp":"2026-09-02T09:30:01.300Z"}
+{"level":"info","message":{"content":"98765432","direction":"IN","from":"573000000003","messageId":"wamid.SAMPLE0009","type":"text"},"timestamp":"2026-09-02T09:30:15.900Z"}
+{"level":"info","message":{"content":"Gracias por validar tu documento CARLOS, ¿En qué puedo ayudarte hoy?","direction":"OUT","to":"573000000003","type":"text"},"timestamp":"2026-09-02T09:30:16.700Z"}
+{"level":"info","message":{"content":"Cuanto paga la pata millonaria?","direction":"IN","from":"573000000003","messageId":"wamid.SAMPLE0010","type":"text"},"timestamp":"2026-09-02T09:31:05.400Z"}
+{"level":"info","message":{"content":"🐾 Video: Pata Millonaria en SuperFlex","direction":"OUT","mediaUrl":"https://ejemplo.local/videos/PataMillonaria.mp4","to":"573000000003","type":"video"},"timestamp":"2026-09-02T09:31:12.100Z"}
+{"level":"info","message":{"content":"Buenas tardes","direction":"IN","from":"573000000004","messageId":"wamid.SAMPLE0011","type":"text"},"timestamp":"2026-09-02T18:05:44.000Z"}
+{"level":"info","message":{"content":"Por favor ingrese su número de documento sin puntos ni comas","direction":"OUT","to":"573000000004","type":"text"},"timestamp":"2026-09-02T18:05:44.900Z"}
+{"level":"info","message":{"content":"1122334455","direction":"IN","from":"573000000004","messageId":"wamid.SAMPLE0012","type":"text"},"timestamp":"2026-09-02T18:06:01.200Z"}
+{"level":"info","message":{"content":"Gracias por validar tu documento LUISA, ¿En qué puedo ayudarte hoy?","direction":"OUT","to":"573000000004","type":"text"},"timestamp":"2026-09-02T18:06:02.000Z"}
+{"level":"info","message":{"content":"El lector de huella no funciona, error OTP","direction":"IN","from":"573000000004","messageId":"wamid.SAMPLE0013","type":"text"},"timestamp":"2026-09-02T18:07:20.500Z"}
+{"level":"info","message":{"content":"Verifica que el dispositivo biométrico esté seleccionado en el administrador. Si continúa, llama a Soporte Informática 📞 3104998495","direction":"OUT","to":"573000000004","type":"text"},"timestamp":"2026-09-02T18:07:25.800Z"}
+{"level":"info","message":{"content":"Gracias","direction":"IN","from":"573000000004","messageId":"wamid.SAMPLE0014","type":"text"},"timestamp":"2026-09-02T18:09:10.000Z"}
