@@ -319,7 +319,7 @@ export default function Dashboard() {
                         className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                             agentType === "comercial"
                                 ? "bg-primary text-primary-foreground shadow-md"
-                                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                         }`}
                     >
                         <Zap size={15} />
@@ -330,7 +330,7 @@ export default function Dashboard() {
                         className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                             agentType === "soporte"
                                 ? "bg-primary text-primary-foreground shadow-md"
-                                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                         }`}
                     >
                         <ShieldCheck size={15} />

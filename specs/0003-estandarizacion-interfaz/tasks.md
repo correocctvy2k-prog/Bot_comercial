@@ -36,14 +36,45 @@ Spec paraguas: cada lote tiene su propia rama y PR. Marcar aquí el avance globa
 
 ## Lote B — Analítica y Monitoreo
 
-- [ ] `pages/Dashboard.jsx` (las 6 ocurrencias fuera de `RankingSection`)
-- [ ] `pages/Monitoring.jsx` — 5
-- [ ] `pages/MonitoringDashboard.jsx`
-- [ ] `pages/ServicesTIDashboard.jsx` — 3
-- [ ] `pages/CommandCenter.jsx` — 5 + 49 hex crudos
-- [ ] `components/AlertsTab.jsx`
-- [ ] Smoke `/`, `/monitoring`, `/monitoring/services-ti`, `/monitoring/dashboard`, `/command-center`
-- [ ] PR lote B
+> **Reclasificado tras auditar a fondo.** Lo que parecía un cambio mecánico no lo es:
+> `Monitoring.jsx` (79 líneas con color fijo), `ServicesTIDashboard.jsx` (33) y sobre todo
+> `CommandCenter.jsx` (123) tienen **componentes a medida en oscuro** (toast de alerta tipo
+> terminal, visualización de radar, consola de mando) y **decenas de `#hex` de Recharts**.
+> Forzarles tokens es rediseño, no sustitución → se parte en sub-lotes.
+
+### B1 — Cambios mecánicos seguros ·  rama `feat/0003b-analitica-monitoreo`
+
+- [x] `pages/Dashboard.jsx` — control segmentado Bot Comercial/Soporte: `hover:bg-white/5`
+      → `hover:bg-muted/50` (2). El resto de "colores" del archivo son marca de canal
+      (`#25D366` / `#2AABEE`) y series Recharts → se conservan (§1, §7).
+- [x] `pages/MonitoringDashboard.jsx` — `StatusDot` y `MiniStat`: `bg-slate-600` →
+      `bg-muted-foreground/40`, `text-slate-400` → `text-muted-foreground` (estado desconocido).
+- [x] Build verde, lint 0 en los archivos tocados. Smoke `/` en claro y oscuro sin regresión.
+- [ ] PR B1
+
+### B2 — Recharts / theming de gráficas (pendiente, su propia rama)
+
+- [ ] `Monitoring.jsx`, `ServicesTIDashboard.jsx`, `GerenciaDashboard.jsx`: `CartesianGrid
+      stroke`, ejes, `Tooltip contentStyle/labelStyle/itemStyle` a superficie estándar (§7).
+      ~90 `#hex` entre los tres. Requiere criterio de paleta de series (¿tokens? ¿fija?).
+
+### B3 — Componentes a medida en oscuro (pendiente, decisión de diseño)
+
+- [ ] Toast de notificación (duplicado en `Monitoring.jsx` y `ServicesTIDashboard.jsx`):
+      `bg-[#07101d]/95 bg-slate-950/70 text-slate-50/300/400` → ¿card estándar o se mantiene
+      el estilo "alerta terminal"? Unificar el duplicado en un componente compartido.
+- [ ] `Monitoring.jsx` visualización de radar/globo (líneas ~1235-1302): `border-white/10`,
+      gradientes `rgba(...)`. Es un widget decorativo; decidir si se toca.
+- [ ] `pages/CommandCenter.jsx` — **NO es un cambio de tokens.** Es una consola dark-only con
+      lenguaje de color propio (81 `text-zinc-*`, 81 `#hex`). Decisión: (a) se documenta como
+      excepción intencional dark-only, o (b) se rediseña con su propia spec. `Layout.jsx` ya
+      la excluye del header por `pathname === '/command-center'`.
+
+### B — resto
+
+- [ ] `components/AlertsTab.jsx` — sin color fijo; solo tiene 4 errores de lint preexistentes.
+- [ ] Smoke `/monitoring`, `/monitoring/services-ti` requieren `comercial-bot` (3001) y
+      Servicios TI (3004) arriba — hoy caídos (ver [[comercial-bot-build-roto-bullseye]]).
 
 ## Lote C — Puntos / CCTV / Ciberseguridad
 
