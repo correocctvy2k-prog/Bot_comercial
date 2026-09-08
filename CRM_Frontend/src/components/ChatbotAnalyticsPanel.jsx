@@ -499,13 +499,60 @@ function BettyView({ m, range, setRange, onRefresh, fetching }) {
                 </Panel>
             </div>
 
-            <Panel title="Flujos" subtitle="Inicios y clientes distintos" icon={<ListChecks size={16} className="text-primary" />}>
-                <MiniBars
-                    rows={(m.flows || []).map((f) => ({ name: f.name, starts: f.starts, customers: `${f.customers} clientes` }))}
-                    labelKey="name" valueKey="starts" subKey="customers"
-                    color="bg-gradient-to-r from-violet-500 to-fuchsia-500"
-                />
-            </Panel>
+            <div className="grid gap-6 xl:grid-cols-2">
+                <Panel title="Para qué usan a Betty" subtitle="Flujos por número de inicios" icon={<ListChecks size={16} className="text-primary" />}>
+                    <MiniBars
+                        rows={(m.flows || []).map((f) => ({ name: f.name, starts: f.starts, customers: `${f.customers} clientes` }))}
+                        labelKey="name" valueKey="starts" subKey="customers"
+                        color="bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                    />
+                </Panel>
+                <Panel title="Qué escriben" subtitle="Intenciones detectadas" icon={<MessageSquare size={16} className="text-primary" />}>
+                    <MiniBars
+                        rows={(m.intents || []).slice(0, 8).map((x) => ({ intent: x.intent, count: x.count, pct: pct(x.pct) }))}
+                        labelKey="intent" valueKey="count" subKey="pct"
+                        color="bg-gradient-to-r from-blue-500 to-indigo-500"
+                    />
+                </Panel>
+            </div>
+
+            <div className="grid gap-6 xl:grid-cols-2">
+                <Panel title="Recorrido — Consultar resultados" subtitle="Del total que entró al flujo" icon={<ListChecks size={16} className="text-primary" />}>
+                    <MiniBars
+                        rows={(m.resultadosFunnel || []).map((s) => ({ stage: s.stage, count: s.count, pct: pct(s.pctOfStart) }))}
+                        labelKey="stage" valueKey="count" subKey="pct" max={(m.resultadosFunnel || [])[0]?.count}
+                        color="bg-gradient-to-r from-emerald-500 to-teal-500"
+                    />
+                </Panel>
+                <Panel title="Tipos de mensaje" subtitle="Cómo escriben los clientes" icon={<Activity size={16} className="text-primary" />}>
+                    <MiniBars
+                        rows={(m.messageTypes || []).map((x) => ({ type: x.type, count: x.count, pct: pct(x.pct) }))}
+                        labelKey="type" valueKey="count" subKey="pct"
+                        color="bg-gradient-to-r from-amber-500 to-orange-500"
+                    />
+                </Panel>
+            </div>
+
+            <div className="grid gap-6 xl:grid-cols-2">
+                <Panel title="Clientes más activos" subtitle="Por número de mensajes" icon={<Users size={16} className="text-primary" />}>
+                    <MiniBars
+                        rows={(m.topCustomers || []).slice(0, 8).map((x) => ({ phone: x.phone, count: x.count }))}
+                        labelKey="phone" valueKey="count"
+                        color="bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                    />
+                </Panel>
+                <Panel title="Actividad por día de la semana" icon={<Activity size={16} className="text-primary" />}>
+                    <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={(m.byWeekday || []).map((w) => ({ name: (w.name || "").slice(0, 3), count: w.count }))} margin={{ top: 6, right: 8, left: -8, bottom: 0 }}>
+                            {grid}
+                            <XAxis dataKey="name" {...axis} />
+                            <YAxis {...axis} width={40} />
+                            <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                            <Bar dataKey="count" name="Mensajes" radius={[4, 4, 0, 0]} fill="#a855f7" />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </Panel>
+            </div>
 
             <Panel title={`Clientes (${customers.length})`} icon={<Users size={16} className="text-primary" />}>
                 <div className="overflow-x-auto">
