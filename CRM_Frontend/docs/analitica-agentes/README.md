@@ -4,22 +4,36 @@ Ruta: `/` · Archivo: `src/pages/Dashboard.jsx` · Servicio: `src/services/crm.s
 
 ## Propósito
 
-Monitoreo y gestión de los bots de IA en producción. Dos vistas conmutables:
+Monitoreo y gestión de los bots de IA en producción. **Tres pestañas** conmutables
+(`agentType`: `comercial` | `oskitar` | `betty`):
 
-| Vista | Contenido | Fuente de datos |
-|-------|-----------|-----------------|
+| Pestaña | Contenido | Fuente de datos |
+|---------|-----------|-----------------|
 | **Bot Comercial** | KPIs, gráfica de actividad, donut de distribución por canal, Ranking de Usuarios & Zonas Escaneadas, monitor de actividad en tiempo real | Supabase (`interactions_log`, `contact_identities`, `contacts`) directo |
-| **Bot Soporte Técnico** | KPIs resumidos + panel interactivo embebido (`iframe`) del ChatBotSoporte | `VITE_SUPPORT_BOT_URL` (servicio `chatbot-soporte`, puerto 3006) vía `postMessage` |
+| **Oskitar** (soporte técnico interno) | 8 KPIs, actividad por día/hora, embudo de atención, categorías de consulta, tabla de personas con expand; filtro de rango y categoría; export CSV; refresco por SSE | Servicio `chatbot-analytics` — `GET {VITE_CHATBOT_ANALYTICS_URL}/api/oskitar/analytics` + `/stream` (SSE) |
+| **Betty** (atención a clientes) | 4 KPIs, series por día/hora, flujos, tabla de clientes; export CSV; refresco por SSE | `chatbot-analytics` — `/api/betty/analytics` + `/stream` |
 
-## Piezas clave (`Dashboard.jsx`)
+`chatbot-analytics` (spec 0004 / ADR-0002) es un servicio Express aparte (host `3008` →
+contenedor `3000`) que lee los logs de los bots por SSH y calcula el modelo. El CRM sólo lo
+pinta. Ver `specs/0004-integracion-analitica-chatbots/`.
+
+> El módulo **Centro de Soporte** (`/support`, embebía `chatbot-soporte`) se retiró: su
+> analítica vive ahora en la pestaña Oskitar.
+
+## Piezas clave (`Dashboard.jsx` + componentes)
 
 | Componente | Responsabilidad |
 |------------|-----------------|
-| `Dashboard` (default) | Estado de vista (`agentType`), rango (`timeRange`), queries React Query, suscripción realtime a `interactions_log` |
-| `SoporteDashboardPanel` | Autoriza sesión CRM contra el bot de soporte, embebe `dashboard.html`, sincroniza tema por `postMessage` |
-| `KpiCard`, `ChannelDonut`, `CustomTooltip` | Presentación de métricas |
-| `RankingSection` + `SortIcon` | Podio Top 3 + tabla completa: búsqueda, filtro de canal, orden por columnas, paginación (`RANKING_PAGE_SIZE = 15`), export CSV |
+| `Dashboard` (default) | Estado de pestaña (`agentType`), rango (`timeRange`), queries React Query, realtime `interactions_log` |
+| `ChatbotAnalyticsPanel` (`src/components/`) | Pestañas Oskitar y Betty: `useQuery` contra `chatbotAnalytics.service`, SSE, Recharts, tablas, filtros, CSV |
+| `KpiCard`, `ChannelDonut`, `CustomTooltip` | Presentación de métricas del Bot Comercial |
+| `RankingSection` + `PodiumCard` + `ZoneSummary` | Podio Top 3 + tabla: búsqueda, filtro de canal, orden por columnas, paginación (`RANKING_PAGE_SIZE = 15`), export CSV |
 | `FeedItem` | Ítem del monitor de actividad en tiempo real |
+
+## Servicio (`chatbotAnalytics.service.js`)
+
+`listBots`, `getModel(bot, {range,category})`, `getHealth`, `exportCsvUrl`, `subscribe(bot, onUpdate)`
+(SSE). Base URL: `VITE_CHATBOT_ANALYTICS_URL`.
 
 ## Servicio (`crm.service.js`)
 
