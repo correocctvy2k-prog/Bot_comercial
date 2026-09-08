@@ -355,6 +355,99 @@ export const crmService = {
     },
 
     /**
+     * Ficha de contacto + transcripción para el Bot Comercial, a partir de un
+     * `provider_id` (que es lo que expone la tabla de Ranking). Devuelve la misma
+     * forma que `chatbotAnalytics.service.getContact` para que el drawer sea único.
+     * spec 0005, tanda 4.
+     * @param {string} providerId
+     * @param {{limit?:number, offset?:number}} [page]  offset = mensajes recientes a saltar
+     */
+    async getContactByProvider(providerId, { limit = 200, offset = 0 } = {}) {
+        // Identidad + hermanas (si el provider está vinculado a un contacto)
+        const { data: identity } = await supabase
+            .from("contact_identities")
+            .select("contact_id, provider_id, channel_type, profile_data, contacts(display_name)")
+            .eq("provider_id", providerId)
+            .maybeSingle();
+
+        let providerIds = [providerId];
+        let name = identity?.contacts?.display_name
+            || identity?.profile_data?.name
+            || identity?.profile_data?.first_name
+            || null;
+
+        if (identity?.contact_id) {
+            const { data: siblings } = await supabase
+                .from("contact_identities")
+                .select("provider_id")
+                .eq("contact_id", identity.contact_id);
+            if (siblings?.length) providerIds = siblings.map((s) => s.provider_id);
+        }
+
+        const channel = providerId.startsWith("tg_") ? "telegram" : "whatsapp";
+
+        // Total + extremos temporales (consultas ligeras, sin traer todo el historial)
+        const { count: total } = await supabase
+            .from("interactions_log")
+            .select("*", { count: "exact", head: true })
+            .in("provider_id", providerIds);
+
+        const { data: firstRow } = await supabase
+            .from("interactions_log")
+            .select("created_at")
+            .in("provider_id", providerIds)
+            .order("created_at", { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+        // Página: los `limit` más recientes tras saltar `offset` (para "cargar más" hacia atrás)
+        const { data: rows } = await supabase
+            .from("interactions_log")
+            .select("*")
+            .in("provider_id", providerIds)
+            .order("created_at", { ascending: false })
+            .range(offset, offset + limit - 1);
+
+        const page = (rows || []).slice().reverse();
+        const totalMessages = total || page.length;
+        const inbound = page.filter((m) => m.direction === "INCOMING").length;
+        const lastRow = page[page.length - 1];
+
+        return {
+            bot: "comercial",
+            contact: {
+                id: providerId,
+                phone: providerId,
+                name,
+                document: null,
+                channel,
+                firstInteraction: firstRow?.created_at || page[0]?.created_at || null,
+                lastInteraction: lastRow?.created_at || null,
+                sessions: null,
+                totalMessages,
+                inbound,
+                outbound: page.length - inbound,
+                categories: [],
+                status: null,
+            },
+            transcript: {
+                items: page.map((m) => ({
+                    iso: m.created_at,
+                    direction: m.direction === "INCOMING" ? "in" : "out",
+                    type: m.message_type || "text",
+                    content: m.content || null,
+                    hasMedia: false,
+                })),
+                total: totalMessages,
+                offset,
+                limit,
+                hasMore: offset + page.length < totalMessages,
+            },
+            journey: [],
+        };
+    },
+
+    /**
      * Vincula dos contactos: mueve todas las identidades del sourceId al targetId
      * y elimina el contacto fuente (ahora vacío).
      */

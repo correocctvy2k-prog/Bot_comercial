@@ -5,6 +5,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { crmService } from "@/services/crm.service";
 import ChatbotAnalyticsPanel from "@/components/ChatbotAnalyticsPanel";
 import { KpiCard, PeriodSelect, BotSummary, periodPhrase } from "@/components/botKit";
+import ContactDrawer from "@/components/ContactDrawer";
 
 import { supabase } from "@/services/supabase";
 import { formatDistanceToNow } from "date-fns";
@@ -589,6 +590,7 @@ function RankingSection({ ranking = [] }) {
     const [page, setPage] = useState(1);
     const [channelFilter, setChannelFilter] = useState("all"); // all | whatsapp | telegram
     const [sort, setSort] = useState({ key: "rank", dir: "asc" }); // key: rank | totalCount
+    const [ficha, setFicha] = useState(null); // { providerId, name } — ficha de contacto (spec 0005 T4)
 
     const filtered = ranking.filter(item => {
         if (channelFilter !== "all" && item.channel !== channelFilter) return false;
@@ -753,7 +755,7 @@ function RankingSection({ ranking = [] }) {
                                     </button>
                                 </th>
                                 <th className="hidden px-3 py-3 text-right sm:table-cell">Últ. actividad</th>
-                                <th className="w-10 py-3 pr-4" />
+                                <th className="w-24 py-3 pr-4" />
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border/40">
@@ -794,7 +796,16 @@ function RankingSection({ ranking = [] }) {
                                                 {item.lastSeen}
                                             </td>
                                             <td className="py-3 pr-4 text-right text-muted-foreground">
-                                                <ChevronDown size={15} className={`inline transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { e.stopPropagation(); setFicha({ providerId: item.phone, name: item.user }); }}
+                                                        className="rounded-md border border-border/70 bg-card px-2 py-1 text-[10px] font-bold text-foreground/80 transition-colors hover:bg-muted"
+                                                    >
+                                                        Ficha
+                                                    </button>
+                                                    <ChevronDown size={15} className={`inline transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                                                </div>
                                             </td>
                                         </tr>
 
@@ -882,6 +893,8 @@ function RankingSection({ ranking = [] }) {
                     </div>
                 )}
             </div>
+
+            <ContactDrawer open={!!ficha} bot="comercial" target={ficha} onClose={() => setFicha(null)} />
         </div>
     );
 }

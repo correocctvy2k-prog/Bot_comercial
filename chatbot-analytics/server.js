@@ -18,6 +18,8 @@ const config = require('./config');
 const { parseLog } = require('./lib/parser');
 const { buildModel } = require('./lib/analytics');
 const { buildBettyModel } = require('./lib/analyticsBetty');
+const { parseBettyMessages, parseBettyState } = require('./lib/parserBetty');
+const { buildOskitarContact, buildBettyContact } = require('./lib/contact');
 const { createBotSource } = require('./lib/logSource');
 const { maskModel } = require('./lib/privacy');
 const { toCSV } = require('./lib/csv');
@@ -100,6 +102,7 @@ const bots = config.bots.map((cfg) => ({
   sse: new Set(),
   state: {
     events: [],            // solo oskitar (eventos normalizados, para filtros)
+    betty: null,            // solo betty { messages, state } normalizados, para la ficha de contacto
     model: null,
     parseErrors: 0,
     totalLines: 0,
@@ -123,10 +126,15 @@ async function reload(bot, reason) {
     const merged = archived(bot, raw); // acumula en el historico local
 
     if (cfg.engine === 'betty') {
+      const stateTtlMs = config.bettyStateTtlSec * 1000;
       state.model = buildBettyModel(merged, {
         tzOffsetHours: config.tzOffsetHours,
-        stateTtlMs: config.bettyStateTtlSec * 1000,
+        stateTtlMs,
       });
+      state.betty = {
+        messages: parseBettyMessages(merged.messages || '').events,
+        state: parseBettyState(merged.state || '', { stateTtlMs }).events,
+      };
       state.parseErrors = state.model.meta.parseErrors || 0;
       state.totalLines = 0;
       console.log(
@@ -206,6 +214,28 @@ app.get('/api/:bot/users', resolveBot, (req, res) => {
   if (bot.cfg.engine !== 'oskitar') return res.json([]);
   if (!bot.state.model) return res.status(503).json({ error: 'Modelo aun no disponible' });
   res.json(outModel(oskitarModel(bot, req.query)).users);
+});
+
+// Ficha de contacto + transcripcion (spec 0005, tanda 4). Solo lectura, sale de
+// lo ya cargado en memoria. ?id=<telefono> (enmascarado si MASK_PHONES=1),
+// ?limit= (max 1000, def 200) y ?offset= (mensajes recientes a saltar) para paginar.
+app.get('/api/:bot/contact', resolveBot, (req, res) => {
+  const { bot } = req;
+  if (!bot.state.model) return res.status(503).json({ error: 'Modelo aun no disponible' });
+  const id = String(req.query.id || '').trim();
+  if (!id) return res.status(400).json({ error: 'Falta el parametro ?id=<telefono>' });
+
+  const paging = { limit: req.query.limit, offset: req.query.offset, mask: config.maskPhones };
+  try {
+    const card = bot.cfg.engine === 'betty'
+      ? buildBettyContact(bot.state.betty || { messages: [], state: [] }, id, paging)
+      : buildOskitarContact(bot.state.events, id, paging);
+    if (!card) return res.status(404).json({ error: 'Contacto no encontrado en el rango cargado' });
+    res.json(card);
+  } catch (err) {
+    console.error(`[${bot.cfg.id}:contact] ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get('/api/:bot/health', resolveBot, (req, res) => {

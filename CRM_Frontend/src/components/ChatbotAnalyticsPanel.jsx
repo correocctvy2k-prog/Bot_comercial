@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { chatbotAnalyticsService as api } from "@/services/chatbotAnalytics.service";
 import { KpiCard, PeriodSelect, BotSummary, periodPhrase } from "@/components/botKit";
+import ContactDrawer from "@/components/ContactDrawer";
 
 /* --------------------------------------------------------------------- */
 /*  Piezas de presentación (design-system.md)                           */
@@ -194,6 +195,7 @@ function Toolbar({ range, setRange, category, setCategory, categories, csvHref, 
 function OskitarView({ m, range, setRange, category, setCategory, expanded, setExpanded, onRefresh, fetching }) {
     const [view, setView] = useState("resumen"); // resumen | detalle
     const [dayPick, setDayPick] = useState(null);
+    const [ficha, setFicha] = useState(null);
     const k = m.kpis || {};
     const csvHref = api.exportCsvUrl("oskitar", {});
     const dayData = (m.byDay || []).map((d) => ({ ...d, day: fmtDay(d.date) }));
@@ -307,7 +309,7 @@ function OskitarView({ m, range, setRange, category, setCategory, expanded, setE
                                 <th className="px-3 py-2.5 text-center">Conv.</th>
                                 <th className="px-3 py-2.5 text-center">Mensajes</th>
                                 <th className="hidden px-3 py-2.5 text-right sm:table-cell">Última</th>
-                                <th className="w-8 py-2.5 pr-3" />
+                                <th className="w-24 py-2.5 pr-3" />
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border/40">
@@ -328,7 +330,17 @@ function OskitarView({ m, range, setRange, category, setCategory, expanded, setE
                                             <td className="px-3 py-2.5 text-center font-bold text-foreground">{u.sessions}</td>
                                             <td className="px-3 py-2.5 text-center"><span className="font-black text-foreground">{u.totalMessages}</span></td>
                                             <td className="hidden px-3 py-2.5 text-right text-[11px] text-muted-foreground sm:table-cell">{timeAgo(u.lastInteraction)}</td>
-                                            <td className="py-2.5 pr-3 text-right text-muted-foreground"><ChevronDown size={14} className={`inline transition-transform ${open ? "rotate-180" : ""}`} /></td>
+                                            <td className="py-2.5 pr-3 text-right text-muted-foreground">
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setFicha({ id: u.phone, name: u.name }); }}
+                                                        className="rounded-md border border-border/70 bg-card px-2 py-1 text-[10px] font-bold text-foreground/80 transition-colors hover:bg-muted"
+                                                    >
+                                                        Ficha
+                                                    </button>
+                                                    <ChevronDown size={14} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+                                                </div>
+                                            </td>
                                         </tr>
                                         {open && (
                                             <tr className="bg-muted/30">
@@ -349,6 +361,8 @@ function OskitarView({ m, range, setRange, category, setCategory, expanded, setE
                     </table>
                 </div>
             </Panel>
+
+            <ContactDrawer open={!!ficha} bot="oskitar" target={ficha} onClose={() => setFicha(null)} />
         </div>
     );
 }
@@ -444,6 +458,7 @@ function OskitarDetalle({ m, dayPick, setDayPick }) {
 /* ------------------------------- Betty ------------------------------- */
 
 function BettyView({ m, range, setRange, onRefresh, fetching }) {
+    const [ficha, setFicha] = useState(null);
     const k = m.kpis || {};
     const csvHref = api.exportCsvUrl("betty", {});
     const dayData = (m.byDay || []).map((d) => ({ ...d, day: fmtDay(d.date) }));
@@ -560,11 +575,16 @@ function BettyView({ m, range, setRange, onRefresh, fetching }) {
                                 <th className="px-3 py-2.5 text-center">Mensajes</th>
                                 <th className="px-3 py-2.5 text-center">No disp.</th>
                                 <th className="hidden px-3 py-2.5 text-right sm:table-cell">Última</th>
+                                <th className="w-24 py-2.5 pr-3" />
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border/40">
                             {customers.map((c, i) => (
-                                <tr key={i} className="transition-colors hover:bg-muted/40">
+                                <tr
+                                    key={i}
+                                    onClick={() => setFicha({ id: c.phone, name: c.phone })}
+                                    className="cursor-pointer transition-colors hover:bg-muted/40"
+                                >
                                     <td className="px-3 py-2.5">
                                         <p className="font-bold text-foreground">{c.phone}</p>
                                         <p className="text-[10px] text-muted-foreground">intención: {c.topIntent || "—"}</p>
@@ -573,13 +593,18 @@ function BettyView({ m, range, setRange, onRefresh, fetching }) {
                                     <td className="px-3 py-2.5 text-center font-bold text-foreground">{c.messages}</td>
                                     <td className="px-3 py-2.5 text-center text-muted-foreground">{c.notAvailable ?? 0}</td>
                                     <td className="hidden px-3 py-2.5 text-right text-[11px] text-muted-foreground sm:table-cell">{timeAgo(c.lastActivity)}</td>
+                                    <td className="py-2.5 pr-3 text-right">
+                                        <span className="rounded-md border border-border/70 bg-card px-2 py-1 text-[10px] font-bold text-foreground/80">Ficha</span>
+                                    </td>
                                 </tr>
                             ))}
-                            {customers.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-muted-foreground">Sin clientes en el rango.</td></tr>}
+                            {customers.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-muted-foreground">Sin clientes en el rango.</td></tr>}
                         </tbody>
                     </table>
                 </div>
             </Panel>
+
+            <ContactDrawer open={!!ficha} bot="betty" target={ficha} onClose={() => setFicha(null)} />
         </div>
     );
 }

@@ -647,4 +647,7 @@ function buildUserDetail({ sessions, scopedEvents, names, docs, userSessionCount
     .sort((a, b) => b.totalMessages - a.totalMessages);
 }
 
-module.exports = { buildModel, classify, CATEGORY_RULES };
+module.exports = {
+  buildModel, classify, isSubstantiveInbound, cleanName,
+  CATEGORY_RULES, CONTINGENCY_RULES,
+};

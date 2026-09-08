@@ -404,6 +404,7 @@ Base: `http://<host>:<port>`
 | `GET` | `/api/bots` | Lista de bots (`id`, `name`, `engine`, `ready`). |
 | `GET` | `/api/<bot>/analytics` | Modelo completo. Oskitar acepta `?from=&to=&category=`. |
 | `GET` | `/api/<bot>/users` | Detalle por usuario (solo Oskitar; `[]` para Betty). |
+| `GET` | `/api/<bot>/contact` | Ficha + transcripción de un teléfono: `?id=<tel>&limit=&offset=`. Solo lectura, respeta `MASK_PHONES`. Ver DOCUMENTATION §9. |
 | `GET` | `/api/<bot>/health` | Estado: fuente, conexión, `parseErrors`, histórico, uptime. |
 | `POST` | `/api/<bot>/refresh` | Fuerza relectura + recálculo. |
 | `GET` | `/api/<bot>/stream` | Server-Sent Events: `hello` al conectar, `update` en cada recálculo. |

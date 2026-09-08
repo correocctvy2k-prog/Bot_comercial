@@ -71,8 +71,9 @@ una **ficha de contacto con historial de conversación** por bot.
 - [ ] Oskitar y Betty usan el `KpiCard` y el `<select>` de periodo idénticos a Bot Comercial.
 - [ ] Sidebar: grupo "Bots Gane Palmira" con 3 sub-ítems; rutas `/bots/*`; `/` redirige.
       El deep-link y el conmutador de pestañas mantienen la URL sincronizada.
-- [ ] Cada bot tiene una ficha de contacto con transcripción real (Oskitar/Betty vía servicio;
-      Comercial vía Supabase), estado y datos del contacto.
+- [x] Cada bot tiene una ficha de contacto con transcripción real (Oskitar/Betty vía servicio
+      `GET /api/<bot>/contact`; Comercial vía Supabase `getContactByProvider`), estado y datos
+      del contacto. Drawer `src/components/ContactDrawer.jsx`, se abre desde la fila de la tabla.
 - [ ] `npm run lint` (sin errores nuevos) + `npm run build` verdes; verificado en Docker local,
       tema claro y oscuro.
 

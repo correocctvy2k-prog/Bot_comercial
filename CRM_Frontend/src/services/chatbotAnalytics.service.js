@@ -46,6 +46,17 @@ export const chatbotAnalyticsService = {
 
     getHealth: (bot, opts) => getJSON(`/api/${bot}/health`, opts),
 
+    /**
+     * Ficha de contacto + transcripción de un teléfono (spec 0005, tanda 4).
+     * @param {"oskitar"|"betty"} bot
+     * @param {string} id  teléfono (enmascarado si el servicio tiene MASK_PHONES=1)
+     * @param {{limit?:number, offset?:number}} [page]  offset = mensajes recientes a saltar
+     */
+    getContact(bot, id, { limit = 200, offset = 0 } = {}, opts) {
+        const qs = new URLSearchParams({ id, limit: String(limit), offset: String(offset) }).toString();
+        return getJSON(`/api/${bot}/contact?${qs}`, opts);
+    },
+
     /** Fuerza al servicio a releer los logs y recalcular el modelo. */
     async refresh(bot) {
         const res = await fetch(`${BASE}/api/${bot}/refresh`, { method: "POST" });

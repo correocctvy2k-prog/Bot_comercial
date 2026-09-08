@@ -19,3 +19,5 @@ Qué no: lo que ya está en la doc de un módulo o en un ADR.
 | ID | Título | Módulo | Fecha |
 |----|--------|--------|-------|
 | [LL-0001](LL-0001-config-build-time-vite.md) | La config del CRM_Frontend es build-time, no runtime | CRM_Frontend | 2026-09-07 |
+| [LL-0002](LL-0002-cadena-de-ramas-sin-merge.md) | Cadena larga de ramas sin fusionar a `main` | Infra/Docs | 2026-09-08 |
+| [LL-0003](LL-0003-resolver-telefono-enmascarado.md) | Resolver un teléfono enmascarado sin exponer el crudo ni cambiar el modelo | chatbot-analytics | 2026-09-08 |

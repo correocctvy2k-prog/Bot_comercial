@@ -353,6 +353,22 @@ Ver la tabla de rutas en el [`README.md`](../README.md#api-rest). Notas:
 - `GET /api/<bot>/analytics` → 503 `{error}` si el modelo aún no está listo
   (arranque o SSH desconectado).
 - `GET /api/<bot>/users` → `[]` para Betty (no aplica).
+- `GET /api/<bot>/contact?id=<telefono>&limit=&offset=` (spec 0005, tanda 4) →
+  ficha de un contacto + transcripción, **solo lectura**, reconstruida de lo ya
+  cargado en memoria (`state.events` / `state.betty`), sin releer logs ni recalcular
+  el modelo. Respeta `MASK_PHONES`: con el enmascarado activo el `id` es el teléfono
+  ya enmascarado y se resuelve por `maskPhone(peer) === id`.
+  `limit` (máx. 1000, def. 200) + `offset` (nº de mensajes recientes a saltar) paginan
+  la transcripción hacia atrás. Respuesta:
+  `{ bot, contact: { id, phone, name, document, firstInteraction, lastInteraction,
+  sessions, totalMessages, inbound, outbound, categories[], status }, transcript:
+  { items: [{ iso, direction: "in"|"out", type, content, hasMedia }], total, offset,
+  limit, hasMore, note? }, journey: [{ iso, label }] }`.
+  Oskitar: transcripción completa (IN/OUT con hora); `status` = `escalado` /
+  `resuelto` / `atendido`. Betty: `transcript` son solo los mensajes del cliente
+  (el `messages.log` no trae hora ni respuestas del bot → `note`), y `journey` es el
+  recorrido por la máquina de estados con horas aproximadas. `400` sin `id`, `404`
+  si el teléfono no aparece en el rango cargado, `503` si el modelo no está listo.
 - `GET /api/<bot>/health` → incluye `source` (tipo, conexión, tamaño, mtime),
   `parseErrors`, `history` (`dir`, `keepDays`, `files: { <key>: { lines, since } }`),
   `sseClients`, `uptimeSec`.

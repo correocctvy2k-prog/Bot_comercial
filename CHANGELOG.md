@@ -21,7 +21,18 @@ a una versión fechada.
     (`Hoy 24h / 7 días / mes / año`) que Bot Comercial.
   - **Resumen en lenguaje natural** al inicio de cada vista (generado de los KPIs del periodo).
   - Quitado el KPI "Cobertura SIISS" de Bot Comercial.
-  - _Pendiente (tanda 4): ficha de contacto + historial de conversación por bot._
+- **Ficha de contacto + historial por bot** (`specs/0005-bots-gane-palmira/`, tanda 4):
+  - Nuevo `src/components/ContactDrawer.jsx`: drawer lateral **solo lectura** con datos del
+    contacto (teléfono, documento, primera/última interacción, nº de conversaciones), estado
+    (`escalado` / `resuelto` / `no disponible` / `atendido`), categorías/flujos y la
+    **transcripción de la conversación** tipo chat, con separadores de fecha y "cargar
+    mensajes anteriores" (`useInfiniteQuery`, páginas de 200).
+  - Se abre desde la fila de la tabla de **Personas** (Oskitar), **Clientes** (Betty) y del
+    **Ranking** (Bot Comercial) — botón "Ficha".
+  - `chatbotAnalytics.service.js`: `getContact(bot, id, {limit, offset})`.
+  - `crm.service.js`: `getContactByProvider(providerId, {limit, offset})` — historial del Bot
+    Comercial desde Supabase (`interactions_log` por `provider_id` + identidades hermanas),
+    devuelto con la misma forma que el endpoint del servicio para reutilizar el drawer.
 
 ### CRM_Frontend — Analítica de Agentes · Integración Oskitar / Betty
 - **Analítica de chatbots nativa** (`specs/0004-integracion-analitica-chatbots/`, `ADR-0002`):
@@ -39,6 +50,13 @@ a una versión fechada.
   (Oskitar + Betty) incorporado al repo; `Dockerfile` propio; servicio en `docker-compose*`
   (host 3008 → contenedor 3000), lee los logs de los bots por SSH; CORS abierto para el CRM.
   Nueva build-arg `VITE_CHATBOT_ANALYTICS_URL`. `.env` con credenciales SSH **no versionado**.
+- **Servicio `chatbot-analytics` · endpoint de ficha de contacto** (`specs/0005`, tanda 4):
+  nuevo `GET /api/<bot>/contact?id=<tel>&limit=&offset=` (`lib/contact.js`) — reconstruye
+  datos + transcripción de un teléfono desde lo ya cargado en memoria (`state.events` /
+  `state.betty`), **sin releer logs ni recalcular el modelo**. Respeta `MASK_PHONES` (resuelve
+  el `id` enmascarado por `maskPhone(peer) === id`). Aditivo: no cambia el contrato de las
+  rutas existentes → sin ADR. Betty: solo mensajes del cliente (el log no trae hora ni
+  respuestas del bot) + recorrido de la máquina de estados.
 - **Modelo de trabajo SDD y gobernanza** (`specs/0001-modelo-de-trabajo-sdd/`, `ADR-0001`):
   documento canónico `docs/WORKING_MODEL.md` + punteros por herramienta de IA
   (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`); estructura
