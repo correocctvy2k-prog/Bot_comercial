@@ -57,7 +57,9 @@ const MENU_ITEMS_RAW = [
         section: "Sistema Operativo",
         items: [
             { to: '/command-center', icon: Terminal, label: 'Centro de Mando', module: 'command-center' },
-            { to: '/support', icon: LifeBuoy, label: 'Centro de Soporte', module: 'bot-activity' },
+            // Centro de Soporte retirado (spec 0004): la analítica de soporte vive en la pestaña
+            // Oskitar de Analítica de Agentes. Reactivar descomentando aquí y en App.jsx.
+            // { to: '/support', icon: LifeBuoy, label: 'Centro de Soporte', module: 'bot-activity' },
             {
                 label: 'Monitoreo IT',
                 icon: Activity,

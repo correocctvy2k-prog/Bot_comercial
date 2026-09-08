@@ -76,6 +76,18 @@ function archived(bot, raw) {
 
 const app = express();
 app.disable('x-powered-by');
+
+// CORS abierto: API de solo lectura, consumida desde el CRM (otro origen) y desde
+// el propio tablero. Cubre también SSE. Ver specs/0004 y ADR-0002.
+app.use((req, res, next) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+  res.set('Vary', 'Origin');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  return next();
+});
+
 app.use(express.json());
 
 // -------------------------------------------------------------------------

@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
-import { Activity, MessageSquare, Users, Zap, GitMerge, TrendingUp, ShieldCheck, Trophy, Crown, Medal, Award, MapPin, Calendar, Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Download, Filter, Sparkles } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Activity, MessageSquare, Users, Zap, GitMerge, TrendingUp, ShieldCheck, Trophy, Crown, Medal, Award, MapPin, Calendar, Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Download, Filter, Sparkles, Bot } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { crmService } from "@/services/crm.service";
+import ChatbotAnalyticsPanel from "@/components/ChatbotAnalyticsPanel";
 
 import { supabase } from "@/services/supabase";
-import { useTheme } from "@/components/theme-provider";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -58,171 +58,10 @@ const DonutLabel = ({ cx, cy, total }) => (
 // --------------------------------------------------------------------
 //  DASHBOARD PRINCIPAL
 // --------------------------------------------------------------------
-// Bot Soporte Técnico - Vista nativa del módulo
-function SoporteDashboardPanel({ theme }) {
-    const iframeRef = useRef(null);
-    const [status, setStatus] = useState("authorizing");
-    const [iframeSrc, setIframeSrc] = useState("");
-    const [systemTheme, setSystemTheme] = useState(() =>
-        window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
-    );
-
-    const supportBaseUrl = useCallback(() => {
-        const configuredUrl = import.meta.env.VITE_SUPPORT_BOT_URL?.trim();
-        if (configuredUrl) return configuredUrl.replace(/\/$/, "");
-        return `${window.location.protocol}//${window.location.hostname}:3004`;
-    }, []);
-
-    useEffect(() => {
-        if (theme !== "system") return;
-        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-        const handleChange = (event) => setSystemTheme(event.matches ? "dark" : "light");
-        handleChange(mediaQuery);
-        mediaQuery.addEventListener("change", handleChange);
-        return () => mediaQuery.removeEventListener("change", handleChange);
-    }, [theme]);
-
-    const resolveTheme = useCallback(() => {
-        if (theme === "light" || theme === "dark") return theme;
-        return systemTheme;
-    }, [systemTheme, theme]);
-
-    const syncTheme = useCallback(() => {
-        const frameWindow = iframeRef.current?.contentWindow;
-        if (!frameWindow) return;
-        const targetOrigin = new URL(supportBaseUrl(), window.location.origin).origin;
-        frameWindow.postMessage({
-            source: "skylab-crm",
-            type: "theme",
-            theme: resolveTheme(),
-        }, targetOrigin);
-    }, [resolveTheme, supportBaseUrl]);
-
-    const openDashboard = useCallback(async () => {
-        setStatus("authorizing");
-        setIframeSrc("");
-        try {
-            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-            if (sessionError || !session?.access_token) {
-                console.error("[SoportePanel] Sin sesión activa del CRM:", sessionError);
-                throw new Error("No hay una sesión activa del CRM.");
-            }
-            const baseUrl = supportBaseUrl();
-            console.log("[SoportePanel] Intentando conectar con:", baseUrl);
-            const response = await fetch(`${baseUrl}/api/crm-session`, {
-                method: "POST",
-                headers: { Authorization: `Bearer ${session.access_token}` },
-                credentials: "include",
-            });
-            console.log("[SoportePanel] Respuesta /api/crm-session:", response.status, response.statusText);
-            if (!response.ok) {
-                const result = await response.json().catch(() => ({}));
-                console.error("[SoportePanel] Error en /api/crm-session:", result);
-                throw new Error(result.error || `El servicio respondió con estado ${response.status}.`);
-            }
-            const dashboardResponse = await fetch(`${baseUrl}/api/session`, {
-                credentials: "include",
-                cache: "no-store",
-            });
-            console.log("[SoportePanel] Respuesta /api/session:", dashboardResponse.status, dashboardResponse.statusText);
-            if (!dashboardResponse.ok) {
-                throw new Error("El servicio no pudo conservar la sesión integrada.");
-            }
-            const params = new URLSearchParams({
-                embedded: "true",
-                theme: resolveTheme(),
-                parentOrigin: window.location.origin,
-                t: String(Date.now()),
-                bust: String(Math.random()),
-            });
-            setIframeSrc(`${baseUrl}/dashboard.html?${params.toString()}`);
-        } catch (err) {
-            console.error("[SoportePanel] No fue posible abrir el dashboard:", err);
-            setStatus("error");
-        }
-    }, [resolveTheme, supportBaseUrl]);
-
-    useEffect(() => {
-        openDashboard();
-    }, [openDashboard]);
-
-    useEffect(() => {
-        const expectedOrigin = new URL(supportBaseUrl(), window.location.origin).origin;
-        const handleSupportMessage = (event) => {
-            if (
-                event.origin !== expectedOrigin ||
-                event.source !== iframeRef.current?.contentWindow ||
-                event.data?.source !== "skylab-support"
-            ) return;
-            if (event.data.type === "ready") {
-                setStatus("ready");
-                syncTheme();
-            }
-            if (event.data.type === "session-required") openDashboard();
-        };
-        window.addEventListener("message", handleSupportMessage);
-        return () => window.removeEventListener("message", handleSupportMessage);
-    }, [openDashboard, supportBaseUrl, syncTheme]);
-
-    useEffect(() => {
-        if (status === "ready") syncTheme();
-    }, [status, syncTheme]);
-
-    useEffect(() => {
-        if (!iframeSrc || status !== "authorizing") return;
-        const timeoutId = window.setTimeout(() => setStatus("error"), 20000);
-        return () => window.clearTimeout(timeoutId);
-    }, [iframeSrc, status]);
-
-    return (
-        <div className="w-full h-[calc(100vh-140px)] min-h-[500px] flex flex-col">
-            {iframeSrc && (
-                <iframe
-                    ref={iframeRef}
-                    src={iframeSrc}
-                    title="Dashboard Bot Soporte Técnico"
-                    onLoad={syncTheme}
-                    onError={() => setStatus("error")}
-                    className={`w-full h-full border-0 transition-opacity duration-300 ${
-                        status === "ready" ? "opacity-100" : "opacity-0"
-                    }`}
-                    loading="eager"
-                />
-            )}
-
-            {status === "authorizing" && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background/90 backdrop-blur-sm">
-                    <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin shadow-lg" />
-                    <p className="text-muted-foreground text-sm font-semibold tracking-tight">
-                        Conectando con el panel de soporte técnico...
-                    </p>
-                </div>
-            )}
-
-            {status === "error" && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background/95 backdrop-blur-md p-6 text-center">
-                    <ShieldCheck size={52} className="text-rose-500/60" />
-                    <p className="text-foreground font-bold text-base">No se pudo conectar al servicio de soporte técnico.</p>
-                    <p className="text-muted-foreground text-xs max-w-sm">
-                        Asegúrese de que el bot de soporte esté corriendo correctamente en el puerto o contenedor asignado.
-                    </p>
-                    <button
-                        type="button"
-                        onClick={openDashboard}
-                        className="mt-2 px-6 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-black uppercase tracking-wider rounded-xl shadow-lg hover:shadow-primary/30 transition-all active:scale-95"
-                    >
-                        Reintentar Conexión
-                    </button>
-                </div>
-            )}
-        </div>
-    );
-}
 export default function Dashboard() {
     const queryClient = useQueryClient();
-    const { theme } = useTheme();
     const [timeRange, setTimeRange] = useState("24h");
-    const [agentType, setAgentType] = useState("comercial"); // "comercial" | "soporte"
+    const [agentType, setAgentType] = useState("comercial"); // "comercial" | "oskitar" | "betty"
 
     const { data: stats } = useQuery({
         queryKey: ["stats", timeRange],
@@ -299,7 +138,7 @@ export default function Dashboard() {
     const changePct = stats?.changePct ?? 0;
 
     return (
-        <div className={`${agentType === "soporte" ? "space-y-4" : "space-y-8"} animate-in fade-in slide-in-from-bottom-4 duration-700`}>
+        <div className={`${agentType !== "comercial" ? "space-y-6" : "space-y-8"} animate-in fade-in slide-in-from-bottom-4 duration-700`}>
 
             {/* -- Selector de Agentes de IA -- */}
             <div className="bg-card/70 border border-border p-3.5 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-md">
@@ -314,96 +153,30 @@ export default function Dashboard() {
                 </div>
 
                 <div className="flex bg-background border border-border rounded-2xl p-1 gap-1 w-full md:w-auto">
-                    <button
-                        onClick={() => setAgentType("comercial")}
-                        className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                            agentType === "comercial"
-                                ? "bg-primary text-primary-foreground shadow-md"
-                                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                        }`}
-                    >
-                        <Zap size={15} />
-                        <span>Bot Comercial</span>
-                    </button>
-                    <button
-                        onClick={() => setAgentType("soporte")}
-                        className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                            agentType === "soporte"
-                                ? "bg-primary text-primary-foreground shadow-md"
-                                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                        }`}
-                    >
-                        <ShieldCheck size={15} />
-                        <span>Bot Soporte Técnico</span>
-                    </button>
+                    {[
+                        { id: "comercial", label: "Bot Comercial", icon: <Zap size={15} /> },
+                        { id: "oskitar", label: "Oskitar", icon: <ShieldCheck size={15} /> },
+                        { id: "betty", label: "Betty", icon: <Bot size={15} /> },
+                    ].map(({ id, label, icon }) => (
+                        <button
+                            key={id}
+                            onClick={() => setAgentType(id)}
+                            className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                                agentType === id
+                                    ? "bg-primary text-primary-foreground shadow-md"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                            }`}
+                        >
+                            {icon}
+                            <span>{label}</span>
+                        </button>
+                    ))}
                 </div>
             </div>
 
-            {/* -------------- VISTA BOT DE SOPORTE TÉCNICO (ChatBotSoporte) -------------- */}
-            {agentType === "soporte" && (
-                <div className="-mx-2 sm:-mx-4 -mt-2">
-                    {/* KPI Summary Grid para Soporte Técnico */}
-                    <div className="px-2 sm:px-4 pt-2">
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                            <div className="bg-card/60 backdrop-blur-xl border border-border/80 p-4 rounded-2xl flex items-center justify-between shadow-sm hover:border-primary/30 transition-all">
-                                <div>
-                                    <p className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider">Atención IA</p>
-                                    <h3 className="text-xl sm:text-2xl font-black text-foreground mt-1">94.8%</h3>
-                                    <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
-                                        <Zap size={11} /> Automatización activa
-                                    </span>
-                                </div>
-                                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-primary shrink-0">
-                                    <Zap size={20} />
-                                </div>
-                            </div>
-
-                            <div className="bg-card/60 backdrop-blur-xl border border-border/80 p-4 rounded-2xl flex items-center justify-between shadow-sm hover:border-primary/30 transition-all">
-                                <div>
-                                    <p className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider">Respuesta Promedio</p>
-                                    <h3 className="text-xl sm:text-2xl font-black text-foreground mt-1">&lt; 1.8s</h3>
-                                    <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
-                                        <Activity size={11} /> Latencia en tiempo real
-                                    </span>
-                                </div>
-                                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
-                                    <Activity size={20} />
-                                </div>
-                            </div>
-
-                            <div className="bg-card/60 backdrop-blur-xl border border-border/80 p-4 rounded-2xl flex items-center justify-between shadow-sm hover:border-primary/30 transition-all">
-                                <div>
-                                    <p className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider">Disponibilidad</p>
-                                    <h3 className="text-xl sm:text-2xl font-black text-foreground mt-1">99.9%</h3>
-                                    <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
-                                        <ShieldCheck size={11} /> Servicio en Docker
-                                    </span>
-                                </div>
-                                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-                                    <ShieldCheck size={20} />
-                                </div>
-                            </div>
-
-                            <div className="bg-card/60 backdrop-blur-xl border border-border/80 p-4 rounded-2xl flex items-center justify-between shadow-sm hover:border-primary/30 transition-all">
-                                <div>
-                                    <p className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider">Satisfacción CSAT</p>
-                                    <h3 className="text-xl sm:text-2xl font-black text-foreground mt-1">98.5%</h3>
-                                    <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
-                                        <TrendingUp size={11} /> Evaluación Excelente
-                                    </span>
-                                </div>
-                                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
-                                    <TrendingUp size={20} />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Panel Interactivo del Bot Soporte Técnico */}
-                    <div className="mt-4">
-                        <SoporteDashboardPanel theme={theme} />
-                    </div>
-                </div>
+            {/* -------------- VISTA OSKITAR / BETTY (chatbot-analytics, nativo) -------------- */}
+            {(agentType === "oskitar" || agentType === "betty") && (
+                <ChatbotAnalyticsPanel bot={agentType} />
             )}
 
             {/* -------------- VISTA BOT COMERCIAL (Métricas & Logs) -------------- */}

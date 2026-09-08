@@ -22,7 +22,7 @@ import Monitoring from './pages/Monitoring'
 import MonitoringDashboard from './pages/MonitoringDashboard'
 import ServicesTIDashboard from './pages/ServicesTIDashboard'
 import CybersecurityDashboard from './pages/CybersecurityDashboard'
-import SupportDashboard from './pages/SupportDashboard'
+// import SupportDashboard from './pages/SupportDashboard' // Centro de Soporte retirado (spec 0004) — NO eliminar
 import SupportWidget from './components/support/SupportWidget'
 import Layout from './layout/Layout'
 
@@ -60,7 +60,8 @@ function App() {
                       <Route path="/monitoring/dashboard" element={<ProtectedRoute module="bot-activity"><MonitoringDashboard /></ProtectedRoute>} />
                       <Route path="/monitoring/services-ti" element={<ProtectedRoute module="bot-activity"><ServicesTIDashboard /></ProtectedRoute>} />
                       <Route path="/monitoring" element={<ProtectedRoute module="bot-activity"><Monitoring /></ProtectedRoute>} />
-                      <Route path="/support" element={<SupportDashboard />} />
+                      {/* Centro de Soporte retirado (spec 0004): /support cae al redirect "*". */}
+                      {/* <Route path="/support" element={<SupportDashboard />} /> */}
                       <Route path="/users" element={<ProtectedRoute module="users-management"><UsersDashboard /></ProtectedRoute>} />
                       <Route path="/test-wa" element={<ProtectedRoute module="settings"><PruebaWhatsApp /></ProtectedRoute>} />
                       
