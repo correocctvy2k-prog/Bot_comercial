@@ -200,6 +200,8 @@ function Toolbar({ range, setRange, category, setCategory, categories, csvHref, 
 /* ------------------------------ Oskitar ------------------------------ */
 
 function OskitarView({ m, range, setRange, category, setCategory, expanded, setExpanded, onRefresh, fetching }) {
+    const [view, setView] = useState("resumen"); // resumen | detalle
+    const [dayPick, setDayPick] = useState(null);
     const k = m.kpis || {};
     const csvHref = api.exportCsvUrl("oskitar", {});
     const dayData = (m.byDay || []).map((d) => ({ ...d, day: fmtDay(d.date) }));
@@ -234,6 +236,19 @@ function OskitarView({ m, range, setRange, category, setCategory, expanded, setE
                 <Kpi label="Multimedia entregada" value={k.mediaDelivered ?? "—"} icon={<TrendingDown size={19} />} tone="slate" />
             </div>
 
+            <div className="flex gap-1 rounded-xl border border-border bg-background p-1 w-fit">
+                {[["resumen", "Resumen"], ["detalle", "Detalle · analítica"]].map(([id, label]) => (
+                    <button
+                        key={id}
+                        onClick={() => setView(id)}
+                        className={`rounded-lg px-4 py-1.5 text-[11px] font-bold transition-all ${view === id ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}`}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </div>
+
+            {view === "resumen" && <>
             <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
                 <Panel title="Actividad por día" subtitle="Mensajes entrantes vs. salientes" icon={<Activity size={16} className="text-primary" />}>
                     <ResponsiveContainer width="100%" height={220}>
@@ -280,6 +295,9 @@ function OskitarView({ m, range, setRange, category, setCategory, expanded, setE
                     />
                 </Panel>
             </div>
+            </>}
+
+            {view === "detalle" && <OskitarDetalle m={m} dayPick={dayPick} setDayPick={setDayPick} />}
 
             <Panel
                 title={`Personas (${users.length})`}
@@ -336,6 +354,94 @@ function OskitarView({ m, range, setRange, category, setCategory, expanded, setE
                         </tbody>
                     </table>
                 </div>
+            </Panel>
+        </div>
+    );
+}
+
+/* ------------------------ Oskitar · Detalle ------------------------- */
+
+function OskitarDetalle({ m, dayPick, setDayPick }) {
+    const rt = m.responseTime || {};
+    const weekday = (m.byWeekday || []).map((w) => ({ name: (w.name || "").slice(0, 3), count: w.count }));
+    const peopleByDay = (m.peopleByDay || []).map((d) => ({
+        date: d.date, day: fmtDay(d.date),
+        total: (d.people || []).reduce((s, p) => s + (p.messages || 0), 0),
+        people: d.people || [],
+    }));
+    const rec = m.recurring || {};
+    const pickedDay = peopleByDay.find((d) => d.date === dayPick);
+
+    return (
+        <div className="space-y-6">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <Kpi label="Personas recurrentes" value={rec.recurringUsers ?? "—"} sub={`${rec.newUsers ?? 0} nuevas`} icon={<Users size={19} />} tone="violet" />
+                <Kpi label="Conv. de recurrentes" value={rec.sessionsFromRecurring ?? "—"} icon={<RefreshCw size={19} />} tone="blue" />
+                <Kpi label="Conv. por persona" value={rec.avgSessionsPerUser ?? "—"} icon={<Activity size={19} />} tone="emerald" />
+                <Kpi label="Muestras de respuesta" value={rt.samples ?? "—"} sub={`prom. ${rt.avgSec ?? "—"}s`} icon={<Timer size={19} />} tone="amber" />
+            </div>
+
+            <div className="grid gap-6 xl:grid-cols-2">
+                <Panel title="Rapidez de respuesta" subtitle={`Mediana ${rt.medianSec ?? "—"}s · p90 ${rt.p90Sec ?? "—"}s`} icon={<Timer size={16} className="text-primary" />}>
+                    <MiniBars
+                        rows={(rt.buckets || []).map((x) => ({ label: x.label, count: x.count }))}
+                        labelKey="label" valueKey="count"
+                        color="bg-gradient-to-r from-amber-500 to-orange-500"
+                    />
+                </Panel>
+                <Panel title="Actividad por día de la semana" icon={<Activity size={16} className="text-primary" />}>
+                    <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={weekday} margin={{ top: 6, right: 8, left: -8, bottom: 0 }}>
+                            {grid}
+                            <XAxis dataKey="name" {...axis} />
+                            <YAxis {...axis} width={40} />
+                            <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                            <Bar dataKey="count" name="Mensajes" radius={[4, 4, 0, 0]} fill="#8b5cf6" />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </Panel>
+            </div>
+
+            <div className="grid gap-6 xl:grid-cols-2">
+                <Panel title="Motivos de escalamiento" subtitle="Por qué el bot no pudo resolver" icon={<TrendingDown size={16} className="text-primary" />}>
+                    <MiniBars
+                        rows={(m.contingencyResponses || []).map((x) => ({ reason: x.reason, count: x.count }))}
+                        labelKey="reason" valueKey="count"
+                        color="bg-gradient-to-r from-rose-500 to-red-500"
+                    />
+                </Panel>
+                <Panel title="Contenido más enviado" subtitle="Videos, audios y documentos del bot" icon={<Download size={16} className="text-primary" />}>
+                    <MiniBars
+                        rows={(m.contentDelivered || []).slice(0, 8).map((x) => ({ title: x.title, count: x.count, type: x.type }))}
+                        labelKey="title" valueKey="count" subKey="type"
+                        color="bg-gradient-to-r from-emerald-500 to-teal-500"
+                    />
+                </Panel>
+            </div>
+
+            <Panel title="Personas por día" subtitle="Toca una barra para ver quiénes escribieron ese día" icon={<Users size={16} className="text-primary" />}>
+                <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={peopleByDay} margin={{ top: 6, right: 8, left: -8, bottom: 0 }} onClick={(e) => setDayPick(e?.activePayload?.[0]?.payload?.date ?? null)}>
+                        {grid}
+                        <XAxis dataKey="day" {...axis} />
+                        <YAxis {...axis} width={40} />
+                        <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.06)" }} />
+                        <Bar dataKey="total" name="Mensajes" radius={[4, 4, 0, 0]} fill="#3b82f6" className="cursor-pointer" />
+                    </BarChart>
+                </ResponsiveContainer>
+                {pickedDay && (
+                    <div className="mt-4 rounded-xl border border-border/70 bg-muted/30 p-3">
+                        <p className="mb-2 text-xs font-bold text-foreground">{pickedDay.day} · {pickedDay.people.length} personas</p>
+                        <div className="space-y-1.5">
+                            {pickedDay.people.map((p, i) => (
+                                <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                                    <span className="truncate text-foreground/80">{p.name || "—"} <span className="text-muted-foreground">· {p.phone}</span></span>
+                                    <span className="shrink-0 font-bold text-foreground">{p.messages} msg</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </Panel>
         </div>
     );
