@@ -31,6 +31,7 @@ services:
         VITE_SUPABASE_ANON_KEY: "${VITE_SUPABASE_ANON_KEY}"
         VITE_SERVICES_TI_BACKEND_URL: "http://127.0.0.1:3004"
         VITE_SUPPORT_BOT_URL: "http://127.0.0.1:3006"
+        VITE_CHATBOT_ANALYTICS_URL: "http://127.0.0.1:3008"
         VITE_CCTV_API_BASE: ""
     # En local no bloqueamos el arranque del frontend por el healthcheck de las
     # APIs de CCTV/Ciberseguridad: si están degradadas, esas secciones muestran
@@ -41,4 +42,6 @@ services:
       cybersecurity-api:
         condition: service_started
       chatbot-soporte:
+        condition: service_started
+      chatbot-analytics:
         condition: service_started
