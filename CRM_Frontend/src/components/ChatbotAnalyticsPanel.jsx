@@ -8,35 +8,26 @@ import {
     Download, RefreshCw, Filter, ListChecks, MapPin, ChevronDown,
 } from "lucide-react";
 import { chatbotAnalyticsService as api } from "@/services/chatbotAnalytics.service";
+import { KpiCard, PeriodSelect, BotSummary, periodPhrase } from "@/components/botKit";
 
 /* --------------------------------------------------------------------- */
 /*  Piezas de presentación (design-system.md)                           */
 /* --------------------------------------------------------------------- */
 
-const BADGE = {
-    blue: "bg-gradient-to-tr from-blue-600 to-indigo-600",
-    emerald: "bg-gradient-to-tr from-emerald-600 to-teal-500",
-    amber: "bg-gradient-to-tr from-amber-500 to-yellow-500 text-black",
-    rose: "bg-gradient-to-tr from-rose-600 to-red-500",
-    violet: "bg-gradient-to-tr from-violet-600 to-fuchsia-600",
-    slate: "bg-gradient-to-tr from-slate-500 to-slate-600",
+// Mapea el "tone" a los mismos acentos que usan los KPIs de Bot Comercial.
+const TONE = {
+    blue: { accent: "from-blue-500/20 to-blue-600/5", iconColor: "text-blue-400" },
+    emerald: { accent: "from-emerald-500/20 to-emerald-600/5", iconColor: "text-emerald-400" },
+    amber: { accent: "from-amber-500/20 to-amber-600/5", iconColor: "text-amber-400" },
+    violet: { accent: "from-violet-500/20 to-violet-600/5", iconColor: "text-violet-400" },
+    rose: { accent: "from-rose-500/20 to-rose-600/5", iconColor: "text-rose-400" },
+    slate: { accent: "from-slate-500/20 to-slate-600/5", iconColor: "text-slate-400" },
 };
 
+// Envoltorio: mismos props que antes, pero renderiza el KpiCard de Bot Comercial.
 function Kpi({ label, value, sub, icon, tone = "blue" }) {
-    return (
-        <div className="rounded-2xl border border-border/80 bg-card/60 p-4 shadow-sm backdrop-blur-xl">
-            <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                    <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">{label}</p>
-                    <p className="mt-1.5 text-2xl font-black tracking-tight text-foreground sm:text-3xl">{value}</p>
-                    {sub && <p className="mt-1 text-[11px] text-muted-foreground">{sub}</p>}
-                </div>
-                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white shadow-inner ${BADGE[tone]}`}>
-                    {icon}
-                </span>
-            </div>
-        </div>
-    );
+    const t = TONE[tone] || TONE.blue;
+    return <KpiCard title={label} value={value} badge={sub} icon={icon} accent={t.accent} iconColor={t.iconColor} />;
 }
 
 function Panel({ title, subtitle, right, icon, children }) {
@@ -113,11 +104,22 @@ const timeAgo = (iso) => {
 /*  Panel principal                                                     */
 /* --------------------------------------------------------------------- */
 
-const RANGES = [
-    { id: "7d", label: "7 días" },
-    { id: "30d", label: "30 días" },
-    { id: "all", label: "Todo" },
-];
+// Resúmenes en lenguaje natural (propuesta 8).
+function summarizeOskitar(m, range) {
+    const k = m?.kpis; if (!k) return null;
+    let t = `Oskitar atendió ${k.sessions ?? 0} conversaciones de ${k.uniqueUsers ?? 0} personas ${periodPhrase(range)}`;
+    if (k.botContainmentRate != null) t += ` y resolvió el ${Math.round(k.botContainmentRate)}% sin escalar a un humano`;
+    t += ".";
+    if (k.responseMedianSec != null) t += ` La respuesta fue de ${k.responseMedianSec}s de mediana`;
+    if (k.escalationRate != null) t += `${k.responseMedianSec != null ? "; " : ". El "}${Math.round(k.escalationRate)}% pasó a soporte humano.`;
+    return t;
+}
+function summarizeBetty(m, range) {
+    const k = m?.kpis; if (!k) return null;
+    let t = `Betty recibió ${k.totalMessages ?? 0} mensajes de ${k.uniqueCustomers ?? 0} clientes e inició ${k.flowsStarted ?? 0} flujos ${periodPhrase(range)}.`;
+    if (k.notAvailableRate != null) t += ` El ${Math.round(k.notAvailableRate)}% de las interacciones cayó en "no disponible".`;
+    return t;
+}
 
 export default function ChatbotAnalyticsPanel({ bot }) {
     const [range, setRange] = useState("7d");
@@ -164,17 +166,7 @@ export default function ChatbotAnalyticsPanel({ bot }) {
 function Toolbar({ range, setRange, category, setCategory, categories, csvHref, onRefresh, fetching }) {
     return (
         <div className="flex flex-wrap items-center gap-2">
-            <div className="flex gap-1 rounded-xl border border-border bg-background p-1">
-                {RANGES.map((r) => (
-                    <button
-                        key={r.id}
-                        onClick={() => setRange(r.id)}
-                        className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition-all ${range === r.id ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}`}
-                    >
-                        {r.label}
-                    </button>
-                ))}
-            </div>
+            <PeriodSelect value={range} onChange={setRange} className="w-44" />
             {categories && (
                 <div className="relative">
                     <Filter size={13} className="pointer-events-none absolute left-2.5 top-2.5 text-muted-foreground" />
@@ -224,6 +216,8 @@ function OskitarView({ m, range, setRange, category, setCategory, expanded, setE
                     csvHref={csvHref} onRefresh={onRefresh} fetching={fetching}
                 />
             </div>
+
+            <BotSummary>{summarizeOskitar(m, range)}</BotSummary>
 
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <Kpi label="Conversaciones" value={k.sessions ?? "—"} sub={`${k.messagesPerSession ?? 0} mensajes/conv.`} icon={<MessageSquare size={19} />} tone="blue" />
@@ -465,6 +459,8 @@ function BettyView({ m, range, setRange, onRefresh, fetching }) {
                 </div>
                 <Toolbar range={range} setRange={setRange} csvHref={csvHref} onRefresh={onRefresh} fetching={fetching} />
             </div>
+
+            <BotSummary>{summarizeBetty(m, range)}</BotSummary>
 
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <Kpi label="Clientes únicos" value={k.uniqueCustomers ?? "—"} sub={`${k.messagesPerCustomer ?? 0} mensajes/cliente`} icon={<Users size={19} />} tone="emerald" />

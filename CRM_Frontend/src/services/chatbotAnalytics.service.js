@@ -16,9 +16,8 @@ async function getJSON(path, { signal } = {}) {
 }
 
 function rangeToQuery(range) {
-    // range: "7d" | "30d" | "all"
-    if (!range || range === "all") return {};
-    const days = range === "7d" ? 7 : range === "30d" ? 30 : 0;
+    // range: "24h" | "7d" | "1m" | "1y" (mismo selector que Bot Comercial)
+    const days = { "24h": 1, "7d": 7, "1m": 30, "1y": 365 }[range];
     if (!days) return {};
     const to = new Date();
     const from = new Date(to.getTime() - (days - 1) * 86400000);

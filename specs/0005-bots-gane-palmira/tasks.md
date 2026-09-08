@@ -4,25 +4,25 @@ Referencia: `spec.md`. Ejecución en 4 tandas (1-3 seguidas, 4 aparte).
 
 ## Tanda 1 — Nombre, espacio, narrativa
 
-- [ ] (1) Renombrar a "Bots Gane Palmira": `Layout.jsx` (nav), cabecera de página, `<h2>` interno.
-- [ ] (3) Quitar título duplicado; subir conmutador de bot + toolbar/periodo a la zona superior.
-- [ ] (4) Quitar KPI "Cobertura SIISS" de la vista Bot Comercial (`Dashboard.jsx`).
-- [ ] (8) `buildSummary(bot, model)` → párrafo narrativo al inicio de cada vista (Comercial, Oskitar, Betty).
+- [x] (1) Renombrar a "Bots Gane Palmira": `Layout.jsx` (nav), cabecera de página, `<h2>` interno.
+- [x] (3) Quitar título duplicado; subir conmutador de bot + toolbar/periodo a la zona superior.
+- [x] (4) Quitar KPI "Cobertura SIISS" de la vista Bot Comercial (`Dashboard.jsx`).
+- [x] (8) `buildSummary(bot, model)` → párrafo narrativo al inicio de cada vista (Comercial, Oskitar, Betty).
 - [ ] Build + lint + smoke claro/oscuro. Commit.
 
 ## Tanda 2 — Consistencia
 
-- [ ] (5) Exportar `KpiCard` de `Dashboard.jsx`; usarlo en `ChatbotAnalyticsPanel` (Oskitar/Betty).
-- [ ] (6) Extraer el `<select>` de periodo de Bot Comercial a componente reutilizable; usarlo en
+- [x] (5) Exportar `KpiCard` de `Dashboard.jsx`; usarlo en `ChatbotAnalyticsPanel` (Oskitar/Betty).
+- [x] (6) Extraer el `<select>` de periodo de Bot Comercial a componente reutilizable; usarlo en
       Oskitar/Betty (mapa a `from/to`: 24h/7d/1m/1y).
 - [ ] Build + lint + smoke. Commit.
 
 ## Tanda 3 — Submenú
 
-- [ ] (2) `App.jsx`: rutas `/bots/comercial|oskitar|betty`; `/` → redirect `/bots/comercial`.
-- [ ] `Dashboard.jsx`: leer el bot de `useParams`/`useLocation`; conmutador de pestañas
+- [x] (2) `App.jsx`: rutas `/bots/comercial|oskitar|betty`; `/` → redirect `/bots/comercial`.
+- [x] `Dashboard.jsx`: leer el bot de `useParams`/`useLocation`; conmutador de pestañas
       sincroniza la URL (`navigate`).
-- [ ] `Layout.jsx`: "Bots Gane Palmira" como grupo desplegable con 3 sub-ítems.
+- [x] `Layout.jsx`: "Bots Gane Palmira" como grupo desplegable con 3 sub-ítems.
 - [ ] Build + lint + smoke (deep-link + cambio de pestaña). Commit.
 
 ## Tanda 4 — CRM por bot (ficha + historial)

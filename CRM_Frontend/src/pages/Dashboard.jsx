@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Activity, MessageSquare, Users, Zap, GitMerge, TrendingUp, ShieldCheck, Trophy, Crown, Medal, Award, MapPin, Calendar, Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Download, Filter, Sparkles, Bot } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useParams, useNavigate } from "react-router-dom";
 import { crmService } from "@/services/crm.service";
 import ChatbotAnalyticsPanel from "@/components/ChatbotAnalyticsPanel";
+import { KpiCard, PeriodSelect, BotSummary, periodPhrase } from "@/components/botKit";
 
 import { supabase } from "@/services/supabase";
 import { formatDistanceToNow } from "date-fns";
@@ -55,13 +57,34 @@ const DonutLabel = ({ cx, cy, total }) => (
     </>
 );
 
+function summarizeComercial(stats, range) {
+    if (!stats) return null;
+    const n = (x) => (x ?? 0).toLocaleString("es-CO");
+    const parts = [
+        `El Bot Comercial registró ${n(stats.messagesTotal)} interacciones de ${n(stats.uniqueUsers)} usuarios ${periodPhrase(range)}`,
+        `(${n(stats.waTotal)} por WhatsApp, ${n(stats.tgTotal)} por Telegram)`,
+    ];
+    if (stats.newLeads != null) parts.push(`y ${n(stats.newLeads)} contactos nuevos`);
+    let text = parts.join(" ") + ".";
+    if (typeof stats.changePct === "number" && stats.changePct !== 0) {
+        text += ` Eso es ${stats.changePct > 0 ? "un aumento" : "una baja"} del ${Math.abs(stats.changePct)}% frente al periodo anterior.`;
+    }
+    return text;
+}
+
 // --------------------------------------------------------------------
 //  DASHBOARD PRINCIPAL
 // --------------------------------------------------------------------
+const BOTS = ["comercial", "oskitar", "betty"];
+
 export default function Dashboard() {
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
+    const { bot } = useParams();
     const [timeRange, setTimeRange] = useState("24h");
-    const [agentType, setAgentType] = useState("comercial"); // "comercial" | "oskitar" | "betty"
+    // El bot activo lo manda la URL (/bots/:bot). El conmutador navega.
+    const agentType = BOTS.includes(bot) ? bot : "comercial";
+    const setAgentType = (id) => navigate(`/bots/${id}`);
 
     const { data: stats } = useQuery({
         queryKey: ["stats", timeRange],
@@ -91,12 +114,6 @@ export default function Dashboard() {
         staleTime: 0,
     });
 
-    const { data: siissHealth } = useQuery({
-        queryKey: ["siiss-health"],
-        queryFn: () => crmService.getSiissHealth(),
-        refetchInterval: 30000,
-        staleTime: 0,
-    });
 
     const { data: userRanking = [] } = useQuery({
         queryKey: ["userRanking", timeRange],
@@ -140,38 +157,26 @@ export default function Dashboard() {
     return (
         <div className={`${agentType !== "comercial" ? "space-y-6" : "space-y-8"} animate-in fade-in slide-in-from-bottom-4 duration-700`}>
 
-            {/* -- Selector de Agentes de IA -- */}
-            <div className="bg-card/70 border border-border p-3.5 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-md">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black shadow-inner">
-                        <Activity size={22} />
-                    </div>
-                    <div>
-                        <h2 className="text-lg font-black tracking-tight text-foreground">Analítica de Agentes IA</h2>
-                        <p className="text-xs text-muted-foreground font-medium">Monitoreo y gestión de bots independientes en producción</p>
-                    </div>
-                </div>
-
-                <div className="flex bg-background border border-border rounded-2xl p-1 gap-1 w-full md:w-auto">
-                    {[
-                        { id: "comercial", label: "Bot Comercial", icon: <Zap size={15} /> },
-                        { id: "oskitar", label: "Oskitar", icon: <ShieldCheck size={15} /> },
-                        { id: "betty", label: "Betty", icon: <Bot size={15} /> },
-                    ].map(({ id, label, icon }) => (
-                        <button
-                            key={id}
-                            onClick={() => setAgentType(id)}
-                            className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                                agentType === id
-                                    ? "bg-primary text-primary-foreground shadow-md"
-                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                            }`}
-                        >
-                            {icon}
-                            <span>{label}</span>
-                        </button>
-                    ))}
-                </div>
+            {/* -- Conmutador de bot (compacto, arriba) -- */}
+            <div className="flex bg-card/60 backdrop-blur-xl border border-border/80 rounded-2xl p-1.5 gap-1 shadow-sm w-full sm:w-fit">
+                {[
+                    { id: "comercial", label: "Bot Comercial", icon: <Zap size={15} /> },
+                    { id: "oskitar", label: "Oskitar", icon: <ShieldCheck size={15} /> },
+                    { id: "betty", label: "Betty", icon: <Bot size={15} /> },
+                ].map(({ id, label, icon }) => (
+                    <button
+                        key={id}
+                        onClick={() => setAgentType(id)}
+                        className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                            agentType === id
+                                ? "bg-primary text-primary-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                        }`}
+                    >
+                        {icon}
+                        <span>{label}</span>
+                    </button>
+                ))}
             </div>
 
             {/* -------------- VISTA OSKITAR / BETTY (chatbot-analytics, nativo) -------------- */}
@@ -182,22 +187,16 @@ export default function Dashboard() {
             {/* -------------- VISTA BOT COMERCIAL (Métricas & Logs) -------------- */}
             {agentType === "comercial" && (
                 <>
-                    {/* Header & Time Range Selector */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                        <h1 className="text-2xl font-black tracking-tight text-foreground">
-                            Rendimiento - Bot Comercial (Ventas & Atención)
-                        </h1>
-                        <select
-                            className="bg-card w-40 text-sm border border-border rounded-md px-3 py-2 outline-none focus:ring-1 focus:ring-primary shadow-sm font-semibold"
-                            value={timeRange}
-                            onChange={(e) => setTimeRange(e.target.value)}
-                        >
-                            <option value="24h">Hoy (Últimas 24h)</option>
-                            <option value="7d">Últimos 7 días</option>
-                            <option value="1m">Último mes</option>
-                            <option value="1y">Último año</option>
-                        </select>
+                    {/* Header compacto + selector de periodo */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div>
+                            <h1 className="text-lg font-black tracking-tight text-foreground">Bot Comercial — Ventas &amp; Atención</h1>
+                            <p className="text-xs text-muted-foreground">WhatsApp y Telegram · datos de Supabase</p>
+                        </div>
+                        <PeriodSelect value={timeRange} onChange={setTimeRange} />
                     </div>
+
+                    <BotSummary>{summarizeComercial(stats, timeRange)}</BotSummary>
 
 
             {/* -- KPI Grid -- */}
@@ -257,18 +256,6 @@ export default function Dashboard() {
                     icon={<TrendingUp className="w-5 h-5" />}
                     accent="from-pink-500/20 to-pink-600/5"
                     iconColor="text-pink-400"
-                />
-                <KpiCard
-                    title="Cobertura SIISS"
-                    value={siissHealth ? `${siissHealth.coverage}%` : "-"}
-                    badge={siissHealth?.lastSync
-                        ? `Sinc: ${formatDistanceToNow(new Date(siissHealth.lastSync), { addSuffix: true, locale: es })}`
-                        : "Sin sincronización"
-                    }
-                    badgeColor="text-purple-400"
-                    icon={<ShieldCheck className="w-5 h-5" />}
-                    accent="from-purple-500/20 to-purple-600/5"
-                    iconColor="text-purple-400"
                 />
             </div>
 
@@ -412,23 +399,6 @@ function FeedItem({ item }) {
 }
 
 // --- KPI Card --------------------------------------------------------
-function KpiCard({ title, value, badge, badgeColor, icon, accent, iconColor, noIconWrapper }) {
-    return (
-        <div className={`relative bg-gradient-to-br ${accent} bg-card/60 backdrop-blur-md border border-border/70 p-5 rounded-xl hover:border-border transition-all duration-300 overflow-hidden group`}>
-            <div className="flex justify-between items-start gap-2">
-                <div className="min-w-0">
-                    <p className="text-xs font-medium text-muted-foreground truncate">{title}</p>
-                    <h3 className="text-3xl font-bold mt-1 tracking-tight">{value}</h3>
-                </div>
-                <div className={noIconWrapper ? "shrink-0 mt-0.5" : `p-2 rounded-lg bg-background/40 ${iconColor} shrink-0 group-hover:scale-110 transition-transform`}>
-                    {icon}
-                </div>
-            </div>
-            <p className={`text-xs mt-3 font-medium ${badgeColor}`}>{badge}</p>
-        </div>
-    );
-}
-
 // --- Channel Donut - SVG Premium -------------------------------------
 function ChannelDonut({ distribution = [], total = 0 }) {
     const size = 180;

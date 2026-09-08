@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, createContext } from 'react';
-import { Bot, MapPin, Users, Settings, LogOut, Cable, Terminal, PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, PieChart, Sparkles, Building2, ShieldCheck, User, Image, UserCircle, Loader2, X, Activity, LayoutDashboard, Server, Cctv, LockKeyhole, LifeBuoy } from 'lucide-react';
+import { Bot, MapPin, Users, Settings, LogOut, Cable, Terminal, PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, PieChart, Sparkles, Building2, ShieldCheck, User, Image, UserCircle, Loader2, X, Activity, LayoutDashboard, Server, Cctv, LockKeyhole, LifeBuoy, Zap } from 'lucide-react';
 import SkylabBot from '../components/SkylabBot';
 import { ModeToggle } from "@/components/mode-toggle";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -29,7 +29,16 @@ const MENU_ITEMS_RAW = [
     {
         section: "Opeación Central",
         items: [
-            { to: '/', icon: Bot, label: 'Analítica de Agentes', module: 'bot-activity' },
+            {
+                label: 'Bots Gane Palmira',
+                icon: Bot,
+                module: 'bot-activity',
+                subItems: [
+                    { to: '/bots/comercial', icon: Zap, label: 'Bot Comercial', module: 'bot-activity' },
+                    { to: '/bots/oskitar', icon: ShieldCheck, label: 'Oskitar', module: 'bot-activity' },
+                    { to: '/bots/betty', icon: Bot, label: 'Betty', module: 'bot-activity' },
+                ],
+            },
             { to: '/points', icon: MapPin, label: 'Operación de Puntos', module: 'points' },
             {
                 label: 'Seguridad Perimetral',

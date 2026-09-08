@@ -45,7 +45,9 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <Routes>
-                      <Route path="/" element={<ProtectedRoute module="bot-activity"><Dashboard /></ProtectedRoute>} />
+                      <Route path="/" element={<Navigate to="/bots/comercial" replace />} />
+                      <Route path="/bots" element={<Navigate to="/bots/comercial" replace />} />
+                      <Route path="/bots/:bot" element={<ProtectedRoute module="bot-activity"><Dashboard /></ProtectedRoute>} />
                       <Route path="/points" element={<ProtectedRoute module="points"><Points /></ProtectedRoute>} />
                       <Route path="/points/cctv" element={<ProtectedRoute module="points"><CctvModule /></ProtectedRoute>} />
                       <Route path="/points/cctv/:siisCode" element={<ProtectedRoute module="points"><CctvModule /></ProtectedRoute>} />
