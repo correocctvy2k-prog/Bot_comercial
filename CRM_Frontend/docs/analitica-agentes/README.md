@@ -10,8 +10,8 @@ Monitoreo y gestión de los bots de IA en producción. **Tres pestañas** conmut
 | Pestaña | Contenido | Fuente de datos |
 |---------|-----------|-----------------|
 | **Bot Comercial** | KPIs, gráfica de actividad, donut de distribución por canal, Ranking de Usuarios & Zonas Escaneadas, monitor de actividad en tiempo real | Supabase (`interactions_log`, `contact_identities`, `contacts`) directo |
-| **Oskitar** (soporte técnico interno) | 8 KPIs, actividad por día/hora, embudo de atención, categorías de consulta, tabla de personas con expand; filtro de rango y categoría; export CSV; refresco por SSE | Servicio `chatbot-analytics` — `GET {VITE_CHATBOT_ANALYTICS_URL}/api/oskitar/analytics` + `/stream` (SSE) |
-| **Betty** (atención a clientes) | 4 KPIs, series por día/hora, flujos, tabla de clientes; export CSV; refresco por SSE | `chatbot-analytics` — `/api/betty/analytics` + `/stream` |
+| **Oskitar** (soporte técnico interno) | Sub-conmutador **Resumen / Detalle**. Resumen: 8 KPIs, actividad por día/hora, embudo, categorías, tabla de personas. Detalle: KPIs de recurrencia, rapidez de respuesta por tramos, día de semana, motivos de escalamiento, contenido más enviado, "personas por día" con drill-down. Filtro de rango/categoría, CSV, SSE | Servicio `chatbot-analytics` — `GET {VITE_CHATBOT_ANALYTICS_URL}/api/oskitar/analytics` + `/stream` (SSE) |
+| **Betty** (atención a clientes) | Vista única: 4 KPIs, series por día/hora/semana, flujos, intenciones, recorrido "consultar resultados", tipos de mensaje, clientes más activos, tabla de clientes. CSV, SSE | `chatbot-analytics` — `/api/betty/analytics` + `/stream` |
 
 `chatbot-analytics` (spec 0004 / ADR-0002) es un servicio Express aparte (host `3008` →
 contenedor `3000`) que lee los logs de los bots por SSH y calcula el modelo. El CRM sólo lo
