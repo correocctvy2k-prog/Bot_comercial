@@ -14,7 +14,7 @@ import CctvModule from './pages/CctvModule'
 import Contacts from './pages/Contacts'
 import ContactDetail from './pages/ContactDetail'
 import CommandCenter from './pages/CommandCenter'
-import AsambleaDashboard from './pages/AsambleaDashboard'
+// import AsambleaDashboard from './pages/AsambleaDashboard' // deshabilitado temporalmente (2026-09-08) — NO eliminar
 import PruebaWhatsApp from './pages/PruebaWhatsApp'
 import LoginPage from './pages/LoginPage'
 import UsersDashboard from './pages/UsersDashboard'
@@ -55,7 +55,8 @@ function App() {
                       <Route path="/contacts" element={<ProtectedRoute module="contacts"><Contacts /></ProtectedRoute>} />
                       <Route path="/contacts/:id" element={<ProtectedRoute module="contacts"><ContactDetail /></ProtectedRoute>} />
                       <Route path="/command-center" element={<ProtectedRoute module="command-center"><CommandCenter /></ProtectedRoute>} />
-                      <Route path="/asamblea" element={<ProtectedRoute module="asamblea"><AsambleaDashboard /></ProtectedRoute>} />
+                      {/* Asamblea deshabilitado temporalmente (2026-09-08, decisión del usuario) — NO eliminar. /asamblea cae al redirect "*". */}
+                      {/* <Route path="/asamblea" element={<ProtectedRoute module="asamblea"><AsambleaDashboard /></ProtectedRoute>} /> */}
                       <Route path="/monitoring/dashboard" element={<ProtectedRoute module="bot-activity"><MonitoringDashboard /></ProtectedRoute>} />
                       <Route path="/monitoring/services-ti" element={<ProtectedRoute module="bot-activity"><ServicesTIDashboard /></ProtectedRoute>} />
                       <Route path="/monitoring" element={<ProtectedRoute module="bot-activity"><Monitoring /></ProtectedRoute>} />

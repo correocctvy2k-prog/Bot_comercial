@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { pointsService } from '../services/points.service';
 
 const KpiCard = ({ title, value, icon, badge, accent = "from-primary/20", iconColor = "text-primary" }) => (
-    <div className="group relative flex flex-col items-center justify-between p-6 bg-[#0f111a]/80 backdrop-blur-md border border-white/5 rounded-2xl shadow-xl transition-all duration-500 hover:-translate-y-2 hover:border-white/20 hover:shadow-2xl hover:shadow-primary/20 overflow-hidden cursor-pointer">
+    <div className="group relative flex flex-col items-center justify-between p-6 bg-card/60 backdrop-blur-xl border border-border/80 rounded-2xl shadow-sm transition-all duration-500 hover:-translate-y-2 hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/20 overflow-hidden cursor-pointer">
         {/* Subtle Glow Background Effect */}
         <div className={`absolute top-0 w-full h-full bg-gradient-to-br ${accent} to-transparent opacity-5 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none`} />
 
@@ -23,15 +23,15 @@ const KpiCard = ({ title, value, icon, badge, accent = "from-primary/20", iconCo
         </div>
 
         {/* Title */}
-        <h3 className="text-[11px] font-bold tracking-[0.15em] text-muted-foreground uppercase text-center mb-3 z-10 transition-colors duration-300 group-hover:text-white/90">
+        <h3 className="text-[11px] font-bold tracking-[0.15em] text-muted-foreground uppercase text-center mb-3 z-10 transition-colors duration-300 group-hover:text-foreground">
             {title}
         </h3>
 
         {/* Main Value */}
-        <div className="text-4xl font-black tracking-tight text-white z-10 flex flex-col items-center gap-1">
+        <div className="text-4xl font-black tracking-tight text-foreground z-10 flex flex-col items-center gap-1">
             <span>{value}</span>
             {badge && (
-                <div className="mt-4 w-full pt-4 border-t border-white/5 flex justify-center transition-colors duration-300 group-hover:border-white/10">
+                <div className="mt-4 w-full pt-4 border-t border-border/80 flex justify-center transition-colors duration-300 group-hover:border-border">
                     <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">{badge}</span>
                 </div>
             )}
@@ -176,7 +176,7 @@ export default function GerenciaDashboard() {
                     icon={<RefreshCw className="transform rotate-45" />}
                     badge="Abandono de red"
                     accent="bg-gradient-to-br from-slate-500/10 to-transparent"
-                    iconColor="text-slate-500"
+                    iconColor="text-muted-foreground"
                 />
             </div>
 

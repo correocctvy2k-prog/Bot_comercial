@@ -16,7 +16,8 @@ a una versión fechada.
   (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`); estructura
   `specs/`; `docs/adr/` y `docs/lecciones-aprendidas/` a nivel raíz; `docker-compose.local.yml`
   (override, no toca el base) + `docs/operacion/despliegue-local.md`; CI
-  `.github/workflows/crm-frontend.yml` (lint + build); `.github/pull_request_template.md`;
+  `.github/workflows/crm-frontend.yml` (build bloqueante; lint informativo hasta que el
+  frente de estandarización — `specs/0003` — lo lleve a 0); `.github/pull_request_template.md`;
   `CRM_Frontend/docs/design-system.md`. Sin impacto en producción.
 
 ### CRM_Frontend — Analítica de Agentes

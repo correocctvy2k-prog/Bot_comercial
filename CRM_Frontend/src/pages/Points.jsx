@@ -14,7 +14,7 @@ import GerenciaDashboard from '../components/GerenciaDashboard';
 
 // ─── KPI Card UI (Global Premium Redesign) ──────────────────────────
 const KpiCard = ({ title, value, icon, badge, badgeColor, accent = "from-primary/20", iconColor = "text-primary" }) => (
-    <div className="group relative flex flex-col items-center justify-between p-6 bg-[#0f111a]/80 backdrop-blur-md border border-white/5 rounded-2xl shadow-xl transition-all duration-500 hover:-translate-y-2 hover:border-white/20 hover:shadow-2xl hover:shadow-primary/20 overflow-hidden cursor-pointer">
+    <div className="group relative flex flex-col items-center justify-between p-6 bg-card/60 backdrop-blur-xl border border-border/80 rounded-2xl shadow-sm transition-all duration-500 hover:-translate-y-2 hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/20 overflow-hidden cursor-pointer">
         {/* Subtle Glow Background Effect */}
         <div className={`absolute top-0 w-full h-full bg-gradient-to-br ${accent} to-transparent opacity-5 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none`} />
 
@@ -27,16 +27,16 @@ const KpiCard = ({ title, value, icon, badge, badgeColor, accent = "from-primary
         </div>
 
         {/* Title */}
-        <h3 className="text-[11px] font-bold tracking-[0.15em] text-muted-foreground uppercase text-center mb-3 z-10 transition-colors duration-300 group-hover:text-white/90">
+        <h3 className="text-[11px] font-bold tracking-[0.15em] text-muted-foreground uppercase text-center mb-3 z-10 transition-colors duration-300 group-hover:text-foreground">
             {title}
         </h3>
 
         {/* Main Value */}
-        <div className="text-4xl font-black tracking-tight text-white z-10 flex flex-col items-center gap-1">
+        <div className="text-4xl font-black tracking-tight text-foreground z-10 flex flex-col items-center gap-1">
             <span>{value}</span>
             {badge && (
-                <div className="mt-4 w-full pt-4 border-t border-white/5 flex justify-center transition-colors duration-300 group-hover:border-white/10">
-                    <span className={`text-[10px] font-medium uppercase tracking-widest ${badgeColor || 'text-muted-foreground group-hover:text-gray-300'}`}>{badge}</span>
+                <div className="mt-4 w-full pt-4 border-t border-border/80 flex justify-center transition-colors duration-300 group-hover:border-border">
+                    <span className={`text-[10px] font-medium uppercase tracking-widest ${badgeColor || 'text-muted-foreground group-hover:text-foreground'}`}>{badge}</span>
                 </div>
             )}
         </div>
@@ -172,7 +172,7 @@ const NodeCard = ({ point, behavior, onUpdate }) => {
 
             {/* Panel de Expansión */}
             {isExpanded && (
-                <div className="px-4 pb-4 animate-in slide-in-from-top-2 duration-300 border-t border-border/50 bg-[#0a0c10]/50 pt-3">
+                <div className="px-4 pb-4 animate-in slide-in-from-top-2 duration-300 border-t border-border/50 bg-muted/30 pt-3">
                     <div className="flex justify-between items-center mb-3">
                         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Detalles Avanzados</h4>
                         <Button variant="ghost" size="sm" className="h-6 text-xs px-2 text-primary hover:text-primary/80" onClick={(e) => {

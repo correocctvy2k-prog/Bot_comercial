@@ -103,7 +103,7 @@ const SERVICE_DEFS = [
 
 function StatusDot({ ok, loading }) {
     if (loading) return (
-        <span className="inline-block w-2 h-2 rounded-full bg-zinc-600 animate-pulse" />
+        <span className="inline-block w-2 h-2 rounded-full bg-muted-foreground/40 animate-pulse" />
     );
     if (ok === true) return (
         <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_5px_#34d399]" />
@@ -114,11 +114,11 @@ function StatusDot({ ok, loading }) {
     if (ok === false) return (
         <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_5px_#ef4444]" />
     );
-    return <span className="inline-block w-2 h-2 rounded-full bg-zinc-600" />;
+    return <span className="inline-block w-2 h-2 rounded-full bg-muted-foreground/40" />;
 }
 
 function StatusBadge({ ok, loading }) {
-    if (loading) return <span className="text-[9px] text-zinc-500 font-mono">—</span>;
+    if (loading) return <span className="text-[9px] text-muted-foreground font-mono">—</span>;
     if (ok === true) return <span className="text-[9px] text-emerald-400 font-semibold font-mono">OK</span>;
     if (ok === 'warn') return <span className="text-[9px] text-yellow-400 font-semibold font-mono">CAC&Eacute;</span>;
     return <span className="text-[9px] text-red-400 font-semibold font-mono animate-pulse">FALLO</span>;
@@ -184,19 +184,19 @@ export default function SystemHealthPanel({
     return (
         <div className="flex flex-col h-full select-none">
             {/* Header */}
-            <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-border">
                 <div className="flex items-center gap-2">
                     {overallOk
                         ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                         : <XCircle className="w-3.5 h-3.5 text-red-400 animate-pulse" />
                     }
-                    <span className="text-[10px] uppercase tracking-wider font-bold text-zinc-400">
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
                         Estado del Sistema
                     </span>
                 </div>
                 <div className="flex items-center gap-2">
                     {lastFetch && (
-                        <span className="text-[9px] text-zinc-600 flex items-center gap-1">
+                        <span className="text-[9px] text-muted-foreground flex items-center gap-1">
                             <Clock className="w-2.5 h-2.5" />
                             {lastFetch.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                         </span>
@@ -205,7 +205,7 @@ export default function SystemHealthPanel({
                         onClick={fetchHealth}
                         disabled={loading}
                         title="Refrescar estado"
-                        className="p-1 rounded hover:bg-zinc-700 transition-colors text-zinc-500 hover:text-zinc-300 disabled:opacity-40"
+                        className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground disabled:opacity-40"
                     >
                         <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
                     </button>
@@ -213,7 +213,7 @@ export default function SystemHealthPanel({
             </div>
 
             {/* Service list */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-zinc-800/60">
+            <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-border/60">
                 {SERVICE_DEFS.map(def => {
                     const { ok, detail } = resolveStatus(def);
                     const Icon = def.icon;
@@ -240,7 +240,7 @@ export default function SystemHealthPanel({
                         actionEl = (
                             <button
                                 onClick={() => onFixAction?.(def.fixAction)}
-                                className="shrink-0 text-[9px] px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-400 hover:border-blue-500 hover:text-blue-400 transition-colors"
+                                className="shrink-0 text-[9px] px-1.5 py-0.5 rounded border border-border text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
                             >
                                 Reparar
                             </button>
@@ -251,7 +251,7 @@ export default function SystemHealthPanel({
                         <div
                             key={def.key}
                             className={`flex items-center gap-3 px-3 py-2.5 group transition-colors
-                                ${ok === false ? 'bg-red-950/10' : 'hover:bg-zinc-800/30'}`}
+                                ${ok === false ? 'bg-rose-500/10' : 'hover:bg-muted/40'}`}
                         >
                             {/* Status dot */}
                             <StatusDot ok={ok} loading={isLoading} />
@@ -262,12 +262,12 @@ export default function SystemHealthPanel({
                             {/* Info */}
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                    <span className={`text-[11px] font-medium ${ok === false ? 'text-red-300' : 'text-zinc-300'}`}>
+                                    <span className={`text-[11px] font-medium ${ok === false ? 'text-red-300' : 'text-foreground'}`}>
                                         {def.label}
                                     </span>
                                     <StatusBadge ok={ok} loading={isLoading} />
                                 </div>
-                                <p className="text-[9px] text-zinc-500 truncate mt-0.5">{detail}</p>
+                                <p className="text-[9px] text-muted-foreground truncate mt-0.5">{detail}</p>
                             </div>
 
                             {actionEl}
@@ -277,7 +277,7 @@ export default function SystemHealthPanel({
             </div>
 
             {/* Overall status footer */}
-            <div className={`px-3 py-1.5 text-[9px] font-medium flex items-center gap-1.5 border-t border-zinc-800
+            <div className={`px-3 py-1.5 text-[9px] font-medium flex items-center gap-1.5 border-t border-border
                 ${overallOk ? 'text-emerald-500' : 'text-red-400'}`}>
                 {overallOk
                     ? <><CheckCircle2 className="w-3 h-3" /> Todos los sistemas operativos</>

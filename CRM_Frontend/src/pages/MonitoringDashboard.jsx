@@ -86,7 +86,7 @@ const StatusDot = ({ ping, size = "md" }) => {
     ? "bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.75)]"
     : state === "down"
       ? "bg-rose-500 shadow-[0_0_14px_rgba(244,63,94,0.8)]"
-      : "bg-slate-600";
+      : "bg-muted-foreground/40";
 
   return (
     <span
@@ -158,7 +158,7 @@ const VmTile = ({ title, role, ping, uptime, servicesOk, servicesTotal, disk, ba
           icon={<Activity className="h-4 w-4" />}
           label="Servicios"
           value={!servicesKnown ? "N/D" : servicesHealthy ? "Sistema OK" : `${servicesTotal - servicesOk} falla(s)`}
-          color={!servicesKnown ? "text-slate-400" : servicesHealthy ? "text-emerald-400" : "text-rose-400"}
+          color={!servicesKnown ? "text-muted-foreground" : servicesHealthy ? "text-emerald-400" : "text-rose-400"}
         />
         <MiniStat
           icon={<HardDrive className="h-4 w-4" />}

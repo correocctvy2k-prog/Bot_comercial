@@ -54,10 +54,17 @@ const NETWORK_PROFILE_LABEL = {
 
 function MetricCard({ label, value, detail, icon, tone = 'blue' }) {
   const tones = {
-    rose: 'from-rose-500/15 text-rose-300 border-rose-500/20',
-    amber: 'from-amber-500/15 text-amber-300 border-amber-500/20',
-    blue: 'from-blue-500/15 text-blue-300 border-blue-500/20',
-    emerald: 'from-emerald-500/15 text-emerald-300 border-emerald-500/20',
+    rose: 'from-rose-500/15 border-rose-500/20',
+    amber: 'from-amber-500/15 border-amber-500/20',
+    blue: 'from-blue-500/15 border-blue-500/20',
+    emerald: 'from-emerald-500/15 border-emerald-500/20',
+  };
+  // Icon-badge sólido con gradiente (design-system.md §4), un par de colores por semántica.
+  const badges = {
+    rose: 'bg-gradient-to-tr from-rose-600 to-red-500',
+    amber: 'bg-gradient-to-tr from-amber-500 to-yellow-500 text-black',
+    blue: 'bg-gradient-to-tr from-blue-600 to-indigo-600',
+    emerald: 'bg-gradient-to-tr from-emerald-600 to-teal-500',
   };
   return (
     <div className={`rounded-2xl border bg-gradient-to-br ${tones[tone]} to-transparent p-5 shadow-sm`}>
@@ -67,7 +74,7 @@ function MetricCard({ label, value, detail, icon, tone = 'blue' }) {
           <p className="mt-2 text-3xl font-black tracking-tight text-foreground">{value ?? '—'}</p>
           <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
         </div>
-        <span className="rounded-xl border border-current/15 bg-black/10 p-2.5">{createElement(icon, { size: 20 })}</span>
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white shadow-inner ${badges[tone]}`}>{createElement(icon, { size: 20 })}</span>
       </div>
     </div>
   );
@@ -301,7 +308,7 @@ function InventoryView({ overview, candidates, source, state, onSourceChange, on
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[0.8fr_2.2fr]">
-        <div className="rounded-2xl border border-border bg-card/65 p-6">
+        <div className="rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xl p-6">
           <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Cobertura</p>
           <h2 className="mt-1 text-lg font-black">Fuentes conectadas</h2>
           <div className="mt-5 space-y-3">
@@ -320,7 +327,7 @@ function InventoryView({ overview, candidates, source, state, onSourceChange, on
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-border bg-card/65">
+        <div className="overflow-hidden rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xl">
           <div className="flex flex-col gap-4 border-b border-border p-5 lg:flex-row lg:items-center lg:justify-between">
             <div><p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Conciliación</p><h2 className="mt-1 text-lg font-black">Candidatos de inventario</h2><p className="mt-1 text-xs text-muted-foreground">{candidates.data?.total ?? 0} registros bajo revisión</p></div>
             <div className="flex flex-wrap gap-2">
@@ -332,7 +339,7 @@ function InventoryView({ overview, candidates, source, state, onSourceChange, on
             <div className="max-h-[720px] divide-y divide-border/70 overflow-y-auto">
               {rows.map((item) => (
                 <article key={item.id} className="grid gap-3 p-5 lg:grid-cols-[1.35fr_1fr_0.8fr_0.7fr] lg:items-center cursor-pointer hover:bg-muted/35 transition-colors" onClick={() => onSelectCandidate?.(item.id)}>
-                  <div className="min-w-0"><p className="truncate font-bold">{item.label}</p><p className="mt-1 truncate text-xs text-muted-foreground">{SOURCE_LABEL[item.source] || item.source} · {item.assetClass}</p><p className="mt-1 truncate text-[10px] text-blue-300">{AUTHORITY_LABEL[item.sourceAuthority] || item.sourceAuthority}</p></div>
+                  <div className="min-w-0"><p className="truncate font-bold">{item.label}</p><p className="mt-1 truncate text-xs text-muted-foreground">{SOURCE_LABEL[item.source] || item.source} · {item.assetClass}</p><p className="mt-1 truncate text-[10px] text-blue-600 dark:text-blue-300">{AUTHORITY_LABEL[item.sourceAuthority] || item.sourceAuthority}</p></div>
                   <div><p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Ciclo operativo</p><p className="mt-1 text-xs font-bold">{LIFECYCLE_LABEL[item.lifecycleStatus] || item.lifecycleStatus}</p><p className="mt-1 text-[10px] text-muted-foreground">{item.ageDays == null ? 'Sin fecha confiable' : `Última actividad hace ${item.ageDays} día${item.ageDays === 1 ? '' : 's'}`}</p></div>
                   <div><p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Red y conciliación</p><p className="mt-1 text-xs font-bold">{NETWORK_PROFILE_LABEL[item.networkProfile] || item.networkProfile}</p><p className="mt-1 truncate text-[10px] text-muted-foreground">{INVENTORY_STATE_LABEL[item.state] || item.state} · {item.osFamily || item.manufacturer || 'Sin clasificar'}</p></div>
                   <div className="lg:text-right"><p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Identidad</p><p className="mt-1 font-black">{Math.round((item.identityConfidence || 0) * 100)}%</p><p className="text-[10px] text-muted-foreground">{item.identityStrength}</p>{item.findingCount > 0 && <p className="text-[10px] text-rose-300">{item.findingCount} hallazgos · {Number(item.maxSeverity).toFixed(1)}</p>}</div>
@@ -449,11 +456,11 @@ function SubnetsView({ query, drafts, onDraftChange, onRetry, onSave, onDisposit
           <div className="mt-4 h-2 overflow-hidden rounded-full bg-black/20"><div className="h-full rounded-full bg-amber-400 transition-all" style={{ width: `${progress}%` }} /></div>
         </div>
       </section>
-      <section className="grid min-h-[650px] overflow-hidden rounded-2xl border border-border bg-card/65 xl:grid-cols-[390px_1fr]">
+      <section className="grid min-h-[650px] overflow-hidden rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xl xl:grid-cols-[390px_1fr]">
         <aside className="border-b border-border xl:border-b-0 xl:border-r">
           <div className="border-b border-border p-4">
             <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar interfaz, alias o IP" className="w-full rounded-xl border border-border bg-background py-2.5 pl-9 pr-3 text-xs outline-none focus:border-blue-500/50" /></div>
-            <div className="mt-3 flex flex-wrap gap-2"><SlidersHorizontal className="mt-1.5 text-muted-foreground" size={15} />{[['ALL','Todos'],['PENDING','Pendientes'],['OBSERVATIONS','Observaciones'],['REVIEW','Por resolver'],['COMPLETE','Aplicados']].map(([value,label]) => <button key={value} onClick={() => setFilter(value)} className={`rounded-lg px-3 py-1.5 text-[10px] font-black ${filter === value ? 'bg-blue-500/15 text-blue-300' : 'bg-muted/40 text-muted-foreground hover:text-foreground'}`}>{label}</button>)}</div>
+            <div className="mt-3 flex flex-wrap gap-2"><SlidersHorizontal className="mt-1.5 text-muted-foreground" size={15} />{[['ALL','Todos'],['PENDING','Pendientes'],['OBSERVATIONS','Observaciones'],['REVIEW','Por resolver'],['COMPLETE','Aplicados']].map(([value,label]) => <button key={value} onClick={() => setFilter(value)} className={`rounded-lg px-3 py-1.5 text-[10px] font-black ${filter === value ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted/60'}`}>{label}</button>)}</div>
           </div>
           <div className="max-h-[570px] divide-y divide-border/60 overflow-y-auto">
             {visibleRows.map((item) => {
@@ -495,7 +502,7 @@ function SubnetsView({ query, drafts, onDraftChange, onRetry, onSave, onDisposit
               <label className="text-xs font-bold">Población atendida<select value={draft.population || ''} onChange={(event) => update(selected.id, 'population', event.target.value)} className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-3 text-sm font-normal"><option value="">Selecciona una población</option>{Object.entries(SERVED_POPULATIONS).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
               <label className="text-xs font-bold lg:col-span-2">Criticidad<select value={draft.criticality || 'MEDIUM'} onChange={(event) => update(selected.id, 'criticality', event.target.value)} className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-3 text-sm font-normal"><option value="LOW">Baja</option><option value="MEDIUM">Media</option><option value="HIGH">Alta</option><option value="CRITICAL">Crítica</option></select></label>
             </div></div>
-            <div className="mt-7 rounded-2xl border border-blue-500/20 bg-blue-500/[0.06] p-5"><p className="text-xs font-black uppercase tracking-wider text-blue-300">Vista previa de la política</p><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{draft.addressMode === 'DHCP' ? 'La IP tendrá peso mínimo para identificar equipos; se priorizarán agentes, hostname e identificadores persistentes.' : draft.addressMode === 'STATIC' ? 'La IP aportará contexto operativo fuerte, pero nunca fusionará dos equipos por sí sola.' : draft.addressMode === 'MIXED' ? 'Se aplicará conciliación conservadora y los cambios de IP requerirán evidencia corroborante.' : 'Selecciona el direccionamiento para conocer cómo cambiará la conciliación.'}</p><p className="mt-3 text-xs font-bold">Impacto: {selected.observations} observaciones · no crea activos automáticamente.</p></div>
+            <div className="mt-7 rounded-2xl border border-blue-500/20 bg-blue-500/[0.06] p-5"><p className="text-xs font-black uppercase tracking-wider text-blue-600 dark:text-blue-300">Vista previa de la política</p><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{draft.addressMode === 'DHCP' ? 'La IP tendrá peso mínimo para identificar equipos; se priorizarán agentes, hostname e identificadores persistentes.' : draft.addressMode === 'STATIC' ? 'La IP aportará contexto operativo fuerte, pero nunca fusionará dos equipos por sí sola.' : draft.addressMode === 'MIXED' ? 'Se aplicará conciliación conservadora y los cambios de IP requerirán evidencia corroborante.' : 'Selecciona el direccionamiento para conocer cómo cambiará la conciliación.'}</p><p className="mt-3 text-xs font-bold">Impacto: {selected.observations} observaciones · no crea activos automáticamente.</p></div>
             <div className="mt-5 flex flex-col gap-3 border-t border-border pt-5 lg:flex-row lg:items-center lg:justify-between"><div className="flex flex-wrap gap-2"><button disabled={saving} onClick={async () => { setSaving(true); setSaveError(''); try { await onDisposition(selected.id, 'NEEDS_SPLIT'); } catch (error) { setSaveError(error.message); } finally { setSaving(false); } }} className="rounded-xl border border-rose-500/25 bg-rose-500/[0.06] px-4 py-3 text-[10px] font-black uppercase text-rose-300 hover:bg-rose-500/10">Requiere desagregación</button><button disabled={saving} onClick={async () => { setSaving(true); setSaveError(''); try { await onDisposition(selected.id, 'OUT_OF_SCOPE'); } catch (error) { setSaveError(error.message); } finally { setSaving(false); } }} className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-[10px] font-black uppercase text-muted-foreground hover:text-foreground">No tengo alcance</button></div><div className="flex flex-col items-end gap-2">{saveError && <p className="text-xs text-rose-300">{saveError}</p>}<button disabled={!isComplete(draft) || saving} onClick={async () => { setSaving(true); setSaveError(''); try { await onSave(selected.id, draft); } catch (error) { setSaveError(error.message); } finally { setSaving(false); } }} className="rounded-xl bg-blue-600 px-5 py-3 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-blue-950/30 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40">{saving ? 'Guardando…' : selected.classificationStatus === 'APPROVED' ? 'Actualizar política' : 'Aplicar clasificación'}</button></div></div>
           </>}
         </div>
@@ -538,18 +545,23 @@ export default function CybersecurityDashboard() {
     <div className="h-full overflow-y-auto bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.10),transparent_34%)] p-6 lg:p-9">
       <div className="mx-auto max-w-[1500px] space-y-7">
         <section className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-          <div>
-            <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.22em] text-blue-400"><ShieldCheck size={15} /> Skylab Cybersecurity</div>
-            <h1 className="mt-2 text-3xl font-black tracking-tight lg:text-4xl">{activeView === 'inventory' ? 'Inventario de activos' : activeView === 'subnets' ? 'Clasificación de subredes' : 'Postura y remediación'}</h1>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{activeView === 'inventory' ? 'Observaciones, candidatos y activos canónicos conciliados sin convertir direcciones temporales en identidad.' : activeView === 'subnets' ? 'Define el contexto operativo de cada segmento protegido y revisa su impacto antes de aplicar políticas.' : 'Hallazgos normalizados, agrupados por causa técnica y priorizados sin exponer identificadores sensibles.'}</p>
+          <div className="flex items-start gap-4">
+            <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-inner sm:flex">
+              <ShieldCheck size={24} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.22em] text-blue-500 dark:text-blue-400"><ShieldCheck size={15} /> Skylab Cybersecurity</div>
+              <h1 className="mt-2 text-3xl font-black tracking-tight lg:text-4xl">{activeView === 'inventory' ? 'Inventario de activos' : activeView === 'subnets' ? 'Clasificación de subredes' : 'Postura y remediación'}</h1>
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{activeView === 'inventory' ? 'Observaciones, candidatos y activos canónicos conciliados sin convertir direcciones temporales en identidad.' : activeView === 'subnets' ? 'Define el contexto operativo de cada segmento protegido y revisa su impacto antes de aplicar políticas.' : 'Hallazgos normalizados, agrupados por causa técnica y priorizados sin exponer identificadores sensibles.'}</p>
+            </div>
           </div>
           <button onClick={refresh} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-muted"><RefreshCw size={15} className={(overview.isFetching || cases.isFetching || inventoryOverview.isFetching || inventoryCandidates.isFetching) ? 'animate-spin' : ''} /> Actualizar</button>
         </section>
 
         <nav className="flex w-fit gap-1 rounded-xl border border-border bg-card/70 p-1">
-          <button onClick={() => setActiveView('posture')} className={`rounded-lg px-4 py-2 text-xs font-black transition-colors ${activeView === 'posture' ? 'bg-blue-500/15 text-blue-300' : 'text-muted-foreground hover:text-foreground'}`}>Postura y remediación</button>
-          <button onClick={() => setActiveView('inventory')} className={`rounded-lg px-4 py-2 text-xs font-black transition-colors ${activeView === 'inventory' ? 'bg-blue-500/15 text-blue-300' : 'text-muted-foreground hover:text-foreground'}`}>Inventario</button>
-          <button onClick={() => setActiveView('subnets')} className={`rounded-lg px-4 py-2 text-xs font-black transition-colors ${activeView === 'subnets' ? 'bg-blue-500/15 text-blue-300' : 'text-muted-foreground hover:text-foreground'}`}>Subredes</button>
+          <button onClick={() => setActiveView('posture')} className={`rounded-lg px-4 py-2 text-xs font-black transition-colors ${activeView === 'posture' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>Postura y remediación</button>
+          <button onClick={() => setActiveView('inventory')} className={`rounded-lg px-4 py-2 text-xs font-black transition-colors ${activeView === 'inventory' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>Inventario</button>
+          <button onClick={() => setActiveView('subnets')} className={`rounded-lg px-4 py-2 text-xs font-black transition-colors ${activeView === 'subnets' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>Subredes</button>
         </nav>
 
         {activeView === 'inventory' ? (
@@ -565,7 +577,7 @@ export default function CybersecurityDashboard() {
         </section>
 
         <section className="grid gap-5 xl:grid-cols-[0.85fr_2.15fr]">
-          <div className="rounded-2xl border border-border bg-card/65 p-6">
+          <div className="rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xl p-6">
             <div className="flex items-center justify-between"><div><p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Distribución</p><h2 className="mt-1 text-lg font-black">Prioridad técnica</h2></div><Radar className="text-blue-400" size={22} /></div>
             <div className="mt-6 space-y-4">
               {['P1', 'P2', 'P3', 'P4'].map((key) => {
@@ -577,7 +589,7 @@ export default function CybersecurityDashboard() {
             <div className="mt-6 rounded-xl border border-border/70 bg-background/50 p-4 text-xs text-muted-foreground"><Clock3 className="mb-2 text-blue-400" size={17} />Último escaneo: <span className="font-bold text-foreground">{data?.latestScan ? new Date(data.latestScan.capturedAt).toLocaleString('es-CO') : 'sin capturas'}</span></div>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-border bg-card/65">
+          <div className="overflow-hidden rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xl">
             <div className="flex flex-col gap-4 border-b border-border p-5 lg:flex-row lg:items-center lg:justify-between">
               <div><p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Bandeja operativa</p><h2 className="mt-1 text-lg font-black">Casos de remediación</h2></div>
               <div className="flex flex-wrap gap-2">
@@ -588,7 +600,7 @@ export default function CybersecurityDashboard() {
             {(overview.isError || cases.isError) ? <div className="p-5"><EmptyState error onRetry={refresh} /></div> : cases.data?.items?.length === 0 ? <div className="p-5"><EmptyState /></div> : (
               <div className="divide-y divide-border/70">
                 {(cases.data?.items || []).map((item) => (
-                  <button key={item.id} onClick={() => setSelectedCase(item.id)} className="grid w-full gap-3 p-5 text-left transition-colors hover:bg-muted/45 lg:grid-cols-[auto_1fr_auto_auto] lg:items-center">
+                  <button key={item.id} onClick={() => setSelectedCase(item.id)} className="grid w-full gap-3 p-5 text-left transition-colors hover:bg-muted/40 lg:grid-cols-[auto_1fr_auto_auto] lg:items-center">
                     <span className={`w-fit rounded-lg border px-2.5 py-1 text-xs font-black ${PRIORITY_STYLE[item.priority]}`}>{item.priority}</span>
                     <div className="min-w-0"><p className="truncate font-bold">{item.title}</p><p className="mt-1 truncate text-xs text-muted-foreground">{item.asset} · {item.findingCount} evidencia{item.findingCount === 1 ? '' : 's'}</p></div>
                     <div className="flex items-center gap-2 text-xs"><span className="font-black">{item.maxSeverity.toFixed(1)}</span><span className="rounded-md bg-muted px-2 py-1 text-[10px] font-bold text-muted-foreground">{STATUS_LABEL[item.status] || item.status}</span></div>
