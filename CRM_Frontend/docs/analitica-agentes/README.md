@@ -1,11 +1,17 @@
-# CRM_Frontend — Módulo "Analítica de Agentes IA"
+# CRM_Frontend — Módulo "Bots Gane Palmira" (antes "Analítica de Agentes")
 
-Ruta: `/` · Archivo: `src/pages/Dashboard.jsx` · Servicio: `src/services/crm.service.js`
+Rutas: `/bots/comercial` · `/bots/oskitar` · `/bots/betty` (`/` y `/bots` redirigen a
+`/bots/comercial`) · Archivos: `src/pages/Dashboard.jsx`, `src/components/ChatbotAnalyticsPanel.jsx`,
+`src/components/botKit.jsx` · Servicios: `src/services/crm.service.js` (Bot Comercial → Supabase),
+`src/services/chatbotAnalytics.service.js` (Oskitar/Betty → servicio `chatbot-analytics`).
+
+Ver `specs/0004-integracion-analitica-chatbots/` y `specs/0005-bots-gane-palmira/`.
 
 ## Propósito
 
-Monitoreo y gestión de los bots de IA en producción. **Tres pestañas** conmutables
-(`agentType`: `comercial` | `oskitar` | `betty`):
+Monitoreo y gestión de los bots de IA en producción. En el sidebar es un **grupo desplegable**
+"Bots Gane Palmira" con 3 sub-ítems; dentro de la ventana hay un conmutador de pestañas que
+sincroniza la URL (`agentType`/`useParams`: `comercial` | `oskitar` | `betty`):
 
 | Pestaña | Contenido | Fuente de datos |
 |---------|-----------|-----------------|

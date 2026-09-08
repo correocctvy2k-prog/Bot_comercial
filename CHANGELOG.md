@@ -10,6 +10,19 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CRM_Frontend — Módulo "Bots Gane Palmira" (ex Analítica de Agentes)
+- **Detalle y consistencia del módulo** (`specs/0005-bots-gane-palmira/`, tandas 1-3):
+  - Módulo renombrado a **"Bots Gane Palmira"**; cabecera compacta (sin título duplicado);
+    conmutador de bot arriba.
+  - **Submenú por bot** en el sidebar; rutas `/bots/comercial|oskitar|betty` (`/` redirige);
+    el conmutador de pestañas sincroniza la URL.
+  - `src/components/botKit.jsx`: `KpiCard`, `PeriodSelect` y `BotSummary` **compartidos** por
+    las 3 vistas. Oskitar y Betty ahora usan el mismo `KpiCard` y el mismo selector de periodo
+    (`Hoy 24h / 7 días / mes / año`) que Bot Comercial.
+  - **Resumen en lenguaje natural** al inicio de cada vista (generado de los KPIs del periodo).
+  - Quitado el KPI "Cobertura SIISS" de Bot Comercial.
+  - _Pendiente (tanda 4): ficha de contacto + historial de conversación por bot._
+
 ### CRM_Frontend — Analítica de Agentes · Integración Oskitar / Betty
 - **Analítica de chatbots nativa** (`specs/0004-integracion-analitica-chatbots/`, `ADR-0002`):
   el conmutador del módulo pasa a 3 pestañas — **Bot Comercial · Oskitar · Betty**. Oskitar y

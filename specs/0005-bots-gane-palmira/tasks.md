@@ -8,14 +8,14 @@ Referencia: `spec.md`. Ejecución en 4 tandas (1-3 seguidas, 4 aparte).
 - [x] (3) Quitar título duplicado; subir conmutador de bot + toolbar/periodo a la zona superior.
 - [x] (4) Quitar KPI "Cobertura SIISS" de la vista Bot Comercial (`Dashboard.jsx`).
 - [x] (8) `buildSummary(bot, model)` → párrafo narrativo al inicio de cada vista (Comercial, Oskitar, Betty).
-- [ ] Build + lint + smoke claro/oscuro. Commit.
+- [x] Build + lint + smoke claro/oscuro. Commit `dbef37c`.
 
 ## Tanda 2 — Consistencia
 
 - [x] (5) Exportar `KpiCard` de `Dashboard.jsx`; usarlo en `ChatbotAnalyticsPanel` (Oskitar/Betty).
 - [x] (6) Extraer el `<select>` de periodo de Bot Comercial a componente reutilizable; usarlo en
       Oskitar/Betty (mapa a `from/to`: 24h/7d/1m/1y).
-- [ ] Build + lint + smoke. Commit.
+- [x] Build + lint + smoke. Commit `dbef37c`.
 
 ## Tanda 3 — Submenú
 
@@ -23,7 +23,7 @@ Referencia: `spec.md`. Ejecución en 4 tandas (1-3 seguidas, 4 aparte).
 - [x] `Dashboard.jsx`: leer el bot de `useParams`/`useLocation`; conmutador de pestañas
       sincroniza la URL (`navigate`).
 - [x] `Layout.jsx`: "Bots Gane Palmira" como grupo desplegable con 3 sub-ítems.
-- [ ] Build + lint + smoke (deep-link + cambio de pestaña). Commit.
+- [x] Build + lint + smoke (deep-link + cambio de pestaña). Commit `dbef37c`.
 
 ## Tanda 4 — CRM por bot (ficha + historial)
 
