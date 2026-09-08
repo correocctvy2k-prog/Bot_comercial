@@ -547,9 +547,9 @@ export default function CybersecurityDashboard() {
         </section>
 
         <nav className="flex w-fit gap-1 rounded-xl border border-border bg-card/70 p-1">
-          <button onClick={() => setActiveView('posture')} className={`rounded-lg px-4 py-2 text-xs font-black transition-colors ${activeView === 'posture' ? 'bg-blue-500/15 text-blue-300' : 'text-muted-foreground hover:text-foreground'}`}>Postura y remediación</button>
-          <button onClick={() => setActiveView('inventory')} className={`rounded-lg px-4 py-2 text-xs font-black transition-colors ${activeView === 'inventory' ? 'bg-blue-500/15 text-blue-300' : 'text-muted-foreground hover:text-foreground'}`}>Inventario</button>
-          <button onClick={() => setActiveView('subnets')} className={`rounded-lg px-4 py-2 text-xs font-black transition-colors ${activeView === 'subnets' ? 'bg-blue-500/15 text-blue-300' : 'text-muted-foreground hover:text-foreground'}`}>Subredes</button>
+          <button onClick={() => setActiveView('posture')} className={`rounded-lg px-4 py-2 text-xs font-black transition-colors ${activeView === 'posture' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>Postura y remediación</button>
+          <button onClick={() => setActiveView('inventory')} className={`rounded-lg px-4 py-2 text-xs font-black transition-colors ${activeView === 'inventory' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>Inventario</button>
+          <button onClick={() => setActiveView('subnets')} className={`rounded-lg px-4 py-2 text-xs font-black transition-colors ${activeView === 'subnets' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>Subredes</button>
         </nav>
 
         {activeView === 'inventory' ? (

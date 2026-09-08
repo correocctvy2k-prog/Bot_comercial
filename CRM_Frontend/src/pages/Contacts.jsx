@@ -54,29 +54,29 @@ function getGradient(name = "") {
 
 // ─── KPI Card UI (Global Premium Redesign) ──────────────────────────
 const KpiCard = ({ title, value, icon, badge, badgeColor, accent = "from-primary/20", iconColor = "text-primary" }) => (
-    <div className="group relative flex flex-col items-center justify-between p-6 bg-[#0f111a]/80 backdrop-blur-md border border-white/5 rounded-2xl shadow-xl transition-all duration-500 hover:-translate-y-2 hover:border-white/20 hover:shadow-2xl hover:shadow-primary/20 overflow-hidden cursor-pointer">
+    <div className="group relative flex flex-col items-center justify-between p-5 bg-card/60 backdrop-blur-xl border border-border/80 rounded-2xl shadow-sm transition-all duration-500 hover:-translate-y-2 hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/20 overflow-hidden cursor-pointer">
         {/* Subtle Glow Background Effect */}
         <div className={`absolute top-0 w-full h-full bg-gradient-to-br ${accent} to-transparent opacity-5 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none`} />
 
         {/* Floating Icon with Backglow (No Box) */}
-        <div className="relative mb-6 transform transition-transform duration-500 group-hover:scale-110 group-hover:-translate-y-1 z-10 w-full flex justify-center mt-2">
+        <div className="relative mb-3 transform transition-transform duration-500 group-hover:scale-110 group-hover:-translate-y-1 z-10 w-full flex justify-center">
             <div className={`absolute inset-0 bg-current opacity-20 blur-2xl rounded-full transition-all duration-500 group-hover:opacity-50 group-hover:blur-3xl ${iconColor}`} />
             <div className={`relative flex items-center justify-center ${iconColor} drop-shadow-2xl`}>
-                {React.cloneElement(icon, { className: "w-11 h-11" })}
+                {React.cloneElement(icon, { className: "w-9 h-9" })}
             </div>
         </div>
 
         {/* Title */}
-        <h3 className="text-[11px] font-bold tracking-[0.15em] text-muted-foreground uppercase text-center mb-3 z-10 transition-colors duration-300 group-hover:text-white/90">
+        <h3 className="text-[11px] font-bold tracking-[0.15em] text-muted-foreground uppercase text-center mb-2 z-10 transition-colors duration-300 group-hover:text-foreground">
             {title}
         </h3>
 
         {/* Main Value */}
-        <div className="text-4xl font-black tracking-tight text-white z-10 flex flex-col items-center gap-1">
+        <div className="text-3xl font-black tracking-tight text-foreground z-10 flex flex-col items-center gap-1">
             <span>{value}</span>
             {badge && (
-                <div className="mt-4 w-full pt-4 border-t border-white/5 flex justify-center transition-colors duration-300 group-hover:border-white/10">
-                    <span className={`text-[10px] font-medium uppercase tracking-widest ${badgeColor || 'text-muted-foreground group-hover:text-gray-300'}`}>{badge}</span>
+                <div className="mt-3 w-full pt-3 border-t border-border/80 flex justify-center transition-colors duration-300 group-hover:border-border">
+                    <span className={`text-[10px] font-medium uppercase tracking-widest ${badgeColor || 'text-muted-foreground group-hover:text-foreground'}`}>{badge}</span>
                 </div>
             )}
         </div>
@@ -176,7 +176,7 @@ export default function Contacts() {
             {/* Header & Tabs */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
                         <Users className="h-6 w-6 text-primary" /> Multi-Canal
                     </h2>
                     <p className="text-muted-foreground font-medium mt-1">Gestiona tu base de clientes comunes o los encargados de nodos.</p>
@@ -323,7 +323,7 @@ function AsesorCard({ point, updatePointAttrMutation }) {
                     </div>
                 </div>
                 {!isEditing && (
-                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-50 space-x-0 bg-white/5 hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-50 space-x-0 bg-muted/50 hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}>
                         <Edit3 className="w-3.5 h-3.5" />
                     </Button>
                 )}

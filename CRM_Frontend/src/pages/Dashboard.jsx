@@ -743,16 +743,16 @@ function ChannelDonut({ distribution = [], total = 0 }) {
                 {/* Total centrado */}
                 {total > 0 && (
                     <>
-                        <text x={cx} y={cy - 6} textAnchor="middle" fill="white" style={{ fontSize: 24, fontWeight: 700, fontFamily: "inherit" }}>
+                        <text x={cx} y={cy - 6} textAnchor="middle" className="fill-foreground" style={{ fontSize: 24, fontWeight: 700, fontFamily: "inherit" }}>
                             {total.toLocaleString()}
                         </text>
-                        <text x={cx} y={cy + 14} textAnchor="middle" fill="#666" style={{ fontSize: 11, fontFamily: "inherit" }}>
+                        <text x={cx} y={cy + 14} textAnchor="middle" className="fill-muted-foreground" style={{ fontSize: 11, fontFamily: "inherit" }}>
                             hoy
                         </text>
                     </>
                 )}
                 {total === 0 && (
-                    <text x={cx} y={cy + 5} textAnchor="middle" fill="#444" style={{ fontSize: 12, fontFamily: "inherit" }}>
+                    <text x={cx} y={cy + 5} textAnchor="middle" className="fill-muted-foreground" style={{ fontSize: 12, fontFamily: "inherit" }}>
                         Sin datos
                     </text>
                 )}
@@ -874,9 +874,9 @@ function RankingSection({ ranking = [] }) {
                             </span>
                             <div className="flex flex-wrap gap-1.5">
                                 {top1.scannedZones?.slice(0, 3).map((z, idx) => (
-                                    <span key={idx} className="bg-amber-500/10 text-amber-300 border border-amber-500/20 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1">
+                                    <span key={idx} className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1">
                                         <span>📍 {z.name}</span>
-                                        <span className="bg-amber-500/20 text-amber-200 px-1.5 py-0.2 rounded text-[10px]">({z.count}x)</span>
+                                        <span className="bg-amber-500/25 text-amber-800 dark:text-amber-200 px-1.5 py-0.2 rounded text-[10px]">({z.count}x)</span>
                                     </span>
                                 ))}
                             </div>
@@ -930,9 +930,9 @@ function RankingSection({ ranking = [] }) {
                             </span>
                             <div className="flex flex-wrap gap-1.5">
                                 {top2.scannedZones?.slice(0, 3).map((z, idx) => (
-                                    <span key={idx} className="bg-slate-400/10 text-slate-200 border border-slate-400/20 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1">
+                                    <span key={idx} className="bg-slate-400/15 text-slate-600 dark:text-slate-200 border border-slate-400/25 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1">
                                         <span>📍 {z.name}</span>
-                                        <span className="bg-slate-400/20 text-slate-100 px-1.5 py-0.2 rounded text-[10px]">({z.count}x)</span>
+                                        <span className="bg-slate-400/25 text-slate-700 dark:text-slate-100 px-1.5 py-0.2 rounded text-[10px]">({z.count}x)</span>
                                     </span>
                                 ))}
                             </div>
@@ -986,9 +986,9 @@ function RankingSection({ ranking = [] }) {
                             </span>
                             <div className="flex flex-wrap gap-1.5">
                                 {top3.scannedZones?.slice(0, 3).map((z, idx) => (
-                                    <span key={idx} className="bg-orange-500/10 text-orange-200 border border-orange-500/20 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1">
+                                    <span key={idx} className="bg-orange-500/15 text-orange-700 dark:text-orange-200 border border-orange-500/25 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1">
                                         <span>📍 {z.name}</span>
-                                        <span className="bg-orange-500/20 text-orange-100 px-1.5 py-0.2 rounded text-[10px]">({z.count}x)</span>
+                                        <span className="bg-orange-500/25 text-orange-800 dark:text-orange-100 px-1.5 py-0.2 rounded text-[10px]">({z.count}x)</span>
                                     </span>
                                 ))}
                             </div>
