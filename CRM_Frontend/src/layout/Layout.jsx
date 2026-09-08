@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { supabase } from '../services/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// AsambleaIcon: se conserva para cuando se re-habilite el módulo Asamblea (deshabilitado 2026-09-08).
 const AsambleaIcon = ({ size = 24, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeJoin="round" className={className}>
         <path d="M2.5 2.5l2.5 2.5m0-2h2v2" strokeWidth="1.2" opacity="0.6" />
@@ -41,7 +42,8 @@ const MENU_ITEMS_RAW = [
                 ]
             },
             { to: '/contacts', icon: Users, label: 'Contactos', module: 'contacts' },
-            { to: '/asamblea', icon: AsambleaIcon, label: 'Asamblea 2026', module: 'asamblea' }
+            // Asamblea deshabilitado temporalmente (2026-09-08, decisión del usuario) — NO eliminar.
+            // { to: '/asamblea', icon: AsambleaIcon, label: 'Asamblea 2026', module: 'asamblea' }
         ]
     },
     {
