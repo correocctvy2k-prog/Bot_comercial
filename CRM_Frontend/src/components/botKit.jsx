@@ -5,6 +5,46 @@
  * periodo y el bloque de resumen, para que las 3 se vean idénticas.
  */
 
+import { useState } from "react";
+import { Zap, ShieldCheck, Bot } from "lucide-react";
+import comercialImg from "@/assets/bots/comercial.png";
+import oskitarImg from "@/assets/bots/oskitar.png";
+import bettyImg from "@/assets/bots/betty.png";
+
+// --- Avatar de bot (spec 0006) ---------------------------------------
+// Imagen "tipo foto de perfil" de cada bot. Si la imagen no carga, cae al
+// icono de lucide de siempre.
+export const BOT_AVATARS = { comercial: comercialImg, oskitar: oskitarImg, betty: bettyImg };
+const BOT_FALLBACK_ICON = { comercial: Zap, oskitar: ShieldCheck, betty: Bot };
+export const BOT_LABELS = { comercial: "Bot Comercial", oskitar: "Oskitar", betty: "Betty" };
+
+export function BotAvatar({ bot, size = 40, className = "" }) {
+    const [broken, setBroken] = useState(false);
+    const src = BOT_AVATARS[bot];
+    const Fallback = BOT_FALLBACK_ICON[bot] || Bot;
+    const box = { width: size, height: size };
+
+    if (!src || broken) {
+        return (
+            <span
+                style={box}
+                className={`flex shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground ring-1 ring-border ${className}`}
+            >
+                <Fallback size={Math.round(size * 0.5)} />
+            </span>
+        );
+    }
+    return (
+        <img
+            src={src}
+            alt={BOT_LABELS[bot] || bot}
+            style={box}
+            onError={() => setBroken(true)}
+            className={`shrink-0 rounded-full object-cover ring-1 ring-border ${className}`}
+        />
+    );
+}
+
 // --- Selector de periodo -------------------------------------------------
 export const PERIOD_OPTIONS = [
     { value: "24h", label: "Hoy (Últimas 24h)" },

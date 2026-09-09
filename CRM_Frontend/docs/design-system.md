@@ -57,12 +57,17 @@ Hover de panel interactivo: `hover:border-primary/30 transition-all`.
 
 | Rol | Clase |
 |-----|-------|
-| Título de módulo / sección con icon-badge | `text-lg font-black tracking-tight text-foreground` |
+| **Encabezado de módulo (página)** | Título `text-2xl font-bold tracking-tight text-foreground`; subtítulo `text-sm font-medium text-muted-foreground` (frase, **no** mayúsculas). Usar `src/components/PageHeader.jsx` (`{ icon, title, subtitle, actions }`). |
+| Título de sección con icon-badge (dentro de página) | `text-lg font-black tracking-tight text-foreground` |
 | Título de panel / gráfica | `text-base font-semibold` |
-| Subtítulo | `text-xs text-muted-foreground font-medium` |
+| Subtítulo de sección/panel | `text-xs text-muted-foreground font-medium` |
 | Micro-etiqueta (KPI, encabezado de columna) | `text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider` (o `text-[10px]`) |
 | Valor KPI | `text-2xl sm:text-3xl font-black tracking-tight` |
 | Número destacado en tabla | `font-black text-sm` |
+
+> El **encabezado de módulo** (el `<h1>` superior de cada página del shell) usa peso `bold`,
+> no `black`: es más legible en títulos largos. El `font-black` se reserva para valores KPI,
+> números de tabla e icon-badges. Referencia: `src/pages/Contacts.jsx` (spec 0006).
 
 ---
 

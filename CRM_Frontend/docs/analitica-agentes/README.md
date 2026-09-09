@@ -33,9 +33,12 @@ pinta. Ver `specs/0004-integracion-analitica-chatbots/`.
 | `Dashboard` (default) | Estado de pestaña (`agentType`), rango (`timeRange`), queries React Query, realtime `interactions_log` |
 | `ChatbotAnalyticsPanel` (`src/components/`) | Pestañas Oskitar y Betty: `useQuery` contra `chatbotAnalytics.service`, SSE, Recharts, tablas, filtros, CSV |
 | `KpiCard`, `ChannelDonut`, `CustomTooltip` | Presentación de métricas del Bot Comercial |
-| `RankingSection` + `PodiumCard` + `ZoneSummary` | Podio Top 3 + tabla: búsqueda, filtro de canal, orden por columnas, paginación (`RANKING_PAGE_SIZE = 15`), export CSV, botón "Ficha" por fila |
+| `RankingSection` + `PodiumCard` + `ZoneSummary` | Board `TopUsersBoard` Top 5 arriba; el podio Top 3 + tabla (búsqueda, filtro de canal, orden por columnas, paginación `RANKING_PAGE_SIZE = 15`, export CSV, botón "Ficha") se plegan tras "Ver tabla completa" |
 | `FeedItem` | Ítem del monitor de actividad en tiempo real |
-| `ContactDrawer` (`src/components/`) | **Ficha de contacto + transcripción por bot** (spec 0005 T4). Solo lectura. Se abre desde la fila de Personas (Oskitar), Clientes (Betty) y Ranking (Bot Comercial). Datos del contacto, estado, categorías/flujos y chat con separadores de fecha y "cargar mensajes anteriores" (`useInfiniteQuery`, páginas de 200). Oskitar/Betty → `chatbotAnalytics.service.getContact`; Bot Comercial → `crmService.getContactByProvider` (misma forma de respuesta) |
+| `ContactDrawer` (`src/components/`) | **Ficha de contacto + transcripción por bot** (spec 0005 T4). Solo lectura. Se abre desde la fila de Personas (Oskitar), Clientes (Betty), Ranking (Bot Comercial) y del board Top 5. Datos del contacto, estado, categorías/flujos y chat con separadores de fecha y "cargar mensajes anteriores" (`useInfiniteQuery`, páginas de 200). Oskitar/Betty → `chatbotAnalytics.service.getContact`; Bot Comercial → `crmService.getContactByProvider` (misma forma de respuesta) |
+| `PageHeader` (`src/components/`) | Encabezado de módulo estándar (spec 0006): `text-2xl font-bold` + subtítulo `text-sm` en frase. `{ icon, title, subtitle, actions }`. Lo usan las 3 vistas de bots. |
+| `BotAvatar` + `BOT_AVATARS` (`src/components/botKit.jsx`) | "Foto de perfil" de cada bot (spec 0006). `<img>` circular con `ring` de token y `onError` → icono lucide. En el encabezado de cada vista y en el conmutador de bots. Assets en `src/assets/bots/`. |
+| `TopUsersBoard` (`src/components/`) | Board premium **Top 5** (spec 0006). `rows` normalizadas `[{ rank, name, sublabel, value, valueLabel, channelIcon? }]`; oro/plata/bronce 1-3; fila → `onRowClick` (abre `ContactDrawer`). Bot Comercial: `ranking` de `getUserRanking`; Oskitar: `m.topUsers`; Betty: `m.topCustomers`. |
 
 ## Servicio (`chatbotAnalytics.service.js`)
 

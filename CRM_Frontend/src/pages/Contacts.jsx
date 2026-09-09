@@ -8,6 +8,7 @@ import { Users, Search, ChevronRight, TrendingUp, GitMerge, Activity, Store, Pho
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import PageHeader from "@/components/PageHeader";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -174,25 +175,23 @@ export default function Contacts() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-10">
             {/* Header & Tabs */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-                        <Users className="h-6 w-6 text-primary" /> Multi-Canal
-                    </h2>
-                    <p className="text-muted-foreground font-medium mt-1">Gestiona tu base de clientes comunes o los encargados de nodos.</p>
-                </div>
-
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[350px]">
-                    <TabsList className="w-full grid grid-cols-2">
-                        <TabsTrigger value="leads" className="relative gap-2">
-                            <Users className="w-4 h-4" /> Usuarios (Leads)
-                        </TabsTrigger>
-                        <TabsTrigger value="asesores" className="relative gap-2">
-                            <Store className="w-4 h-4" /> Asesores (Nodos)
-                        </TabsTrigger>
-                    </TabsList>
-                </Tabs>
-            </div>
+            <PageHeader
+                icon={<Users className="h-7 w-7 text-primary" />}
+                title="Multi-Canal"
+                subtitle="Gestiona tu base de clientes comunes o los encargados de nodos."
+                actions={
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[350px]">
+                        <TabsList className="w-full grid grid-cols-2">
+                            <TabsTrigger value="leads" className="relative gap-2">
+                                <Users className="w-4 h-4" /> Usuarios (Leads)
+                            </TabsTrigger>
+                            <TabsTrigger value="asesores" className="relative gap-2">
+                                <Store className="w-4 h-4" /> Asesores (Nodos)
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                }
+            />
 
             {/* ── KPIs ── */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

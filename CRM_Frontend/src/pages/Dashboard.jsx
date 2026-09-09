@@ -4,8 +4,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
 import { crmService } from "@/services/crm.service";
 import ChatbotAnalyticsPanel from "@/components/ChatbotAnalyticsPanel";
-import { KpiCard, PeriodSelect, BotSummary, periodPhrase } from "@/components/botKit";
+import { KpiCard, PeriodSelect, BotSummary, periodPhrase, BotAvatar } from "@/components/botKit";
 import ContactDrawer from "@/components/ContactDrawer";
+import PageHeader from "@/components/PageHeader";
+import TopUsersBoard from "@/components/TopUsersBoard";
 
 import { supabase } from "@/services/supabase";
 import { formatDistanceToNow } from "date-fns";
@@ -161,10 +163,10 @@ export default function Dashboard() {
             {/* -- Conmutador de bot (compacto, arriba) -- */}
             <div className="flex bg-card/60 backdrop-blur-xl border border-border/80 rounded-2xl p-1.5 gap-1 shadow-sm w-full sm:w-fit">
                 {[
-                    { id: "comercial", label: "Bot Comercial", icon: <Zap size={15} /> },
-                    { id: "oskitar", label: "Oskitar", icon: <ShieldCheck size={15} /> },
-                    { id: "betty", label: "Betty", icon: <Bot size={15} /> },
-                ].map(({ id, label, icon }) => (
+                    { id: "comercial", label: "Bot Comercial" },
+                    { id: "oskitar", label: "Oskitar" },
+                    { id: "betty", label: "Betty" },
+                ].map(({ id, label }) => (
                     <button
                         key={id}
                         onClick={() => setAgentType(id)}
@@ -174,7 +176,7 @@ export default function Dashboard() {
                                 : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                         }`}
                     >
-                        {icon}
+                        <BotAvatar bot={id} size={20} className={agentType === id ? "ring-primary-foreground/40" : ""} />
                         <span>{label}</span>
                     </button>
                 ))}
@@ -188,14 +190,13 @@ export default function Dashboard() {
             {/* -------------- VISTA BOT COMERCIAL (Métricas & Logs) -------------- */}
             {agentType === "comercial" && (
                 <>
-                    {/* Header compacto + selector de periodo */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                        <div>
-                            <h1 className="text-lg font-black tracking-tight text-foreground">Bot Comercial — Ventas &amp; Atención</h1>
-                            <p className="text-xs text-muted-foreground">WhatsApp y Telegram · datos de Supabase</p>
-                        </div>
-                        <PeriodSelect value={timeRange} onChange={setTimeRange} />
-                    </div>
+                    {/* Encabezado de módulo + selector de periodo */}
+                    <PageHeader
+                        icon={<BotAvatar bot="comercial" size={44} />}
+                        title="Bot Comercial — Ventas & Atención"
+                        subtitle="WhatsApp y Telegram · datos de Supabase"
+                        actions={<PeriodSelect value={timeRange} onChange={setTimeRange} />}
+                    />
 
                     <BotSummary>{summarizeComercial(stats, timeRange)}</BotSummary>
 
@@ -654,49 +655,61 @@ function RankingSection({ ranking = [] }) {
         ? `${RANK_META[rank].pill} border`
         : "bg-muted/70 text-muted-foreground border border-border";
 
+    // Top 5 para el board premium (spec 0006)
+    const topRows = ranking.slice(0, 5).map((it) => ({
+        key: it.phone,
+        rank: it.rank,
+        name: it.user,
+        sublabel: it.phone,
+        value: it.totalCount,
+        valueLabel: "interacciones",
+        channelIcon: <ChannelMark channel={it.channel} size={13} />,
+        badge: it.topDay && it.topDay !== "Sin datos" ? null : null,
+    }));
+
     return (
         <div className="space-y-6 my-8">
-            {/* Header del Ranking & Buscador */}
-            <div className="bg-card/60 backdrop-blur-xl border border-border/80 p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-500 flex items-center justify-center text-black font-black shadow-inner shrink-0">
-                        <Trophy size={22} />
+            {/* Board premium Top 5 */}
+            <TopUsersBoard
+                title="Ranking de usuarios — Top 5"
+                subtitle="Bot Comercial · por frecuencia de interacción en el periodo"
+                icon={<span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-500 text-black shadow-inner"><Trophy size={20} /></span>}
+                rows={topRows}
+                onRowClick={(r) => setFicha({ providerId: r.key, name: r.name })}
+                emptyText="Sin interacciones registradas en el periodo."
+            />
+
+            {/* Tabla completa (plegada por defecto): podio Top 3 + tabla numerada + búsqueda/filtro/CSV */}
+            <details className="group overflow-hidden rounded-2xl border border-border/80 bg-card/60 shadow-sm backdrop-blur-xl">
+                <summary className="flex cursor-pointer select-none list-none items-center justify-between p-4 text-sm font-bold text-foreground transition-colors hover:bg-muted/40">
+                    <span className="flex items-center gap-2">
+                        <Users size={16} className="text-primary" /> Ver tabla completa &amp; zonas escaneadas ({filtered.length} usuarios)
+                    </span>
+                    <ChevronDown size={16} className="text-muted-foreground transition-transform group-open:rotate-180" />
+                </summary>
+
+                <div className="space-y-6 border-t border-border/80 p-4">
+                    {/* Buscador */}
+                    <div className="relative w-full md:w-72">
+                        <Search className="absolute left-3.5 top-2.5 text-muted-foreground" size={15} />
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                            placeholder="Buscar por persona, día o zona..."
+                            className="w-full bg-background border border-border rounded-xl pl-9 pr-4 py-2 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all"
+                        />
                     </div>
-                    <div>
-                        <h3 className="text-lg font-black tracking-tight text-foreground flex items-center gap-2">
-                            Ranking de Usuarios & Zonas Escaneadas
-                            <span className="text-[10px] bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25 px-2.5 py-0.5 rounded-full font-bold uppercase">
-                                Bot Comercial
-                            </span>
-                        </h3>
-                        <p className="text-xs text-muted-foreground font-medium">
-                            Conteo numérico de frecuencia de interacción por persona, días de la semana y zonas consultadas
-                        </p>
+
+                    {/* Podio Top 3 */}
+                    <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-3">
+                        {top1 && <PodiumCard item={top1} />}
+                        {top2 && <PodiumCard item={top2} />}
+                        {top3 && <PodiumCard item={top3} />}
                     </div>
-                </div>
 
-                {/* Buscador */}
-                <div className="relative w-full md:w-72">
-                    <Search className="absolute left-3.5 top-2.5 text-muted-foreground" size={15} />
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                        placeholder="Buscar por persona, día o zona..."
-                        className="w-full bg-background border border-border rounded-xl pl-9 pr-4 py-2 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all"
-                    />
-                </div>
-            </div>
-
-            {/* Podio Top 3 */}
-            <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-3">
-                {top1 && <PodiumCard item={top1} />}
-                {top2 && <PodiumCard item={top2} />}
-                {top3 && <PodiumCard item={top3} />}
-            </div>
-
-            {/* Tabla General Numerada (#1 al #N) */}
-            <div className="bg-card/60 backdrop-blur-xl border border-border/80 rounded-2xl overflow-hidden shadow-sm">
+                    {/* Tabla General Numerada (#1 al #N) */}
+                    <div className="bg-card/60 backdrop-blur-xl border border-border/80 rounded-2xl overflow-hidden shadow-sm">
                 <div className="p-4 border-b border-border/80 bg-muted/40 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                     <h4 className="font-bold text-sm text-foreground flex items-center gap-2">
                         <Users size={16} className="text-primary" />
@@ -892,7 +905,9 @@ function RankingSection({ ranking = [] }) {
                         </div>
                     </div>
                 )}
-            </div>
+                    </div>
+                </div>
+            </details>
 
             <ContactDrawer open={!!ficha} bot="comercial" target={ficha} onClose={() => setFicha(null)} />
         </div>

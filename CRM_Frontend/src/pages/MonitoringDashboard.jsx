@@ -483,8 +483,8 @@ export default function MonitoringDashboard() {
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-2xl font-black tracking-tight">Detalles Monitoreo</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Detalle operativo, historial y trazabilidad de ejecuciones.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Detalles Monitoreo</h1>
+          <p className="mt-1 text-sm font-medium text-muted-foreground">Detalle operativo, historial y trazabilidad de ejecuciones.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <HealthBadge label={`${onlineCount}/${onlineTotal} online`} ok={onlineCount === onlineTotal} warn={onlineCount >= Math.ceil(onlineTotal * 0.7)} />

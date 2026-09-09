@@ -10,6 +10,26 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CRM_Frontend — Polish: tipografía de encabezados, avatar de bot, ranking Top 5
+`specs/0006-polish-tipografia-ranking/`
+
+- **Estándar de encabezado de módulo.** `design-system.md` §3: el `<h1>` superior de cada
+  página usa `text-2xl font-bold tracking-tight` + subtítulo `text-sm font-medium` en frase
+  (antes `text-lg font-black` + micro-etiqueta en mayúsculas). Nuevo
+  `src/components/PageHeader.jsx` (`{ icon, title, subtitle, actions }`), adoptado en las 3
+  vistas de bots y en Contactos; normalizados en el sitio los `<h1>` de `UsersDashboard` y
+  `MonitoringDashboard`. CCTV y Ciberseguridad conservan su encabezado premium-dark propio;
+  `Monitoring`/`ServicesTI` inyectan su título en la barra superior del layout (sin cambio).
+- **Avatar de bot.** `chatbot-analytics/image/{Comercial,Oskitar,Betty}.png` optimizados a
+  256 px → `src/assets/bots/`. `botKit.jsx`: `BOT_AVATARS` + `<BotAvatar bot size>` (imagen
+  circular con `ring` de token y `onError` → icono lucide). En el encabezado de cada vista de
+  bot y en el conmutador de bots.
+- **Ranking Top 5 premium.** Nuevo `src/components/TopUsersBoard.jsx` (board compacto Top 5,
+  oro/plata/bronce 1-3; fila → `ContactDrawer`). En Bot Comercial va arriba y la tabla
+  completa (podio Top 3 + búsqueda + filtro de canal + CSV) se pliega tras "Ver tabla
+  completa". Oskitar (`topUsers`) y Betty (`topCustomers`) muestran el mismo board sobre su
+  tabla de personas/clientes.
+
 ### CRM_Frontend — Módulo "Bots Gane Palmira" (ex Analítica de Agentes)
 - **Detalle y consistencia del módulo** (`specs/0005-bots-gane-palmira/`, tandas 1-3):
   - Módulo renombrado a **"Bots Gane Palmira"**; cabecera compacta (sin título duplicado);

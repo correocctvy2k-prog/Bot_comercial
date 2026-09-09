@@ -5,11 +5,13 @@ import {
 } from "recharts";
 import {
     MessageSquare, Users, Activity, Bot, Timer, TrendingDown, ArrowUpRight,
-    Download, RefreshCw, Filter, ListChecks, MapPin, ChevronDown,
+    Download, RefreshCw, Filter, ListChecks, MapPin, ChevronDown, Trophy,
 } from "lucide-react";
 import { chatbotAnalyticsService as api } from "@/services/chatbotAnalytics.service";
-import { KpiCard, PeriodSelect, BotSummary, periodPhrase } from "@/components/botKit";
+import { KpiCard, PeriodSelect, BotSummary, periodPhrase, BotAvatar } from "@/components/botKit";
 import ContactDrawer from "@/components/ContactDrawer";
+import PageHeader from "@/components/PageHeader";
+import TopUsersBoard from "@/components/TopUsersBoard";
 
 /* --------------------------------------------------------------------- */
 /*  Piezas de presentación (design-system.md)                           */
@@ -204,20 +206,19 @@ function OskitarView({ m, range, setRange, category, setCategory, expanded, setE
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                    <h3 className="text-lg font-black tracking-tight text-foreground">Oskitar — soporte técnico interno</h3>
-                    <p className="text-xs text-muted-foreground">
-                        {m.meta?.rangeStart} a {m.meta?.rangeEnd} · {m.meta?.daysCovered} días
-                    </p>
-                </div>
-                <Toolbar
-                    range={range} setRange={setRange}
-                    category={category} setCategory={setCategory}
-                    categories={m.meta?.availableCategories}
-                    csvHref={csvHref} onRefresh={onRefresh} fetching={fetching}
-                />
-            </div>
+            <PageHeader
+                icon={<BotAvatar bot="oskitar" size={44} />}
+                title="Oskitar — soporte técnico interno"
+                subtitle={`${m.meta?.rangeStart ?? "—"} a ${m.meta?.rangeEnd ?? "—"} · ${m.meta?.daysCovered ?? 0} días`}
+                actions={
+                    <Toolbar
+                        range={range} setRange={setRange}
+                        category={category} setCategory={setCategory}
+                        categories={m.meta?.availableCategories}
+                        csvHref={csvHref} onRefresh={onRefresh} fetching={fetching}
+                    />
+                }
+            />
 
             <BotSummary>{summarizeOskitar(m, range)}</BotSummary>
 
@@ -294,6 +295,21 @@ function OskitarView({ m, range, setRange, category, setCategory, expanded, setE
             </>}
 
             {view === "detalle" && <OskitarDetalle m={m} dayPick={dayPick} setDayPick={setDayPick} />}
+
+            <TopUsersBoard
+                title="Top 5 personas"
+                subtitle="Por mensajes enviados en el periodo"
+                icon={<span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-500 text-black shadow-inner"><Trophy size={20} /></span>}
+                rows={(m.topUsers || []).slice(0, 5).map((u, i) => ({
+                    key: u.phone,
+                    rank: i + 1,
+                    name: u.label || u.phone,
+                    sublabel: u.phone,
+                    value: u.count,
+                    valueLabel: "mensajes",
+                }))}
+                onRowClick={(r) => setFicha({ id: r.key, name: r.name })}
+            />
 
             <Panel
                 title={`Personas (${users.length})`}
@@ -467,13 +483,12 @@ function BettyView({ m, range, setRange, onRefresh, fetching }) {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                    <h3 className="text-lg font-black tracking-tight text-foreground">Betty — atención a clientes</h3>
-                    <p className="text-xs text-muted-foreground">{m.meta?.rangeStart} a {m.meta?.rangeEnd} · {m.meta?.daysCovered} días · horas aproximadas</p>
-                </div>
-                <Toolbar range={range} setRange={setRange} csvHref={csvHref} onRefresh={onRefresh} fetching={fetching} />
-            </div>
+            <PageHeader
+                icon={<BotAvatar bot="betty" size={44} />}
+                title="Betty — atención a clientes"
+                subtitle={`${m.meta?.rangeStart ?? "—"} a ${m.meta?.rangeEnd ?? "—"} · ${m.meta?.daysCovered ?? 0} días · horas aproximadas`}
+                actions={<Toolbar range={range} setRange={setRange} csvHref={csvHref} onRefresh={onRefresh} fetching={fetching} />}
+            />
 
             <BotSummary>{summarizeBetty(m, range)}</BotSummary>
 
@@ -564,6 +579,21 @@ function BettyView({ m, range, setRange, onRefresh, fetching }) {
                     </ResponsiveContainer>
                 </Panel>
             </div>
+
+            <TopUsersBoard
+                title="Top 5 clientes"
+                subtitle="Por mensajes en el periodo"
+                icon={<span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-500 text-black shadow-inner"><Trophy size={20} /></span>}
+                rows={(m.topCustomers || []).slice(0, 5).map((c, i) => ({
+                    key: c.phone,
+                    rank: i + 1,
+                    name: c.phone,
+                    value: c.count,
+                    valueLabel: "mensajes",
+                }))}
+                onRowClick={(r) => setFicha({ id: r.key, name: r.name })}
+                emptyText="Sin clientes en el rango."
+            />
 
             <Panel title={`Clientes (${customers.length})`} icon={<Users size={16} className="text-primary" />}>
                 <div className="overflow-x-auto">
