@@ -14,6 +14,7 @@ import PageHeader from "@/components/PageHeader";
 import TopUsersBoard from "@/components/TopUsersBoard";
 import Panel from "@/components/Panel";
 import MiniBars from "@/components/MiniBars";
+import { StatusPill, CategoryChips, LastActivity, oskitarStatus, bettyStatus } from "@/components/entityBits";
 
 /* --------------------------------------------------------------------- */
 /*  Piezas de presentación (design-system.md)                           */
@@ -57,14 +58,6 @@ const grid = <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />;
 const pct = (n) => (n == null ? "—" : `${Math.round(n * 10) / 10}%`);
 const fmtDay = (d) => (d ? d.slice(5) : "");
 const fmtHour = (h) => `${String(h).padStart(2, "0")}h`;
-const timeAgo = (iso) => {
-    if (!iso) return "—";
-    const s = (Date.now() - new Date(iso).getTime()) / 1000;
-    if (s < 90) return "hace un momento";
-    if (s < 3600) return `hace ${Math.round(s / 60)} min`;
-    if (s < 86400) return `hace ${Math.round(s / 3600)} h`;
-    return `hace ${Math.round(s / 86400)} d`;
-};
 
 /* --------------------------------------------------------------------- */
 /*  Panel principal                                                     */
@@ -299,17 +292,16 @@ function OskitarView({ m, range, setRange, category, setCategory, expanded, setE
                                     <Fragment key={i}>
                                         <tr onClick={() => setExpanded(open ? null : i)} className="cursor-pointer transition-colors hover:bg-muted/40">
                                             <td className="px-3 py-2.5">
-                                                <p className="flex items-center gap-1.5 font-bold text-foreground">
+                                                <p className="flex flex-wrap items-center gap-1.5 font-bold text-foreground">
                                                     {u.name || "—"}
-                                                    {u.escalated && <span className="rounded bg-rose-500/15 px-1 text-[9px] font-black text-rose-600 dark:text-rose-300">ESCALÓ</span>}
-                                                    {u.validated && <span className="rounded bg-emerald-500/15 px-1 text-[9px] font-black text-emerald-700 dark:text-emerald-300">OK</span>}
+                                                    <StatusPill status={oskitarStatus(u)} />
                                                 </p>
                                                 <p className="text-[10px] text-muted-foreground">{u.phone}{u.document ? ` · ${u.document}` : ""}</p>
                                             </td>
-                                            <td className="hidden max-w-[260px] px-3 py-2.5 text-[11px] text-foreground/80 md:table-cell">{(u.categories || []).join(" · ") || "—"}</td>
+                                            <td className="hidden max-w-[260px] px-3 py-2.5 md:table-cell"><CategoryChips items={u.categories || []} /></td>
                                             <td className="px-3 py-2.5 text-center font-bold text-foreground">{u.sessions}</td>
                                             <td className="px-3 py-2.5 text-center"><span className="font-black text-foreground">{u.totalMessages}</span></td>
-                                            <td className="hidden px-3 py-2.5 text-right text-[11px] text-muted-foreground sm:table-cell">{timeAgo(u.lastInteraction)}</td>
+                                            <td className="hidden px-3 py-2.5 text-right text-[11px] sm:table-cell"><LastActivity iso={u.lastInteraction} /></td>
                                             <td className="py-2.5 pr-3 text-right text-muted-foreground">
                                                 <div className="flex items-center justify-end gap-1.5">
                                                     <button
@@ -581,13 +573,18 @@ function BettyView({ m, range, setRange, onRefresh, fetching }) {
                                     className="cursor-pointer transition-colors hover:bg-muted/40"
                                 >
                                     <td className="px-3 py-2.5">
-                                        <p className="font-bold text-foreground">{c.phone}</p>
+                                        <p className="flex flex-wrap items-center gap-1.5 font-bold text-foreground">
+                                            {c.phone}
+                                            <StatusPill status={bettyStatus(c)} />
+                                        </p>
                                         <p className="text-[10px] text-muted-foreground">intención: {c.topIntent || "—"}</p>
                                     </td>
-                                    <td className="hidden max-w-[240px] px-3 py-2.5 text-[11px] text-foreground/80 md:table-cell">{(c.flows || []).join(" · ") || "—"}</td>
+                                    <td className="hidden max-w-[240px] px-3 py-2.5 md:table-cell"><CategoryChips items={c.flows || []} /></td>
                                     <td className="px-3 py-2.5 text-center font-bold text-foreground">{c.messages}</td>
-                                    <td className="px-3 py-2.5 text-center text-muted-foreground">{c.notAvailable ?? 0}</td>
-                                    <td className="hidden px-3 py-2.5 text-right text-[11px] text-muted-foreground sm:table-cell">{timeAgo(c.lastActivity)}</td>
+                                    <td className="px-3 py-2.5 text-center">
+                                        <span className={c.notAvailable ? "font-bold text-amber-600 dark:text-amber-400" : "text-muted-foreground"}>{c.notAvailable ?? 0}</span>
+                                    </td>
+                                    <td className="hidden px-3 py-2.5 text-right text-[11px] sm:table-cell"><LastActivity iso={c.lastActivity} /></td>
                                     <td className="py-2.5 pr-3 text-right">
                                         <span className="rounded-md border border-border/70 bg-card px-2 py-1 text-[10px] font-bold text-foreground/80">Ficha</span>
                                     </td>
