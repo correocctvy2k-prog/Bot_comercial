@@ -1,0 +1,47 @@
+name: CRM_Frontend CI
+
+on:
+  pull_request:
+    paths:
+      - "CRM_Frontend/**"
+      - ".github/workflows/crm-frontend.yml"
+  push:
+    branches: [main]
+    paths:
+      - "CRM_Frontend/**"
+      - ".github/workflows/crm-frontend.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: crm-frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: CRM_Frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: CRM_Frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      # Lint informativo (no bloquea): el repo arrastra ~400 avisos previos en
+      # módulos aún sin estandarizar (ver specs/0003-estandarizacion-interfaz/).
+      # Cuando el lint global llegue a 0, quitar `continue-on-error`.
+      - name: Lint (informativo)
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Build
+        run: npm run build

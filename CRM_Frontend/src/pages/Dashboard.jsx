@@ -1,10 +1,15 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
-import { Activity, MessageSquare, Users, Zap, GitMerge, TrendingUp, ShieldCheck, Trophy, Crown, Medal, Award, MapPin, Calendar, Search, ChevronDown, ChevronUp, Filter, Sparkles } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Activity, MessageSquare, Users, Zap, GitMerge, TrendingUp, ShieldCheck, Trophy, Crown, Medal, Award, MapPin, Calendar, Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Download, Filter, Sparkles, Bot } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useParams, useNavigate } from "react-router-dom";
 import { crmService } from "@/services/crm.service";
+import ChatbotAnalyticsPanel from "@/components/ChatbotAnalyticsPanel";
+import { KpiCard, PeriodSelect, BotSummary, periodPhrase, BotAvatar } from "@/components/botKit";
+import ContactDrawer from "@/components/ContactDrawer";
+import PageHeader from "@/components/PageHeader";
+import TopUsersBoard from "@/components/TopUsersBoard";
 
 import { supabase } from "@/services/supabase";
-import { useTheme } from "@/components/theme-provider";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -55,174 +60,34 @@ const DonutLabel = ({ cx, cy, total }) => (
     </>
 );
 
+function summarizeComercial(stats, range) {
+    if (!stats) return null;
+    const n = (x) => (x ?? 0).toLocaleString("es-CO");
+    const parts = [
+        `El Bot Comercial registró ${n(stats.messagesTotal)} interacciones de ${n(stats.uniqueUsers)} usuarios ${periodPhrase(range)}`,
+        `(${n(stats.waTotal)} por WhatsApp, ${n(stats.tgTotal)} por Telegram)`,
+    ];
+    if (stats.newLeads != null) parts.push(`y ${n(stats.newLeads)} contactos nuevos`);
+    let text = parts.join(" ") + ".";
+    if (typeof stats.changePct === "number" && stats.changePct !== 0) {
+        text += ` Eso es ${stats.changePct > 0 ? "un aumento" : "una baja"} del ${Math.abs(stats.changePct)}% frente al periodo anterior.`;
+    }
+    return text;
+}
+
 // --------------------------------------------------------------------
 //  DASHBOARD PRINCIPAL
 // --------------------------------------------------------------------
-// Bot Soporte Técnico - Vista nativa del módulo
-function SoporteDashboardPanel({ theme }) {
-    const iframeRef = useRef(null);
-    const [status, setStatus] = useState("authorizing");
-    const [iframeSrc, setIframeSrc] = useState("");
-    const [systemTheme, setSystemTheme] = useState(() =>
-        window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
-    );
+const BOTS = ["comercial", "oskitar", "betty"];
 
-    const supportBaseUrl = useCallback(() => {
-        const configuredUrl = import.meta.env.VITE_SUPPORT_BOT_URL?.trim();
-        if (configuredUrl) return configuredUrl.replace(/\/$/, "");
-        return `${window.location.protocol}//${window.location.hostname}:3004`;
-    }, []);
-
-    useEffect(() => {
-        if (theme !== "system") return;
-        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-        const handleChange = (event) => setSystemTheme(event.matches ? "dark" : "light");
-        handleChange(mediaQuery);
-        mediaQuery.addEventListener("change", handleChange);
-        return () => mediaQuery.removeEventListener("change", handleChange);
-    }, [theme]);
-
-    const resolveTheme = useCallback(() => {
-        if (theme === "light" || theme === "dark") return theme;
-        return systemTheme;
-    }, [systemTheme, theme]);
-
-    const syncTheme = useCallback(() => {
-        const frameWindow = iframeRef.current?.contentWindow;
-        if (!frameWindow) return;
-        const targetOrigin = new URL(supportBaseUrl(), window.location.origin).origin;
-        frameWindow.postMessage({
-            source: "skylab-crm",
-            type: "theme",
-            theme: resolveTheme(),
-        }, targetOrigin);
-    }, [resolveTheme, supportBaseUrl]);
-
-    const openDashboard = useCallback(async () => {
-        setStatus("authorizing");
-        setIframeSrc("");
-        try {
-            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-            if (sessionError || !session?.access_token) {
-                console.error("[SoportePanel] Sin sesión activa del CRM:", sessionError);
-                throw new Error("No hay una sesión activa del CRM.");
-            }
-            const baseUrl = supportBaseUrl();
-            console.log("[SoportePanel] Intentando conectar con:", baseUrl);
-            const response = await fetch(`${baseUrl}/api/crm-session`, {
-                method: "POST",
-                headers: { Authorization: `Bearer ${session.access_token}` },
-                credentials: "include",
-            });
-            console.log("[SoportePanel] Respuesta /api/crm-session:", response.status, response.statusText);
-            if (!response.ok) {
-                const result = await response.json().catch(() => ({}));
-                console.error("[SoportePanel] Error en /api/crm-session:", result);
-                throw new Error(result.error || `El servicio respondió con estado ${response.status}.`);
-            }
-            const dashboardResponse = await fetch(`${baseUrl}/api/session`, {
-                credentials: "include",
-                cache: "no-store",
-            });
-            console.log("[SoportePanel] Respuesta /api/session:", dashboardResponse.status, dashboardResponse.statusText);
-            if (!dashboardResponse.ok) {
-                throw new Error("El servicio no pudo conservar la sesión integrada.");
-            }
-            const params = new URLSearchParams({
-                embedded: "true",
-                theme: resolveTheme(),
-                parentOrigin: window.location.origin,
-                t: String(Date.now()),
-                bust: String(Math.random()),
-            });
-            setIframeSrc(`${baseUrl}/dashboard.html?${params.toString()}`);
-        } catch (err) {
-            console.error("[SoportePanel] No fue posible abrir el dashboard:", err);
-            setStatus("error");
-        }
-    }, [resolveTheme, supportBaseUrl]);
-
-    useEffect(() => {
-        openDashboard();
-    }, [openDashboard]);
-
-    useEffect(() => {
-        const expectedOrigin = new URL(supportBaseUrl(), window.location.origin).origin;
-        const handleSupportMessage = (event) => {
-            if (
-                event.origin !== expectedOrigin ||
-                event.source !== iframeRef.current?.contentWindow ||
-                event.data?.source !== "skylab-support"
-            ) return;
-            if (event.data.type === "ready") {
-                setStatus("ready");
-                syncTheme();
-            }
-            if (event.data.type === "session-required") openDashboard();
-        };
-        window.addEventListener("message", handleSupportMessage);
-        return () => window.removeEventListener("message", handleSupportMessage);
-    }, [openDashboard, supportBaseUrl, syncTheme]);
-
-    useEffect(() => {
-        if (status === "ready") syncTheme();
-    }, [status, syncTheme]);
-
-    useEffect(() => {
-        if (!iframeSrc || status !== "authorizing") return;
-        const timeoutId = window.setTimeout(() => setStatus("error"), 20000);
-        return () => window.clearTimeout(timeoutId);
-    }, [iframeSrc, status]);
-
-    return (
-        <div className="w-full h-[calc(100vh-140px)] min-h-[500px] flex flex-col">
-            {iframeSrc && (
-                <iframe
-                    ref={iframeRef}
-                    src={iframeSrc}
-                    title="Dashboard Bot Soporte Técnico"
-                    onLoad={syncTheme}
-                    onError={() => setStatus("error")}
-                    className={`w-full h-full border-0 transition-opacity duration-300 ${
-                        status === "ready" ? "opacity-100" : "opacity-0"
-                    }`}
-                    loading="eager"
-                />
-            )}
-
-            {status === "authorizing" && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background/90 backdrop-blur-sm">
-                    <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin shadow-lg" />
-                    <p className="text-muted-foreground text-sm font-semibold tracking-tight">
-                        Conectando con el panel de soporte técnico...
-                    </p>
-                </div>
-            )}
-
-            {status === "error" && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background/95 backdrop-blur-md p-6 text-center">
-                    <ShieldCheck size={52} className="text-rose-500/60" />
-                    <p className="text-foreground font-bold text-base">No se pudo conectar al servicio de soporte técnico.</p>
-                    <p className="text-muted-foreground text-xs max-w-sm">
-                        Asegúrese de que el bot de soporte esté corriendo correctamente en el puerto o contenedor asignado.
-                    </p>
-                    <button
-                        type="button"
-                        onClick={openDashboard}
-                        className="mt-2 px-6 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-black uppercase tracking-wider rounded-xl shadow-lg hover:shadow-primary/30 transition-all active:scale-95"
-                    >
-                        Reintentar Conexión
-                    </button>
-                </div>
-            )}
-        </div>
-    );
-}
 export default function Dashboard() {
     const queryClient = useQueryClient();
-    const { theme } = useTheme();
+    const navigate = useNavigate();
+    const { bot } = useParams();
     const [timeRange, setTimeRange] = useState("24h");
-    const [agentType, setAgentType] = useState("comercial"); // "comercial" | "soporte"
+    // El bot activo lo manda la URL (/bots/:bot). El conmutador navega.
+    const agentType = BOTS.includes(bot) ? bot : "comercial";
+    const setAgentType = (id) => navigate(`/bots/${id}`);
 
     const { data: stats } = useQuery({
         queryKey: ["stats", timeRange],
@@ -252,12 +117,6 @@ export default function Dashboard() {
         staleTime: 0,
     });
 
-    const { data: siissHealth } = useQuery({
-        queryKey: ["siiss-health"],
-        queryFn: () => crmService.getSiissHealth(),
-        refetchInterval: 30000,
-        staleTime: 0,
-    });
 
     const { data: userRanking = [] } = useQuery({
         queryKey: ["userRanking", timeRange],
@@ -299,132 +158,47 @@ export default function Dashboard() {
     const changePct = stats?.changePct ?? 0;
 
     return (
-        <div className={`${agentType === "soporte" ? "space-y-4" : "space-y-8"} animate-in fade-in slide-in-from-bottom-4 duration-700`}>
+        <div className={`${agentType !== "comercial" ? "space-y-6" : "space-y-8"} animate-in fade-in slide-in-from-bottom-4 duration-700`}>
 
-            {/* -- Selector de Agentes de IA -- */}
-            <div className="bg-card/70 border border-border p-3.5 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-md">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black shadow-inner">
-                        <Activity size={22} />
-                    </div>
-                    <div>
-                        <h2 className="text-lg font-black tracking-tight text-foreground">Analítica de Agentes IA</h2>
-                        <p className="text-xs text-muted-foreground font-medium">Monitoreo y gestión de bots independientes en producción</p>
-                    </div>
-                </div>
-
-                <div className="flex bg-background border border-border rounded-2xl p-1 gap-1 w-full md:w-auto">
+            {/* -- Conmutador de bot (compacto, arriba) -- */}
+            <div className="flex bg-card/60 backdrop-blur-xl border border-border/80 rounded-2xl p-1.5 gap-1 shadow-sm w-full sm:w-fit">
+                {[
+                    { id: "comercial", label: "Bot Comercial" },
+                    { id: "oskitar", label: "Oskitar" },
+                    { id: "betty", label: "Betty" },
+                ].map(({ id, label }) => (
                     <button
-                        onClick={() => setAgentType("comercial")}
-                        className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                            agentType === "comercial"
-                                ? "bg-primary text-primary-foreground shadow-md"
-                                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                        key={id}
+                        onClick={() => setAgentType(id)}
+                        className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                            agentType === id
+                                ? "bg-primary text-primary-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                         }`}
                     >
-                        <Zap size={15} />
-                        <span>Bot Comercial</span>
+                        <BotAvatar bot={id} size={20} className={agentType === id ? "ring-primary-foreground/40" : ""} />
+                        <span>{label}</span>
                     </button>
-                    <button
-                        onClick={() => setAgentType("soporte")}
-                        className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                            agentType === "soporte"
-                                ? "bg-primary text-primary-foreground shadow-md"
-                                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-                        }`}
-                    >
-                        <ShieldCheck size={15} />
-                        <span>Bot Soporte Técnico</span>
-                    </button>
-                </div>
+                ))}
             </div>
 
-            {/* -------------- VISTA BOT DE SOPORTE TÉCNICO (ChatBotSoporte) -------------- */}
-            {agentType === "soporte" && (
-                <div className="-mx-2 sm:-mx-4 -mt-2">
-                    {/* KPI Summary Grid para Soporte Técnico */}
-                    <div className="px-2 sm:px-4 pt-2">
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                            <div className="bg-card/60 backdrop-blur-xl border border-border/80 p-4 rounded-2xl flex items-center justify-between shadow-sm hover:border-primary/30 transition-all">
-                                <div>
-                                    <p className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider">Atención IA</p>
-                                    <h3 className="text-xl sm:text-2xl font-black text-foreground mt-1">94.8%</h3>
-                                    <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
-                                        <Zap size={11} /> Automatización activa
-                                    </span>
-                                </div>
-                                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-primary shrink-0">
-                                    <Zap size={20} />
-                                </div>
-                            </div>
-
-                            <div className="bg-card/60 backdrop-blur-xl border border-border/80 p-4 rounded-2xl flex items-center justify-between shadow-sm hover:border-primary/30 transition-all">
-                                <div>
-                                    <p className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider">Respuesta Promedio</p>
-                                    <h3 className="text-xl sm:text-2xl font-black text-foreground mt-1">&lt; 1.8s</h3>
-                                    <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
-                                        <Activity size={11} /> Latencia en tiempo real
-                                    </span>
-                                </div>
-                                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
-                                    <Activity size={20} />
-                                </div>
-                            </div>
-
-                            <div className="bg-card/60 backdrop-blur-xl border border-border/80 p-4 rounded-2xl flex items-center justify-between shadow-sm hover:border-primary/30 transition-all">
-                                <div>
-                                    <p className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider">Disponibilidad</p>
-                                    <h3 className="text-xl sm:text-2xl font-black text-foreground mt-1">99.9%</h3>
-                                    <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
-                                        <ShieldCheck size={11} /> Servicio en Docker
-                                    </span>
-                                </div>
-                                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-                                    <ShieldCheck size={20} />
-                                </div>
-                            </div>
-
-                            <div className="bg-card/60 backdrop-blur-xl border border-border/80 p-4 rounded-2xl flex items-center justify-between shadow-sm hover:border-primary/30 transition-all">
-                                <div>
-                                    <p className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider">Satisfacción CSAT</p>
-                                    <h3 className="text-xl sm:text-2xl font-black text-foreground mt-1">98.5%</h3>
-                                    <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
-                                        <TrendingUp size={11} /> Evaluación Excelente
-                                    </span>
-                                </div>
-                                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
-                                    <TrendingUp size={20} />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Panel Interactivo del Bot Soporte Técnico */}
-                    <div className="mt-4">
-                        <SoporteDashboardPanel theme={theme} />
-                    </div>
-                </div>
+            {/* -------------- VISTA OSKITAR / BETTY (chatbot-analytics, nativo) -------------- */}
+            {(agentType === "oskitar" || agentType === "betty") && (
+                <ChatbotAnalyticsPanel bot={agentType} />
             )}
 
             {/* -------------- VISTA BOT COMERCIAL (Métricas & Logs) -------------- */}
             {agentType === "comercial" && (
                 <>
-                    {/* Header & Time Range Selector */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                        <h1 className="text-2xl font-black tracking-tight text-foreground">
-                            Rendimiento - Bot Comercial (Ventas & Atención)
-                        </h1>
-                        <select
-                            className="bg-card w-40 text-sm border border-border rounded-md px-3 py-2 outline-none focus:ring-1 focus:ring-primary shadow-sm font-semibold"
-                            value={timeRange}
-                            onChange={(e) => setTimeRange(e.target.value)}
-                        >
-                            <option value="24h">Hoy (Últimas 24h)</option>
-                            <option value="7d">Últimos 7 días</option>
-                            <option value="1m">Último mes</option>
-                            <option value="1y">Último año</option>
-                        </select>
-                    </div>
+                    {/* Encabezado de módulo + selector de periodo */}
+                    <PageHeader
+                        icon={<BotAvatar bot="comercial" size={44} />}
+                        title="Bot Comercial — Ventas & Atención"
+                        subtitle="WhatsApp y Telegram · datos de Supabase"
+                        actions={<PeriodSelect value={timeRange} onChange={setTimeRange} />}
+                    />
+
+                    <BotSummary>{summarizeComercial(stats, timeRange)}</BotSummary>
 
 
             {/* -- KPI Grid -- */}
@@ -484,18 +258,6 @@ export default function Dashboard() {
                     icon={<TrendingUp className="w-5 h-5" />}
                     accent="from-pink-500/20 to-pink-600/5"
                     iconColor="text-pink-400"
-                />
-                <KpiCard
-                    title="Cobertura SIISS"
-                    value={siissHealth ? `${siissHealth.coverage}%` : "-"}
-                    badge={siissHealth?.lastSync
-                        ? `Sinc: ${formatDistanceToNow(new Date(siissHealth.lastSync), { addSuffix: true, locale: es })}`
-                        : "Sin sincronización"
-                    }
-                    badgeColor="text-purple-400"
-                    icon={<ShieldCheck className="w-5 h-5" />}
-                    accent="from-purple-500/20 to-purple-600/5"
-                    iconColor="text-purple-400"
                 />
             </div>
 
@@ -639,23 +401,6 @@ function FeedItem({ item }) {
 }
 
 // --- KPI Card --------------------------------------------------------
-function KpiCard({ title, value, badge, badgeColor, icon, accent, iconColor, noIconWrapper }) {
-    return (
-        <div className={`relative bg-gradient-to-br ${accent} bg-card/60 backdrop-blur-md border border-border/70 p-5 rounded-xl hover:border-border transition-all duration-300 overflow-hidden group`}>
-            <div className="flex justify-between items-start gap-2">
-                <div className="min-w-0">
-                    <p className="text-xs font-medium text-muted-foreground truncate">{title}</p>
-                    <h3 className="text-3xl font-bold mt-1 tracking-tight">{value}</h3>
-                </div>
-                <div className={noIconWrapper ? "shrink-0 mt-0.5" : `p-2 rounded-lg bg-background/40 ${iconColor} shrink-0 group-hover:scale-110 transition-transform`}>
-                    {icon}
-                </div>
-            </div>
-            <p className={`text-xs mt-3 font-medium ${badgeColor}`}>{badge}</p>
-        </div>
-    );
-}
-
 // --- Channel Donut - SVG Premium -------------------------------------
 function ChannelDonut({ distribution = [], total = 0 }) {
     const size = 180;
@@ -743,16 +488,16 @@ function ChannelDonut({ distribution = [], total = 0 }) {
                 {/* Total centrado */}
                 {total > 0 && (
                     <>
-                        <text x={cx} y={cy - 6} textAnchor="middle" fill="white" style={{ fontSize: 24, fontWeight: 700, fontFamily: "inherit" }}>
+                        <text x={cx} y={cy - 6} textAnchor="middle" className="fill-foreground" style={{ fontSize: 24, fontWeight: 700, fontFamily: "inherit" }}>
                             {total.toLocaleString()}
                         </text>
-                        <text x={cx} y={cy + 14} textAnchor="middle" fill="#666" style={{ fontSize: 11, fontFamily: "inherit" }}>
+                        <text x={cx} y={cy + 14} textAnchor="middle" className="fill-muted-foreground" style={{ fontSize: 11, fontFamily: "inherit" }}>
                             hoy
                         </text>
                     </>
                 )}
                 {total === 0 && (
-                    <text x={cx} y={cy + 5} textAnchor="middle" fill="#444" style={{ fontSize: 12, fontFamily: "inherit" }}>
+                    <text x={cx} y={cy + 5} textAnchor="middle" className="fill-muted-foreground" style={{ fontSize: 12, fontFamily: "inherit" }}>
                         Sin datos
                     </text>
                 )}
@@ -762,338 +507,351 @@ function ChannelDonut({ distribution = [], total = 0 }) {
 }
 
 // --- Ranking Section (Personas, Días de interacción & Zonas escaneadas) ----
+const RANKING_PAGE_SIZE = 15;
+
+const SortIcon = ({ active, dir }) => (
+    <span className={active ? "text-primary" : "opacity-30"}>
+        {active && dir === "asc" ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+    </span>
+);
+
+// Metadatos de podio: un solo lenguaje de color por posición (oro / plata / bronce).
+const RANK_META = {
+    1: { icon: Crown, label: "1er lugar", bar: "bg-gradient-to-r from-amber-400 to-yellow-300", pill: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/25", avatar: "bg-gradient-to-tr from-amber-500 to-yellow-400 text-black" },
+    2: { icon: Medal, label: "2º lugar", bar: "bg-gradient-to-r from-slate-300 to-slate-400", pill: "bg-slate-400/15 text-slate-600 dark:text-slate-200 border-slate-400/25", avatar: "bg-gradient-to-tr from-slate-300 to-slate-400 text-black" },
+    3: { icon: Award, label: "3er lugar", bar: "bg-gradient-to-r from-orange-500 to-amber-600", pill: "bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/25", avatar: "bg-gradient-to-tr from-orange-500 to-amber-600 text-white" },
+};
+
+const ChannelMark = ({ channel, size = 14 }) => channel === "telegram" ? <TelegramIcon size={size} /> : <WhatsAppIcon size={size} />;
+
+// Resumen de zonas en una línea: "Candelaria · Occidente · +2". El detalle completo va en title.
+function ZoneSummary({ zones = [], max = 3, className = "" }) {
+    if (!zones.length) return <span className={`text-xs text-muted-foreground/70 ${className}`}>—</span>;
+    const shown = zones.slice(0, max).map(z => z.name).join(" · ");
+    const rest = zones.length - max;
+    const full = zones.map(z => `${z.code} · ${z.name} (${z.count}x)`).join("\n");
+    return (
+        <span className={`text-xs text-foreground/80 ${className}`} title={full}>
+            {shown}{rest > 0 && <span className="text-muted-foreground"> · +{rest}</span>}
+        </span>
+    );
+}
+
+function PodiumCard({ item }) {
+    const meta = RANK_META[item.rank] || RANK_META[3];
+    const Icon = meta.icon;
+    return (
+        <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-border/80 bg-card/60 shadow-sm backdrop-blur-xl">
+            <div className={`h-1 ${meta.bar}`} />
+            <div className="flex flex-1 flex-col gap-4 p-5">
+                <div className="flex items-center justify-between">
+                    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${meta.pill}`}>
+                        <Icon size={13} /> {meta.label}
+                    </span>
+                    <span className="text-2xl font-black text-muted-foreground/30">#{item.rank}</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-sm font-black shadow-inner ${meta.avatar}`}>
+                        {item.avatar}
+                    </div>
+                    <div className="min-w-0">
+                        <p className="flex items-center gap-1.5 truncate text-sm font-black text-foreground">
+                            {item.user} <ChannelMark channel={item.channel} />
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">{item.phone}</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-xl border border-border/60 bg-muted/40 p-2.5">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Interacciones</p>
+                        <p className="mt-0.5 text-lg font-black tracking-tight text-foreground">{item.totalCount}</p>
+                    </div>
+                    <div className="rounded-xl border border-border/60 bg-muted/40 p-2.5">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Día pico</p>
+                        <p className="mt-0.5 text-xs font-bold leading-tight text-foreground">{item.topDay}</p>
+                    </div>
+                </div>
+
+                <div className="mt-auto">
+                    <p className="mb-1.5 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <MapPin size={12} /> Zonas más consultadas
+                    </p>
+                    <ZoneSummary zones={item.scannedZones} className="leading-relaxed" />
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function RankingSection({ ranking = [] }) {
     const [search, setSearch] = useState("");
     const [expandedUser, setExpandedUser] = useState(null);
+    const [page, setPage] = useState(1);
+    const [channelFilter, setChannelFilter] = useState("all"); // all | whatsapp | telegram
+    const [sort, setSort] = useState({ key: "rank", dir: "asc" }); // key: rank | totalCount
+    const [ficha, setFicha] = useState(null); // { providerId, name } — ficha de contacto (spec 0005 T4)
 
     const filtered = ranking.filter(item => {
+        if (channelFilter !== "all" && item.channel !== channelFilter) return false;
         const q = search.toLowerCase();
+        if (!q) return true;
         const matchesUser = item.user.toLowerCase().includes(q) || item.phone.toLowerCase().includes(q);
         const matchesZone = item.scannedZones?.some(z => z.name.toLowerCase().includes(q) || z.code.toLowerCase().includes(q));
         const matchesDay = item.topDay.toLowerCase().includes(q);
         return matchesUser || matchesZone || matchesDay;
     });
 
+    const sorted = [...filtered].sort((a, b) => {
+        const res = sort.key === "totalCount" ? a.totalCount - b.totalCount : a.rank - b.rank;
+        return sort.dir === "asc" ? res : -res;
+    });
+
+    const toggleSort = (key) => {
+        setSort(s => s.key === key
+            ? { key, dir: s.dir === "asc" ? "desc" : "asc" }
+            : { key, dir: key === "totalCount" ? "desc" : "asc" });
+        setPage(1);
+    };
+
+    const changeChannel = (ch) => { setChannelFilter(ch); setPage(1); };
+
+    const exportCSV = () => {
+        const headers = ["Posicion", "Persona", "Contacto", "Canal", "Total Mensajes", "Dia con mas actividad", "Zonas escaneadas", "Ultima actividad"];
+        const esc = (v) => {
+            const s = String(v ?? "");
+            return /[",\n\r;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+        };
+        const lines = sorted.map(i => [
+            i.rank, i.user, i.phone, i.channel, i.totalCount, i.topDay,
+            (i.scannedZones || []).map(z => `${z.code} ${z.name} (${z.count}x)`).join(" | "),
+            i.lastSeen,
+        ].map(esc).join(","));
+        const BOM = String.fromCharCode(0xFEFF); // Excel detecta UTF-8 (acentos correctos)
+        const csv = BOM + [headers.join(","), ...lines].join("\r\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `ranking-agentes-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+    // Paginación de la tabla completa
+    const totalPages = Math.max(1, Math.ceil(sorted.length / RANKING_PAGE_SIZE));
+    const currentPage = Math.min(page, totalPages);
+    const paginated = sorted.slice((currentPage - 1) * RANKING_PAGE_SIZE, currentPage * RANKING_PAGE_SIZE);
+
     const top1 = ranking[0];
     const top2 = ranking[1];
     const top3 = ranking[2];
 
-    const getRankBadgeStyle = (rank) => {
-        switch (rank) {
-            case 1:
-                return "bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-black shadow-[0_0_15px_rgba(245,158,11,0.5)] border-amber-300";
-            case 2:
-                return "bg-gradient-to-r from-slate-300 to-slate-400 text-black font-black shadow-[0_0_15px_rgba(148,163,184,0.4)] border-slate-200";
-            case 3:
-                return "bg-gradient-to-r from-amber-700 to-orange-600 text-white font-black shadow-[0_0_15px_rgba(180,83,9,0.4)] border-orange-400";
-            default:
-                return "bg-muted/80 text-foreground font-bold border-border";
-        }
-    };
+    // Badge de posición para la tabla: medalla en el podio, neutro del 4 en adelante.
+    const rankBadge = (rank) => RANK_META[rank]
+        ? `${RANK_META[rank].pill} border`
+        : "bg-muted/70 text-muted-foreground border border-border";
+
+    // Top 5 para el board premium (spec 0006)
+    const topRows = ranking.slice(0, 5).map((it) => ({
+        key: it.phone,
+        rank: it.rank,
+        name: it.user,
+        sublabel: it.phone,
+        value: it.totalCount,
+        valueLabel: "interacciones",
+        channelIcon: <ChannelMark channel={it.channel} size={13} />,
+        badge: it.topDay && it.topDay !== "Sin datos" ? null : null,
+    }));
 
     return (
         <div className="space-y-6 my-8">
-            {/* Header del Ranking & Buscador */}
-            <div className="bg-card/50 backdrop-blur-md border border-border/80 p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-500 flex items-center justify-center text-black font-black shadow-inner shrink-0">
-                        <Trophy size={22} />
+            {/* Board premium Top 5 */}
+            <TopUsersBoard
+                title="Ranking de usuarios — Top 5"
+                subtitle="Bot Comercial · por frecuencia de interacción en el periodo"
+                icon={<span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-500 text-black shadow-inner"><Trophy size={20} /></span>}
+                rows={topRows}
+                onRowClick={(r) => setFicha({ providerId: r.key, name: r.name })}
+                emptyText="Sin interacciones registradas en el periodo."
+            />
+
+            {/* Tabla completa (plegada por defecto): podio Top 3 + tabla numerada + búsqueda/filtro/CSV */}
+            <details className="group overflow-hidden rounded-2xl border border-border/80 bg-card/60 shadow-sm backdrop-blur-xl">
+                <summary className="flex cursor-pointer select-none list-none items-center justify-between p-4 text-sm font-bold text-foreground transition-colors hover:bg-muted/40">
+                    <span className="flex items-center gap-2">
+                        <Users size={16} className="text-primary" /> Ver tabla completa &amp; zonas escaneadas ({filtered.length} usuarios)
+                    </span>
+                    <ChevronDown size={16} className="text-muted-foreground transition-transform group-open:rotate-180" />
+                </summary>
+
+                <div className="space-y-6 border-t border-border/80 p-4">
+                    {/* Buscador */}
+                    <div className="relative w-full md:w-72">
+                        <Search className="absolute left-3.5 top-2.5 text-muted-foreground" size={15} />
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                            placeholder="Buscar por persona, día o zona..."
+                            className="w-full bg-background border border-border rounded-xl pl-9 pr-4 py-2 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all"
+                        />
                     </div>
-                    <div>
-                        <h3 className="text-base font-black tracking-tight text-foreground flex items-center gap-2">
-                            Ranking de Usuarios & Zonas Escaneadas
-                            <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-0.5 rounded-full font-bold uppercase">
-                                Bot Comercial
-                            </span>
-                        </h3>
-                        <p className="text-xs text-muted-foreground font-medium">
-                            Conteo numérico de frecuencia de interacción por persona, días de la semana y zonas consultadas
-                        </p>
+
+                    {/* Podio Top 3 */}
+                    <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-3">
+                        {top1 && <PodiumCard item={top1} />}
+                        {top2 && <PodiumCard item={top2} />}
+                        {top3 && <PodiumCard item={top3} />}
                     </div>
-                </div>
 
-                {/* Buscador */}
-                <div className="relative w-full md:w-72">
-                    <Search className="absolute left-3.5 top-2.5 text-muted-foreground" size={15} />
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Buscar por persona, día o zona..."
-                        className="w-full bg-background border border-border rounded-xl pl-9 pr-4 py-2 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all"
-                    />
-                </div>
-            </div>
-
-            {/* Podio Top 3 Showcase */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* TOP 1 */}
-                {top1 && (
-                    <div className="relative bg-gradient-to-b from-amber-500/15 via-card/80 to-card/60 backdrop-blur-xl border border-amber-500/40 p-5 rounded-2xl shadow-lg hover:border-amber-500/60 transition-all group overflow-hidden">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-xl bg-amber-500 text-black font-black flex items-center justify-center text-sm shadow-md">
-                                    #1
-                                </div>
-                                <Crown size={20} className="text-amber-400 animate-bounce" />
-                            </div>
-                            <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
-                                🥇 Líder de Consultas
-                            </span>
-                        </div>
-
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-300 text-black font-black text-base flex items-center justify-center shadow-lg border-2 border-amber-400 shrink-0">
-                                {top1.avatar}
-                            </div>
-                            <div className="min-w-0">
-                                <h4 className="font-extrabold text-base text-foreground truncate">{top1.user}</h4>
-                                <p className="text-xs text-muted-foreground truncate">{top1.phone}</p>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2 bg-background/50 border border-border/50 p-3 rounded-xl mb-3 text-xs">
-                            <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground font-medium flex items-center gap-1.5">
-                                    <MessageSquare size={13} className="text-amber-400" /> Total Interacciones:
-                                </span>
-                                <strong className="text-amber-400 font-black text-sm">{top1.totalCount} veces</strong>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground font-medium flex items-center gap-1.5">
-                                    <Calendar size={13} className="text-amber-400" /> Día con más actividad:
-                                </span>
-                                <strong className="text-foreground font-bold">{top1.topDay}</strong>
-                            </div>
-                        </div>
-
-                        <div>
-                            <span className="text-[10px] font-extrabold uppercase text-muted-foreground tracking-wider block mb-1.5 flex items-center gap-1">
-                                <MapPin size={12} className="text-amber-400" /> Principales Zonas Escaneadas:
-                            </span>
-                            <div className="flex flex-wrap gap-1.5">
-                                {top1.scannedZones?.slice(0, 3).map((z, idx) => (
-                                    <span key={idx} className="bg-amber-500/10 text-amber-300 border border-amber-500/20 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1">
-                                        <span>📍 {z.name}</span>
-                                        <span className="bg-amber-500/20 text-amber-200 px-1.5 py-0.2 rounded text-[10px]">({z.count}x)</span>
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* TOP 2 */}
-                {top2 && (
-                    <div className="relative bg-gradient-to-b from-slate-400/15 via-card/80 to-card/60 backdrop-blur-xl border border-slate-400/30 p-5 rounded-2xl shadow-lg hover:border-slate-400/50 transition-all group overflow-hidden">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-xl bg-slate-300 text-black font-black flex items-center justify-center text-sm shadow-md">
-                                    #2
-                                </div>
-                                <Medal size={20} className="text-slate-300" />
-                            </div>
-                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-300 bg-slate-400/10 px-2.5 py-1 rounded-full border border-slate-400/20">
-                                🥈 2º Posición
-                            </span>
-                        </div>
-
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-slate-300 to-slate-100 text-black font-black text-base flex items-center justify-center shadow-lg border-2 border-slate-300 shrink-0">
-                                {top2.avatar}
-                            </div>
-                            <div className="min-w-0">
-                                <h4 className="font-extrabold text-base text-foreground truncate">{top2.user}</h4>
-                                <p className="text-xs text-muted-foreground truncate">{top2.phone}</p>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2 bg-background/50 border border-border/50 p-3 rounded-xl mb-3 text-xs">
-                            <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground font-medium flex items-center gap-1.5">
-                                    <MessageSquare size={13} className="text-slate-300" /> Total Interacciones:
-                                </span>
-                                <strong className="text-slate-200 font-black text-sm">{top2.totalCount} veces</strong>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground font-medium flex items-center gap-1.5">
-                                    <Calendar size={13} className="text-slate-300" /> Día con más actividad:
-                                </span>
-                                <strong className="text-foreground font-bold">{top2.topDay}</strong>
-                            </div>
-                        </div>
-
-                        <div>
-                            <span className="text-[10px] font-extrabold uppercase text-muted-foreground tracking-wider block mb-1.5 flex items-center gap-1">
-                                <MapPin size={12} className="text-slate-300" /> Principales Zonas Escaneadas:
-                            </span>
-                            <div className="flex flex-wrap gap-1.5">
-                                {top2.scannedZones?.slice(0, 3).map((z, idx) => (
-                                    <span key={idx} className="bg-slate-400/10 text-slate-200 border border-slate-400/20 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1">
-                                        <span>📍 {z.name}</span>
-                                        <span className="bg-slate-400/20 text-slate-100 px-1.5 py-0.2 rounded text-[10px]">({z.count}x)</span>
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* TOP 3 */}
-                {top3 && (
-                    <div className="relative bg-gradient-to-b from-orange-500/15 via-card/80 to-card/60 backdrop-blur-xl border border-orange-500/30 p-5 rounded-2xl shadow-lg hover:border-orange-500/50 transition-all group overflow-hidden">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-xl bg-orange-600 text-white font-black flex items-center justify-center text-sm shadow-md">
-                                    #3
-                                </div>
-                                <Award size={20} className="text-orange-400" />
-                            </div>
-                            <span className="text-[10px] font-black uppercase tracking-wider text-orange-400 bg-orange-500/10 px-2.5 py-1 rounded-full border border-orange-500/20">
-                                🥉 3º Posición
-                            </span>
-                        </div>
-
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 text-white font-black text-base flex items-center justify-center shadow-lg border-2 border-orange-400 shrink-0">
-                                {top3.avatar}
-                            </div>
-                            <div className="min-w-0">
-                                <h4 className="font-extrabold text-base text-foreground truncate">{top3.user}</h4>
-                                <p className="text-xs text-muted-foreground truncate">{top3.phone}</p>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2 bg-background/50 border border-border/50 p-3 rounded-xl mb-3 text-xs">
-                            <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground font-medium flex items-center gap-1.5">
-                                    <MessageSquare size={13} className="text-orange-400" /> Total Interacciones:
-                                </span>
-                                <strong className="text-orange-300 font-black text-sm">{top3.totalCount} veces</strong>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground font-medium flex items-center gap-1.5">
-                                    <Calendar size={13} className="text-orange-400" /> Día con más actividad:
-                                </span>
-                                <strong className="text-foreground font-bold">{top3.topDay}</strong>
-                            </div>
-                        </div>
-
-                        <div>
-                            <span className="text-[10px] font-extrabold uppercase text-muted-foreground tracking-wider block mb-1.5 flex items-center gap-1">
-                                <MapPin size={12} className="text-orange-400" /> Principales Zonas Escaneadas:
-                            </span>
-                            <div className="flex flex-wrap gap-1.5">
-                                {top3.scannedZones?.slice(0, 3).map((z, idx) => (
-                                    <span key={idx} className="bg-orange-500/10 text-orange-200 border border-orange-500/20 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1">
-                                        <span>📍 {z.name}</span>
-                                        <span className="bg-orange-500/20 text-orange-100 px-1.5 py-0.2 rounded text-[10px]">({z.count}x)</span>
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Tabla General Numerada (#1 al #N) */}
-            <div className="bg-card/40 backdrop-blur-sm border border-border rounded-2xl overflow-hidden shadow-md">
-                <div className="p-4 border-b border-border/80 bg-white/5 flex items-center justify-between">
+                    {/* Tabla General Numerada (#1 al #N) */}
+                    <div className="bg-card/60 backdrop-blur-xl border border-border/80 rounded-2xl overflow-hidden shadow-sm">
+                <div className="p-4 border-b border-border/80 bg-muted/40 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                     <h4 className="font-bold text-sm text-foreground flex items-center gap-2">
                         <Users size={16} className="text-primary" />
                         Tabla Completa de Posiciones & Desglose ({filtered.length} usuarios)
                     </h4>
+                    <div className="flex flex-wrap items-center gap-2">
+                        {/* Filtro por canal */}
+                        <div className="flex bg-background border border-border rounded-xl p-1 gap-1">
+                            {[
+                                { id: "all", label: "Todos", icon: null },
+                                { id: "whatsapp", label: "WhatsApp", icon: <WhatsAppIcon size={12} /> },
+                                { id: "telegram", label: "Telegram", icon: <TelegramIcon size={12} /> },
+                            ].map(ch => (
+                                <button
+                                    key={ch.id}
+                                    type="button"
+                                    onClick={() => changeChannel(ch.id)}
+                                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 ${
+                                        channelFilter === ch.id
+                                            ? "bg-primary text-primary-foreground shadow-sm"
+                                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                    }`}
+                                >
+                                    {ch.icon}
+                                    <span>{ch.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                        {/* Exportar CSV */}
+                        <button
+                            type="button"
+                            onClick={exportCSV}
+                            disabled={sorted.length === 0}
+                            className="px-3 py-1.5 rounded-lg border border-border bg-card text-[11px] font-bold text-foreground hover:border-primary/40 hover:bg-muted/60 transition-all disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1.5"
+                        >
+                            <Download size={13} /> Exportar CSV
+                        </button>
+                    </div>
                 </div>
 
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
+                    <table className="w-full min-w-[720px] text-left text-xs">
                         <thead>
-                            <tr className="border-b border-border/60 bg-white/5 text-muted-foreground font-extrabold uppercase tracking-wider text-[10px]">
-                                <th className="py-3.5 px-4 w-16 text-center"># Posición</th>
-                                <th className="py-3.5 px-4">Persona / Contacto</th>
-                                <th className="py-3.5 px-4">Frecuencia por Día de la Semana</th>
-                                <th className="py-3.5 px-4">Zonas / Puntos Escaneados</th>
-                                <th className="py-3.5 px-4 text-center">Total Mensajes</th>
-                                <th className="py-3.5 px-4 text-right">Última Actividad</th>
+                            <tr className="border-b border-border/80 bg-muted/40 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                                <th className="w-14 py-3 pl-4 pr-2">
+                                    <button type="button" onClick={() => toggleSort("rank")} className="inline-flex items-center gap-1 uppercase tracking-wider transition-colors hover:text-foreground">
+                                        # <SortIcon active={sort.key === "rank"} dir={sort.dir} />
+                                    </button>
+                                </th>
+                                <th className="px-3 py-3">Persona</th>
+                                <th className="hidden px-3 py-3 md:table-cell">Día pico</th>
+                                <th className="hidden px-3 py-3 lg:table-cell">Zonas consultadas</th>
+                                <th className="px-3 py-3 text-center">
+                                    <button type="button" onClick={() => toggleSort("totalCount")} className="inline-flex items-center gap-1 uppercase tracking-wider transition-colors hover:text-foreground">
+                                        Total <SortIcon active={sort.key === "totalCount"} dir={sort.dir} />
+                                    </button>
+                                </th>
+                                <th className="hidden px-3 py-3 text-right sm:table-cell">Últ. actividad</th>
+                                <th className="w-24 py-3 pr-4" />
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border/40">
-                            {filtered.map((item) => {
+                            {paginated.map((item) => {
                                 const isExpanded = expandedUser === item.rank;
                                 return (
                                     <React.Fragment key={item.rank}>
                                         <tr
                                             onClick={() => setExpandedUser(isExpanded ? null : item.rank)}
-                                            className="hover:bg-white/5 transition-colors cursor-pointer group"
+                                            className="cursor-pointer transition-colors hover:bg-muted/40"
                                         >
-                                            <td className="py-3.5 px-4 text-center">
-                                                <span className={`inline-flex items-center justify-center w-7 h-7 rounded-xl border text-xs font-black ${getRankBadgeStyle(item.rank)}`}>
-                                                    #{item.rank}
+                                            <td className="py-3 pl-4 pr-2">
+                                                <span className={`inline-flex h-6 min-w-[1.75rem] items-center justify-center rounded-lg px-1.5 text-[11px] font-black ${rankBadge(item.rank)}`}>
+                                                    {item.rank}
                                                 </span>
                                             </td>
-                                            <td className="py-3.5 px-4">
+                                            <td className="px-3 py-3">
                                                 <div className="flex items-center gap-2.5">
-                                                    <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-primary text-xs shrink-0">
+                                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-xs font-bold text-primary">
                                                         {item.avatar}
                                                     </div>
-                                                    <div>
-                                                        <div className="font-extrabold text-foreground text-sm flex items-center gap-1.5">
-                                                            {item.user}
-                                                            {item.channel === "whatsapp" ? <WhatsAppIcon size={14} /> : <TelegramIcon size={14} />}
-                                                        </div>
-                                                        <span className="text-[10px] text-muted-foreground">{item.phone}</span>
+                                                    <div className="min-w-0">
+                                                        <p className="flex items-center gap-1.5 truncate text-sm font-bold text-foreground">
+                                                            {item.user} <ChannelMark channel={item.channel} size={13} />
+                                                        </p>
+                                                        <p className="truncate text-[10px] text-muted-foreground">{item.phone}</p>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="py-3.5 px-4">
-                                                <div className="flex flex-wrap items-center gap-1.5">
-                                                    <span className="bg-primary/15 text-primary border border-primary/20 px-2.5 py-1 rounded-lg text-[11px] font-black">
-                                                        🗓️ {item.topDay}
-                                                    </span>
-                                                    <button className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1 underline ml-1">
-                                                        {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                                                        <span>Ver días</span>
-                                                    </button>
-                                                </div>
+                                            <td className="hidden px-3 py-3 text-xs text-foreground/80 md:table-cell">{item.topDay}</td>
+                                            <td className="hidden max-w-[320px] px-3 py-3 lg:table-cell">
+                                                <ZoneSummary zones={item.scannedZones} />
                                             </td>
-                                            <td className="py-3.5 px-4">
-                                                <div className="flex flex-wrap gap-1">
-                                                    {item.scannedZones?.map((z, idx) => (
-                                                        <span key={idx} className="bg-card border border-border/80 px-2 py-0.5 rounded-md text-[10px] font-semibold text-foreground/90 flex items-center gap-1">
-                                                            <span className="text-primary font-bold">📍 {z.code}</span>
-                                                            <span className="opacity-80">{z.name}</span>
-                                                            <span className="bg-primary/20 text-primary px-1 rounded text-[9px] font-bold">({z.count}x)</span>
-                                                        </span>
-                                                    ))}
-                                                </div>
+                                            <td className="px-3 py-3 text-center">
+                                                <span className="text-base font-black tracking-tight text-foreground">{item.totalCount}</span>
                                             </td>
-                                            <td className="py-3.5 px-4 text-center">
-                                                <span className="font-black text-sm text-foreground bg-white/5 px-3 py-1 rounded-xl border border-white/10">
-                                                    {item.totalCount}
-                                                </span>
-                                            </td>
-                                            <td className="py-3.5 px-4 text-right text-[11px] text-muted-foreground font-medium">
+                                            <td className="hidden px-3 py-3 text-right text-[11px] font-medium text-muted-foreground sm:table-cell">
                                                 {item.lastSeen}
+                                            </td>
+                                            <td className="py-3 pr-4 text-right text-muted-foreground">
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { e.stopPropagation(); setFicha({ providerId: item.phone, name: item.user }); }}
+                                                        className="rounded-md border border-border/70 bg-card px-2 py-1 text-[10px] font-bold text-foreground/80 transition-colors hover:bg-muted"
+                                                    >
+                                                        Ficha
+                                                    </button>
+                                                    <ChevronDown size={15} className={`inline transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                                                </div>
                                             </td>
                                         </tr>
 
-                                        {/* Fila expandible con el desglose detallado de días */}
                                         {isExpanded && (
-                                            <tr className="bg-primary/5 border-b border-primary/20">
-                                                <td colSpan={6} className="p-4">
-                                                    <div className="space-y-3 pl-12 pr-4">
-                                                        <h5 className="font-bold text-xs text-primary uppercase tracking-wider flex items-center gap-1.5">
-                                                            <Calendar size={14} /> Desglose detallado de interacciones por día de la semana para {item.user}:
-                                                        </h5>
-                                                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
-                                                            {item.dayBreakdown?.map((d, idx) => (
-                                                                <div key={idx} className="bg-card border border-border/80 p-2.5 rounded-xl text-center shadow-xs">
-                                                                    <span className="text-[10px] font-bold text-muted-foreground block uppercase">{d.day}</span>
-                                                                    <span className="text-base font-black text-primary block mt-0.5">{d.count}</span>
-                                                                    <span className="text-[9px] text-muted-foreground">interacciones</span>
-                                                                </div>
-                                                            ))}
+                                            <tr className="bg-muted/30">
+                                                <td colSpan={7} className="px-4 py-4">
+                                                    <div className="grid gap-4 lg:grid-cols-[1fr_1.4fr]">
+                                                        <div>
+                                                            <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                                                <Calendar size={13} /> Interacciones por día
+                                                            </p>
+                                                            <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-7">
+                                                                {item.dayBreakdown?.map((d, idx) => (
+                                                                    <div key={idx} className="rounded-lg border border-border/60 bg-card p-2 text-center">
+                                                                        <span className="block text-[9px] font-bold uppercase text-muted-foreground">{d.day}</span>
+                                                                        <span className="mt-0.5 block text-sm font-black text-foreground">{d.count}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                                                <MapPin size={13} /> Zonas / puntos consultados
+                                                            </p>
+                                                            <div className="flex flex-wrap gap-1.5">
+                                                                {(item.scannedZones || []).map((z, idx) => (
+                                                                    <span key={idx} className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-card px-2 py-1 text-[11px]">
+                                                                        <span className="font-bold text-muted-foreground">{z.code}</span>
+                                                                        <span className="text-foreground/80">{z.name}</span>
+                                                                        <span className="rounded bg-muted px-1 text-[10px] font-bold text-muted-foreground">{z.count}x</span>
+                                                                    </span>
+                                                                ))}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -1105,15 +863,53 @@ function RankingSection({ ranking = [] }) {
 
                             {filtered.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="text-center py-10 text-muted-foreground text-xs">
-                                        No se encontraron usuarios o zonas coincidentes con "{search}".
+                                    <td colSpan={7} className="py-10 text-center text-xs text-muted-foreground">
+                                        No se encontraron usuarios o zonas con los filtros actuales{search ? ` ("${search}")` : ""}.
                                     </td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
                 </div>
-            </div>
+
+                {/* Paginación */}
+                {filtered.length > RANKING_PAGE_SIZE && (
+                    <div className="p-4 border-t border-border/80 bg-muted/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                        <span className="text-muted-foreground font-medium">
+                            Mostrando{" "}
+                            <strong className="text-foreground">{(currentPage - 1) * RANKING_PAGE_SIZE + 1}</strong>
+                            {"–"}
+                            <strong className="text-foreground">{Math.min(currentPage * RANKING_PAGE_SIZE, filtered.length)}</strong>
+                            {" "}de <strong className="text-foreground">{filtered.length}</strong> usuarios
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                type="button"
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                disabled={currentPage <= 1}
+                                className="px-3 py-1.5 rounded-lg border border-border bg-card font-bold text-foreground hover:border-primary/40 hover:bg-muted/60 transition-all disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1"
+                            >
+                                <ChevronLeft size={13} /> Anterior
+                            </button>
+                            <span className="px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary font-black">
+                                {currentPage} / {totalPages}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                disabled={currentPage >= totalPages}
+                                className="px-3 py-1.5 rounded-lg border border-border bg-card font-bold text-foreground hover:border-primary/40 hover:bg-muted/60 transition-all disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1"
+                            >
+                                Siguiente <ChevronRight size={13} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+                    </div>
+                </div>
+            </details>
+
+            <ContactDrawer open={!!ficha} bot="comercial" target={ficha} onClose={() => setFicha(null)} />
         </div>
     );
 }

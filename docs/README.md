@@ -24,8 +24,18 @@ El repositorio es un monorepo con estos bloques principales:
 - [Ciberseguridad](./modulos/ciberseguridad/README.md)
 - [Continuidad: Seguridad Electronica y eventos diarios](./CONTINUIDAD-SEGURIDAD-ELECTRONICA-EVENTOS.md)
 
+## Proceso de trabajo (obligatorio)
+
+- [Modelo de trabajo canonico (SDD)](./WORKING_MODEL.md) — leer antes de cualquier cambio, con cualquier herramienta de IA.
+- [Specs](../specs/README.md) — Spec-Driven Development, plantillas e indice.
+- [ADR](./adr/README.md) — decisiones de arquitectura.
+- [Lecciones aprendidas](./lecciones-aprendidas/README.md).
+- [Changelog](../CHANGELOG.md) — se actualiza en cada PR.
+- [Sistema de diseno CRM_Frontend](../CRM_Frontend/docs/design-system.md).
+
 ## Operacion
 
+- [Despliegue local dockerizado (paso obligatorio antes de prod)](./operacion/despliegue-local.md)
 - [Despliegue y VPS](./operacion/despliegue.md)
 
 ## Referencias existentes
@@ -39,7 +49,9 @@ El repositorio es un monorepo con estos bloques principales:
 
 Cuando se cree o cambie un modulo:
 
-1. Agregar o actualizar su ficha en `docs/modulos/`.
-2. Enlazar documentacion profunda si existe.
-3. Actualizar este indice si cambia el mapa del ecosistema.
-4. Mantener `DOCUMENTACION.md` como puerta de entrada estable.
+1. Crear/actualizar la spec en `specs/NNNN-slug/` (ver [WORKING_MODEL.md](./WORKING_MODEL.md)).
+2. Agregar o actualizar su ficha en `docs/modulos/`.
+3. Enlazar documentacion profunda si existe.
+4. Actualizar `CHANGELOG.md`, y `docs/adr/` o `docs/lecciones-aprendidas/` si corresponde.
+5. Actualizar este indice si cambia el mapa del ecosistema.
+6. Mantener `DOCUMENTACION.md` como puerta de entrada estable.

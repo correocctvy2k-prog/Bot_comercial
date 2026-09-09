@@ -13,6 +13,8 @@ CRM_Frontend/
 ## Documentacion relacionada
 
 - [README CRM Frontend](../../CRM_Frontend/README.md)
+- [Sistema de diseno ("ADN premium")](../../CRM_Frontend/docs/design-system.md) — obligatorio para UI nueva o modificada
+- [Modulo: Analitica de Agentes IA](../../CRM_Frontend/docs/analitica-agentes/README.md)
 - [Monitoreo IT](./monitoreo-it.md)
 
 ## Stack
@@ -31,7 +33,8 @@ CRM_Frontend/
 | --- | --- |
 | `CRM_Frontend/src/App.jsx` | Rutas principales |
 | `CRM_Frontend/src/layout/Layout.jsx` | Shell visual, sidebar y header |
-| `CRM_Frontend/src/pages/Dashboard.jsx` | Actividad Bot |
+| `CRM_Frontend/src/pages/Dashboard.jsx` | Analitica de Agentes IA (Bot Comercial + Bot Soporte) |
+| `CRM_Frontend/src/services/crm.service.js` | Metricas y ranking de Analitica de Agentes |
 | `CRM_Frontend/src/pages/Monitoring.jsx` | Dashboard principal de Monitoreo IT |
 | `CRM_Frontend/src/pages/MonitoringDashboard.jsx` | Detalles e historial de Monitoreo IT |
 | `CRM_Frontend/src/services/` | Clientes de API |
@@ -39,26 +42,34 @@ CRM_Frontend/
 
 ## Antes de modificar
 
-- Revisar convenciones visuales existentes.
+- Crear/actualizar la spec en `specs/NNNN-slug/` ([WORKING_MODEL.md](../WORKING_MODEL.md)).
+- Seguir el [sistema de diseno](../../CRM_Frontend/docs/design-system.md): tokens de tema, nada de `bg-white/5`.
 - No crear landing pages para herramientas internas.
 - Mantener dashboards compactos, escaneables y utiles en pantalla.
-- Probar build antes de entregar.
 
 ## Verificacion minima
 
 ```bash
 cd CRM_Frontend
+npm run lint
 npm run build
 ```
 
-Servidor local:
+Desarrollo rapido (no sustituye la verificacion en Docker local):
 
 ```bash
 cd CRM_Frontend
 npm run dev
 ```
 
-Despliegue VPS:
+Verificacion obligatoria antes de PR — Docker local en `http://127.0.0.1:3003/`
+(ver [despliegue-local.md](../operacion/despliegue-local.md)):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build crm-frontend
+```
+
+Despliegue a produccion (solo tras merge a `main`):
 
 ```bash
 sudo docker compose up -d --build crm-frontend

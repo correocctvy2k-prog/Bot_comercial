@@ -1,13 +1,20 @@
 # Operacion - Despliegue y VPS
 
-## Flujo normal
+> **Orden obligatorio (ver `docs/WORKING_MODEL.md` §3):**
+> 1. Build dockerizado local + smoke test en `http://127.0.0.1:3003/`
+>    (`docs/operacion/despliegue-local.md`).
+> 2. Commit en rama + PR en GitHub. CI verde.
+> 3. Merge a `main`.
+> 4. Recien entonces, promover a produccion `http://192.168.8.65:3003/` con los pasos de abajo.
+>
+> Nunca se despliega a produccion algo que no paso por (1) y (2).
 
-1. Cambios locales.
-2. Verificacion minima segun modulo.
-3. Commit.
-4. Push a `origin/main`.
-5. Pull en VPS.
-6. Rebuild/restart del contenedor afectado.
+## Flujo normal (promocion a produccion, post-merge)
+
+1. Cambios ya verificados en local dockerizado y mergeados a `main` via PR.
+2. Pull en el servidor.
+3. Rebuild/restart del contenedor afectado.
+4. Verificar en `http://192.168.8.65:3003/`.
 
 ## VPS
 

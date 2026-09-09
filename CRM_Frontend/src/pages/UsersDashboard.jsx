@@ -347,11 +347,11 @@ export default function UsersDashboard() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h1 className="text-3xl font-black tracking-tight text-foreground flex items-center gap-3">
-                        <Users className="text-blue-500" size={32} />
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-3">
+                        <Users className="text-blue-500" size={28} />
                         Centro de Identidad
                     </h1>
-                    <p className="text-muted-foreground mt-1 font-medium">
+                    <p className="text-sm text-muted-foreground mt-1 font-medium">
                         Administra cuentas, roles y permisos de acceso al ecosistema.
                     </p>
                 </div>

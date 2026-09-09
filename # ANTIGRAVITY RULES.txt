@@ -57,3 +57,15 @@ Para aplicaciones que interactúan con Google Sheets/Drive en Windows:
 ## 5. REGLA DE ORO DE ANTIGRAVITY (CICLO DE MEMORIA)
 
 Es un **PROCESO CÍCLICO OBLIGATORIO**: Ninguna sesión comienza sin consultar `km_agent_memory`, y ninguna sesión termina sin haberla enriquecido. Si no hubo hallazgos técnicos complejos, se debe registrar al menos un resumen del progreso y decisiones clave para asegurar la continuidad del siguiente agente.
+
+---
+
+## 6. MODELO DE TRABAJO CANÓNICO (SDD / CRM_Frontend)
+
+Desde 2026-09-07, además de lo anterior, TODO cambio (con cualquier herramienta de IA) se rige por:
+
+> **`docs/WORKING_MODEL.md`** — documento canónico.
+
+Resumen: (1) SDD, spec en `specs/NNNN-slug/` antes de tocar código; (2) producto norte = `CRM_Frontend`, respetar `CRM_Frontend/docs/design-system.md`; (3) pipeline obligatorio local dockerizado `http://127.0.0.1:3003/` → PR en GitHub → producción `http://192.168.8.65:3003/`; (4) documentar avances en el mismo PR (`CHANGELOG.md`, `docs/adr/`, `docs/lecciones-aprendidas/`); (5) nunca commit directo a `main`.
+
+El ciclo de memoria de la sección 5 se mantiene y complementa a este modelo.

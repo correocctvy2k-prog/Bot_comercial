@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, createContext } from 'react';
-import { Bot, MapPin, Users, Settings, LogOut, Cable, Terminal, PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, PieChart, Sparkles, Building2, ShieldCheck, User, Image, UserCircle, Loader2, X, Activity, LayoutDashboard, Server, Cctv, LockKeyhole, LifeBuoy } from 'lucide-react';
+import { Bot, MapPin, Users, Settings, LogOut, Cable, Terminal, PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, PieChart, Sparkles, Building2, ShieldCheck, User, Image, UserCircle, Loader2, X, Activity, LayoutDashboard, Server, Cctv, LockKeyhole, LifeBuoy, Zap } from 'lucide-react';
 import SkylabBot from '../components/SkylabBot';
 import { ModeToggle } from "@/components/mode-toggle";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { supabase } from '../services/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// AsambleaIcon: se conserva para cuando se re-habilite el módulo Asamblea (deshabilitado 2026-09-08).
 const AsambleaIcon = ({ size = 24, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeJoin="round" className={className}>
         <path d="M2.5 2.5l2.5 2.5m0-2h2v2" strokeWidth="1.2" opacity="0.6" />
@@ -28,7 +29,16 @@ const MENU_ITEMS_RAW = [
     {
         section: "Opeación Central",
         items: [
-            { to: '/', icon: Bot, label: 'Analítica de Agentes', module: 'bot-activity' },
+            {
+                label: 'Bots Gane Palmira',
+                icon: Bot,
+                module: 'bot-activity',
+                subItems: [
+                    { to: '/bots/comercial', icon: Zap, label: 'Bot Comercial', module: 'bot-activity' },
+                    { to: '/bots/oskitar', icon: ShieldCheck, label: 'Oskitar', module: 'bot-activity' },
+                    { to: '/bots/betty', icon: Bot, label: 'Betty', module: 'bot-activity' },
+                ],
+            },
             { to: '/points', icon: MapPin, label: 'Operación de Puntos', module: 'points' },
             {
                 label: 'Seguridad Perimetral',
@@ -41,7 +51,8 @@ const MENU_ITEMS_RAW = [
                 ]
             },
             { to: '/contacts', icon: Users, label: 'Contactos', module: 'contacts' },
-            { to: '/asamblea', icon: AsambleaIcon, label: 'Asamblea 2026', module: 'asamblea' }
+            // Asamblea deshabilitado temporalmente (2026-09-08, decisión del usuario) — NO eliminar.
+            // { to: '/asamblea', icon: AsambleaIcon, label: 'Asamblea 2026', module: 'asamblea' }
         ]
     },
     {
@@ -55,7 +66,9 @@ const MENU_ITEMS_RAW = [
         section: "Sistema Operativo",
         items: [
             { to: '/command-center', icon: Terminal, label: 'Centro de Mando', module: 'command-center' },
-            { to: '/support', icon: LifeBuoy, label: 'Centro de Soporte', module: 'bot-activity' },
+            // Centro de Soporte retirado (spec 0004): la analítica de soporte vive en la pestaña
+            // Oskitar de Analítica de Agentes. Reactivar descomentando aquí y en App.jsx.
+            // { to: '/support', icon: LifeBuoy, label: 'Centro de Soporte', module: 'bot-activity' },
             {
                 label: 'Monitoreo IT',
                 icon: Activity,
@@ -240,7 +253,7 @@ export default function Layout({ children }) {
                                     <div key={iIdx} className="space-y-1">
                                         <button
                                             onClick={() => toggleMenu(item.label)}
-                                            className={`flex items-center justify-between w-full p-3 text-sm font-medium rounded-xl transition-all duration-200 ${!isSidebarOpen && 'justify-center'} text-muted-foreground hover:text-foreground hover:bg-white/5 border border-transparent`}
+                                            className={`flex items-center justify-between w-full p-3 text-sm font-medium rounded-xl transition-all duration-200 ${!isSidebarOpen && 'justify-center'} text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent`}
                                             title={!isSidebarOpen ? item.label : ''}
                                         >
                                             <div className="flex items-center gap-3">
@@ -259,7 +272,7 @@ export default function Layout({ children }) {
                                                     <div key={subItem.label} className="flex items-center gap-3 rounded-lg p-2.5 text-sm font-medium text-muted-foreground/45" title="Integración futura">
                                                         <subItem.icon size={16} className="opacity-60" />
                                                         <span className="min-w-0 flex-1 truncate">{subItem.label}</span>
-                                                        <span className="rounded border border-white/[.06] px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider text-muted-foreground/55">Próximo</span>
+                                                        <span className="rounded border border-border/60 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider text-muted-foreground/55">Próximo</span>
                                                     </div>
                                                 ) : (
                                                     <NavLink
@@ -267,7 +280,7 @@ export default function Layout({ children }) {
                                                         to={subItem.to}
                                                         className={({ isActive }) => `flex items-center gap-3 p-2.5 text-sm font-medium rounded-lg transition-all duration-200 group ${isActive
                                                             ? "bg-primary/10 text-primary"
-                                                            : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                                                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                                                             }`}
                                                     >
                                                         <subItem.icon size={16} className="opacity-70 group-[.active]:opacity-100" />
@@ -284,7 +297,7 @@ export default function Layout({ children }) {
                                         title={!isSidebarOpen ? item.label : ''}
                                         className={({ isActive }) => `flex items-center ${isSidebarOpen ? 'justify-start p-3' : 'justify-center w-12 h-12 mx-auto'} gap-3 text-sm font-medium rounded-xl transition-all duration-300 group ${isActive
                                             ? "bg-primary/15 text-primary border border-primary/20 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]"
-                                            : "text-muted-foreground hover:text-foreground hover:bg-white/5 border border-transparent"
+                                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent"
                                             }`}
                                     >
                                         <item.icon size={20} className={`transition-transform duration-300 ${!isSidebarOpen && 'scale-110'}`} />
@@ -296,10 +309,10 @@ export default function Layout({ children }) {
                     ))}
                 </div>
 
-                <div className="p-4 border-t border-white/5 flex flex-col gap-2 bg-black/10">
+                <div className="p-4 border-t border-border/80 flex flex-col gap-2 bg-muted/30">
                     <button
                         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                        className={`flex items-center ${isSidebarOpen ? 'justify-start p-3' : 'justify-center w-12 h-12 mx-auto'} gap-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-xl transition-colors`}
+                        className={`flex items-center ${isSidebarOpen ? 'justify-start p-3' : 'justify-center w-12 h-12 mx-auto'} gap-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-xl transition-colors`}
                         title="Alternar Panel Lateral"
                     >
                         {isSidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
@@ -333,7 +346,7 @@ export default function Layout({ children }) {
                                 <div>
                                     <h2 className="text-xl font-bold tracking-tight text-foreground">{currentTitle}</h2>
                                     {profile && isSidebarOpen && (
-                                        <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest bg-white/5 px-2 py-0.5 rounded-md">
+                                        <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest bg-muted/60 px-2 py-0.5 rounded-md">
                                             {profile.roles?.display_name}
                                         </span>
                                     )}
@@ -346,7 +359,7 @@ export default function Layout({ children }) {
                             <div className="relative" ref={menuRef}>
                                 <div 
                                     onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                                    className="flex items-center gap-3 bg-white/5 px-4 py-1.5 rounded-full border border-white/5 hover:border-white/10 hover:bg-white/10 transition-all cursor-pointer shadow-sm group"
+                                    className="flex items-center gap-3 bg-muted/50 px-4 py-1.5 rounded-full border border-border hover:border-primary/30 hover:bg-muted/70 transition-all cursor-pointer shadow-sm group"
                                 >
                                     <span className="text-xs font-semibold text-muted-foreground group-hover:text-foreground hidden sm:inline transition-colors">@{profile?.username}</span>
                                     {profile?.avatar_url ? (
@@ -371,14 +384,14 @@ export default function Layout({ children }) {
                                             <div className="p-4 border-b border-border/50 bg-gradient-to-br from-primary/5 to-transparent">
                                                 <p className="font-bold text-foreground text-sm truncate">{profile?.full_name || `@${profile?.username}`}</p>
                                                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-                                                <div className="mt-2 inline-flex items-center px-2 py-0.5 rounded-md bg-white/10 border border-white/5 text-[10px] font-bold tracking-wider uppercase text-foreground/80">
+                                                <div className="mt-2 inline-flex items-center px-2 py-0.5 rounded-md bg-muted/60 border border-border text-[10px] font-bold tracking-wider uppercase text-foreground/80">
                                                     {profile?.roles?.display_name || 'Usuario'}
                                                 </div>
                                             </div>
                                             <div className="p-2 space-y-1">
                                                 <button 
                                                     onClick={openProfileModal}
-                                                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground/80 hover:text-foreground hover:bg-white/5 rounded-xl transition-colors text-left"
+                                                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground/80 hover:text-foreground hover:bg-muted/50 rounded-xl transition-colors text-left"
                                                 >
                                                     <UserCircle size={16} />
                                                     <span>Editar Mi Perfil</span>
@@ -431,7 +444,7 @@ export default function Layout({ children }) {
                                 </div>
                                 <button 
                                     onClick={() => setIsProfileModalOpen(false)}
-                                    className="ml-auto w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                                    className="ml-auto w-8 h-8 rounded-full bg-muted/50 hover:bg-muted/70 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
                                 >
                                     <X size={16} />
                                 </button>

@@ -14,7 +14,7 @@ import CctvModule from './pages/CctvModule'
 import Contacts from './pages/Contacts'
 import ContactDetail from './pages/ContactDetail'
 import CommandCenter from './pages/CommandCenter'
-import AsambleaDashboard from './pages/AsambleaDashboard'
+// import AsambleaDashboard from './pages/AsambleaDashboard' // deshabilitado temporalmente (2026-09-08) — NO eliminar
 import PruebaWhatsApp from './pages/PruebaWhatsApp'
 import LoginPage from './pages/LoginPage'
 import UsersDashboard from './pages/UsersDashboard'
@@ -22,7 +22,7 @@ import Monitoring from './pages/Monitoring'
 import MonitoringDashboard from './pages/MonitoringDashboard'
 import ServicesTIDashboard from './pages/ServicesTIDashboard'
 import CybersecurityDashboard from './pages/CybersecurityDashboard'
-import SupportDashboard from './pages/SupportDashboard'
+// import SupportDashboard from './pages/SupportDashboard' // Centro de Soporte retirado (spec 0004) — NO eliminar
 import SupportWidget from './components/support/SupportWidget'
 import Layout from './layout/Layout'
 
@@ -45,7 +45,9 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <Routes>
-                      <Route path="/" element={<ProtectedRoute module="bot-activity"><Dashboard /></ProtectedRoute>} />
+                      <Route path="/" element={<Navigate to="/bots/comercial" replace />} />
+                      <Route path="/bots" element={<Navigate to="/bots/comercial" replace />} />
+                      <Route path="/bots/:bot" element={<ProtectedRoute module="bot-activity"><Dashboard /></ProtectedRoute>} />
                       <Route path="/points" element={<ProtectedRoute module="points"><Points /></ProtectedRoute>} />
                       <Route path="/points/cctv" element={<ProtectedRoute module="points"><CctvModule /></ProtectedRoute>} />
                       <Route path="/points/cctv/:siisCode" element={<ProtectedRoute module="points"><CctvModule /></ProtectedRoute>} />
@@ -55,11 +57,13 @@ function App() {
                       <Route path="/contacts" element={<ProtectedRoute module="contacts"><Contacts /></ProtectedRoute>} />
                       <Route path="/contacts/:id" element={<ProtectedRoute module="contacts"><ContactDetail /></ProtectedRoute>} />
                       <Route path="/command-center" element={<ProtectedRoute module="command-center"><CommandCenter /></ProtectedRoute>} />
-                      <Route path="/asamblea" element={<ProtectedRoute module="asamblea"><AsambleaDashboard /></ProtectedRoute>} />
+                      {/* Asamblea deshabilitado temporalmente (2026-09-08, decisión del usuario) — NO eliminar. /asamblea cae al redirect "*". */}
+                      {/* <Route path="/asamblea" element={<ProtectedRoute module="asamblea"><AsambleaDashboard /></ProtectedRoute>} /> */}
                       <Route path="/monitoring/dashboard" element={<ProtectedRoute module="bot-activity"><MonitoringDashboard /></ProtectedRoute>} />
                       <Route path="/monitoring/services-ti" element={<ProtectedRoute module="bot-activity"><ServicesTIDashboard /></ProtectedRoute>} />
                       <Route path="/monitoring" element={<ProtectedRoute module="bot-activity"><Monitoring /></ProtectedRoute>} />
-                      <Route path="/support" element={<SupportDashboard />} />
+                      {/* Centro de Soporte retirado (spec 0004): /support cae al redirect "*". */}
+                      {/* <Route path="/support" element={<SupportDashboard />} /> */}
                       <Route path="/users" element={<ProtectedRoute module="users-management"><UsersDashboard /></ProtectedRoute>} />
                       <Route path="/test-wa" element={<ProtectedRoute module="settings"><PruebaWhatsApp /></ProtectedRoute>} />
                       

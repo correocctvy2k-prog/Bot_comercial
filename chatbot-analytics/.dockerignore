@@ -1,0 +1,11 @@
+node_modules
+.git
+.env
+.env.local
+data
+*.log
+!conversations.sample.log
+Dockerfile
+.dockerignore
+README.md
+docs
