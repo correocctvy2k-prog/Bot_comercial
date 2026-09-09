@@ -38,11 +38,11 @@ Referencia: `spec.md` y `plan.md`. 4 tandas independientes; un commit por pieza.
       resultados", tipos de mensaje, clientes más activos, día de la semana, **pasos más
       transitados** (`stepBreakdown`) y **desglose de "No disponible"** (count/%/clientes/
       correcciones). Top 5 + tabla de clientes visibles en ambas vistas.
-- [x] **#7** — **doble serie descartada.** Solo `setState`/`extendTimeout` traen timestamp en
-      el `state-manager.log`; `updateStep`/`clearState`/`updateData` **no** → una serie
-      "entrantes vs salientes" sería dato fabricado. Se deja una serie honesta ("Eventos del
-      bot") con subtítulo que explica la limitación. Sin cambio funcional en `analyticsBetty.js`
-      (solo comentario). **Pendiente: ok del usuario a esta decisión.**
+- [x] **#7** — **doble serie descartada** (aprobado por el usuario, 2026-09-09). Solo
+      `setState`/`extendTimeout` traen timestamp en el `state-manager.log`;
+      `updateStep`/`clearState`/`updateData` **no** → una serie "entrantes vs salientes" sería
+      dato fabricado. Se deja una serie honesta ("Eventos del bot") con subtítulo que explica
+      la limitación. Sin cambio funcional en `analyticsBetty.js` (solo comentario).
 - [x] Build + lint verdes.
 
 ## Documentación (DoD)

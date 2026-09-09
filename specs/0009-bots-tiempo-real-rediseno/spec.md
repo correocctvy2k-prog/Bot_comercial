@@ -69,13 +69,12 @@ la misma profundidad de vista que Oskitar.
   reciente).
 
 ### Tanda D — Paridad de Betty (#7 y #8)
-- **(7) "Actividad por día" de Betty con dos series.** `messages.log` no trae timestamp ni
-  dirección → **no** se puede "mensajes del cliente por día". Se implementa la versión honesta
-  más cercana desde `state-manager.log` (único con tiempo): dos series por día —
-  **"Actividad de conversación"** (`action = setState`) vs **"Progreso del bot"**
-  (`action = updateStep`). Requiere `lib/analyticsBetty.js`: además de `byDay.count`, exponer
-  `byDay.conversation` y `byDay.progress` (o un `byDayKind`). Nota al pie mantiene "horas
-  aproximadas". _(Alternativa si el usuario prefiere: dejar una sola serie + nota.)_
+- **(7) "Actividad por día" de Betty.** `messages.log` no trae timestamp ni dirección, y en el
+  `state-manager.log` **solo `setState`/`extendTimeout` traen timestamp** (`updateStep`,
+  `clearState`, `updateData` no) → **no hay dos señales temporales**: cualquier "entrantes vs
+  salientes" sería fabricado. **Resolución (aprobada 2026-09-09):** una serie honesta
+  ("Eventos del bot") con subtítulo que explica la limitación del log. Sin cambio en
+  `analyticsBetty.js`.
 - **(8) Betty: sub-vista "Detalle · analítica".** Añadir el conmutador Resumen / Detalle a
   `BettyView` (igual patrón que `OskitarView`):
   - **Resumen** (queda como hoy, depurado): 4 KPIs, actividad por día (nueva, #7), por hora,
