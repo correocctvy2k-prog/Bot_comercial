@@ -10,6 +10,30 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CRM_Frontend — Bots Gane Palmira: tiempo real y rediseño premium
+`specs/0009-bots-tiempo-real-rediseno/`
+- **Rediseño visual base (Tanda A):** se quita el "Monitor de Actividad" de Bot Comercial
+  (las 3 vistas quedan con la misma estructura). `src/components/Panel.jsx` y `MiniBars.jsx`
+  extraídos y rediseñados (índice de posición, valor/porcentaje alineados, top-1 con acento,
+  tipografía del design-system). `TopUsersBoard` gana modo `compact` (fila ~44 px) → los 3
+  rankings ocupan bastante menos.
+- **Tablas Personas/Clientes más legibles (Tanda B):** `src/components/entityBits.jsx` —
+  `StatusPill` (icono + color por estado), `CategoryChips` (color estable por nombre, +N),
+  `LastActivity` (relativa + fecha absoluta en `title`). "No disponible" resaltado en ámbar.
+- **Feedback en vivo (Tanda C):** al cambiar un KPI, pulso sutil del borde. Las tablas se
+  ordenan por última actividad y, al llegar un `update` por SSE, la fila reciente sube a la
+  primera posición y se resalta ~2 s. Punto "en vivo" en la cabecera. Todo se anula con
+  `prefers-reduced-motion`. Nuevo `src/hooks/usePrevious.js`.
+- **Paridad de Betty (Tanda D):** conmutador **Resumen / Detalle** (como Oskitar); el Detalle
+  añade "pasos más transitados" y el desglose de "No disponible". La "Actividad por día" de
+  Betty se deja en una serie honesta ("Eventos del bot"): el `messages.log` no trae fecha ni
+  dirección, así que una serie "entrantes vs salientes" sería un dato fabricado.
+
+## [2026-09-09] — specs 0002–0006 a producción (`192.168.8.65`)
+
+Merge del PR #1 (`main` = `eeca883`, fast-forward de 26 commits) y despliegue: rebuild de
+`crm-frontend` + **estreno de `chatbot-analytics`** (:3008) en prod. Contenido:
+
 ### CRM_Frontend — Polish: tipografía de encabezados, avatar de bot, ranking Top 5
 `specs/0006-polish-tipografia-ranking/`
 

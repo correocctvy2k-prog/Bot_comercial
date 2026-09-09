@@ -2,55 +2,59 @@
 
 Referencia: `spec.md` y `plan.md`. 4 tandas independientes; un commit por pieza.
 
-## Tanda A — Rediseño visual base
+## Tanda A — Rediseño visual base · HECHA (`c24217c`)
 
-- [ ] (6) Quitar "Monitor de Actividad" de Bot Comercial: `feed` query, `FeedItem`,
-      `invalidateQueries(['feed'])` y el bloque en `Dashboard.jsx`.
-- [ ] (3) `src/components/Panel.jsx` extraído de `ChatbotAnalyticsPanel` + tipografía §3.
-- [ ] (3) `src/components/MiniBars.jsx` extraído + rediseño (valor/%, degradado, top-1 con acento).
-- [ ] (3) `ChatbotAnalyticsPanel.jsx` usa `Panel`/`MiniBars` nuevos en Oskitar y Betty.
-- [ ] (4) `TopUsersBoard` prop `compact` (fila ~44 px, medalla-índice, sin icon-badge grande).
-- [ ] Build + lint + smoke claro/oscuro. Commit.
+- [x] (6) Quitado el "Monitor de Actividad" de Bot Comercial (`feed`, `FeedItem`, invalidación).
+- [x] (3) `src/components/Panel.jsx` + `MiniBars.jsx` extraídos y rediseñados (índice de
+      posición, valor/%, top-1 con `ring`, cabecera `bg-muted/20`, tipografía §3).
+- [x] (3) `ChatbotAnalyticsPanel.jsx` usa `Panel`/`MiniBars` nuevos.
+- [x] (4) `TopUsersBoard` prop `compact`; aplicado en los 3 rankings.
+- [x] Build + lint verdes.
 
-## Tanda B — Tablas legibles (#5)
+## Tanda B — Tablas legibles (#5) · HECHA (`bd23cf2`)
 
-- [ ] `src/components/EntityTable.jsx` (o `StatusPill` + `CategoryChips` + helpers compartidos).
-- [ ] Estado con icono+color; chips de categoría con color estable; canal; última actividad
-      relativa + `title` absoluto; acción "Ficha"; fila → `ContactDrawer`.
-- [ ] Aplicar en Personas (Oskitar), Clientes (Betty) y tabla completa del Ranking (Comercial).
-- [ ] Build + lint + smoke. Commit.
+- [x] `src/components/entityBits.jsx`: `StatusPill` (icono+color), `CategoryChips` (color
+      estable por nombre, +N), `LastActivity` (relativa + fecha absoluta en `title`),
+      helpers `oskitarStatus`/`bettyStatus`.
+- [x] Aplicado en Personas (Oskitar) y Clientes (Betty). "No disp." resaltado en ámbar.
+- [x] La tabla completa del Ranking (Comercial) ya tenía canal/avatar/zonas; se deja como está
+      (queda plegada tras "Ver tabla completa" desde 0006).
+- [x] Build + lint verdes.
 
-## Tanda C — Tiempo real con feedback (#2)
+## Tanda C — Tiempo real con feedback (#2) · HECHA (`0ff0cd7`)
 
-- [ ] `src/hooks/usePrevious.js`.
-- [ ] KPIs: pulso sutil (~600 ms) + count-up corto al cambiar el valor (`framer-motion`).
-- [ ] Tabla Personas/Clientes: orden por última interacción desc; al `update`, diff vs lista
-      previa → fila reciente sube a la 1 con `motion.tr layout` + flash de fondo.
-- [ ] Ranking de Bot Comercial: mismo feedback al cambiar el conteo.
-- [ ] Punto "en vivo" en la cabecera del bot (pulso al recibir `update`).
-- [ ] Respetar `prefers-reduced-motion` (sin `layout` ni flash).
-- [ ] Build + lint + smoke (interacción real contra el bot). Commit.
+- [x] `src/hooks/usePrevious.js`: `usePrevious`, `useFreshKeys` (diff en render, sin estado),
+      `prefersReducedMotion`.
+- [x] KPIs: pulso sutil (~800 ms, CSS `sk-kpi-pulse`, patrón "ajustar estado en render").
+- [x] Tablas Personas/Clientes: orden por última actividad desc; al `update`, la fila reciente
+      sube a la 1 y se resalta ~2 s (`sk-row-flash`). `expanded` de Oskitar indexado por teléfono.
+- [x] Punto "en vivo" (`LiveDot`) en la cabecera de Oskitar y Betty.
+- [x] `@media (prefers-reduced-motion)` anula ambas animaciones.
+- [x] Build + lint verdes.
 
-## Tanda D — Paridad de Betty (#7, #8)
+## Tanda D — Paridad de Betty (#7, #8) · HECHA (`ad6681f`)
 
-- [ ] `chatbot-analytics/lib/analyticsBetty.js`: `byDay` suma `conversation` (`setState`) y
-      `progress` (`updateStep`) por día. `count` intacto.
-- [ ] `chatbot-analytics` docs: campos nuevos de `byDay` en `DOCUMENTATION.md` + `README.md`.
-- [ ] Betty "Actividad por día" → dos áreas (Actividad de conversación / Progreso del bot),
-      con fallback a serie única si el campo falta.
-- [ ] `BettyView`: conmutador Resumen / Detalle (patrón de `OskitarView`).
-- [ ] Betty Detalle: `topByFlow`, `resultadosFunnel`, `stepBreakdown`, desglose "No
-      disponible", `byWeekday`, `messageTypes`.
-- [ ] Rebuild `chatbot-analytics` + build + lint + smoke. Commit.
+- [x] **#8** `BettyView`: conmutador Resumen / Detalle. Detalle = recorrido "Consultar
+      resultados", tipos de mensaje, clientes más activos, día de la semana, **pasos más
+      transitados** (`stepBreakdown`) y **desglose de "No disponible"** (count/%/clientes/
+      correcciones). Top 5 + tabla de clientes visibles en ambas vistas.
+- [x] **#7** — **doble serie descartada.** Solo `setState`/`extendTimeout` traen timestamp en
+      el `state-manager.log`; `updateStep`/`clearState`/`updateData` **no** → una serie
+      "entrantes vs salientes" sería dato fabricado. Se deja una serie honesta ("Eventos del
+      bot") con subtítulo que explica la limitación. Sin cambio funcional en `analyticsBetty.js`
+      (solo comentario). **Pendiente: ok del usuario a esta decisión.**
+- [x] Build + lint verdes.
 
 ## Documentación (DoD)
 
-- [ ] `CHANGELOG.md` (CRM_Frontend — Bots Gane Palmira; Infra/Docs para `byDay`).
-- [ ] Ficha `CRM_Frontend/docs/analitica-agentes/README.md` (piezas nuevas, tiempo real, Betty Detalle).
-- [ ] `chatbot-analytics/docs/DOCUMENTATION.md` + `README.md` (campos de `byDay`).
-- [ ] ADR: no aplica (cambio aditivo al modelo). Lección aprendida sólo si hay tropiezo no obvio.
+- [ ] `CHANGELOG.md` (CRM_Frontend — Bots Gane Palmira).
+- [ ] Ficha `CRM_Frontend/docs/analitica-agentes/README.md` (Panel/MiniBars, entityBits,
+      TopUsersBoard compact, tiempo real, Betty Resumen/Detalle).
+- [ ] `chatbot-analytics`: sin cambio de contrato en el modelo → no se toca DOCUMENTATION.
+- [ ] ADR: no aplica. Lección aprendida: la limitación temporal del `state-manager.log` de
+      Betty ya está en la spec/tasks; se registra `LL` sólo si vuelve a morder.
 
 ## Cierre
 
-- [ ] PR enlazando la spec. CI (build) verde. Merge. Deploy `crm-frontend` + `chatbot-analytics`
-      a `192.168.8.65` y verificación.
+- [ ] PR enlazando la spec. CI (build) verde. Merge. Deploy `crm-frontend` a `192.168.8.65`
+      y verificación. (`chatbot-analytics` sin cambios funcionales.)
