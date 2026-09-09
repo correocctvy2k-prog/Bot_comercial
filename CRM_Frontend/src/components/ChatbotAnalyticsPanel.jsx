@@ -449,6 +449,7 @@ function OskitarDetalle({ m, dayPick, setDayPick }) {
 
 function BettyView({ m, range, setRange, onRefresh, fetching }) {
     const [ficha, setFicha] = useState(null);
+    const [view, setView] = useState("resumen"); // resumen | detalle
     const k = m.kpis || {};
     const csvHref = api.exportCsvUrl("betty", {});
     const dayData = (m.byDay || []).map((d) => ({ ...d, day: fmtDay(d.date) }));
@@ -475,16 +476,35 @@ function BettyView({ m, range, setRange, onRefresh, fetching }) {
                 <Kpi label={'"No disponible"'} value={pct(k.notAvailableRate)} sub={`${k.stepCorrections ?? 0} correcciones de paso`} icon={<TrendingDown size={19} />} tone="amber" />
             </div>
 
+            <div className="flex gap-1 rounded-xl border border-border bg-background p-1 w-fit">
+                {[["resumen", "Resumen"], ["detalle", "Detalle · analítica"]].map(([id, label]) => (
+                    <button
+                        key={id}
+                        onClick={() => setView(id)}
+                        className={`rounded-lg px-4 py-1.5 text-[11px] font-bold transition-all ${view === id ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}`}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </div>
+
+            {view === "resumen" && <>
             <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
-                <Panel title="Actividad por día" subtitle="Mensajes" icon={<Activity size={16} className="text-primary" />}>
+                <Panel
+                    title="Actividad por día"
+                    subtitle="Eventos del bot (state-manager) · horas aprox. — el log de mensajes no trae fecha"
+                    icon={<Activity size={16} className="text-primary" />}
+                >
                     <ResponsiveContainer width="100%" height={220}>
                         <AreaChart data={dayData} margin={{ top: 6, right: 8, left: -8, bottom: 0 }}>
-                            <defs><linearGradient id="bDay" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.35} /><stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} /></linearGradient></defs>
+                            <defs>
+                                <linearGradient id="bConv" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.35} /><stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} /></linearGradient>
+                            </defs>
                             {grid}
                             <XAxis dataKey="day" {...axis} />
                             <YAxis {...axis} width={40} />
                             <Tooltip content={<ChartTooltip />} />
-                            <Area type="monotone" dataKey="count" name="Mensajes" stroke="#8b5cf6" strokeWidth={2} fill="url(#bDay)" />
+                            <Area type="monotone" dataKey="count" name="Eventos del bot" stroke="#8b5cf6" strokeWidth={2} fill="url(#bConv)" />
                         </AreaChart>
                     </ResponsiveContainer>
                 </Panel>
@@ -517,7 +537,9 @@ function BettyView({ m, range, setRange, onRefresh, fetching }) {
                     />
                 </Panel>
             </div>
+            </>}
 
+            {view === "detalle" && <>
             <div className="grid gap-6 xl:grid-cols-2">
                 <Panel title="Recorrido — Consultar resultados" subtitle="Del total que entró al flujo" icon={<ListChecks size={16} className="text-primary" />}>
                     <MiniBars
@@ -555,6 +577,25 @@ function BettyView({ m, range, setRange, onRefresh, fetching }) {
                     </ResponsiveContainer>
                 </Panel>
             </div>
+
+            <div className="grid gap-6 xl:grid-cols-2">
+                <Panel title="Pasos más transitados" subtitle="Por la máquina de estados" icon={<ListChecks size={16} className="text-primary" />}>
+                    <MiniBars
+                        rows={(m.stepBreakdown || []).slice(0, 8).map((s) => ({ step: s.key, count: s.count }))}
+                        labelKey="step" valueKey="count"
+                        color="bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                    />
+                </Panel>
+                <Panel title={'Desglose de "No disponible"'} subtitle="Interacciones sin opción para el cliente" icon={<TrendingDown size={16} className="text-primary" />}>
+                    <div className="grid grid-cols-2 gap-3">
+                        <Kpi label="Veces" value={m.notAvailable?.count ?? 0} tone="amber" />
+                        <Kpi label="Del total" value={pct(m.notAvailable?.pct)} tone="rose" />
+                        <Kpi label="Clientes afectados" value={m.notAvailable?.customers ?? 0} sub={`de ${m.notAvailable?.totalCustomers ?? 0}`} tone="slate" />
+                        <Kpi label="Correcciones de paso" value={k.stepCorrections ?? 0} tone="blue" />
+                    </div>
+                </Panel>
+            </div>
+            </>}
 
             <TopUsersBoard
                 compact
