@@ -10,6 +10,23 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CCTV / Mantenimiento — "Ejecución del programa" en vivo desde la API de Trello
+`specs/0008-cctv-mantenimiento-refresco/`
+- **Bug:** la vista "Ejecución del programa" mostraba datos de hace días mientras el dashboard
+  de soporte sí se actualizaba. Causa: `import-trello-support.js` llama a la API de Trello, pero
+  `import-trello-maintenance.js` leía `skylab-tareas.db` (caché del backend de "Table Trello",
+  que no corre en el `.65` y no se puede calentar desde el contenedor `cctv-operational-worker`).
+- **Fix:** `platform/import-trello-maintenance.js` reescrito para leer la lista
+  `MANTENIMIENTO CCTV 2026` **directo de la API de Trello** (board `TRELLO_MAINTENANCE_BOARD_ID`,
+  por defecto el board "Mantenimientos"), con el mismo patrón que soporte. Se elimina
+  `scripts/refresh-trello-maintenance-cache.js` y su paso en `run-operational-cycle.js`.
+  Esquema de BD y contrato de `GET /api/cctv/maintenance` sin cambios; frontend sin cambios.
+  Nuevas vars: `TRELLO_MAINTENANCE_BOARD_ID`, `TRELLO_MAINTENANCE_LIST_NAME` (opcional).
+
+## [2026-09-09] — spec 0009 a producción
+
+Merge del PR #2 (`main` = `f3bad12`) y rebuild de `crm-frontend` en `192.168.8.65`.
+
 ### CRM_Frontend — Bots Gane Palmira: tiempo real y rediseño premium
 `specs/0009-bots-tiempo-real-rediseno/`
 - **Rediseño visual base (Tanda A):** se quita el "Monitor de Actividad" de Bot Comercial

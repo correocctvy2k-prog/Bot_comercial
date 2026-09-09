@@ -171,15 +171,14 @@ docker compose config --quiet
 docker compose build cctv-api cctv-operational-worker crm-frontend
 docker compose up -d cctv-api crm-frontend
 docker compose stop cctv-operational-worker
-docker compose run --rm cctv-operational-worker npm run refresh:trello-maintenance
 docker compose run --rm cctv-operational-worker npm run import:trello-maintenance
 docker compose up -d cctv-operational-worker cctv-visitor-worker
 ```
 
-No ejecutar en paralelo el backend standalone de `CRM_Frontend/Table Trello`,
-porque comparte la caché SQLite de Trello y puede bloquear la importación. La
-ruta `TRELLO_ENV_FILE` debe existir y contener únicamente las credenciales
-necesarias para leer Trello.
+Desde la spec 0008, `import:trello-maintenance` lee la lista **MANTENIMIENTO CCTV 2026**
+directo de la API de Trello (board `TRELLO_MAINTENANCE_BOARD_ID`), igual que soporte —
+ya no depende de la caché `skylab-tareas.db` ni del backend de `CRM_Frontend/Table Trello`.
+La ruta `TRELLO_ENV_FILE` debe existir y contener `TRELLO_API_KEY` / `TRELLO_TOKEN`.
 
 ## 9. Variables de entorno
 

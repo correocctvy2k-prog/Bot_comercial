@@ -129,9 +129,8 @@ try {
     ? run(path.join('scripts', 'run-siis-observer.js'))
     : { script: 'scripts/run-siis-observer.js', status: 0, skipped: true, ...siisSchedule };
   const maintenanceSchedule = maintenanceDue();
-  const trelloRefresh = maintenanceSchedule.due
-    ? run(path.join('scripts', 'refresh-trello-maintenance-cache.js'))
-    : { script: 'scripts/refresh-trello-maintenance-cache.js', status: 0, skipped: true, ...maintenanceSchedule };
+  // spec 0008: import-trello-maintenance.js lee la API de Trello directo, ya no
+  // hay que "calentar" la caché skylab-tareas.db (paso trelloRefresh eliminado).
   const maintenance = maintenanceSchedule.due
     ? run(path.join('platform', 'import-trello-maintenance.js'))
     : { script: 'platform/import-trello-maintenance.js', status: 0, skipped: true, ...maintenanceSchedule };
@@ -142,8 +141,8 @@ try {
   // esa hora y si el día ya fue cerrado, el script termina sin modificarlo.
   const closure = run(path.join('scripts', 'generate-operational-closure.js'));
   const criticalOk = email.status === 0 && siis.status === 0;
-  const status = !criticalOk ? 'PARTIAL_FAILURE' : trelloRefresh.status === 0 && maintenance.status === 0 && support.status === 0 && visitors.status === 0 && closure.status === 0 ? 'SUCCESS' : 'SUCCESS_WITH_WARNINGS';
-  audit({ status, email, visitors, siis, trelloRefresh, maintenance, support, closure });
+  const status = !criticalOk ? 'PARTIAL_FAILURE' : maintenance.status === 0 && support.status === 0 && visitors.status === 0 && closure.status === 0 ? 'SUCCESS' : 'SUCCESS_WITH_WARNINGS';
+  audit({ status, email, visitors, siis, maintenance, support, closure });
   if (!criticalOk) process.exitCode = 1;
 } catch (error) {
   audit({ status: 'ERROR', error: error.message });

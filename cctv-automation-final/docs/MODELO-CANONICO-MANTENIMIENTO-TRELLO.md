@@ -1,6 +1,7 @@
 # Modelo canónico de mantenimiento CCTV
 
-Fecha de implementación: 2026-08-22.
+Fecha de implementación: 2026-08-22. **Actualizado 2026-09-09 (spec 0008):** el origen
+pasa de la caché `skylab-tareas.db` a la **API de Trello directa**.
 
 ## Objetivo
 
@@ -8,8 +9,11 @@ Separar la operación de CCTV de la caché interna del proyecto Table Trello. La
 
 ## Flujo
 
-1. `npm run import:trello-maintenance` abre la caché Trello en modo de solo lectura.
-2. Selecciona exactamente la lista `Mantenimiento CCTV 2026`.
+1. `npm run import:trello-maintenance` **llama a la API de Trello** (`TRELLO_API_KEY`/`TRELLO_TOKEN`),
+   board `TRELLO_MAINTENANCE_BOARD_ID` (por defecto "Mantenimientos", `62a0bd9b2203177716f8afdc`).
+   Antes de spec 0008 leía la caché `skylab-tareas.db` del backend de Table Trello, que en el
+   servidor quedaba días atrás (ver `docs/lecciones-aprendidas/LL-0004`).
+2. Selecciona exactamente la lista `Mantenimiento CCTV 2026` (`TRELLO_MAINTENANCE_LIST_NAME`).
 3. Normaliza cada check item y usa `TRELLO + source_item_id` como clave externa única.
 4. Vincula por código SIIS exacto o aplica una decisión manual previamente auditada.
 5. Actualiza `maintenance_work_items` mediante UPSERT y registra el resultado en `maintenance_source_runs`.
