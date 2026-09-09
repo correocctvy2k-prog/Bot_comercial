@@ -19,7 +19,13 @@ Detalle del modelo: [`../docs/WORKING_MODEL.md`](../docs/WORKING_MODEL.md).
 
 | ID | Título | Estado | Módulos afectados |
 |----|--------|--------|-------------------|
-| [0001](0001-modelo-de-trabajo-sdd/spec.md) | Modelo de trabajo SDD y gobernanza | En progreso | repo, docs, CI, CRM_Frontend |
+| [0001](0001-modelo-de-trabajo-sdd/spec.md) | Modelo de trabajo SDD y gobernanza | Publicada | repo, docs, CI, CRM_Frontend |
+| [0002](0002-analitica-agentes-ranking/spec.md) | Ranking de Analítica de Agentes | Publicada | CRM_Frontend |
+| [0003](0003-estandarizacion-interfaz/spec.md) | Estandarización de interfaz de los módulos | Publicada (parcial) | CRM_Frontend |
+| [0004](0004-integracion-analitica-chatbots/spec.md) | Integración de analítica de chatbots (Oskitar/Betty) | Publicada | CRM_Frontend, `chatbot-analytics` |
+| [0005](0005-bots-gane-palmira/spec.md) | Módulo "Bots Gane Palmira" (detalle, consistencia, ficha por bot) | Publicada | CRM_Frontend, `chatbot-analytics` |
+| [0006](0006-polish-tipografia-ranking/spec.md) | Polish: tipografía de encabezados, avatar de bot, ranking Top 5 | Publicada | CRM_Frontend |
+| [0007](0007-endurecer-proceso-desarrollo/spec.md) | Endurecer el proceso de desarrollo | Borrador (roadmap) | repo, CI, `ops/`, docs |
 
 ## Estados
 
