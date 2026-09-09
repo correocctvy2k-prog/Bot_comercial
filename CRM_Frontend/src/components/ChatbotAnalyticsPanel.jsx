@@ -15,6 +15,17 @@ import TopUsersBoard from "@/components/TopUsersBoard";
 import Panel from "@/components/Panel";
 import MiniBars from "@/components/MiniBars";
 import { StatusPill, CategoryChips, LastActivity, oskitarStatus, bettyStatus } from "@/components/entityBits";
+import { useFreshKeys } from "@/hooks/usePrevious";
+
+/** Punto "en vivo" que late al refrescar (SSE / poll). */
+function LiveDot({ on }) {
+    return (
+        <span className="relative inline-flex h-2 w-2 shrink-0">
+            {on && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/70" />}
+            <span className={`relative inline-flex h-2 w-2 rounded-full ${on ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
+        </span>
+    );
+}
 
 /* --------------------------------------------------------------------- */
 /*  Piezas de presentación (design-system.md)                           */
@@ -159,13 +170,16 @@ function OskitarView({ m, range, setRange, category, setCategory, expanded, setE
     const dayData = (m.byDay || []).map((d) => ({ ...d, day: fmtDay(d.date) }));
     const hourData = (m.byHour || []).map((h) => ({ ...h, h: fmtHour(h.hour) }));
     const users = m.users || [];
+    // Tabla de personas: la actividad más reciente arriba, con resalte al llegar.
+    const sortedUsers = [...users].sort((a, b) => (b.lastInteraction || "").localeCompare(a.lastInteraction || ""));
+    const freshUsers = useFreshKeys(users, (u) => u.phone, (u) => u.lastInteraction);
 
     return (
         <div className="space-y-6">
             <PageHeader
                 icon={<BotAvatar bot="oskitar" size={44} />}
                 title="Oskitar — soporte técnico interno"
-                subtitle={`${m.meta?.rangeStart ?? "—"} a ${m.meta?.rangeEnd ?? "—"} · ${m.meta?.daysCovered ?? 0} días`}
+                subtitle={<span className="flex items-center gap-2"><LiveDot on={fetching} /> {`${m.meta?.rangeStart ?? "—"} a ${m.meta?.rangeEnd ?? "—"} · ${m.meta?.daysCovered ?? 0} días`}</span>}
                 actions={
                     <Toolbar
                         range={range} setRange={setRange}
@@ -286,11 +300,15 @@ function OskitarView({ m, range, setRange, category, setCategory, expanded, setE
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border/40">
-                            {users.map((u, i) => {
-                                const open = expanded === i;
+                            {sortedUsers.map((u) => {
+                                const open = expanded === u.phone;
+                                const fresh = freshUsers.has(u.phone);
                                 return (
-                                    <Fragment key={i}>
-                                        <tr onClick={() => setExpanded(open ? null : i)} className="cursor-pointer transition-colors hover:bg-muted/40">
+                                    <Fragment key={u.phone}>
+                                        <tr
+                                            onClick={() => setExpanded(open ? null : u.phone)}
+                                            className={`cursor-pointer transition-colors hover:bg-muted/40 ${fresh ? "sk-row-flash" : ""}`}
+                                        >
                                             <td className="px-3 py-2.5">
                                                 <p className="flex flex-wrap items-center gap-1.5 font-bold text-foreground">
                                                     {u.name || "—"}
@@ -436,13 +454,15 @@ function BettyView({ m, range, setRange, onRefresh, fetching }) {
     const dayData = (m.byDay || []).map((d) => ({ ...d, day: fmtDay(d.date) }));
     const hourData = (m.byHour || []).map((h) => ({ ...h, h: fmtHour(h.hour) }));
     const customers = m.customers || [];
+    const sortedCustomers = [...customers].sort((a, b) => (b.lastActivity || "").localeCompare(a.lastActivity || ""));
+    const freshCustomers = useFreshKeys(customers, (c) => c.phone, (c) => c.lastActivity);
 
     return (
         <div className="space-y-6">
             <PageHeader
                 icon={<BotAvatar bot="betty" size={44} />}
                 title="Betty — atención a clientes"
-                subtitle={`${m.meta?.rangeStart ?? "—"} a ${m.meta?.rangeEnd ?? "—"} · ${m.meta?.daysCovered ?? 0} días · horas aproximadas`}
+                subtitle={<span className="flex items-center gap-2"><LiveDot on={fetching} /> {`${m.meta?.rangeStart ?? "—"} a ${m.meta?.rangeEnd ?? "—"} · ${m.meta?.daysCovered ?? 0} días · horas aproximadas`}</span>}
                 actions={<Toolbar range={range} setRange={setRange} csvHref={csvHref} onRefresh={onRefresh} fetching={fetching} />}
             />
 
@@ -566,11 +586,11 @@ function BettyView({ m, range, setRange, onRefresh, fetching }) {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border/40">
-                            {customers.map((c, i) => (
+                            {sortedCustomers.map((c) => (
                                 <tr
-                                    key={i}
+                                    key={c.phone}
                                     onClick={() => setFicha({ id: c.phone, name: c.phone })}
-                                    className="cursor-pointer transition-colors hover:bg-muted/40"
+                                    className={`cursor-pointer transition-colors hover:bg-muted/40 ${freshCustomers.has(c.phone) ? "sk-row-flash" : ""}`}
                                 >
                                     <td className="px-3 py-2.5">
                                         <p className="flex flex-wrap items-center gap-1.5 font-bold text-foreground">

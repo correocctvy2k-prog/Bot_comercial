@@ -362,3 +362,20 @@
 .light ::-webkit-scrollbar-corner {
   background: #eef2f7;
 }
+
+/* --- Feedback en vivo del módulo Bots Gane Palmira (spec 0009, Tanda C) --- */
+@keyframes sk-row-flash {
+  0%   { background-color: hsl(var(--primary) / 0.14); }
+  100% { background-color: transparent; }
+}
+.sk-row-flash { animation: sk-row-flash 2.2s ease-out; }
+
+@keyframes sk-kpi-pulse {
+  0%   { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.35); opacity: 1; }
+  100% { box-shadow: 0 0 0 10px hsl(var(--primary) / 0);   opacity: 0; }
+}
+.sk-kpi-pulse { animation: sk-kpi-pulse 0.8s ease-out forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-row-flash, .sk-kpi-pulse { animation: none; }
+}

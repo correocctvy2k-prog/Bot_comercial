@@ -86,9 +86,20 @@ export function BotSummary({ children }) {
 }
 
 // --- KpiCard (el de Bot Comercial, reutilizado en las 3 vistas) --------
+// Al cambiar `value` respecto al render anterior, dispara un pulso sutil de
+// borde (~800 ms, CSS `.sk-kpi-pulse`) para que se note la actualización en
+// vivo (spec 0009, Tanda C). Patrón "ajustar estado en render", sin efecto.
 export function KpiCard({ title, value, badge, badgeColor, icon, accent, iconColor, noIconWrapper }) {
+    const [seen, setSeen] = useState(value);
+    const [pulseKey, setPulseKey] = useState(0);
+    if (seen !== value) {
+        setSeen(value);
+        setPulseKey((k) => k + 1);
+    }
+
     return (
-        <div className={`relative bg-gradient-to-br ${accent || "from-primary/10 to-primary/5"} bg-card/60 backdrop-blur-md border border-border/70 p-5 rounded-xl hover:border-border transition-all duration-300 overflow-hidden group`}>
+        <div className={`relative bg-gradient-to-br ${accent || "from-primary/10 to-primary/5"} bg-card/60 backdrop-blur-md border border-border/70 hover:border-border p-5 rounded-xl transition-all duration-300 overflow-hidden group`}>
+            {pulseKey > 0 && <span key={pulseKey} className="sk-kpi-pulse pointer-events-none absolute inset-0 rounded-xl" />}
             <div className="flex justify-between items-start gap-2">
                 <div className="min-w-0">
                     <p className="text-xs font-medium text-muted-foreground truncate">{title}</p>
