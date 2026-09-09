@@ -12,6 +12,8 @@ import { KpiCard, PeriodSelect, BotSummary, periodPhrase, BotAvatar } from "@/co
 import ContactDrawer from "@/components/ContactDrawer";
 import PageHeader from "@/components/PageHeader";
 import TopUsersBoard from "@/components/TopUsersBoard";
+import Panel from "@/components/Panel";
+import MiniBars from "@/components/MiniBars";
 
 /* --------------------------------------------------------------------- */
 /*  Piezas de presentación (design-system.md)                           */
@@ -33,24 +35,6 @@ function Kpi({ label, value, sub, icon, tone = "blue" }) {
     return <KpiCard title={label} value={value} badge={sub} icon={icon} accent={t.accent} iconColor={t.iconColor} />;
 }
 
-function Panel({ title, subtitle, right, icon, children }) {
-    return (
-        <div className="rounded-2xl border border-border/80 bg-card/60 shadow-sm backdrop-blur-xl">
-            <div className="flex flex-col gap-2 border-b border-border/80 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2">
-                    {icon}
-                    <div>
-                        <h4 className="text-sm font-black tracking-tight text-foreground">{title}</h4>
-                        {subtitle && <p className="text-[11px] text-muted-foreground">{subtitle}</p>}
-                    </div>
-                </div>
-                {right}
-            </div>
-            <div className="p-4">{children}</div>
-        </div>
-    );
-}
-
 function ChartTooltip({ active, payload, label }) {
     if (!active || !payload?.length) return null;
     return (
@@ -69,27 +53,6 @@ function ChartTooltip({ active, payload, label }) {
 const axis = { tick: { fontSize: 11, fill: "#888" }, tickLine: false, axisLine: false };
 const grid = <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />;
 
-function MiniBars({ rows, labelKey, valueKey, subKey, max, color = "bg-primary" }) {
-    const top = max || Math.max(1, ...rows.map((r) => r[valueKey]));
-    return (
-        <div className="space-y-2.5">
-            {rows.map((r, i) => (
-                <div key={i}>
-                    <div className="mb-1 flex items-center justify-between gap-2 text-xs">
-                        <span className="truncate font-bold text-foreground">{r[labelKey]}</span>
-                        <span className="shrink-0 text-muted-foreground">
-                            {r[valueKey]}{subKey != null && r[subKey] != null ? ` · ${r[subKey]}` : ""}
-                        </span>
-                    </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-muted">
-                        <div className={`h-full rounded-full ${color}`} style={{ width: `${(r[valueKey] / top) * 100}%` }} />
-                    </div>
-                </div>
-            ))}
-            {rows.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">Sin datos.</p>}
-        </div>
-    );
-}
 
 const pct = (n) => (n == null ? "—" : `${Math.round(n * 10) / 10}%`);
 const fmtDay = (d) => (d ? d.slice(5) : "");
@@ -297,6 +260,7 @@ function OskitarView({ m, range, setRange, category, setCategory, expanded, setE
             {view === "detalle" && <OskitarDetalle m={m} dayPick={dayPick} setDayPick={setDayPick} />}
 
             <TopUsersBoard
+                compact
                 title="Top 5 personas"
                 subtitle="Por mensajes enviados en el periodo"
                 icon={<span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-500 text-black shadow-inner"><Trophy size={20} /></span>}
@@ -581,6 +545,7 @@ function BettyView({ m, range, setRange, onRefresh, fetching }) {
             </div>
 
             <TopUsersBoard
+                compact
                 title="Top 5 clientes"
                 subtitle="Por mensajes en el periodo"
                 icon={<span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-500 text-black shadow-inner"><Trophy size={20} /></span>}
