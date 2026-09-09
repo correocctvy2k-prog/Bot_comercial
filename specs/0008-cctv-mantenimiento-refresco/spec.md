@@ -1,6 +1,8 @@
 # SPEC 0008 — CCTV/Mantenimiento: la "Ejecución del programa" muestra datos de hace días
 
-- **Estado:** Validada (diagnóstico confirmado; falta el board id de Trello para implementar)
+- **Estado:** En revisión (implementada y verificada en local; PR pendiente)
+- **Board:** "Mantenimientos" (`62a0bd9b2203177716f8afdc`, `https://trello.com/b/zPSPi2ka/mantenimientos`),
+  lista `Mantenimiento CCTV 2026` (`6a4d648f211add41f8d11db4`) — obtenido de la caché local.
 - **Autor:** equipo Skylab (@jbeltran)
 - **Fecha:** 2026-09-09
 - **Módulos afectados:** `cctv-automation-final` (`platform/import-trello-maintenance.js`,

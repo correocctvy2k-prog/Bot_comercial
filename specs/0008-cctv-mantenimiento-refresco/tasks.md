@@ -2,41 +2,46 @@
 
 Referencia: `spec.md` y `plan.md`.
 
-## Bloqueante
+## Bloqueante · RESUELTO
 
-- [ ] Obtener del usuario el **`TRELLO_MAINTENANCE_BOARD_ID`** (board con la lista
-      `MANTENIMIENTO CCTV 2026`).
-- [ ] Confirmar de qué `.env` salen `TRELLO_API_KEY`/`TRELLO_TOKEN` en `.65`.
+- [x] Board id: **"Mantenimientos"** `62a0bd9b2203177716f8afdc` (lista
+      `Mantenimiento CCTV 2026` `6a4d648f211add41f8d11db4`) — de la caché local `skylab-tareas.db`.
+- [x] `TRELLO_API_KEY`/`TRELLO_TOKEN` viven en `TRELLO_ENV_FILE` (`Table Trello/backend/.env`,
+      montado); `import-trello-support.js` ya los usa así en `.65`.
 
-## Implementación
+## Implementación · HECHA
 
-- [ ] `platform/import-trello-maintenance.js`: leer boards/lists/cards de la API de Trello
-      (`fetchJson`, `checklists=all`), filtrar la lista `MANTENIMIENTO CCTV 2026`, serializar
-      `card.checklists` antes de `parseWorkItems`. Quitar `trelloCacheDb`.
-- [ ] `scripts/run-operational-cycle.js`: quitar el paso `trelloRefresh`.
-- [ ] `scripts/refresh-trello-maintenance-cache.js`: eliminar (o marcar como diagnóstico manual).
-- [ ] `cctv-automation-final/.env.example`: `TRELLO_MAINTENANCE_BOARD_ID`,
-      `TRELLO_MAINTENANCE_LIST_NAME` (opcional).
-- [ ] `docker-compose.yml`: evaluar/quitar el mount de `Table Trello/backend/data`; asegurar
-      `TRELLO_*` disponibles para `cctv-api` + `cctv-operational-worker`.
-- [ ] `docs/MODELO-CANONICO-MANTENIMIENTO-TRELLO.md`: origen = API directa.
+- [x] `platform/import-trello-maintenance.js`: lee la API de Trello (`fetchJson`,
+      `/boards/:id/lists` + `/lists/:id/cards?checklists=all`), filtra `MANTENIMIENTO CCTV 2026`,
+      serializa `checklists` antes de `parseWorkItems`. Sin `trelloCacheDb`. Ahora es `async`.
+- [x] `scripts/run-operational-cycle.js`: quitado el paso `trelloRefresh` y su check en `status`.
+- [x] `scripts/refresh-trello-maintenance-cache.js`: **eliminado** (+ script `refresh:trello-maintenance` de `package.json`).
+- [x] `.env.example`: `TRELLO_MAINTENANCE_BOARD_ID` (con default), `TRELLO_MAINTENANCE_LIST_NAME`;
+      quitados `TRELLO_CACHE_DB` / `TRELLO_BACKEND_ROOT` (sin uso).
+- [x] `docs/MODELO-CANONICO-MANTENIMIENTO-TRELLO.md` + `docs/RUNBOOK-DESPLIEGUE-SERVIDOR.md`.
+- [ ] `docker-compose.yml`: el mount `Table Trello/backend/data` (skylab-tareas.db) queda sin
+      uso — se puede quitar aparte; el mount del `.env` se mantiene (credenciales de soporte).
 
 ## Verificación
 
-- [ ] `node platform/import-trello-maintenance.js` en local → run exitoso, `completed_at` actual.
-- [ ] `cd cctv-automation-final && npm test` verde.
-- [ ] Editar un checkitem en Trello → ≤ 3 min → visible en "Ejecución del programa" local.
-- [ ] `docker compose ... up -d --build cctv-api cctv-operational-worker` local; repetir.
-- [ ] En `192.168.8.65`: añadir `TRELLO_MAINTENANCE_BOARD_ID` al `.env`, deploy, repetir la
-      prueba contra `http://192.168.8.65:3003/`. `sync-status` TRELLO `HEALTHY`.
+- [x] `node platform/import-trello-maintenance.js` local → `{ok:true, cards:12, total:263, completed:180}`,
+      run exitoso.
+- [x] `cd cctv-automation-final && npm test` → **52/52** (incl. `trello-maintenance.test.js`).
+- [x] `docker compose ... up -d --build cctv-api cctv-operational-worker` local → tras 1 ciclo
+      `GET /api/cctv/maintenance` `cacheUpdatedAt` de hace ~1 min; `sync-status` TRELLO **HEALTHY**
+      (antes 5 días / STALE).
+- [ ] `192.168.8.65`: deploy + editar un checkitem en Trello → verlo en "Ejecución del programa"
+      en ≤ 3 min.
 
 ## Documentación (DoD)
 
-- [ ] `CHANGELOG.md` — sección "CCTV" / "Infra".
-- [ ] `docs/MODELO-CANONICO-MANTENIMIENTO-TRELLO.md`.
-- [ ] `LL` — la asimetría "un módulo lee la API y otro una caché muerta"; lección: fuente única.
-- [ ] ADR: no (no cambia esquema ni arquitectura base; sí una nota en el doc del modelo canónico).
+- [x] `CHANGELOG.md` — sección "CCTV / Mantenimiento" en "No publicado".
+- [x] `docs/MODELO-CANONICO-MANTENIMIENTO-TRELLO.md`.
+- [x] `LL-0004` — dos vistas / dos fuentes.
+- [x] ADR: no aplica.
 
 ## Cierre
 
-- [ ] PR enlazando la spec. `npm test` anotado. Merge. Deploy y verificación en `.65`.
+- [ ] PR enlazando la spec (`npm test` 52/52 anotado). Merge. Deploy `cctv-api` +
+      `cctv-operational-worker` a `.65` y verificación. Añadir `TRELLO_MAINTENANCE_BOARD_ID` al
+      `.env` del `.65` (o dejar el default del código).

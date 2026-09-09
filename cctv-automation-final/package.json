@@ -28,7 +28,6 @@
     ,"cycle:operational": "node scripts/run-operational-cycle.js"
     ,"close:operational": "node scripts/generate-operational-closure.js"
     ,"import:trello-maintenance": "node platform/import-trello-maintenance.js"
-    ,"refresh:trello-maintenance": "node scripts/refresh-trello-maintenance-cache.js"
     ,"import:trello-support": "node platform/import-trello-support.js"
     ,"import:visitors": "node scripts/import-visitor-reports.js"
     ,"reconcile:dss": "node scripts/reconcile-dss-canonical.js"
