@@ -12,6 +12,20 @@ import { KpiCard, PeriodSelect, BotSummary, periodPhrase, BotAvatar } from "@/co
 import ContactDrawer from "@/components/ContactDrawer";
 import PageHeader from "@/components/PageHeader";
 import TopUsersBoard from "@/components/TopUsersBoard";
+import Panel from "@/components/Panel";
+import MiniBars from "@/components/MiniBars";
+import { StatusPill, CategoryChips, LastActivity, oskitarStatus, bettyStatus } from "@/components/entityBits";
+import { useFreshKeys } from "@/hooks/usePrevious";
+
+/** Punto "en vivo" que late al refrescar (SSE / poll). */
+function LiveDot({ on }) {
+    return (
+        <span className="relative inline-flex h-2 w-2 shrink-0">
+            {on && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/70" />}
+            <span className={`relative inline-flex h-2 w-2 rounded-full ${on ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
+        </span>
+    );
+}
 
 /* --------------------------------------------------------------------- */
 /*  Piezas de presentación (design-system.md)                           */
@@ -33,24 +47,6 @@ function Kpi({ label, value, sub, icon, tone = "blue" }) {
     return <KpiCard title={label} value={value} badge={sub} icon={icon} accent={t.accent} iconColor={t.iconColor} />;
 }
 
-function Panel({ title, subtitle, right, icon, children }) {
-    return (
-        <div className="rounded-2xl border border-border/80 bg-card/60 shadow-sm backdrop-blur-xl">
-            <div className="flex flex-col gap-2 border-b border-border/80 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2">
-                    {icon}
-                    <div>
-                        <h4 className="text-sm font-black tracking-tight text-foreground">{title}</h4>
-                        {subtitle && <p className="text-[11px] text-muted-foreground">{subtitle}</p>}
-                    </div>
-                </div>
-                {right}
-            </div>
-            <div className="p-4">{children}</div>
-        </div>
-    );
-}
-
 function ChartTooltip({ active, payload, label }) {
     if (!active || !payload?.length) return null;
     return (
@@ -69,39 +65,10 @@ function ChartTooltip({ active, payload, label }) {
 const axis = { tick: { fontSize: 11, fill: "#888" }, tickLine: false, axisLine: false };
 const grid = <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />;
 
-function MiniBars({ rows, labelKey, valueKey, subKey, max, color = "bg-primary" }) {
-    const top = max || Math.max(1, ...rows.map((r) => r[valueKey]));
-    return (
-        <div className="space-y-2.5">
-            {rows.map((r, i) => (
-                <div key={i}>
-                    <div className="mb-1 flex items-center justify-between gap-2 text-xs">
-                        <span className="truncate font-bold text-foreground">{r[labelKey]}</span>
-                        <span className="shrink-0 text-muted-foreground">
-                            {r[valueKey]}{subKey != null && r[subKey] != null ? ` · ${r[subKey]}` : ""}
-                        </span>
-                    </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-muted">
-                        <div className={`h-full rounded-full ${color}`} style={{ width: `${(r[valueKey] / top) * 100}%` }} />
-                    </div>
-                </div>
-            ))}
-            {rows.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">Sin datos.</p>}
-        </div>
-    );
-}
 
 const pct = (n) => (n == null ? "—" : `${Math.round(n * 10) / 10}%`);
 const fmtDay = (d) => (d ? d.slice(5) : "");
 const fmtHour = (h) => `${String(h).padStart(2, "0")}h`;
-const timeAgo = (iso) => {
-    if (!iso) return "—";
-    const s = (Date.now() - new Date(iso).getTime()) / 1000;
-    if (s < 90) return "hace un momento";
-    if (s < 3600) return `hace ${Math.round(s / 60)} min`;
-    if (s < 86400) return `hace ${Math.round(s / 3600)} h`;
-    return `hace ${Math.round(s / 86400)} d`;
-};
 
 /* --------------------------------------------------------------------- */
 /*  Panel principal                                                     */
@@ -203,13 +170,16 @@ function OskitarView({ m, range, setRange, category, setCategory, expanded, setE
     const dayData = (m.byDay || []).map((d) => ({ ...d, day: fmtDay(d.date) }));
     const hourData = (m.byHour || []).map((h) => ({ ...h, h: fmtHour(h.hour) }));
     const users = m.users || [];
+    // Tabla de personas: la actividad más reciente arriba, con resalte al llegar.
+    const sortedUsers = [...users].sort((a, b) => (b.lastInteraction || "").localeCompare(a.lastInteraction || ""));
+    const freshUsers = useFreshKeys(users, (u) => u.phone, (u) => u.lastInteraction);
 
     return (
         <div className="space-y-6">
             <PageHeader
                 icon={<BotAvatar bot="oskitar" size={44} />}
                 title="Oskitar — soporte técnico interno"
-                subtitle={`${m.meta?.rangeStart ?? "—"} a ${m.meta?.rangeEnd ?? "—"} · ${m.meta?.daysCovered ?? 0} días`}
+                subtitle={<span className="flex items-center gap-2"><LiveDot on={fetching} /> {`${m.meta?.rangeStart ?? "—"} a ${m.meta?.rangeEnd ?? "—"} · ${m.meta?.daysCovered ?? 0} días`}</span>}
                 actions={
                     <Toolbar
                         range={range} setRange={setRange}
@@ -297,6 +267,7 @@ function OskitarView({ m, range, setRange, category, setCategory, expanded, setE
             {view === "detalle" && <OskitarDetalle m={m} dayPick={dayPick} setDayPick={setDayPick} />}
 
             <TopUsersBoard
+                compact
                 title="Top 5 personas"
                 subtitle="Por mensajes enviados en el periodo"
                 icon={<span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-500 text-black shadow-inner"><Trophy size={20} /></span>}
@@ -329,23 +300,26 @@ function OskitarView({ m, range, setRange, category, setCategory, expanded, setE
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border/40">
-                            {users.map((u, i) => {
-                                const open = expanded === i;
+                            {sortedUsers.map((u) => {
+                                const open = expanded === u.phone;
+                                const fresh = freshUsers.has(u.phone);
                                 return (
-                                    <Fragment key={i}>
-                                        <tr onClick={() => setExpanded(open ? null : i)} className="cursor-pointer transition-colors hover:bg-muted/40">
+                                    <Fragment key={u.phone}>
+                                        <tr
+                                            onClick={() => setExpanded(open ? null : u.phone)}
+                                            className={`cursor-pointer transition-colors hover:bg-muted/40 ${fresh ? "sk-row-flash" : ""}`}
+                                        >
                                             <td className="px-3 py-2.5">
-                                                <p className="flex items-center gap-1.5 font-bold text-foreground">
+                                                <p className="flex flex-wrap items-center gap-1.5 font-bold text-foreground">
                                                     {u.name || "—"}
-                                                    {u.escalated && <span className="rounded bg-rose-500/15 px-1 text-[9px] font-black text-rose-600 dark:text-rose-300">ESCALÓ</span>}
-                                                    {u.validated && <span className="rounded bg-emerald-500/15 px-1 text-[9px] font-black text-emerald-700 dark:text-emerald-300">OK</span>}
+                                                    <StatusPill status={oskitarStatus(u)} />
                                                 </p>
                                                 <p className="text-[10px] text-muted-foreground">{u.phone}{u.document ? ` · ${u.document}` : ""}</p>
                                             </td>
-                                            <td className="hidden max-w-[260px] px-3 py-2.5 text-[11px] text-foreground/80 md:table-cell">{(u.categories || []).join(" · ") || "—"}</td>
+                                            <td className="hidden max-w-[260px] px-3 py-2.5 md:table-cell"><CategoryChips items={u.categories || []} /></td>
                                             <td className="px-3 py-2.5 text-center font-bold text-foreground">{u.sessions}</td>
                                             <td className="px-3 py-2.5 text-center"><span className="font-black text-foreground">{u.totalMessages}</span></td>
-                                            <td className="hidden px-3 py-2.5 text-right text-[11px] text-muted-foreground sm:table-cell">{timeAgo(u.lastInteraction)}</td>
+                                            <td className="hidden px-3 py-2.5 text-right text-[11px] sm:table-cell"><LastActivity iso={u.lastInteraction} /></td>
                                             <td className="py-2.5 pr-3 text-right text-muted-foreground">
                                                 <div className="flex items-center justify-end gap-1.5">
                                                     <button
@@ -475,18 +449,21 @@ function OskitarDetalle({ m, dayPick, setDayPick }) {
 
 function BettyView({ m, range, setRange, onRefresh, fetching }) {
     const [ficha, setFicha] = useState(null);
+    const [view, setView] = useState("resumen"); // resumen | detalle
     const k = m.kpis || {};
     const csvHref = api.exportCsvUrl("betty", {});
     const dayData = (m.byDay || []).map((d) => ({ ...d, day: fmtDay(d.date) }));
     const hourData = (m.byHour || []).map((h) => ({ ...h, h: fmtHour(h.hour) }));
     const customers = m.customers || [];
+    const sortedCustomers = [...customers].sort((a, b) => (b.lastActivity || "").localeCompare(a.lastActivity || ""));
+    const freshCustomers = useFreshKeys(customers, (c) => c.phone, (c) => c.lastActivity);
 
     return (
         <div className="space-y-6">
             <PageHeader
                 icon={<BotAvatar bot="betty" size={44} />}
                 title="Betty — atención a clientes"
-                subtitle={`${m.meta?.rangeStart ?? "—"} a ${m.meta?.rangeEnd ?? "—"} · ${m.meta?.daysCovered ?? 0} días · horas aproximadas`}
+                subtitle={<span className="flex items-center gap-2"><LiveDot on={fetching} /> {`${m.meta?.rangeStart ?? "—"} a ${m.meta?.rangeEnd ?? "—"} · ${m.meta?.daysCovered ?? 0} días · horas aproximadas`}</span>}
                 actions={<Toolbar range={range} setRange={setRange} csvHref={csvHref} onRefresh={onRefresh} fetching={fetching} />}
             />
 
@@ -499,16 +476,35 @@ function BettyView({ m, range, setRange, onRefresh, fetching }) {
                 <Kpi label={'"No disponible"'} value={pct(k.notAvailableRate)} sub={`${k.stepCorrections ?? 0} correcciones de paso`} icon={<TrendingDown size={19} />} tone="amber" />
             </div>
 
+            <div className="flex gap-1 rounded-xl border border-border bg-background p-1 w-fit">
+                {[["resumen", "Resumen"], ["detalle", "Detalle · analítica"]].map(([id, label]) => (
+                    <button
+                        key={id}
+                        onClick={() => setView(id)}
+                        className={`rounded-lg px-4 py-1.5 text-[11px] font-bold transition-all ${view === id ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}`}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </div>
+
+            {view === "resumen" && <>
             <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
-                <Panel title="Actividad por día" subtitle="Mensajes" icon={<Activity size={16} className="text-primary" />}>
+                <Panel
+                    title="Actividad por día"
+                    subtitle="Eventos del bot (state-manager) · horas aprox. — el log de mensajes no trae fecha"
+                    icon={<Activity size={16} className="text-primary" />}
+                >
                     <ResponsiveContainer width="100%" height={220}>
                         <AreaChart data={dayData} margin={{ top: 6, right: 8, left: -8, bottom: 0 }}>
-                            <defs><linearGradient id="bDay" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.35} /><stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} /></linearGradient></defs>
+                            <defs>
+                                <linearGradient id="bConv" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.35} /><stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} /></linearGradient>
+                            </defs>
                             {grid}
                             <XAxis dataKey="day" {...axis} />
                             <YAxis {...axis} width={40} />
                             <Tooltip content={<ChartTooltip />} />
-                            <Area type="monotone" dataKey="count" name="Mensajes" stroke="#8b5cf6" strokeWidth={2} fill="url(#bDay)" />
+                            <Area type="monotone" dataKey="count" name="Eventos del bot" stroke="#8b5cf6" strokeWidth={2} fill="url(#bConv)" />
                         </AreaChart>
                     </ResponsiveContainer>
                 </Panel>
@@ -541,7 +537,9 @@ function BettyView({ m, range, setRange, onRefresh, fetching }) {
                     />
                 </Panel>
             </div>
+            </>}
 
+            {view === "detalle" && <>
             <div className="grid gap-6 xl:grid-cols-2">
                 <Panel title="Recorrido — Consultar resultados" subtitle="Del total que entró al flujo" icon={<ListChecks size={16} className="text-primary" />}>
                     <MiniBars
@@ -580,7 +578,27 @@ function BettyView({ m, range, setRange, onRefresh, fetching }) {
                 </Panel>
             </div>
 
+            <div className="grid gap-6 xl:grid-cols-2">
+                <Panel title="Pasos más transitados" subtitle="Por la máquina de estados" icon={<ListChecks size={16} className="text-primary" />}>
+                    <MiniBars
+                        rows={(m.stepBreakdown || []).slice(0, 8).map((s) => ({ step: s.key, count: s.count }))}
+                        labelKey="step" valueKey="count"
+                        color="bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                    />
+                </Panel>
+                <Panel title={'Desglose de "No disponible"'} subtitle="Interacciones sin opción para el cliente" icon={<TrendingDown size={16} className="text-primary" />}>
+                    <div className="grid grid-cols-2 gap-3">
+                        <Kpi label="Veces" value={m.notAvailable?.count ?? 0} tone="amber" />
+                        <Kpi label="Del total" value={pct(m.notAvailable?.pct)} tone="rose" />
+                        <Kpi label="Clientes afectados" value={m.notAvailable?.customers ?? 0} sub={`de ${m.notAvailable?.totalCustomers ?? 0}`} tone="slate" />
+                        <Kpi label="Correcciones de paso" value={k.stepCorrections ?? 0} tone="blue" />
+                    </div>
+                </Panel>
+            </div>
+            </>}
+
             <TopUsersBoard
+                compact
                 title="Top 5 clientes"
                 subtitle="Por mensajes en el periodo"
                 icon={<span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-500 text-black shadow-inner"><Trophy size={20} /></span>}
@@ -609,20 +627,25 @@ function BettyView({ m, range, setRange, onRefresh, fetching }) {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border/40">
-                            {customers.map((c, i) => (
+                            {sortedCustomers.map((c) => (
                                 <tr
-                                    key={i}
+                                    key={c.phone}
                                     onClick={() => setFicha({ id: c.phone, name: c.phone })}
-                                    className="cursor-pointer transition-colors hover:bg-muted/40"
+                                    className={`cursor-pointer transition-colors hover:bg-muted/40 ${freshCustomers.has(c.phone) ? "sk-row-flash" : ""}`}
                                 >
                                     <td className="px-3 py-2.5">
-                                        <p className="font-bold text-foreground">{c.phone}</p>
+                                        <p className="flex flex-wrap items-center gap-1.5 font-bold text-foreground">
+                                            {c.phone}
+                                            <StatusPill status={bettyStatus(c)} />
+                                        </p>
                                         <p className="text-[10px] text-muted-foreground">intención: {c.topIntent || "—"}</p>
                                     </td>
-                                    <td className="hidden max-w-[240px] px-3 py-2.5 text-[11px] text-foreground/80 md:table-cell">{(c.flows || []).join(" · ") || "—"}</td>
+                                    <td className="hidden max-w-[240px] px-3 py-2.5 md:table-cell"><CategoryChips items={c.flows || []} /></td>
                                     <td className="px-3 py-2.5 text-center font-bold text-foreground">{c.messages}</td>
-                                    <td className="px-3 py-2.5 text-center text-muted-foreground">{c.notAvailable ?? 0}</td>
-                                    <td className="hidden px-3 py-2.5 text-right text-[11px] text-muted-foreground sm:table-cell">{timeAgo(c.lastActivity)}</td>
+                                    <td className="px-3 py-2.5 text-center">
+                                        <span className={c.notAvailable ? "font-bold text-amber-600 dark:text-amber-400" : "text-muted-foreground"}>{c.notAvailable ?? 0}</span>
+                                    </td>
+                                    <td className="hidden px-3 py-2.5 text-right text-[11px] sm:table-cell"><LastActivity iso={c.lastActivity} /></td>
                                     <td className="py-2.5 pr-3 text-right">
                                         <span className="rounded-md border border-border/70 bg-card px-2 py-1 text-[10px] font-bold text-foreground/80">Ficha</span>
                                     </td>

@@ -10,8 +10,6 @@ import PageHeader from "@/components/PageHeader";
 import TopUsersBoard from "@/components/TopUsersBoard";
 
 import { supabase } from "@/services/supabase";
-import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
@@ -96,13 +94,6 @@ export default function Dashboard() {
         staleTime: 0,
     });
 
-    const { data: feed = [] } = useQuery({
-        queryKey: ["feed"],
-        queryFn: () => crmService.getRecentInteractions(15),
-        refetchInterval: 8000,
-        staleTime: 0,
-    });
-
     const { data: activity = [] } = useQuery({
         queryKey: ["activity", timeRange],
         queryFn: () => crmService.getActivity(timeRange),
@@ -128,7 +119,6 @@ export default function Dashboard() {
     // Realtime subscription - invalida TODOS los datos al recibir un INSERT
     useEffect(() => {
         const invalidateAll = () => {
-            queryClient.invalidateQueries({ queryKey: ["feed"] });
             queryClient.invalidateQueries({ queryKey: ["stats"] });
             queryClient.invalidateQueries({ queryKey: ["activity"] });
             queryClient.invalidateQueries({ queryKey: ["distribution"] });
@@ -329,74 +319,9 @@ export default function Dashboard() {
 
             {/* -- Ranking de Usuarios & Zonas Escaneadas -- */}
             <RankingSection ranking={userRanking} />
-
-            {/* -- Live Feed -- */}
-            <div className="bg-card/40 backdrop-blur-sm border border-border rounded-xl p-6">
-                <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-primary animate-pulse" />
-                    Monitor de Actividad
-                    <span className="ml-auto text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                        Tiempo Real ⚡
-                    </span>
-                </h3>
-
-                <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1 scrollbar-hide">
-                    {feed.map((item) => (
-                        <FeedItem key={item.id} item={item} />
-                    ))}
-                    {feed.length === 0 && (
-                        <div className="text-center py-12 text-muted-foreground text-sm">
-                            Esperando actividad... 📡
-                        </div>
-                    )}
-                </div>
-            </div>
         </>
     )}
 </div>
-    );
-}
-
-// --- Feed Item -------------------------------------------------------
-function FeedItem({ item }) {
-    const isOut = item.direction === "OUTGOING";
-    const isWA = item.channel === "whatsapp";
-
-    return (
-        <div className={`flex items-start gap-3 p-3 rounded-lg border border-transparent hover:border-border/40 transition-all ${isOut ? "bg-primary/5 ml-10" : "bg-muted/20 mr-10"}`}>
-            {/* Avatar */}
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 ${isOut ? "bg-primary/20" : "bg-muted/50"}`}>
-                {isOut ? "🤖" : "👤"}
-            </div>
-
-            <div className="flex-1 min-w-0">
-                {/* Header */}
-                <div className="flex items-center gap-2 mb-0.5">
-                    {/* Canal icon */}
-                    <span className="shrink-0">
-                        {isWA ? <WhatsAppIcon size={13} /> : <TelegramIcon size={13} />}
-                    </span>
-                    <span className="font-medium text-sm truncate text-foreground/90">
-                        {isOut ? "Bot Comercial" : (item.user || "Usuario")}
-                    </span>
-                    <span className="ml-auto text-[10px] text-muted-foreground whitespace-nowrap">
-                        {formatDistanceToNow(new Date(item.time), { addSuffix: true, locale: es })}
-                    </span>
-                </div>
-
-                {/* Content */}
-                <p className="text-sm text-muted-foreground break-words leading-relaxed">
-                    {item.content || <span className="italic opacity-60">[{item.type}]</span>}
-                </p>
-
-                {/* Type badge */}
-                {item.type && item.type !== "text" && (
-                    <span className="inline-block mt-1 text-[10px] uppercase tracking-wider font-semibold text-primary/60 bg-primary/5 px-1.5 py-0.5 rounded">
-                        {item.type}
-                    </span>
-                )}
-            </div>
-        </div>
     );
 }
 
@@ -671,6 +596,7 @@ function RankingSection({ ranking = [] }) {
         <div className="space-y-6 my-8">
             {/* Board premium Top 5 */}
             <TopUsersBoard
+                compact
                 title="Ranking de usuarios — Top 5"
                 subtitle="Bot Comercial · por frecuencia de interacción en el periodo"
                 icon={<span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-500 text-black shadow-inner"><Trophy size={20} /></span>}

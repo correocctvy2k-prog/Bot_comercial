@@ -155,6 +155,9 @@ function buildBettyModel(raw, opts = {}) {
     if (s.ts) {
       tsList.push(s.ts);
       const { date, hour, weekday } = localParts(s.ts, tz);
+      // Nota: solo los eventos `setState`/`extendTimeout` traen `timeout` -> ts.
+      // updateStep/clearState/updateData no tienen fecha, asi que el unico eje
+      // temporal fiable por dia es este conteo agregado (spec 0009 #7).
       dayAgg.set(date, (dayAgg.get(date) || 0) + 1);
       hourArr[hour].count += 1;
       weekdayArr[weekday].count += 1;
