@@ -2889,45 +2889,49 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "", onCha
               </CardContent>
             </Card>
           </div>
-          {(data.notificationInconsistencies || []).length > 0 && (
+          {((data.notificationInconsistencies || []).length > 0 ||
+            (data.notificationsInFollowUp || []).length > 0) && (
             <Card className="order-3 border-amber-500/20 bg-amber-500/[.03]">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="flex items-center gap-2 text-base">
-                      <AlertTriangle size={17} className="text-amber-300" />
+                      <AlertTriangle size={18} className="text-amber-300" />
                       Inconsistencias de notificación CCTV
                     </CardTitle>
                     <CardDescription>
                       El ping SIIS indica operación en la ventana pero el CCTV no notificó, o el
-                      aviso llegó muy desfasado del ping. El ping es el vector primario.
+                      aviso llegó muy desfasado del ping. El ping es el vector primario. Resuelve
+                      cada punto para que deje de aparecer.
                     </CardDescription>
                   </div>
                   <Badge variant="outline" className="border-amber-500/25 text-amber-300">
-                    {data.summary?.notificationInconsistencies || data.notificationInconsistencies.length} puntos
+                    {(data.notificationInconsistencies || []).length} activas
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                  {data.notificationInconsistencies.map((p) => (
-                    <div key={p.locationId} className="rounded-xl border border-amber-500/15 bg-white/[.02] p-3">
-                      <b className="block truncate text-xs text-slate-200">{p.name || "Punto"}</b>
-                      {p.missingDetections?.length ? (
-                        <p className="mt-1 text-[10px] text-slate-500">
-                          Sin detección CCTV: {p.missingDetections.map((k) => PHASE_BADGE[k]?.label || k).join(", ")}
-                        </p>
-                      ) : null}
-                      {Object.entries(p.phases || {})
-                        .filter(([, v]) => v && v.pingEventGapMin)
-                        .map(([k, v]) => (
-                          <p key={k} className="mt-1 text-[10px] text-amber-400/80">
-                            {PHASE_BADGE[k]?.label || k}: {v.pingEventGapMin} min entre ping y aviso CCTV
-                          </p>
-                        ))}
-                    </div>
+              <CardContent className="space-y-4">
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {(data.notificationInconsistencies || []).map((p) => (
+                    <NotificationInconsistencyCard
+                      key={p.locationId}
+                      p={p}
+                      phaseBadge={PHASE_BADGE}
+                      onChanged={onChanged}
+                    />
                   ))}
+                  {(data.notificationInconsistencies || []).length === 0 && (
+                    <p className="text-xs text-slate-500">
+                      No hay inconsistencias activas. Revisa "En seguimiento".
+                    </p>
+                  )}
                 </div>
+                {(data.notificationsInFollowUp || []).length > 0 && (
+                  <NotificationFollowUpSection
+                    items={data.notificationsInFollowUp}
+                    onChanged={onChanged}
+                  />
+                )}
               </CardContent>
             </Card>
           )}
@@ -3191,6 +3195,125 @@ function EventIdentityCard({ item, labels, onLinked }) {
                 ? `Vincular con ${selected.name}`
                 : "Selecciona un punto"}
           </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// spec 0011 · Tanda 3 — resolver una inconsistencia de notificación desde la vista.
+const NOTIFICATION_RESOLUTIONS = [
+  { value: "PING_ONLY", label: "Solo ping (sin CCTV)", hint: "El punto no tiene cámara que notifique. Persistente." },
+  { value: "MISCONFIGURED_NO_NOTIFY", label: "Cámara sin notificar", hint: "Tiene cámara pero no manda avisos. Pasa a seguimiento." },
+  { value: "FALSE_POSITIVE", label: "Falso positivo hoy", hint: "La incidencia de esta fecha no es real. Se silencia solo hoy." },
+];
+
+function NotificationInconsistencyCard({ p, phaseBadge, onChanged }) {
+  const [busy, setBusy] = useState(null);
+  const [note, setNote] = useState("");
+  const [error, setError] = useState("");
+  const resolve = async (resolution) => {
+    setBusy(resolution);
+    setError("");
+    try {
+      const response = await fetch(
+        `${CCTV_API_BASE}/api/cctv/notifications/${encodeURIComponent(p.locationId)}/resolve`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Actor": "skylab-local-user" },
+          body: JSON.stringify({ resolution, note: note || undefined }),
+        },
+      );
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "No fue posible resolver");
+      await onChanged?.();
+    } catch (e) {
+      setError(e.message);
+      setBusy(null);
+    }
+  };
+  const gaps = Object.entries(p.phases || {}).filter(([, v]) => v && v.pingEventGapMin);
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-amber-500/15 bg-white/[.02] p-3">
+      <b className="block truncate text-sm text-slate-200">{p.name || "Punto"}</b>
+      {p.missingDetections?.length ? (
+        <p className="text-[11px] text-slate-500">
+          Sin detección CCTV: {p.missingDetections.map((k) => phaseBadge[k]?.label || k).join(", ")}
+        </p>
+      ) : null}
+      {gaps.map(([k, v]) => (
+        <p key={k} className="text-[11px] text-amber-400/80">
+          {phaseBadge[k]?.label || k}: {v.pingEventGapMin} min entre ping y aviso CCTV
+        </p>
+      ))}
+      <input
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="Nota (opcional)"
+        className="mt-1 h-8 w-full rounded-md border border-white/[.08] bg-black/20 px-2 text-[11px] text-slate-200 outline-none focus:border-amber-500/40"
+      />
+      <div className="mt-1 grid grid-cols-3 gap-1">
+        {NOTIFICATION_RESOLUTIONS.map((r) => (
+          <button
+            key={r.value}
+            type="button"
+            title={r.hint}
+            disabled={!!busy}
+            onClick={() => resolve(r.value)}
+            className="rounded-md border border-white/[.08] px-1 py-1.5 text-[10px] font-bold leading-tight text-slate-300 transition hover:border-amber-500/40 hover:text-amber-200 disabled:opacity-40"
+          >
+            {busy === r.value ? "…" : r.label}
+          </button>
+        ))}
+      </div>
+      {error && <p className="text-[10px] text-rose-300">{error}</p>}
+    </div>
+  );
+}
+
+function NotificationFollowUpSection({ items, onChanged }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(null);
+  const reopen = async (locationId) => {
+    setBusy(locationId);
+    try {
+      await fetch(`${CCTV_API_BASE}/api/cctv/notifications/${encodeURIComponent(locationId)}/reopen`, {
+        method: "POST",
+        headers: { "X-Actor": "skylab-local-user" },
+      });
+      await onChanged?.();
+    } finally {
+      setBusy(null);
+    }
+  };
+  return (
+    <div className="rounded-xl border border-white/[.08] bg-white/[.015]">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between p-3 text-left text-xs font-bold text-slate-300"
+      >
+        <span className="flex items-center gap-2">
+          <Wrench size={14} className="text-slate-400" />
+          En seguimiento (cámara sin notificar) · {items.length}
+        </span>
+        <ArrowRight size={14} className={open ? "rotate-90 transition" : "transition"} />
+      </button>
+      {open && (
+        <div className="grid gap-2 border-t border-white/[.06] p-3 md:grid-cols-2 xl:grid-cols-3">
+          {items.map((p) => (
+            <div key={p.locationId} className="flex items-center justify-between gap-2 rounded-lg border border-white/[.06] bg-white/[.02] p-2">
+              <b className="truncate text-[11px] text-slate-300">{p.name || "Punto"}</b>
+              <button
+                type="button"
+                disabled={busy === p.locationId}
+                onClick={() => reopen(p.locationId)}
+                className="shrink-0 text-[10px] font-bold text-blue-300 transition hover:text-blue-200 disabled:opacity-40"
+              >
+                {busy === p.locationId ? "…" : "Reabrir"}
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>

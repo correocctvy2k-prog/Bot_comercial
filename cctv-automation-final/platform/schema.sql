@@ -555,6 +555,24 @@ CREATE TABLE IF NOT EXISTS project_scope_decisions (
   notes TEXT
 );
 
+-- spec 0011: resolución de "Inconsistencias de notificación CCTV" desde la vista.
+--   PING_ONLY               el punto no tiene CCTV que notifique -> se fuerza coverage PING_ONLY (persistente)
+--   MISCONFIGURED_NO_NOTIFY cámara sin notificación configurada -> pasa a "en seguimiento" (persistente)
+--   FALSE_POSITIVE          la incidencia de esa fecha no es real -> se silencia solo effective_date
+CREATE TABLE IF NOT EXISTS cctv_notification_resolutions (
+  id TEXT PRIMARY KEY,
+  location_id TEXT NOT NULL,
+  resolution TEXT NOT NULL CHECK(resolution IN ('PING_ONLY','MISCONFIGURED_NO_NOTIFY','FALSE_POSITIVE')),
+  scope TEXT NOT NULL CHECK(scope IN ('PERSISTENT','DATE')),
+  effective_date TEXT,
+  note TEXT,
+  decided_by TEXT NOT NULL,
+  decided_at TEXT NOT NULL,
+  active INTEGER NOT NULL DEFAULT 1,
+  FOREIGN KEY(location_id) REFERENCES locations(id)
+);
+CREATE INDEX IF NOT EXISTS idx_notif_resolutions_active ON cctv_notification_resolutions(active, resolution, location_id);
+
 CREATE INDEX IF NOT EXISTS idx_stg_inventory_key ON stg_inventory_locations(import_run_id, location_name_key);
 CREATE INDEX IF NOT EXISTS idx_stg_maintenance_key ON stg_maintenance_points(import_run_id, point_name_key);
 CREATE INDEX IF NOT EXISTS idx_events_location_time ON cctv_events(location_id, occurred_at);

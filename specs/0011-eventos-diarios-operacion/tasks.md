@@ -52,16 +52,19 @@ Referencia: `spec.md` y `plan.md`. Estado: **Validada (2026-09-10) — en implem
 - [x] `refreshDailyEvents` cableado (`RealEvents onChanged`) para refresco tras vincular.
 - [ ] Correr limpieza con `--apply` en local + verificar cuadro vacío (en el rebuild final).
 
-## Tanda 3 — Resolución de inconsistencias · backend + frontend
+## Tanda 3 — Resolución de inconsistencias · backend + frontend ✅
 
-- [ ] Esquema `cctv_notification_resolutions` (idempotente).
-- [ ] `platform/notification-resolutions.js` + tests (`loadActiveResolutions`, validación enum).
-- [ ] `interpretPointDay`/`dailyEventsData`: `forcedPingOnly` respetado; filtrar
-      `notificationInconsistencies`; añadir `notificationsInFollowUp[]`,
-      `summary.notificationsResolved`.
-- [ ] `POST /api/cctv/notifications/:locationId/resolve` + `.../reopen` (`x-actor`,
-      `audit_log`, idempotencia).
-- [ ] Frontend: menú 3 opciones + nota; sección "En seguimiento" plegable; "reabrir";
+- [x] Esquema `cctv_notification_resolutions` + índice en `platform/schema.sql` (idempotente,
+      se crea en cada arranque; no hace falta script de migración).
+- [x] `platform/notification-resolutions.js` + `tests/notification-resolutions.test.js` (6 casos,
+      `normalizeResolveInput` / `loadActiveResolutions` / idempotencia / reopen). **70/70**.
+- [x] `dailyEventsData`: `coverageByLoc` respeta `pingOnlyForced`; `notificationInconsistencies`
+      filtra `followUp`+`silenced`; añade `notificationsInFollowUp[]`,
+      `summary.{notificationsInFollowUp,notificationsResolved}`.
+- [x] `POST /api/cctv/notifications/:locationId/resolve` + `.../reopen` (`x-actor`, `audit_log`,
+      idempotente por (location, resolution, effective_date)).
+- [x] Frontend: `NotificationInconsistencyCard` (3 botones + nota) +
+      `NotificationFollowUpSection` plegable con "Reabrir".
       botón "Crear tarjeta de mantenimiento" deshabilitado (tooltip "próximamente").
 - [ ] Tests: `DATE` vs `PERSISTENT`, `PING_ONLY` fuerza `coverage`, reapertura.
 

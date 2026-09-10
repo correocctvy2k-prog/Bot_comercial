@@ -12,6 +12,7 @@ const { evidenceByLocation } = require('../platform/project-evidence');
 const { normalizeName } = require('../platform/normalize');
 const { isOperationalOpeningSignal, asOperationalOpeningEvidence, isOperationalOpeningEvidence, interpretDailyOperations } = require('../platform/operational-event-policy');
 const { loadWindowConfig } = require('../platform/window-config');
+const { normalizeResolveInput, loadActiveResolutions, insertResolution, reopenResolutions } = require('../platform/notification-resolutions');
 const { runtimePaths, ensureRuntimeDirectories } = require('../config/runtime-paths');
 
 ensureRuntimeDirectories();
@@ -382,7 +383,9 @@ function dailyEventsData(dateValue){
   // equipo mande avisos de detección; sin este filtro medio parque saldría como
   // "inconsistente". spec 0010.
   const notifyingLocs=new Set(db.prepare(`SELECT DISTINCT location_id FROM cctv_events WHERE source_system='EMAIL_DAHUA' AND location_id IS NOT NULL AND COALESCE(occurred_at,received_at)>=datetime('now','-30 days')`).all().map(r=>r.location_id));
-  const coverageByLoc=new Map(siisRows.map(r=>[r.locationId,notifyingLocs.has(r.locationId)?'WITH_CCTV':'PING_ONLY']));
+  // spec 0011: resoluciones que el operador aplicó desde la vista.
+  const resolutions=loadActiveResolutions(db,date);
+  const coverageByLoc=new Map(siisRows.map(r=>[r.locationId,(resolutions.pingOnlyForced.has(r.locationId)||!notifyingLocs.has(r.locationId))?'PING_ONLY':'WITH_CCTV']));
   const nameByLoc=new Map(siisRows.map(r=>[r.locationId,r.name]));
   const interpIds=[...new Set([...pingsByLoc.keys(),...eventsByLoc.keys()])].filter(Boolean);
   const operationalDays=interpretDailyOperations(interpIds.map(locationId=>({
@@ -438,15 +441,20 @@ function dailyEventsData(dateValue){
   // que llevan el payload del correo -> respuesta enorme).
   const slimPhase=(p)=>p&&{phase:p.phase,label:p.label,kind:p.kind,at:p.at,source:p.source,lateBy:p.lateBy,pingEventGapMin:p.pingEventGapMin||null};
   const slimDay=(d)=>({locationId:d.locationId,name:d.name,coverage:d.coverage,interpretation:d.interpretation,notificationConfigInconsistency:d.notificationConfigInconsistency,missingDetections:d.missingDetections,anomalies:d.anomalies,phases:Object.fromEntries(Object.entries(d.phases).map(([k,v])=>[k,slimPhase(v)]))});
-  const notificationInconsistencies=operationalDays.filter(d=>d.notificationConfigInconsistency).map(slimDay);
+  // spec 0011: se ocultan de "activas" los puntos resueltos (en seguimiento o
+  // silenciados esa fecha). Los PING_ONLY forzados ya no marcan inconsistencia.
+  const notificationInconsistencies=operationalDays.filter(d=>d.notificationConfigInconsistency&&!resolutions.followUp.has(d.locationId)&&!resolutions.silenced.has(d.locationId)).map(slimDay);
+  const notificationsInFollowUp=operationalDays.filter(d=>resolutions.followUp.has(d.locationId)).map(slimDay);
   const opSummary={
     notificationInconsistencies:notificationInconsistencies.length,
+    notificationsInFollowUp:notificationsInFollowUp.length,
+    notificationsResolved:resolutions.count,
     outOfWindowDetections:operationalDays.reduce((n,d)=>n+d.anomalies.length,0),
     cierreSinApertura:operationalDays.filter(d=>d.interpretation==='CIERRE_SIN_APERTURA').length,
     pointsWithOpening:operationalDays.filter(d=>d.phases.APERTURA_MANANA||d.phases.APERTURA_TARDE).length,
   };
 
-  return {generatedAt:new Date().toISOString(),date,timeZone:'America/Bogota',summary:{...totals,recognized:categories.filter(row=>row.eventType!=='UNKNOWN'&&row.eventType!=='DISCARDED').reduce((n,row)=>n+row.total,0),discarded:categories.filter(row=>row.eventType==='DISCARDED').reduce((n,row)=>n+row.total,0),review:categories.filter(row=>row.severity==='REVIEW').reduce((n,row)=>n+row.total,0),identityPercent:totals.total?Math.round(totals.linked/totals.total*100):0,openingPoints,closingPoints,pairedPoints:pointOperations.filter(row=>row.status==='COMPLETE').length,motionBursts:motionBursts.length,noisyBursts,...opSummary},operationalWindows:winCfg.windows,notificationInconsistencies:notificationInconsistencies.slice(0,60),siis:{capturedAt:latestSiisRun?.capturedAt||null,runId:latestSiisRun?.id||null,total:siisRows.length,known:siisKnown.length,online:siisOnline,offline:siisOffline,unknown:siisRows.length-siisKnown.length,withCctv:siisRows.filter(row=>row.cctvCoverage==='ACTIVE').length,withoutCctv:siisRows.filter(row=>row.cctvCoverage!=='ACTIVE').length,onlineWithCctv:siisRows.filter(row=>row.online===1&&row.cctvCoverage==='ACTIVE').length,onlineWithoutCctv:siisRows.filter(row=>row.online===1&&row.cctvCoverage!=='ACTIVE').length},siisTimeline,operationalCoverage,categories,pointOperations,hourly,identityPending:identityPending.slice(0,30),evidenceItems,items:items.slice(0,100)};
+  return {generatedAt:new Date().toISOString(),date,timeZone:'America/Bogota',summary:{...totals,recognized:categories.filter(row=>row.eventType!=='UNKNOWN'&&row.eventType!=='DISCARDED').reduce((n,row)=>n+row.total,0),discarded:categories.filter(row=>row.eventType==='DISCARDED').reduce((n,row)=>n+row.total,0),review:categories.filter(row=>row.severity==='REVIEW').reduce((n,row)=>n+row.total,0),identityPercent:totals.total?Math.round(totals.linked/totals.total*100):0,openingPoints,closingPoints,pairedPoints:pointOperations.filter(row=>row.status==='COMPLETE').length,motionBursts:motionBursts.length,noisyBursts,...opSummary},operationalWindows:winCfg.windows,notificationInconsistencies:notificationInconsistencies.slice(0,60),notificationsInFollowUp:notificationsInFollowUp.slice(0,60),siis:{capturedAt:latestSiisRun?.capturedAt||null,runId:latestSiisRun?.id||null,total:siisRows.length,known:siisKnown.length,online:siisOnline,offline:siisOffline,unknown:siisRows.length-siisKnown.length,withCctv:siisRows.filter(row=>row.cctvCoverage==='ACTIVE').length,withoutCctv:siisRows.filter(row=>row.cctvCoverage!=='ACTIVE').length,onlineWithCctv:siisRows.filter(row=>row.online===1&&row.cctvCoverage==='ACTIVE').length,onlineWithoutCctv:siisRows.filter(row=>row.online===1&&row.cctvCoverage!=='ACTIVE').length},siisTimeline,operationalCoverage,categories,pointOperations,hourly,identityPending:identityPending.slice(0,30),evidenceItems,items:items.slice(0,100)};
 }
 
 function visitorAnalytics(periodValue,dateValue){
@@ -570,6 +578,24 @@ const server = http.createServer(async (req,res) => {
       const candidates=db.prepare("SELECT id,payload_json FROM cctv_events WHERE source_system='EMAIL_DAHUA' AND location_id IS NULL").all().filter(row=>{try{return normalizeName(JSON.parse(row.payload_json||'{}').storeRaw||'')===aliasKey}catch{return false}}),update=db.prepare('UPDATE cctv_events SET location_id=?,severity=CASE WHEN severity=\'REVIEW\' THEN \'NORMAL\' ELSE severity END,payload_json=? WHERE id=?');
       db.exec('BEGIN IMMEDIATE');try{db.prepare("INSERT INTO location_aliases(location_id,source_system,alias_raw,alias_key) VALUES(?,'EMAIL_DAHUA',?,?) ON CONFLICT(source_system,alias_key) DO UPDATE SET location_id=excluded.location_id,alias_raw=excluded.alias_raw").run(location.id,aliasRaw,aliasKey);for(const row of candidates){let payload={};try{payload=JSON.parse(row.payload_json||'{}')}catch{}update.run(location.id,JSON.stringify({...payload,identityStatus:'LINKED_MANUAL',identityMethod:'ALIAS_MANUAL',canonicalName:location.canonical_name}),row.id)}db.prepare(`INSERT INTO audit_log(id,entity_type,entity_id,action,actor,occurred_at,source_system,before_json,after_json,correlation_id) VALUES(?,?,?,?,?,?,?,?,?,?)`).run(crypto.randomUUID(),'EMAIL_IDENTITY',aliasKey,'IDENTITY_LINKED',actor,now,'SKYLAB_CCTV',JSON.stringify(existing||null),JSON.stringify({aliasRaw,locationId:location.id,canonicalName:location.canonical_name,updatedEvents:candidates.length}),crypto.randomUUID());db.exec('COMMIT')}catch(error){db.exec('ROLLBACK');throw error}
       return send(res,200,{ok:true,alias:aliasRaw,locationId:location.id,canonicalName:location.canonical_name,updatedEvents:candidates.length},origin);
+    }
+    // spec 0011: resolver / reabrir una inconsistencia de notificación CCTV.
+    const notifResolveMatch=url.pathname.match(/^\/api\/cctv\/notifications\/([^/]+)\/resolve$/);
+    if(req.method==='POST'&&notifResolveMatch){
+      const locationId=decodeURIComponent(notifResolveMatch[1]),actor=String(req.headers['x-actor']||'local-operator').slice(0,100);
+      const location=db.prepare('SELECT id FROM locations WHERE id=? AND active=1').get(locationId);
+      if(!location)return send(res,404,{error:'Ubicación no encontrada'},origin);
+      const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+      let input;try{input=normalizeResolveInput(await readBody(req),today);}catch(e){return send(res,e.status||400,{error:e.message},origin);}
+      const result=insertResolution(db,{locationId,...input,actor});
+      return send(res,200,{ok:true,locationId,...input,...result},origin);
+    }
+    const notifReopenMatch=url.pathname.match(/^\/api\/cctv\/notifications\/([^/]+)\/reopen$/);
+    if(req.method==='POST'&&notifReopenMatch){
+      const locationId=decodeURIComponent(notifReopenMatch[1]),actor=String(req.headers['x-actor']||'local-operator').slice(0,100);
+      const location=db.prepare('SELECT id FROM locations WHERE id=? AND active=1').get(locationId);
+      if(!location)return send(res,404,{error:'Ubicación no encontrada'},origin);
+      return send(res,200,{ok:true,locationId,...reopenResolutions(db,{locationId,actor})},origin);
     }
     if(req.method==='GET'&&url.pathname==='/api/cctv/visitors') return send(res,200,visitorAnalytics(url.searchParams.get('period'),url.searchParams.get('date')),origin);
     if(req.method==='GET'&&url.pathname==='/api/cctv/behavior/daily'){
