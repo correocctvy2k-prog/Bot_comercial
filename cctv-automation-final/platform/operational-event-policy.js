@@ -122,9 +122,14 @@ function interpretPointDay(point, cfg) {
     const ping = pingSignalForWindow(point.pings, gwin);
     const evidence = events.find((e) => inWindow(localMinutes(stampOf(e)), gwin)) || null;
 
+    // Preferencia de fuente para el timestamp de la fase:
+    //   transición de ping (offline<->online, evento real) > evidencia CCTV
+    //   (actividad física real) > presencia de ping ("el monitoreo estaba activo").
     let at = null;
     let source = null;
-    if (ping) { at = ping.at; source = 'PING'; } else if (evidence) { at = stampOf(evidence); source = 'CCTV'; }
+    if (ping && ping.kind === 'TRANSITION') { at = ping.at; source = 'PING'; }
+    else if (evidence) { at = stampOf(evidence); source = 'CCTV'; }
+    else if (ping) { at = ping.at; source = 'PING_PRESENCE'; }
     if (at == null) { phases[name] = null; continue; }
 
     const atMin = localMinutes(at);
@@ -133,16 +138,16 @@ function interpretPointDay(point, cfg) {
         : 0;
 
     const phase = { phase: name, label: win.label, kind: win.kind, at, source, lateBy, evidence };
-    if (source === 'PING' && evidence) {
-      const gap = Math.abs(localMinutes(stampOf(evidence)) - atMin);
-      if (coverage === 'WITH_CCTV' && gap > toleranceMin) {
-        phase.pingEventGapMin = gap;
+    if (coverage === 'WITH_CCTV') {
+      if (source === 'PING' && evidence) {
+        const gap = Math.abs(localMinutes(stampOf(evidence)) - atMin);
+        if (gap > toleranceMin) { phase.pingEventGapMin = gap; notificationConfigInconsistency = true; }
+      }
+      // El ping dice que el punto operó en esta ventana pero el CCTV nunca notificó.
+      if ((source === 'PING' || source === 'PING_PRESENCE') && !evidence) {
+        missingDetections.push(name);
         notificationConfigInconsistency = true;
       }
-    }
-    if (source === 'PING' && !evidence && coverage === 'WITH_CCTV') {
-      missingDetections.push(name);
-      notificationConfigInconsistency = true;
     }
     phases[name] = phase;
   }
