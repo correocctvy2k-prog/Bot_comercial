@@ -70,8 +70,43 @@ test('evento CLOSING a las 07:15 no crea cierre: cuenta como actividad de apertu
     pings: [],
   }, CFG);
   assert.equal(r.phases.APERTURA_MANANA.source, 'CCTV');
-  assert.equal(r.phases.CIERRE_MEDIODIA, null);
+  assert.ok(!r.phases.CIERRE_MEDIODIA); // ventana de mediodía desactivada por defecto
   assert.equal(r.phases.CIERRE_NOCHE, null);
+  assert.equal(r.eventPhases[9], 'APERTURA_MANANA');
+});
+
+test('ventana CIERRE_MEDIODIA desactivada por defecto, activable por env', () => {
+  assert.equal(loadWindowConfig({}).windows.CIERRE_MEDIODIA, undefined);
+  const on = loadWindowConfig({ CCTV_WIN_CLOSE_MIDDAY: '13:00-14:00' });
+  assert.deepEqual(
+    { startMin: on.windows.CIERRE_MEDIODIA.startMin, endMin: on.windows.CIERRE_MEDIODIA.endMin, kind: on.windows.CIERRE_MEDIODIA.kind },
+    { startMin: 780, endMin: 840, kind: 'CLOSE' },
+  );
+});
+
+test('presencia de ping en ventana de cierre NO crea cierre (solo transición o CCTV)', () => {
+  const r = interpretPointDay({
+    locationId: 'X', name: 'X', coverage: 'PING_ONLY',
+    events: [],
+    // el punto sigue online toda la ventana de cierre noche: seguía operando, no cerró
+    pings: [{ at: T('18:30'), online: 1 }, { at: T('21:00'), online: 1 }],
+  }, CFG);
+  assert.equal(r.phases.CIERRE_NOCHE, null);
+});
+
+test('todas las detecciones del punto en la ventana quedan clasificadas (no solo la representativa)', () => {
+  const r = interpretPointDay({
+    locationId: 'OFI', name: 'OFICINA PRINCIPAL', coverage: 'WITH_CCTV',
+    events: [
+      { id: 'a', eventType: 'OPENING', phase: 'INICIO', at: T('06:45') },
+      { id: 'b', eventType: 'DESCONOCIDO', phase: 'INICIO', at: T('07:10') },
+      { id: 'c', eventType: 'DESCONOCIDO', phase: 'INICIO', at: T('07:25') },
+    ],
+    pings: [{ at: T('06:10'), online: 0 }, { at: T('06:40'), online: 1 }],
+  }, CFG);
+  assert.equal(r.eventPhases.a, 'APERTURA_MANANA');
+  assert.equal(r.eventPhases.b, 'APERTURA_MANANA');
+  assert.equal(r.eventPhases.c, 'APERTURA_MANANA');
 });
 
 test('detección fuera de las 4 ventanas = anomalía', () => {

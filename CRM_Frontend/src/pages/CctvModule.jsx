@@ -2832,7 +2832,13 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
                             </div>
                           </div>
                           <Badge variant="outline" className={point.status === "COMPLETE" ? "border-emerald-500/20 text-emerald-300" : "border-amber-500/20 text-amber-300"}>
-                            {point.status === "COMPLETE" ? "Jornada completa" : point.opening ? "Solo apertura" : "Solo cierre"}
+                            {point.status === "COMPLETE"
+                              ? "Jornada completa"
+                              : point.opening
+                                ? "Solo apertura"
+                                : point.closing
+                                  ? "Solo cierre"
+                                  : "Sin señal en ventana"}
                           </Badge>
                         </div>
                       </div>
@@ -3081,7 +3087,19 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
               </CardHeader>
               <CardContent>
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  {evidenceItems.slice(0, 16).map((item) => {
+                  {(() => {
+                    // Máx. 3 tiles por punto: un punto con muchas cámaras (p. ej.
+                    // OFICINA PRINCIPAL) llenaba la rejilla con decenas de
+                    // detecciones de la misma apertura.
+                    const perPoint = new Map();
+                    return evidenceItems.filter((item) => {
+                      const k = item.locationId || item.location || item.payload?.storeRaw || item.id;
+                      const n = perPoint.get(k) || 0;
+                      if (n >= 3) return false;
+                      perPoint.set(k, n + 1);
+                      return true;
+                    }).slice(0, 16);
+                  })().map((item) => {
                     const type = item.evidenceType || item.eventType;
                     const config = PHASE_BADGE[item.operationalPhase] || {
                       OPENING: {

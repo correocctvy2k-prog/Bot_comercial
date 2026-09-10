@@ -4,8 +4,11 @@ Referencia: `spec.md` y `plan.md`.
 
 ## Ventanas (confirmadas con el usuario, 2026-09-09)
 
-- APERTURA_MANANA 05:00–09:30 · CIERRE_MEDIODIA 13:00–14:00 · APERTURA_TARDE 15:00–17:00 ·
-  CIERRE_NOCHE 18:00–22:00. Tolerancia ping↔evento 20 min. Todo configurable por env.
+- APERTURA_MANANA 05:00–09:30 · APERTURA_TARDE 15:00–17:00 · CIERRE_NOCHE 18:00–22:00.
+  Tolerancia ping↔evento 20 min. Todo configurable por env.
+- **CIERRE_MEDIODIA desactivada por defecto** (2026-09-10): su ventana con gracia se solapaba
+  con la mañana y marcaba un cierre falso a ~300 puntos que solo seguían online. Activable por
+  `CCTV_WIN_CLOSE_MIDDAY=13:00-14:00` si un punto real lo necesita.
 
 ## Tanda 1 — interpretación + vista · HECHA (`eb9c634`, `46ebc98`, `ac39e87`)
 
@@ -29,6 +32,24 @@ Referencia: `spec.md` y `plan.md`.
       2 inconsistencias (OFICINA PRINCIPAL con 69 min de desfase ping↔aviso).
 - [ ] `docs/MODULO-ALARMAS-Y-CIERRE-PING.md`: sección nueva.
 - [ ] Smoke visual en Docker local + prod.
+
+## Tanda 1b — arreglos tras smoke visual (2026-09-10)
+
+Reportado por el usuario revisando en local: cierres en horario de apertura, barra de "Cierres"
+enorme en el gráfico, "DESCONOCIDO" repetido en OFICINA PRINCIPAL.
+
+- [x] **Gráfico:** `PING_PRESENCE` ya no crea fase de cierre ni se cuenta en `hourly`
+      (solo transición de ping o correo CCTV). Repro: 317 cierres falsos a las 10:00 → 0.
+- [x] **DESCONOCIDO:** `interpretPointDay` devuelve `eventPhases` (clasifica TODAS las
+      detecciones de la ventana, no solo la representativa). Server etiqueta cada `evidenceItem`.
+      Front: máx. 3 tiles por punto en el grid.
+- [x] **Lista "Señales CCTV de jornada" + KPIs:** `pointOperations` recableado a las fases
+      interpretadas; `closing` solo con evidencia real; puntos sin identidad pierden el cierre
+      crudo; estado `NONE` → "Sin señal en ventana".
+- [x] `CIERRE_MEDIODIA` desactivada por defecto (ver arriba). `npm test` 64/64.
+- [ ] Pendiente decidir con el usuario: ¿la card "Señales CCTV de jornada" debe volverse
+      ping-primary (todos los puntos con apertura interpretada, ~318) o seguir acotada a los
+      puntos que notifican por correo Dahua (~13, hoy)? Ahora mismo es lo segundo.
 
 ## Tanda 2 — corte diario (posterior)
 

@@ -361,7 +361,9 @@ function dailyEventsData(dateValue){
   const siisKnown=siisRows.filter(row=>row.online!=null),siisOnline=siisKnown.filter(row=>row.online===1).length,siisOffline=siisKnown.filter(row=>row.online===0).length;
   const siisTimeline=db.prepare(`SELECT r.completed_at AS capturedAt,SUM(CASE WHEN s.online=1 THEN 1 ELSE 0 END) AS online,SUM(CASE WHEN s.online=0 THEN 1 ELSE 0 END) AS offline
     FROM siis_sync_runs r JOIN stg_siis_locations s ON s.sync_run_id=r.id WHERE r.status='SUCCESS' AND date(r.completed_at,'-5 hours')=? GROUP BY r.id,r.completed_at ORDER BY r.completed_at`).all(date);
-  const openingPoints=pointOperations.filter(row=>row.opening).length,closingPoints=pointOperations.filter(row=>row.closing).length,noisyBursts=motionBursts.filter(row=>row.noisy).length;
+  const noisyBursts=motionBursts.filter(row=>row.noisy).length;
+  // openingPoints/closingPoints se calculan más abajo, tras recablear pointOperations
+  // a las fases interpretadas (spec 0010).
 
   // ---- spec 0010: interpretación operativa por 4 ventanas + ping SIIS -----
   // El ping es el vector primario (todos los puntos lo tienen); el evento CCTV
@@ -389,15 +391,49 @@ function dailyEventsData(dateValue){
     events:eventsByLoc.get(locationId)||[],pings:pingsByLoc.get(locationId)||[],
   })),winCfg);
   const opDayByLoc=new Map(operationalDays.map(d=>[d.locationId,d]));
+  // Cada evento operativo -> su fase interpretada (no solo el "representativo"),
+  // para que todas las detecciones del mismo punto en la ventana muestren el
+  // mismo badge y no su tipo crudo ("DESCONOCIDO"). spec 0010 / fix.
+  const winByName=winCfg.windows;
   const evidencePhase=new Map();
-  for(const d of operationalDays)for(const[ph,val]of Object.entries(d.phases)){if(val&&val.evidence&&val.evidence.id!=null)evidencePhase.set(val.evidence.id,{phase:ph,label:val.label,kind:val.kind,source:val.source,lateBy:val.lateBy});}
+  for(const d of operationalDays)for(const[evId,ph]of Object.entries(d.eventPhases||{})){
+    if(ph==='FUERA_DE_VENTANA'){evidencePhase.set(evId,{phase:ph,label:'Fuera de ventana',kind:null,source:null,lateBy:0});continue;}
+    const w=winByName[ph],pv=d.phases[ph];
+    evidencePhase.set(evId,{phase:ph,label:(w&&w.label)||ph,kind:(w&&w.kind)||null,source:(pv&&pv.source)||null,lateBy:(pv&&pv.lateBy)||0});
+  }
   for(const ev of evidenceItems){
     const hit=evidencePhase.get(ev.id)||(ev.correlatedEventIds||[]).map(id=>evidencePhase.get(id)).find(Boolean);
     if(hit){ev.operationalPhase=hit.phase;ev.operationalPhaseLabel=hit.label;ev.operationalPhaseKind=hit.kind;ev.operationalLateBy=hit.lateBy;}
-    else if(ev.locationId&&(opDayByLoc.get(ev.locationId)?.anomalies||[]).some(a=>a.eventId===ev.id)){ev.operationalPhase='FUERA_DE_VENTANA';ev.operationalPhaseLabel='Fuera de ventana';}
   }
+  // P1 (spec 0010): la lista "Señales CCTV de jornada" y sus KPIs
+  // (openingPoints/closingPoints/pairedPoints) usan las fases interpretadas, no el
+  // event_type crudo — de ahí salían los "cierres" a las 07:00. opening acepta
+  // presencia de ping (el punto operó esa mañana); closing exige evidencia real
+  // (transición de ping o correo CCTV). Un punto sin identidad no se puede
+  // interpretar -> se le retira el cierre crudo.
+  const phaseStamp=(p,presenceOk)=>(p&&p.at&&(presenceOk||p.source==='PING'||p.source==='CCTV'))?p.at:null;
+  for(const p of pointOperations){
+    const d=p.locationId?opDayByLoc.get(p.locationId):null;
+    if(d){
+      const op=d.phases.APERTURA_MANANA||d.phases.APERTURA_TARDE||null;
+      const cl=d.phases.CIERRE_NOCHE||d.phases.CIERRE_MEDIODIA||null;
+      p.opening=phaseStamp(op,true);
+      p.closing=phaseStamp(cl,false);
+      p.openingSource=(op&&op.source)||null;
+      p.closingSource=(cl&&cl.source)||null;
+      p.interpretation=d.interpretation;
+    }else if(!p.locationId){
+      p.closing=null;p.closingSource=null;
+    }
+    p.status=p.opening&&p.closing?'COMPLETE':p.opening?'OPEN_ONLY':p.closing?'CLOSE_ONLY':'NONE';
+  }
+  pointOperations.sort((a,b)=>(a.status==='COMPLETE')-(b.status==='COMPLETE')||a.name.localeCompare(b.name));
+  const openingPoints=pointOperations.filter(row=>row.opening).length;
+  const closingPoints=pointOperations.filter(row=>row.closing).length;
   const hourOf=stamp=>Number(new Intl.DateTimeFormat('en-US',{timeZone:'America/Bogota',hour:'2-digit',hourCycle:'h23'}).format(new Date(stamp)));
-  for(const d of operationalDays)for(const val of Object.values(d.phases)){if(!val||!val.at)continue;const h=hourOf(val.at);if(!hourly[h])continue;if(val.kind==='OPEN')hourly[h].openings++;else hourly[h].closures++;}
+  // Solo cuentan fases con evidencia real (transición de ping o correo CCTV); la
+  // "presencia de ping" (monitoreo activo) no es una apertura/cierre detectados.
+  for(const d of operationalDays)for(const val of Object.values(d.phases)){if(!val||!val.at)continue;if(val.source!=='PING'&&val.source!=='CCTV')continue;const h=hourOf(val.at);if(!hourly[h])continue;if(val.kind==='OPEN')hourly[h].openings++;else hourly[h].closures++;}
   // Resumen ligero por punto (sin adjuntar los objetos evidence/phase completos,
   // que llevan el payload del correo -> respuesta enorme).
   const slimPhase=(p)=>p&&{phase:p.phase,label:p.label,kind:p.kind,at:p.at,source:p.source,lateBy:p.lateBy,pingEventGapMin:p.pingEventGapMin||null};

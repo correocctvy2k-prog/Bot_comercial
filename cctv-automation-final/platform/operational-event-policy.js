@@ -76,14 +76,17 @@ function pingSignalForWindow(rows, win) {
     return firstOnline ? { at: stampOf(firstOnline), kind: 'PRESENCE' } : null;
   }
 
-  // CLOSE
+  // CLOSE: un cierre exige una transición online->offline (evento real). La mera
+  // "presencia" de ping online dentro de la ventana NO es un cierre; de hecho es
+  // evidencia de lo contrario (el punto seguía operando). Antes se devolvía como
+  // PRESENCE y marcaba un cierre falso a cientos de puntos que solo seguían
+  // conectados cerca del mediodía (spec 0010 / fix eventos-diarios).
   for (let i = 0; i < rows.length; i += 1) {
     const m = localMinutes(stampOf(rows[i]));
     if (!inWindow(m, win)) continue;
     if (!online(rows[i]) && i > 0 && online(rows[i - 1])) return { at: stampOf(rows[i]), kind: 'TRANSITION' };
   }
-  const lastOnline = [...rows].reverse().find((p) => online(p) && inWindow(localMinutes(stampOf(p)), win));
-  return lastOnline ? { at: stampOf(lastOnline), kind: 'PRESENCE' } : null;
+  return null;
 }
 
 function isOperationalEvent(ev) {
@@ -162,9 +165,19 @@ function interpretPointDay(point, cfg) {
     phases[name] = phase;
   }
 
+  // Clasificación de CADA evento operativo del día por la ventana (con gracia) en
+  // que cae. Sin esto la vista solo etiquetaba un evento "representativo" por fase
+  // y el resto de detecciones del mismo punto salían con su tipo crudo
+  // ("DESCONOCIDO") aunque fueran parte de la misma apertura.
+  const orderedGrace = Object.entries(graceWindows).sort((a, b) => a[1].startMin - b[1].startMin);
+  const eventPhases = {};
   for (const e of events) {
     const m = localMinutes(stampOf(e));
-    if (!Object.values(graceWindows).some((w) => inWindow(m, w))) {
+    const hit = orderedGrace.find(([, w]) => inWindow(m, w));
+    if (hit) {
+      if (e.id != null) eventPhases[e.id] = hit[0];
+    } else {
+      if (e.id != null) eventPhases[e.id] = 'FUERA_DE_VENTANA';
       anomalies.push({ kind: 'DETECTION_OUT_OF_WINDOW', at: stampOf(e), eventType: e.eventType, eventId: e.id ?? null });
     }
   }
@@ -180,6 +193,7 @@ function interpretPointDay(point, cfg) {
     name: point.name ?? null,
     coverage,
     phases,
+    eventPhases,
     missingDetections,
     anomalies,
     notificationConfigInconsistency,
