@@ -1,6 +1,6 @@
 # SPEC 0011 — CCTV / Eventos diarios: operación por zona, conciliación y resolución
 
-- **Estado:** Borrador
+- **Estado:** Validada (2026-09-10)
 - **Autor:** equipo Skylab (@jbeltran)
 - **Fecha:** 2026-09-10
 - **Módulos afectados:** `cctv-automation-final` (`api/server.js` → `dailyEventsData` y rutas
@@ -72,14 +72,16 @@ padding. Respetar el design-system (`CRM_Frontend/docs/design-system.md`) y
 `location_aliases` (infra ya existente, 573 aliases). Mapeos propuestos (confirmar los
 dudosos en `tasks.md` antes de aplicar):
 
-| storeRaw | Candidato canónico |
+| storeRaw | Punto canónico (confirmado 2026-09-10) |
 |---|---|
 | Independencia 3931 | INDEPENDENCIA (PALMIRA) |
 | Metro 2242 | CARREFOUR METRO (PALMIRA) |
 | 19 con 35 | LA 19 CON 35 (PALMIRA) |
-| Parque Prado 2301 | PARQUE EL PRADO (PALMIRA) — **confirmar** |
-| Parq Bolivar 3333 | PARQUEADERO PARQUE BOLIVAR (PALMIRA) — **confirmar** |
-| Ant. Ppal 3054 / Antigua Ppal Rozo / Antigua Ppal cll31#32 29 | ANTIGUA PRINCIPAL ROZO / ANTIGUA PPAL II — **confirmar cada uno** |
+| Parque Prado 2301 | PARQUE EL PRADO (PALMIRA) |
+| Parq Bolivar 3333 | PARQUEADERO PARQUE BOLIVAR (PALMIRA) |
+| Ant. Ppal 3054 | ANTIGUA PPAL II (PALMIRA) |
+| Antigua Ppal cll31#32 29 | ANTIGUA PPAL II (PALMIRA) |
+| Antigua Ppal Rozo | ANTIGUA PRINCIPAL ROZO (ROZO) |
 
 **3.3.b — UI de conciliación en la vista.** Panel "Identidades por conciliar" pasa de lista
 muerta a accionable: por cada `storeRaw` pendiente, un buscador/selector de punto canónico

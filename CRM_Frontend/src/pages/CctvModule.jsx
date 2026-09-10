@@ -1640,7 +1640,7 @@ function EventEvidenceModal({ event, onClose, formatTime }) {
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="grid gap-5 p-5 lg:grid-cols-[1.5fr_.5fr]">
+        <CardContent className="grid gap-5 p-5 lg:grid-cols-[1.35fr_.65fr]">
           <div className="grid min-h-80 place-items-center overflow-hidden rounded-2xl border border-white/[.08] bg-black/40">
             <img
               src={imageUrl}
@@ -1651,46 +1651,65 @@ function EventEvidenceModal({ event, onClose, formatTime }) {
               No fue posible cargar la instantánea.
             </div>
           </div>
-          <div className="space-y-3">
-            <div className="rounded-xl border border-white/[.07] bg-white/[.025] p-3">
-              <p className="text-[9px] font-bold uppercase text-slate-500">
-                Evento
-              </p>
-              <b className="text-sm text-slate-200">{event.eventType}</b>
-            </div>
-            <div className="rounded-xl border border-white/[.07] bg-white/[.025] p-3">
-              <p className="text-[9px] font-bold uppercase text-slate-500">
-                Canal
-              </p>
-              <b className="text-sm text-slate-200">
-                {event.payload.channelRaw || "Sin canal informado"}
-              </b>
-            </div>
-            <div className="rounded-xl border border-white/[.07] bg-white/[.025] p-3">
-              <p className="text-[9px] font-bold uppercase text-slate-500">
+          <div className="space-y-2.5">
+            {(() => {
+              // spec 0011: detalle del aviso Dahua tal como llega en el correo,
+              // para ver si hay una regla / cámara mal configurada sin salir a la
+              // bandeja. Filas vacías se omiten.
+              const p = event.payload || {};
+              const rows = [
+                ["Evento de alarma", p.rawEventType],
+                ["Canal de entrada", p.channelRaw],
+                ["Alarma", p.alarm],
+                [
+                  "Fase interpretada",
+                  event.operationalPhaseLabel
+                    ? `${event.operationalPhaseLabel}${event.operationalLateBy > 0 ? ` · tarde ${event.operationalLateBy} min` : ""}`
+                    : null,
+                ],
+                ["Asunto del correo", p.subject],
+                ["Remitente", p.sender],
+                ["IP de origen", p.sourceIp],
+              ].filter(([, v]) => v != null && v !== "");
+              return rows.map(([label, value]) => (
+                <div
+                  key={label}
+                  className="rounded-xl border border-white/[.08] bg-white/[.03] p-3"
+                >
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                    {label}
+                  </p>
+                  <b className="mt-0.5 block break-words text-sm text-slate-100">
+                    {value}
+                  </b>
+                </div>
+              ));
+            })()}
+            <div className="rounded-xl border border-white/[.08] bg-white/[.03] p-3">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
                 Identidad
               </p>
               <b
                 className={
                   event.location
-                    ? "text-sm text-emerald-300"
-                    : "text-sm text-amber-300"
+                    ? "mt-0.5 block text-sm text-emerald-300"
+                    : "mt-0.5 block text-sm text-amber-300"
                 }
               >
                 {event.location
-                  ? "Vinculada al catálogo"
-                  : "Pendiente de conciliación"}
+                  ? `Vinculada · ${event.location}`
+                  : `Pendiente de conciliación${event.payload?.storeRaw ? ` · "${event.payload.storeRaw}"` : ""}`}
               </b>
             </div>
-            <div className="rounded-xl border border-white/[.07] bg-white/[.025] p-3">
-              <p className="text-[9px] font-bold uppercase text-slate-500">
+            <div className="rounded-xl border border-white/[.08] bg-white/[.03] p-3">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
                 Referencia auditable
               </p>
-              <p className="mt-1 break-all text-[10px] text-slate-400">
+              <p className="mt-0.5 break-all text-xs text-slate-400">
                 {event.sourceEventId}
               </p>
             </div>
-            <p className="text-[9px] leading-relaxed text-slate-500">
+            <p className="text-[11px] leading-relaxed text-slate-500">
               La imagen se obtiene bajo demanda mediante IMAP de solo lectura y
               se conserva en caché local restringida.
             </p>
@@ -2797,15 +2816,15 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex min-w-0 items-center gap-3">
                             <span
-                              className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg ${point.status === "COMPLETE" ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"}`}
+                              className={`grid h-11 w-11 shrink-0 place-items-center rounded-lg ${point.status === "COMPLETE" ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"}`}
                             >
-                              <Store size={20} />
+                              <Store size={22} />
                             </span>
                             <div className="min-w-0">
-                              <b className="block truncate text-xs text-slate-200">
+                              <b className="block truncate text-sm text-slate-200">
                                 {point.name}
                               </b>
-                              <p className="text-[9px] text-slate-500">
+                              <p className="text-[11px] text-slate-500">
                                 {point.zone ||
                                   (!point.linked
                                     ? "Identidad pendiente"
@@ -2815,18 +2834,18 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
                           </div>
                           <div className="grid grid-cols-2 gap-4 text-right">
                             <div>
-                              <p className="text-[9px] text-slate-500">
+                              <p className="text-[11px] text-slate-500">
                                 Apertura
                               </p>
-                              <b className="text-xs text-emerald-300">
+                              <b className="text-sm text-emerald-300">
                                 {formatTime(point.opening)}
                               </b>
                             </div>
                             <div>
-                              <p className="text-[9px] text-slate-500">
+                              <p className="text-[11px] text-slate-500">
                                 Cierre
                               </p>
-                              <b className="text-xs text-blue-300">
+                              <b className="text-sm text-blue-300">
                                 {formatTime(point.closing)}
                               </b>
                             </div>
@@ -3152,7 +3171,7 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
                         onClick={() => setEvidence(item)}
                         className="group overflow-hidden rounded-xl border border-white/[.08] bg-white/[.02] text-left transition hover:-translate-y-0.5 hover:border-blue-500/30"
                       >
-                        <div className="relative h-28 overflow-hidden bg-slate-900">
+                        <div className="relative h-32 overflow-hidden bg-slate-900">
                           <img
                             loading="lazy"
                             src={`${CCTV_API_BASE}/api/cctv/events/${item.id}/snapshot`}
@@ -3160,35 +3179,35 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
                             className="h-full w-full object-cover opacity-80 transition duration-300 group-hover:scale-105 group-hover:opacity-100"
                           />
                           <span
-                            className={`absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[9px] font-bold text-white ${config.badge}`}
+                            className={`absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-bold text-white ${config.badge}`}
                           >
-                            <Icon size={12} />
+                            <Icon size={15} />
                             {config.label}
                             {item.operationalLateBy > 0 && ` · tarde ${item.operationalLateBy}m`}
                           </span>
                           {item.burstCount && (
-                            <span className="absolute bottom-2 right-2 rounded-md bg-black/75 px-2 py-1 text-[9px] font-bold text-white">
+                            <span className="absolute bottom-2 right-2 rounded-md bg-black/75 px-2 py-1 text-[11px] font-bold text-white">
                               {item.burstCount} detecciones
                             </span>
                           )}
                           {item.correlationSourceCount > 1 && (
-                            <span className="absolute bottom-2 right-2 rounded-md bg-cyan-950/90 px-2 py-1 text-[9px] font-bold text-cyan-100">
+                            <span className="absolute bottom-2 right-2 rounded-md bg-cyan-950/90 px-2 py-1 text-[11px] font-bold text-cyan-100">
                               {item.correlationSourceCount} fuentes
                             </span>
                           )}
                         </div>
                         <div className="p-3">
-                          <b className="block truncate text-xs text-slate-200">
+                          <b className="block truncate text-sm text-slate-200">
                             {item.location ||
                               item.payload.storeRaw ||
                               "Por identificar"}
                           </b>
-                          <div className="mt-1 flex items-center justify-between">
-                            <span className="text-[9px] text-slate-500">
+                          <div className="mt-1.5 flex items-center justify-between">
+                            <span className="text-[11px] text-slate-500">
                               {formatTime(item.occurredAt || item.receivedAt)}
                             </span>
                             <span
-                              className={`text-[9px] font-bold ${config.tone}`}
+                              className={`text-[11px] font-bold ${config.tone}`}
                             >
                               Ampliar
                             </span>
