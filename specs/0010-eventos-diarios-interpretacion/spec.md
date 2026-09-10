@@ -65,8 +65,10 @@ Para cada punto y día, con la serie de **pings SIIS** (`stg_siis_locations.onli
 `siis_sync_run`, ordenada) como base y las **detecciones CCTV** (cualquier tipo salvo
 `MOTION`/`MOVIMIENTO`/`DISCARDED` y fase `FIN`) como apoyo:
 
-- **`coverage`** por punto: `PING_ONLY` si `cctv_coverage_status='NONE'`; `WITH_CCTV` si
-  `ACTIVE`/`REPORTED_ACTIVE`.
+- **`coverage`** por punto: `WITH_CCTV` **solo si el punto ha enviado al menos un correo
+  Dahua en los últimos 30 días** (= el equipo realmente notifica por detección). Tener
+  cámaras (`cctv_coverage_status='ACTIVE'`) no basta: muchos puntos graban pero no mandan
+  avisos. El resto es `PING_ONLY`.
 - **Por cada una de las 4 ventanas**, la fase se resuelve así:
   - **Ping**: transición `offline→online` en la ventana de apertura, o `online→offline` en la
     de cierre (o el primer/último ping *online* del día para AM/noche). Ese timestamp es

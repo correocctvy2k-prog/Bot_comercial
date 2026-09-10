@@ -375,7 +375,12 @@ function dailyEventsData(dateValue){
   for(const p of pingRowsDay){const arr=pingsByLoc.get(p.locationId)||[];arr.push({at:p.at,online:p.online});pingsByLoc.set(p.locationId,arr);}
   const eventsByLoc=new Map();
   for(const it of items){if(!it.locationId)continue;const arr=eventsByLoc.get(it.locationId)||[];arr.push({id:it.id,eventType:it.eventType,phase:it.phase,at:it.occurredAt||it.receivedAt,hasAttachment:!!it.payload.hasAttachment});eventsByLoc.set(it.locationId,arr);}
-  const coverageByLoc=new Map(siisRows.map(r=>[r.locationId,r.cctvCoverage==='NONE'?'PING_ONLY':'WITH_CCTV']));
+  // "Punto que notifica por CCTV" = ha enviado al menos un correo Dahua en los
+  // últimos 30 días. Tener cámaras (cctv_coverage_status) NO implica que el
+  // equipo mande avisos de detección; sin este filtro medio parque saldría como
+  // "inconsistente". spec 0010.
+  const notifyingLocs=new Set(db.prepare(`SELECT DISTINCT location_id FROM cctv_events WHERE source_system='EMAIL_DAHUA' AND location_id IS NOT NULL AND COALESCE(occurred_at,received_at)>=datetime('now','-30 days')`).all().map(r=>r.location_id));
+  const coverageByLoc=new Map(siisRows.map(r=>[r.locationId,notifyingLocs.has(r.locationId)?'WITH_CCTV':'PING_ONLY']));
   const nameByLoc=new Map(siisRows.map(r=>[r.locationId,r.name]));
   const interpIds=[...new Set([...pingsByLoc.keys(),...eventsByLoc.keys()])].filter(Boolean);
   const operationalDays=interpretDailyOperations(interpIds.map(locationId=>({
