@@ -37,20 +37,37 @@ Referencia: `spec.md` y `plan.md`.
 
 ## Verificación
 
-- [ ] `cd cctv-automation-final && npm test` verde.
-- [ ] Docker local: OFICINA PRINCIPAL — detecciones matinales = "Apertura mañana"; hourly sin
-      cierres < 13:00 ni aperturas > 17:00.
-- [ ] Inconsistencia forzada (ping sin evento) visible en el aviso.
-- [ ] `192.168.8.65`: rebuild `cctv-api` + `crm-frontend` (+ `restart crm-frontend`), revisión
-      con datos reales; ajuste de `CCTV_WIN_*` si hace falta.
+- [x] `cd cctv-automation-final && npm test` → **61/61**.
+- [x] Docker local + datos reales (2026-09-10): aperturas por hora solo 05:00-08:00 (cero de
+      noche); 23 inconsistencias; 303 puntos con apertura interpretada; evidencias del grid con
+      `operationalPhase` = "Apertura mañana".
+- [ ] Smoke **visual** en `127.0.0.1:3003` (requiere login) — badges, panel de inconsistencias,
+      "· tarde Nm", gráfico por hora.
+- [ ] `192.168.8.65`: rebuild `cctv-api` + `crm-frontend` (+ **`docker restart crm-frontend`**
+      tras el rebuild — nginx cachea la IP, lección del incidente 0008); revisión con datos
+      reales; ajustar `CCTV_WIN_*` por env si un punto real no encaja.
 
 ## Documentación (DoD)
 
-- [ ] `CHANGELOG.md` — "CCTV".
-- [ ] `docs/MODULO-ALARMAS-Y-CIERRE-PING.md`.
-- [ ] `LL` si aparece un tropiezo no obvio (p. ej. TZ / DST, o el corte diario descuadrando).
-- [ ] ADR: no aplica (sin cambio de esquema ni de arquitectura base).
+- [ ] `CHANGELOG.md` — sección "CCTV" (pendiente).
+- [x] `docs/MODULO-ALARMAS-Y-CIERRE-PING.md` — sección "4 ventanas + ping".
+- [ ] `LL` si aparece un tropiezo (candidato: el endpoint `events/daily` ya tardaba ~6 s; 0010
+      suma ~650 ms — deuda de rendimiento de `dailyEventsData`, no de 0010).
+- [ ] ADR: no aplica.
+
+## Estado para retomar (2026-09-10)
+
+- Rama `fix/0010-eventos-diarios-interpretacion` **pusheada** (7 commits `770012f`→`6ab976a`),
+  árbol limpio, **sin PR**. Sale de `main@0386cd8`, fast-forward.
+- **Tanda 1 completa y probada en local.** Falta: (1) smoke visual, (2) `CHANGELOG.md`,
+  (3) PR + deploy a `.65`, (4) decidir sobre la deuda de ~6 s del endpoint.
+- **Tanda 2 sin empezar**: `platform/operational-closure.js` cuenta `event_type='OPENING'/
+  'CLOSING'` crudos → alinear a las fases interpretadas (reutilizar `interpretDailyOperations`).
+- Definición clave confirmada por el usuario: `WITH_CCTV` = el punto envió ≥1 correo Dahua en
+  30 días (no `cctv_coverage_status`). El PING es el vector primario.
 
 ## Cierre
 
-- [ ] PR enlazando la spec (`npm test` anotado). Merge. Deploy y verificación en `.65`.
+- [ ] `CHANGELOG.md`. PR enlazando la spec (`npm test` 61/61 anotado; no hay CI para el
+      servicio). Merge. Deploy `cctv-api` + `crm-frontend` a `.65` y verificación.
+- [ ] Tanda 2 (corte diario) como PR aparte.
