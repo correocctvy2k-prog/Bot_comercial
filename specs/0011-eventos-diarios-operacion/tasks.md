@@ -27,23 +27,30 @@ Referencia: `spec.md` y `plan.md`. Estado: **Validada (2026-09-10) — en implem
 | Antigua Ppal cll31#32 29 | ANTIGUA PPAL II |
 | Antigua Ppal Rozo | ANTIGUA PRINCIPAL ROZO |
 
-## Pendiente (resolver durante la implementación)
+## Resuelto durante la implementación
 
-- [ ] ¿`motionBursts` se recorta del backend o se deja? (investigación previa del plan)
+- `motionBursts`: solo lo consumía Eventos diarios (panel "Movimiento consolidado" + modal
+  `bursts` muerto). Se quita el array de la respuesta; se conservan `summary.motionBursts`/
+  `noisyBursts` y la serie `hourly[].motion` del gráfico.
 
-## Tanda 1 — Legibilidad · frontend
+## Tanda 1 — Legibilidad · frontend ✅ (commit 017d3be)
 
-- [ ] Modal de evidencia: bloque "Detalle del aviso" (6-7 filas, omite vacías).
-- [ ] Escala tipográfica/iconos de las tarjetas de la vista (por breakpoint, design-system).
-- [ ] Smoke visual 1280 / 1920. `npm run build` verde.
+- [x] Modal de evidencia: bloque "Detalle del aviso" (rawEventType/channelRaw/alarm/subject/
+      sender/sourceIp/fase). Filas vacías omitidas. Columna más ancha (1.35/0.65).
+- [x] Escala tipográfica/iconos: grid de evidencias + lista "Señales CCTV de jornada".
+      Panel de inconsistencias se rehace en Tanda 3.
+- [x] `npm run build` verde. Smoke visual en el rebuild final.
 
-## Tanda 2 — Conciliación de identidades · backend + frontend
+## Tanda 2 — Conciliación de identidades · backend + frontend ✅
 
-- [ ] Script de limpieza puntual (dry-run + `--apply`), patrón `reconcile-email-identities-*`.
-- [ ] UI: panel "Identidades por conciliar" accionable (selector de punto + Vincular →
+- [x] `scripts/reconcile-eventos-diarios-pendientes-20260910.mjs` (dry-run + `--apply`).
+      Dry-run OK: 8 aliases resueltos.
+- [x] `EventIdentityCard` + panel "Identidades por conciliar" accionable (buscador + Vincular →
       `POST /api/cctv/events/identity/link`). Cuadro oculto si lista vacía.
-- [ ] Quitar panel "Movimiento consolidado" del frontend (+ recorte backend si aplica).
-- [ ] Correr limpieza en local; verificar cuadro vacío.
+- [x] Fuera "Movimiento consolidado" (+ `motionPointGroups`, modal `bursts`, configs muertas).
+      `motionBursts` recortado del backend.
+- [x] `refreshDailyEvents` cableado (`RealEvents onChanged`) para refresco tras vincular.
+- [ ] Correr limpieza con `--apply` en local + verificar cuadro vacío (en el rebuild final).
 
 ## Tanda 3 — Resolución de inconsistencias · backend + frontend
 

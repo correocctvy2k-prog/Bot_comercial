@@ -1476,14 +1476,6 @@ function EventInsightModal({ type, data, onClose, formatTime }) {
       title: "Aperturas y cierres observados",
       description: "Evidencia recibida por ubicación",
     },
-    bursts: {
-      title: "Ráfagas de movimiento",
-      description: "Actividad agrupada en ventanas de ocho minutos",
-    },
-    identity: {
-      title: "Identidades por conciliar",
-      description: "Alias que todavía no apuntan al catálogo canónico",
-    },
   }[type];
   if (!config) return null;
   return (
@@ -1552,56 +1544,6 @@ function EventInsightModal({ type, data, onClose, formatTime }) {
                       {formatTime(point.closing)}
                     </b>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {type === "bursts" && (
-            <div className="space-y-2">
-              {data.motionBursts.map((burst, index) => (
-                <div
-                  key={`${burst.from}-${index}`}
-                  className={`flex justify-between gap-4 rounded-xl border p-3 ${burst.noisy ? "border-amber-500/20 bg-amber-500/[.04]" : "border-white/[.07]"}`}
-                >
-                  <div>
-                    <b className="text-xs text-slate-200">{burst.location}</b>
-                    <p className="text-[9px] text-slate-500">
-                      {burst.channel} · {formatTime(burst.from)}–
-                      {formatTime(burst.to)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <b
-                      className={
-                        burst.noisy
-                          ? "text-xl text-amber-300"
-                          : "text-xl text-violet-300"
-                      }
-                    >
-                      {burst.count}
-                    </b>
-                    <p className="text-[9px] text-slate-500">activaciones</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {type === "identity" && (
-            <div className="space-y-2">
-              {data.identityPending.map((item) => (
-                <div
-                  key={item.name}
-                  className="flex items-center justify-between rounded-xl border border-amber-500/15 bg-amber-500/[.03] p-3"
-                >
-                  <div>
-                    <b className="text-xs text-slate-200">{item.name}</b>
-                    <p className="text-[9px] text-slate-500">
-                      {item.eventTypes.join(" · ")} · muestra {item.sampleUid}
-                    </p>
-                  </div>
-                  <span className="text-xl font-black text-amber-300">
-                    {item.total}
-                  </span>
                 </div>
               ))}
             </div>
@@ -1720,7 +1662,7 @@ function EventEvidenceModal({ event, onClose, formatTime }) {
   );
 }
 
-function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
+function RealEvents({ data, date, onDateChange, pointContext, search = "", onChanged }) {
   const [insight, setInsight] = useState(null),
     [evidence, setEvidence] = useState(null),
     [scheduleFilter, setScheduleFilter] = useState("ALL");
@@ -1946,19 +1888,6 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
     { name: "Con CCTV", value: data.siis?.withCctv || 0, color: "#60a5fa" },
     { name: "Sin CCTV", value: data.siis?.withoutCctv || 0, color: "#1e293b" },
   ];
-  const motionPointGroups = (() => {
-    const groups = new Map();
-    for (const burst of data.motionBursts || []) {
-      const key = burst.location || "Por identificar";
-      const row = groups.get(key) || { location:key, zone:burst.zone, count:0, channels:new Set(), from:burst.from, to:burst.to };
-      row.count += burst.count || 0;
-      if (burst.channel) row.channels.add(burst.channel);
-      if (new Date(burst.from) < new Date(row.from)) row.from = burst.from;
-      if (new Date(burst.to) > new Date(row.to)) row.to = burst.to;
-      groups.set(key,row);
-    }
-    return [...groups.values()].map(row=>({...row,channels:[...row.channels],noisy:row.count>=10})).filter(row=>matchesSearch(row.location,row.zone,...row.channels)).sort((a,b)=>b.count-a.count);
-  })();
   const traceItems = (() => {
     const result=[], groups=new Map();
     for (const item of data.items || []) {
@@ -2870,78 +2799,9 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-white/[.08] bg-card/40">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base">
-                      Movimiento consolidado
-                    </CardTitle>
-                    <CardDescription>
-                      Detecciones del día agrupadas por punto, sin duplicar cámaras
-                    </CardDescription>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className={
-                      motionPointGroups.some(row=>row.noisy)
-                        ? "border-amber-500/20 text-amber-300"
-                        : ""
-                    }
-                  >
-                    {motionPointGroups.filter(row=>row.noisy).length} con ráfaga
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="max-h-[430px] space-y-2 overflow-y-auto pr-1">
-                  {motionPointGroups.length ? (
-                    motionPointGroups.map((burst) => (
-                      <div
-                        key={burst.location}
-                        className={`flex items-center gap-3 rounded-xl border p-3 ${burst.noisy ? "border-amber-500/20 bg-amber-500/[.04]" : "border-white/[.07] bg-white/[.02]"}`}
-                      >
-                        <span
-                          className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg ${burst.noisy ? "bg-amber-500/10 text-amber-300" : "bg-violet-500/10 text-violet-300"}`}
-                        >
-                          <Activity size={20} />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex justify-between gap-3">
-                            <b className="truncate text-xs text-slate-200">
-                              {burst.location}
-                            </b>
-                            <b
-                              className={
-                                burst.noisy
-                                  ? "text-amber-300"
-                                  : "text-slate-300"
-                              }
-                            >
-                              {burst.count}
-                            </b>
-                          </div>
-                          <p className="truncate text-[9px] text-slate-500">
-                            {burst.channels.length} {burst.channels.length===1?'canal':'canales'} · {formatTime(burst.from)}–{formatTime(burst.to)}
-                          </p>
-                        </div>
-                        {burst.noisy && (
-                          <Badge className="bg-amber-500/10 text-amber-300 hover:bg-amber-500/10">
-                            Ráfaga
-                          </Badge>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <p className="py-12 text-center text-xs text-slate-500">
-                      No se observaron detecciones de movimiento.
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
           </div>
           <div className="order-5 grid gap-4 xl:grid-cols-[.8fr_1.2fr]">
+            {visibleIdentityPending.length > 0 && (
             <Card className="border-amber-500/15 bg-card/40">
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -2950,7 +2810,8 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
                       Identidades por conciliar
                     </CardTitle>
                     <CardDescription>
-                      Alias del correo que aún no apuntan al catálogo
+                      Alias del correo que aún no apuntan al catálogo. Vincúlalos
+                      aquí para que dejen de aparecer.
                     </CardDescription>
                   </div>
                   <Badge
@@ -2962,32 +2823,19 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="max-h-80 space-y-2 overflow-y-auto">
+                <div className="max-h-96 space-y-2 overflow-y-auto pr-1">
                   {visibleIdentityPending.map((item) => (
-                    <button
-                      type="button"
-                      onClick={() => setInsight("identity")}
+                    <EventIdentityCard
                       key={item.name}
-                      className="w-full rounded-xl border border-white/[.07] bg-white/[.02] p-3 text-left transition hover:border-amber-500/25 hover:bg-amber-500/[.035]"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <b className="block truncate text-xs text-slate-200">
-                            {item.name}
-                          </b>
-                          <p className="mt-1 truncate text-[9px] text-slate-500">
-                            {item.eventTypes
-                              .map((type) => labels[type] || type)
-                              .join(" · ")}
-                          </p>
-                        </div>
-                        <span className="text-right"><b className="block text-xl font-black text-amber-300">{item.total}</b><span className="text-[8px] font-bold text-amber-300/70">Revisar →</span></span>
-                      </div>
-                    </button>
+                      item={item}
+                      labels={labels}
+                      onLinked={onChanged}
+                    />
                   ))}
                 </div>
               </CardContent>
             </Card>
+            )}
             <Card className="border-white/[.08] bg-card/40">
               <CardHeader>
                 <CardTitle className="text-base">
@@ -3235,6 +3083,116 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
         formatTime={formatTime}
         onClose={() => setEvidence(null)}
       />
+    </div>
+  );
+}
+
+// spec 0011 · Tanda 2 — vincula un alias de correo (storeRaw) sin identidad a un
+// punto canónico desde la misma vista. Usa POST /api/cctv/events/identity/link.
+function EventIdentityCard({ item, labels, onLinked }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(item.name || "");
+  const [results, setResults] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState(null);
+  useEffect(() => {
+    if (!open) return;
+    const timer = setTimeout(
+      () =>
+        fetch(`${CCTV_API_BASE}/api/cctv/locations?search=${encodeURIComponent(query)}`)
+          .then((r) => r.json())
+          .then((data) => setResults(data.items || []))
+          .catch(() => setError("No fue posible consultar ubicaciones.")),
+      250,
+    );
+    return () => clearTimeout(timer);
+  }, [open, query]);
+  const link = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      const response = await fetch(`${CCTV_API_BASE}/api/cctv/events/identity/link`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Actor": "skylab-local-user" },
+        body: JSON.stringify({ alias: item.name, locationId: selected.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "No fue posible vincular");
+      setDone(result.canonicalName || selected.name);
+      setTimeout(() => onLinked?.(), 600);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+  if (done)
+    return (
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[.05] p-3 text-xs text-emerald-300">
+        <b>{item.name}</b> → {done}. Actualizando…
+      </div>
+    );
+  return (
+    <div className={`rounded-xl border ${open ? "border-blue-500/25" : "border-amber-500/15"} bg-white/[.02]`}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between gap-3 p-3 text-left"
+      >
+        <div className="min-w-0">
+          <b className="block truncate text-sm text-slate-200">{item.name}</b>
+          <p className="mt-0.5 truncate text-[11px] text-slate-500">
+            {item.eventTypes.map((type) => labels[type] || type).join(" · ")}
+          </p>
+        </div>
+        <span className="flex shrink-0 items-center gap-2 text-right">
+          <b className="block text-lg font-black text-amber-300">{item.total}</b>
+          <ArrowRight size={14} className={open ? "rotate-90 transition" : "transition"} />
+        </span>
+      </button>
+      {open && (
+        <div className="border-t border-white/[.06] p-3">
+          <Input
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSelected(null);
+            }}
+            placeholder="Nombre del punto, código SIIS o zona"
+            className="h-9 text-sm"
+          />
+          <div className="mt-2 max-h-40 space-y-1 overflow-y-auto">
+            {results.map((candidate) => (
+              <button
+                key={candidate.id}
+                type="button"
+                onClick={() => setSelected(candidate)}
+                className={`w-full rounded-md border p-2 text-left text-xs ${selected?.id === candidate.id ? "border-blue-500 bg-blue-500/10" : "border-white/[.06]"}`}
+              >
+                <b>{candidate.name}</b>
+                <p className="text-[11px] text-slate-500">
+                  {candidate.zone || "Sin zona"} · SIIS {candidate.code || "sin código"}
+                </p>
+              </button>
+            ))}
+          </div>
+          {error && <p className="mt-2 text-[11px] text-rose-300">{error}</p>}
+          <Button
+            size="sm"
+            className="mt-2 h-9 w-full text-xs"
+            disabled={!selected || saving}
+            onClick={link}
+          >
+            {saving
+              ? "Vinculando…"
+              : selected
+                ? `Vincular con ${selected.name}`
+                : "Selecciona un punto"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -4734,7 +4692,7 @@ function Overview() {
       )
       .catch(() => setPointContext({ points: [], schedules: [] }));
   }, []);
-  useEffect(() => {
+  const refreshDailyEvents = () =>
     fetch(`${CCTV_API_BASE}/api/cctv/events/daily?date=${eventDate}`, {
       cache: "no-store",
     })
@@ -4743,6 +4701,9 @@ function Overview() {
       .catch(() =>
         setApiError("No fue posible consultar los eventos diarios."),
       );
+  useEffect(() => {
+    refreshDailyEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventDate]);
   useEffect(() => {
     let active=true;
@@ -4942,6 +4903,7 @@ function Overview() {
               onDateChange={setEventDate}
               pointContext={pointContext}
               search={search}
+              onChanged={refreshDailyEvents}
             />
           </TabsContent>
           <TabsContent value="alarms" className="mt-0">
