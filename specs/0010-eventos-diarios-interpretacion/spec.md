@@ -27,10 +27,21 @@ La fusión CCTV + ping SIIS ya existe pero **solo en la vista de detalle de punt
 
 ## 2. Objetivo
 
-Que "Eventos diarios" interprete cada detección contra **cuatro ventanas operativas** y contra
-el **primer/último ping SIIS**, mostrando el evento real (apertura mañana, cierre mediodía,
-apertura tarde, cierre noche, o anomalía) en vez del `event_type` crudo — y detectando
-inconsistencias de configuración de las notificaciones CCTV.
+Que "Eventos diarios" interprete la operación de cada punto por **cuatro ventanas** usando el
+**ping SIIS como vector primario** y el CCTV como **apoyo / prueba visual**, mostrando el
+evento real (apertura mañana, cierre mediodía, apertura tarde, cierre noche, o anomalía) en
+vez del `event_type` crudo — y detectando inconsistencias de configuración de las
+notificaciones CCTV en los puntos que sí tienen cámara.
+
+### Salvedad clave (2026-09-10)
+
+- **No todos los puntos tienen CCTV que notifique por detección; todos sí tienen ping.**
+- **El ping SIIS es el primer vector de detección**; el CCTV es apoyo para prueba visual.
+- Se irán integrando más puntos con CCTV con el tiempo.
+- Por tanto: las fases (apertura/cierre) se derivan del **ping**; el evento CCTV se **adjunta**
+  como evidencia a la fase que corresponda. La "inconsistencia de configuración" solo aplica a
+  puntos con `cctv_coverage_status` ≠ `NONE` (los que deberían haber notificado y no lo
+  hicieron). Un punto sin CCTV es `PING_ONLY`, nunca una anomalía por "falta de detección".
 
 ## 3. Modelo operativo
 
@@ -50,25 +61,30 @@ Tolerancia ping↔evento: `CCTV_PING_EVENT_TOLERANCE_MIN` (por defecto 20 min).
 
 ### 4.1 Interpretación por punto y día (backend)
 
-Para cada punto y día, sobre las detecciones CCTV (cualquier tipo salvo
-`MOTION`/`MOVIMIENTO`/`DISCARDED` y fase `FIN`) y la serie de pings SIIS:
+Para cada punto y día, con la serie de **pings SIIS** (`stg_siis_locations.online` por
+`siis_sync_run`, ordenada) como base y las **detecciones CCTV** (cualquier tipo salvo
+`MOTION`/`MOVIMIENTO`/`DISCARDED` y fase `FIN`) como apoyo:
 
-- **Por cada una de las 4 ventanas**: la **primera** detección que cae dentro se interpreta
-  como el evento de esa fase (`APERTURA_MANANA`, etc.), sin importar su `event_type` original.
-- **Cruce con ping SIIS**:
-  - Si hay ping *online* dentro/antes de la ventana de apertura pero **no** hay detección CCTV
-    en esa ventana → `missingDetection: 'APERTURA_MANANA'` + `notificationConfigInconsistency`.
-  - Si hay detección CCTV de apertura pero el primer ping *online* es > tolerancia **antes** →
-    `notificationConfigInconsistency` (la notificación CCTV llega tarde respecto a la
-    operación real).
-  - Análogo para los cierres con el último ping *online* / la transición a *offline*.
-- **Primera detección del día en ventana de noche y sin ninguna detección matinal** →
-  `phase: 'CIERRE_NOCHE'`, `interpretation: 'CIERRE_SIN_APERTURA_DETECTADA'`; la apertura/
-  cierre reales se estiman con el primer/último ping.
-- **Detección fuera de las 4 ventanas** → `phase: 'FUERA_DE_VENTANA'` (anomalía; entra en
-  "requieren revisión"). Aquí caen los "cierres a las 7am / aperturas a las 20h" actuales.
-- **Apertura tardía / cierre temprano**: si la detección de apertura cae después del fin de su
-  ventana (o después del `custom_open_time` del punto, ver §4.3) → `lateBy: <min>`.
+- **`coverage`** por punto: `PING_ONLY` si `cctv_coverage_status='NONE'`; `WITH_CCTV` si
+  `ACTIVE`/`REPORTED_ACTIVE`.
+- **Por cada una de las 4 ventanas**, la fase se resuelve así:
+  - **Ping**: transición `offline→online` en la ventana de apertura, o `online→offline` en la
+    de cierre (o el primer/último ping *online* del día para AM/noche). Ese timestamp es
+    `phase.at` con `source: 'PING'`.
+  - **CCTV**: la **primera** detección CCTV que cae en la ventana (cualquier `event_type`) se
+    adjunta como `phase.evidence` (prueba visual). Si no hubo transición de ping pero sí
+    detección CCTV → `phase.at` = la detección, `source: 'CCTV'`.
+- **Inconsistencia de configuración** (solo `coverage='WITH_CCTV'`):
+  - Ping marca actividad en una ventana pero **no** hay detección CCTV → `missingDetection`
+    de esa fase + `notificationConfigInconsistency`.
+  - Hay detección CCTV pero desfasada del ping > `CCTV_PING_EVENT_TOLERANCE_MIN` →
+    `notificationConfigInconsistency` con el gap.
+- **Punto sin apertura**: no hay ping *online* en las ventanas de apertura pero sí actividad
+  nocturna → `interpretation: 'CIERRE_SIN_APERTURA'` (el punto se abrió sin registrarse).
+- **Detección/transición fuera de las 4 ventanas** → `anomalies[]` (entra en "requieren
+  revisión"). Aquí caen los "cierres a las 7am / aperturas a las 20h" que hoy confunden.
+- **Apertura tardía / cierre temprano**: si `phase.at` cae después del fin de su ventana (o
+  después del `custom_open_time` del punto, ver §4.3) → `lateBy: <min>`.
 
 Salida nueva en `dailyEventsData` (aditiva): por cada punto, un objeto
 `operationalDay = { date, phases: { APERTURA_MANANA: {...}, CIERRE_MEDIODIA: {...}, ... },
