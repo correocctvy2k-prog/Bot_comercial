@@ -1,6 +1,28 @@
 # Alarmas y cierre operativo por ping
 
-Fecha de implementación: 2026-08-27.
+Fecha de implementación: 2026-08-27. **Ampliado 2026-09-10 (spec 0010): "Eventos diarios"
+interpreta la jornada por 4 ventanas con el ping como vector primario.**
+
+## Eventos diarios: 4 ventanas + ping (spec 0010)
+
+- **El ping SIIS es el vector primario.** No todos los puntos tienen CCTV que notifique por
+  detección; todos tienen ping. El evento CCTV es **apoyo / prueba visual**.
+- Jornada partida, 4 ventanas (hora local Bogotá, configurables por env):
+  `CCTV_WIN_OPEN_AM=05:00-09:30`, `CCTV_WIN_CLOSE_MIDDAY=13:00-14:00`,
+  `CCTV_WIN_OPEN_PM=15:00-17:00`, `CCTV_WIN_CLOSE_PM=18:00-22:00`.
+  `CCTV_WIN_GRACE_MIN=150` (apertura tardía / cierre temprano); `CCTV_PING_EVENT_TOLERANCE_MIN=20`.
+- Por punto y día, `platform/operational-event-policy.js` → `interpretPointDay`:
+  - Fase resuelta por: **transición de ping** (offline↔online) → **evidencia CCTV** → **presencia
+    de ping** ("el monitoreo estaba activo").
+  - `notificationConfigInconsistency` (solo puntos `WITH_CCTV`): el ping indica operación en la
+    ventana pero el CCTV no notificó, o el aviso llegó > tolerancia respecto al ping. Un punto
+    `PING_ONLY` **nunca** es anomalía por falta de detección.
+  - Detección fuera de toda gracia → `anomalies[]` (aquí caen los "cierres a las 7am").
+  - `interpretation`: `NORMAL` / `CIERRE_SIN_APERTURA` / `SIN_ACTIVIDAD`; `lateBy` en minutos.
+- `GET /api/cctv/events/daily` gana `operationalDays[]`, `operationalWindows`,
+  `notificationInconsistencies[]` y `summary.{notificationInconsistencies, outOfWindowDetections,
+  cierreSinApertura, pointsWithOpening}`. `hourly.openings/closures` se cuentan por **fase
+  interpretada**, no por `event_type` crudo.
 
 ## Cierre observado
 

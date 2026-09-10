@@ -7,23 +7,28 @@ Referencia: `spec.md` y `plan.md`.
 - APERTURA_MANANA 05:00–09:30 · CIERRE_MEDIODIA 13:00–14:00 · APERTURA_TARDE 15:00–17:00 ·
   CIERRE_NOCHE 18:00–22:00. Tolerancia ping↔evento 20 min. Todo configurable por env.
 
-## Tanda 1 — interpretación + vista
+## Tanda 1 — interpretación + vista · HECHA (`eb9c634`, `46ebc98`, `ac39e87`)
 
-- [ ] `platform/window-config.js`: parseo `"HH:MM-HH:MM"` + defaults; lee `CCTV_WIN_*` y
-      `CCTV_PING_EVENT_TOLERANCE_MIN`.
-- [ ] `platform/operational-event-policy.js`: `interpretDailyOperations(events, pings, opts)`
-      → `{ phases, missingDetections, notificationConfigInconsistency, anomalies }` por punto/día.
-      Reglas: primera detección por ventana = esa fase; cruce con primer/último ping;
-      primera detección nocturna sin mañana = `CIERRE_SIN_APERTURA_DETECTADA`; fuera de las
-      4 ventanas = `FUERA_DE_VENTANA` (anomalía); `lateBy` si pasa el fin de ventana.
-- [ ] `api/server.js` `dailyEventsData`: consumir la interpretación; `phase`/`interpretation`/
-      `lateBy` en `evidenceItems` y `pointOperations`; `hourly` con series interpretadas;
-      `summary.notificationInconsistencies` + `summary.outOfWindow`.
-- [ ] `cctv-automation-final/.env.example`: 5 vars nuevas con sus defaults.
-- [ ] `tests/operational-event-policy.test.js`: 4+ casos nuevos.
-- [ ] `CctvModule.jsx`: badges por fase; gráfico por hora interpretado; aviso de
-      inconsistencias; "abrió tarde N min" vs `pointContext.schedules`.
+- [x] `platform/window-config.js`: parseo `"HH:MM-HH:MM"` + defaults + gracia
+      (`CCTV_WIN_GRACE_MIN=150`, recortada para no invadir la ventana vecina).
+- [x] `platform/operational-event-policy.js`: `interpretPointDay` / `interpretDailyOperations`.
+      **Ping = vector primario** (transición > evidencia CCTV > presencia de ping). Cruce con
+      ping para `notificationConfigInconsistency` (solo `WITH_CCTV`); `PING_ONLY` nunca es
+      anomalía por falta de detección. `lateBy`, `anomalies` (fuera de toda gracia),
+      `interpretation` (`NORMAL`/`CIERRE_SIN_APERTURA`/`SIN_ACTIVIDAD`).
+- [x] `api/server.js` `dailyEventsData`: arma input por punto (eventos + pings del día +
+      `cctv_coverage_status`), llama a `interpretDailyOperations`. `hourly.openings/closures`
+      por fase interpretada. `evidenceItems` con `operationalPhase`/`Label`/`Kind`/`lateBy`.
+      Respuesta gana `operationalDays[]`, `operationalWindows`, `notificationInconsistencies`,
+      `summary.{notificationInconsistencies,outOfWindowDetections,cierreSinApertura,pointsWithOpening}`.
+- [x] `cctv-automation-final/.env.example`: 6 vars nuevas.
+- [x] `tests/operational-event-policy.test.js`: +9 casos (**61/61**).
+- [x] `CctvModule.jsx`: `PHASE_BADGE` en el grid (+ "· tarde Nm"); panel "Inconsistencias de
+      notificación CCTV"; subtítulo del gráfico por hora. Build verde.
+- [x] Verificado con datos reales (BD local): 353 puntos, 285 con apertura interpretada,
+      2 inconsistencias (OFICINA PRINCIPAL con 69 min de desfase ping↔aviso).
 - [ ] `docs/MODULO-ALARMAS-Y-CIERRE-PING.md`: sección nueva.
+- [ ] Smoke visual en Docker local + prod.
 
 ## Tanda 2 — corte diario (posterior)
 
