@@ -1764,6 +1764,14 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
     DETECCION_HUMANA: "Detección humana",
     CABLE_TRAMPA: "Cable trampa",
   };
+  // spec 0010: badge por fase operativa interpretada (ping + ventanas).
+  const PHASE_BADGE = {
+    APERTURA_MANANA: { label: "Apertura mañana", icon: Store, tone: "text-emerald-300", badge: "bg-emerald-500/90" },
+    APERTURA_TARDE: { label: "Apertura tarde", icon: Store, tone: "text-teal-300", badge: "bg-teal-500/90" },
+    CIERRE_MEDIODIA: { label: "Cierre mediodía", icon: ShieldCheck, tone: "text-sky-300", badge: "bg-sky-500/90" },
+    CIERRE_NOCHE: { label: "Cierre noche", icon: ShieldCheck, tone: "text-blue-300", badge: "bg-blue-500/90" },
+    FUERA_DE_VENTANA: { label: "Fuera de ventana", icon: AlertTriangle, tone: "text-amber-300", badge: "bg-amber-500/90" },
+  };
   const icons = {
     OPENING: Store,
     CLOSING: ShieldCheck,
@@ -2545,7 +2553,7 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <CardTitle className="text-base">Actividad CCTV por hora</CardTitle>
-                    <CardDescription>Aperturas, cierres y movimiento sobre una escala exclusiva de eventos</CardDescription>
+                    <CardDescription>Aperturas y cierres por fase interpretada (ping + ventanas operativas); movimiento sobre escala de eventos</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -3008,6 +3016,48 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
               </CardContent>
             </Card>
           </div>
+          {(data.notificationInconsistencies || []).length > 0 && (
+            <Card className="order-3 border-amber-500/20 bg-amber-500/[.03]">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <AlertTriangle size={17} className="text-amber-300" />
+                      Inconsistencias de notificación CCTV
+                    </CardTitle>
+                    <CardDescription>
+                      El ping SIIS indica operación en la ventana pero el CCTV no notificó, o el
+                      aviso llegó muy desfasado del ping. El ping es el vector primario.
+                    </CardDescription>
+                  </div>
+                  <Badge variant="outline" className="border-amber-500/25 text-amber-300">
+                    {data.summary?.notificationInconsistencies || data.notificationInconsistencies.length} puntos
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                  {data.notificationInconsistencies.map((p) => (
+                    <div key={p.locationId} className="rounded-xl border border-amber-500/15 bg-white/[.02] p-3">
+                      <b className="block truncate text-xs text-slate-200">{p.name || "Punto"}</b>
+                      {p.missingDetections?.length ? (
+                        <p className="mt-1 text-[10px] text-slate-500">
+                          Sin detección CCTV: {p.missingDetections.map((k) => PHASE_BADGE[k]?.label || k).join(", ")}
+                        </p>
+                      ) : null}
+                      {Object.entries(p.phases || {})
+                        .filter(([, v]) => v && v.pingEventGapMin)
+                        .map(([k, v]) => (
+                          <p key={k} className="mt-1 text-[10px] text-amber-400/80">
+                            {PHASE_BADGE[k]?.label || k}: {v.pingEventGapMin} min entre ping y aviso CCTV
+                          </p>
+                        ))}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
           {(data.evidenceItems || []).length > 0 && (
             <Card className="order-4 border-blue-500/15 bg-card/40">
               <CardHeader>
@@ -3033,7 +3083,7 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   {evidenceItems.slice(0, 16).map((item) => {
                     const type = item.evidenceType || item.eventType;
-                    const config = {
+                    const config = PHASE_BADGE[item.operationalPhase] || {
                       OPENING: {
                         label: "Primera apertura",
                         icon: Store,
@@ -3096,6 +3146,7 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "" }) {
                           >
                             <Icon size={12} />
                             {config.label}
+                            {item.operationalLateBy > 0 && ` · tarde ${item.operationalLateBy}m`}
                           </span>
                           {item.burstCount && (
                             <span className="absolute bottom-2 right-2 rounded-md bg-black/75 px-2 py-1 text-[9px] font-bold text-white">
