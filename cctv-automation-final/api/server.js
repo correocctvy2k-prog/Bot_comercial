@@ -10,7 +10,8 @@ const { observerPolicy } = require('../platform/siis-observer-policy');
 const { scopeAudit } = require('../platform/project-scope');
 const { evidenceByLocation } = require('../platform/project-evidence');
 const { normalizeName } = require('../platform/normalize');
-const { isOperationalOpeningSignal, asOperationalOpeningEvidence, isOperationalOpeningEvidence } = require('../platform/operational-event-policy');
+const { isOperationalOpeningSignal, asOperationalOpeningEvidence, isOperationalOpeningEvidence, interpretDailyOperations } = require('../platform/operational-event-policy');
+const { loadWindowConfig } = require('../platform/window-config');
 const { runtimePaths, ensureRuntimeDirectories } = require('../config/runtime-paths');
 
 ensureRuntimeDirectories();
@@ -317,7 +318,8 @@ function dailyEventsData(dateValue){
   const targetsFor=item=>item.locationId&&(openingTargets.get(item.locationId)||[]).length?openingTargets.get(item.locationId):[{targetId:item.locationId,targetName:item.location,targetZone:item.zone,openingGroup:null}];
   const pointMap=new Map();for(const item of items.filter(row=>isOperationalOpeningSignal(row)||row.eventType==='CLOSING')){for(const target of targetsFor(item)){const key=target.targetId||`RAW:${item.payload.storeRaw||'UNKNOWN'}`;const point=pointMap.get(key)||{key,locationId:target.targetId,name:target.targetName||item.payload.storeRaw||'Por identificar',zone:target.targetZone||null,opening:null,openingSourceType:null,closing:null,linked:!!target.targetId,sharedOpeningGroup:target.openingGroup||null};const stamp=item.occurredAt||item.receivedAt;if(isOperationalOpeningSignal(item)&&(!point.opening||stamp<point.opening)){point.opening=stamp;point.openingSourceType=item.eventType;}if(item.eventType==='CLOSING'&&(!point.closing||stamp>point.closing))point.closing=stamp;pointMap.set(key,point);}}const pointOperations=[...pointMap.values()].map(point=>({...point,status:point.opening&&point.closing?'COMPLETE':point.opening?'OPEN_ONLY':'CLOSE_ONLY'})).sort((a,b)=>(a.status==='COMPLETE')-(b.status==='COMPLETE')||a.name.localeCompare(b.name));
   const motionGroups=new Map();for(const item of items.filter(row=>row.eventType==='MOTION')){const key=`${item.locationId||item.payload.storeRaw||'UNKNOWN'}|${item.payload.channelRaw||'NO_CHANNEL'}`;const list=motionGroups.get(key)||[];list.push(item);motionGroups.set(key,list);}const motionBursts=[];for(const group of motionGroups.values()){group.sort((a,b)=>new Date(a.occurredAt||a.receivedAt)-new Date(b.occurredAt||b.receivedAt));let burst=[];const close=()=>{if(!burst.length)return;const first=burst[0],last=burst[burst.length-1],representative=burst.find(item=>item.payload.hasAttachment)||first;motionBursts.push({location:first.location||first.payload.storeRaw||'Por identificar',zone:first.zone||null,channel:first.payload.channelRaw||'Sin canal',from:first.occurredAt||first.receivedAt,to:last.occurredAt||last.receivedAt,count:burst.length,noisy:burst.length>=10,linked:!!first.locationId,representativeEvent:representative});};for(const item of group){if(!burst.length){burst=[item];continue;}const gap=(new Date(item.occurredAt||item.receivedAt)-new Date(burst[burst.length-1].occurredAt||burst[burst.length-1].receivedAt))/60000;if(gap<=8)burst.push(item);else{close();burst=[item];}}close();}motionBursts.sort((a,b)=>b.count-a.count);
-  const hourly=Array.from({length:24},(_,hour)=>({hour:`${String(hour).padStart(2,'0')}:00`,events:0,openings:0,closures:0,motion:0}));for(const item of items){const stamp=item.occurredAt||item.receivedAt;if(!stamp)continue;const hour=Number(new Intl.DateTimeFormat('en-US',{timeZone:'America/Bogota',hour:'2-digit',hourCycle:'h23'}).format(new Date(stamp)));if(!hourly[hour])continue;hourly[hour].events++;if(item.eventType==='OPENING')hourly[hour].openings++;if(item.eventType==='CLOSING')hourly[hour].closures++;if(item.eventType==='MOTION')hourly[hour].motion++;}
+  // Las series openings/closures se rellenan más abajo con las fases interpretadas (spec 0010), no con el event_type crudo.
+  const hourly=Array.from({length:24},(_,hour)=>({hour:`${String(hour).padStart(2,'0')}:00`,events:0,openings:0,closures:0,motion:0}));for(const item of items){const stamp=item.occurredAt||item.receivedAt;if(!stamp)continue;const hour=Number(new Intl.DateTimeFormat('en-US',{timeZone:'America/Bogota',hour:'2-digit',hourCycle:'h23'}).format(new Date(stamp)));if(!hourly[hour])continue;hourly[hour].events++;if(item.eventType==='MOTION')hourly[hour].motion++;}
   const identityMap=new Map();for(const item of items.filter(row=>!row.locationId&&row.eventType!=='DISCARDED')){const name=item.payload.storeRaw||'Sin nombre en el correo';const row=identityMap.get(name)||{name,total:0,eventTypes:new Set(),sampleUid:item.sourceEventId};row.total++;row.eventTypes.add(item.eventType);identityMap.set(name,row);}const identityPending=[...identityMap.values()].map(row=>({...row,eventTypes:[...row.eventTypes]})).sort((a,b)=>b.total-a.total);
   const evidenceMap=new Map(),eventStamp=item=>new Date(item.occurredAt||item.receivedAt||0).getTime(),identityKey=item=>item.locationId||item.payload.storeRaw||'UNKNOWN';
   const interpretedOpeningEvidenceIds=new Set();
@@ -359,8 +361,92 @@ function dailyEventsData(dateValue){
   const siisKnown=siisRows.filter(row=>row.online!=null),siisOnline=siisKnown.filter(row=>row.online===1).length,siisOffline=siisKnown.filter(row=>row.online===0).length;
   const siisTimeline=db.prepare(`SELECT r.completed_at AS capturedAt,SUM(CASE WHEN s.online=1 THEN 1 ELSE 0 END) AS online,SUM(CASE WHEN s.online=0 THEN 1 ELSE 0 END) AS offline
     FROM siis_sync_runs r JOIN stg_siis_locations s ON s.sync_run_id=r.id WHERE r.status='SUCCESS' AND date(r.completed_at,'-5 hours')=? GROUP BY r.id,r.completed_at ORDER BY r.completed_at`).all(date);
-  const openingPoints=pointOperations.filter(row=>row.opening).length,closingPoints=pointOperations.filter(row=>row.closing).length,noisyBursts=motionBursts.filter(row=>row.noisy).length;
-  return {generatedAt:new Date().toISOString(),date,timeZone:'America/Bogota',summary:{...totals,recognized:categories.filter(row=>row.eventType!=='UNKNOWN'&&row.eventType!=='DISCARDED').reduce((n,row)=>n+row.total,0),discarded:categories.filter(row=>row.eventType==='DISCARDED').reduce((n,row)=>n+row.total,0),review:categories.filter(row=>row.severity==='REVIEW').reduce((n,row)=>n+row.total,0),identityPercent:totals.total?Math.round(totals.linked/totals.total*100):0,openingPoints,closingPoints,pairedPoints:pointOperations.filter(row=>row.status==='COMPLETE').length,motionBursts:motionBursts.length,noisyBursts},siis:{capturedAt:latestSiisRun?.capturedAt||null,runId:latestSiisRun?.id||null,total:siisRows.length,known:siisKnown.length,online:siisOnline,offline:siisOffline,unknown:siisRows.length-siisKnown.length,withCctv:siisRows.filter(row=>row.cctvCoverage==='ACTIVE').length,withoutCctv:siisRows.filter(row=>row.cctvCoverage!=='ACTIVE').length,onlineWithCctv:siisRows.filter(row=>row.online===1&&row.cctvCoverage==='ACTIVE').length,onlineWithoutCctv:siisRows.filter(row=>row.online===1&&row.cctvCoverage!=='ACTIVE').length},siisTimeline,operationalCoverage,categories,pointOperations,motionBursts:motionBursts.slice(0,30).map(({representativeEvent,...burst})=>burst),hourly,identityPending:identityPending.slice(0,30),evidenceItems,items:items.slice(0,100)};
+  const noisyBursts=motionBursts.filter(row=>row.noisy).length;
+  // openingPoints/closingPoints se calculan más abajo, tras recablear pointOperations
+  // a las fases interpretadas (spec 0010).
+
+  // ---- spec 0010: interpretación operativa por 4 ventanas + ping SIIS -----
+  // El ping es el vector primario (todos los puntos lo tienen); el evento CCTV
+  // se adjunta como prueba visual y sirve para detectar inconsistencias.
+  const winCfg=loadWindowConfig();
+  const pingRowsDay=db.prepare(`SELECT l.id AS locationId,r.completed_at AS at,s.online
+    FROM siis_sync_runs r JOIN stg_siis_locations s ON s.sync_run_id=r.id
+    JOIN locations l ON l.siis_code=s.siis_code AND l.active=1
+    WHERE r.status='SUCCESS' AND date(r.completed_at,'-5 hours')=? ORDER BY l.id,r.completed_at`).all(date);
+  const pingsByLoc=new Map();
+  for(const p of pingRowsDay){const arr=pingsByLoc.get(p.locationId)||[];arr.push({at:p.at,online:p.online});pingsByLoc.set(p.locationId,arr);}
+  const eventsByLoc=new Map();
+  for(const it of items){if(!it.locationId)continue;const arr=eventsByLoc.get(it.locationId)||[];arr.push({id:it.id,eventType:it.eventType,phase:it.phase,at:it.occurredAt||it.receivedAt,hasAttachment:!!it.payload.hasAttachment});eventsByLoc.set(it.locationId,arr);}
+  // "Punto que notifica por CCTV" = ha enviado al menos un correo Dahua en los
+  // últimos 30 días. Tener cámaras (cctv_coverage_status) NO implica que el
+  // equipo mande avisos de detección; sin este filtro medio parque saldría como
+  // "inconsistente". spec 0010.
+  const notifyingLocs=new Set(db.prepare(`SELECT DISTINCT location_id FROM cctv_events WHERE source_system='EMAIL_DAHUA' AND location_id IS NOT NULL AND COALESCE(occurred_at,received_at)>=datetime('now','-30 days')`).all().map(r=>r.location_id));
+  const coverageByLoc=new Map(siisRows.map(r=>[r.locationId,notifyingLocs.has(r.locationId)?'WITH_CCTV':'PING_ONLY']));
+  const nameByLoc=new Map(siisRows.map(r=>[r.locationId,r.name]));
+  const interpIds=[...new Set([...pingsByLoc.keys(),...eventsByLoc.keys()])].filter(Boolean);
+  const operationalDays=interpretDailyOperations(interpIds.map(locationId=>({
+    locationId,name:nameByLoc.get(locationId)||null,
+    coverage:coverageByLoc.get(locationId)||'PING_ONLY',
+    events:eventsByLoc.get(locationId)||[],pings:pingsByLoc.get(locationId)||[],
+  })),winCfg);
+  const opDayByLoc=new Map(operationalDays.map(d=>[d.locationId,d]));
+  // Cada evento operativo -> su fase interpretada (no solo el "representativo"),
+  // para que todas las detecciones del mismo punto en la ventana muestren el
+  // mismo badge y no su tipo crudo ("DESCONOCIDO"). spec 0010 / fix.
+  const winByName=winCfg.windows;
+  const evidencePhase=new Map();
+  for(const d of operationalDays)for(const[evId,ph]of Object.entries(d.eventPhases||{})){
+    if(ph==='FUERA_DE_VENTANA'){evidencePhase.set(evId,{phase:ph,label:'Fuera de ventana',kind:null,source:null,lateBy:0});continue;}
+    const w=winByName[ph],pv=d.phases[ph];
+    evidencePhase.set(evId,{phase:ph,label:(w&&w.label)||ph,kind:(w&&w.kind)||null,source:(pv&&pv.source)||null,lateBy:(pv&&pv.lateBy)||0});
+  }
+  for(const ev of evidenceItems){
+    const hit=evidencePhase.get(ev.id)||(ev.correlatedEventIds||[]).map(id=>evidencePhase.get(id)).find(Boolean);
+    if(hit){ev.operationalPhase=hit.phase;ev.operationalPhaseLabel=hit.label;ev.operationalPhaseKind=hit.kind;ev.operationalLateBy=hit.lateBy;}
+  }
+  // P1 (spec 0010): la lista "Señales CCTV de jornada" y sus KPIs
+  // (openingPoints/closingPoints/pairedPoints) usan las fases interpretadas, no el
+  // event_type crudo — de ahí salían los "cierres" a las 07:00. opening acepta
+  // presencia de ping (el punto operó esa mañana); closing exige evidencia real
+  // (transición de ping o correo CCTV). Un punto sin identidad no se puede
+  // interpretar -> se le retira el cierre crudo.
+  const phaseStamp=(p,presenceOk)=>(p&&p.at&&(presenceOk||p.source==='PING'||p.source==='CCTV'))?p.at:null;
+  for(const p of pointOperations){
+    const d=p.locationId?opDayByLoc.get(p.locationId):null;
+    if(d){
+      const op=d.phases.APERTURA_MANANA||d.phases.APERTURA_TARDE||null;
+      const cl=d.phases.CIERRE_NOCHE||d.phases.CIERRE_MEDIODIA||null;
+      p.opening=phaseStamp(op,true);
+      p.closing=phaseStamp(cl,false);
+      p.openingSource=(op&&op.source)||null;
+      p.closingSource=(cl&&cl.source)||null;
+      p.interpretation=d.interpretation;
+    }else if(!p.locationId){
+      p.closing=null;p.closingSource=null;
+    }
+    p.status=p.opening&&p.closing?'COMPLETE':p.opening?'OPEN_ONLY':p.closing?'CLOSE_ONLY':'NONE';
+  }
+  pointOperations.sort((a,b)=>(a.status==='COMPLETE')-(b.status==='COMPLETE')||a.name.localeCompare(b.name));
+  const openingPoints=pointOperations.filter(row=>row.opening).length;
+  const closingPoints=pointOperations.filter(row=>row.closing).length;
+  const hourOf=stamp=>Number(new Intl.DateTimeFormat('en-US',{timeZone:'America/Bogota',hour:'2-digit',hourCycle:'h23'}).format(new Date(stamp)));
+  // Solo cuentan fases con evidencia real (transición de ping o correo CCTV); la
+  // "presencia de ping" (monitoreo activo) no es una apertura/cierre detectados.
+  for(const d of operationalDays)for(const val of Object.values(d.phases)){if(!val||!val.at)continue;if(val.source!=='PING'&&val.source!=='CCTV')continue;const h=hourOf(val.at);if(!hourly[h])continue;if(val.kind==='OPEN')hourly[h].openings++;else hourly[h].closures++;}
+  // Resumen ligero por punto (sin adjuntar los objetos evidence/phase completos,
+  // que llevan el payload del correo -> respuesta enorme).
+  const slimPhase=(p)=>p&&{phase:p.phase,label:p.label,kind:p.kind,at:p.at,source:p.source,lateBy:p.lateBy,pingEventGapMin:p.pingEventGapMin||null};
+  const slimDay=(d)=>({locationId:d.locationId,name:d.name,coverage:d.coverage,interpretation:d.interpretation,notificationConfigInconsistency:d.notificationConfigInconsistency,missingDetections:d.missingDetections,anomalies:d.anomalies,phases:Object.fromEntries(Object.entries(d.phases).map(([k,v])=>[k,slimPhase(v)]))});
+  const notificationInconsistencies=operationalDays.filter(d=>d.notificationConfigInconsistency).map(slimDay);
+  const opSummary={
+    notificationInconsistencies:notificationInconsistencies.length,
+    outOfWindowDetections:operationalDays.reduce((n,d)=>n+d.anomalies.length,0),
+    cierreSinApertura:operationalDays.filter(d=>d.interpretation==='CIERRE_SIN_APERTURA').length,
+    pointsWithOpening:operationalDays.filter(d=>d.phases.APERTURA_MANANA||d.phases.APERTURA_TARDE).length,
+  };
+
+  return {generatedAt:new Date().toISOString(),date,timeZone:'America/Bogota',summary:{...totals,recognized:categories.filter(row=>row.eventType!=='UNKNOWN'&&row.eventType!=='DISCARDED').reduce((n,row)=>n+row.total,0),discarded:categories.filter(row=>row.eventType==='DISCARDED').reduce((n,row)=>n+row.total,0),review:categories.filter(row=>row.severity==='REVIEW').reduce((n,row)=>n+row.total,0),identityPercent:totals.total?Math.round(totals.linked/totals.total*100):0,openingPoints,closingPoints,pairedPoints:pointOperations.filter(row=>row.status==='COMPLETE').length,motionBursts:motionBursts.length,noisyBursts,...opSummary},operationalWindows:winCfg.windows,notificationInconsistencies:notificationInconsistencies.slice(0,60),siis:{capturedAt:latestSiisRun?.capturedAt||null,runId:latestSiisRun?.id||null,total:siisRows.length,known:siisKnown.length,online:siisOnline,offline:siisOffline,unknown:siisRows.length-siisKnown.length,withCctv:siisRows.filter(row=>row.cctvCoverage==='ACTIVE').length,withoutCctv:siisRows.filter(row=>row.cctvCoverage!=='ACTIVE').length,onlineWithCctv:siisRows.filter(row=>row.online===1&&row.cctvCoverage==='ACTIVE').length,onlineWithoutCctv:siisRows.filter(row=>row.online===1&&row.cctvCoverage!=='ACTIVE').length},siisTimeline,operationalCoverage,categories,pointOperations,motionBursts:motionBursts.slice(0,30).map(({representativeEvent,...burst})=>burst),hourly,identityPending:identityPending.slice(0,30),evidenceItems,items:items.slice(0,100)};
 }
 
 function visitorAnalytics(periodValue,dateValue){

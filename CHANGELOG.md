@@ -10,6 +10,32 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CCTV — "Eventos diarios" interpreta la jornada por ventanas operativas + ping
+`specs/0010-eventos-diarios-interpretacion/`
+- **Problema:** el `event_type` salía solo del nombre de la alarma, sin lógica horaria →
+  detecciones matinales como "DESCONOCIDO" siendo la apertura, y "cierres" a las 7 am.
+- **Interpretación (`platform/operational-event-policy.js`, `window-config.js`):** por punto y
+  día se resuelve la fase de la jornada con el **ping SIIS como vector primario** (transición
+  offline↔online), luego evidencia CCTV, luego presencia de ping. Ventanas configurables por env
+  (`CCTV_WIN_*`); el **cierre a mediodía viene desactivado** (se solapaba con la mañana y
+  marcaba un cierre falso a cientos de puntos que solo seguían online). `interpretPointDay`
+  devuelve `phases`, `eventPhases` (clasifica **cada** detección, no una representativa),
+  `anomalies`, `notificationConfigInconsistency` (solo `WITH_CCTV` = envió correo Dahua en 30 d)
+  e `interpretation`.
+- **`GET /api/cctv/events/daily`:** `hourly.openings/closures`, la lista `pointOperations` y sus
+  KPIs se calculan por fase interpretada, no por `event_type` crudo. El gráfico por hora solo
+  cuenta fases con evidencia real (transición de ping o correo CCTV); la *presencia* de ping no
+  es un cierre. Nuevos campos: `operationalWindows`, `notificationInconsistencies[]`,
+  `summary.{notificationInconsistencies,outOfWindowDetections,cierreSinApertura,pointsWithOpening}`.
+- **`CRM_Frontend/src/pages/CctvModule.jsx`:** badge por fase operativa en el grid de evidencias
+  (todas las detecciones de una apertura muestran "Apertura mañana", ya no "DESCONOCIDO"; máx.
+  3 tiles por punto), "· tarde Nm", panel "Inconsistencias de notificación CCTV", estado "Sin
+  señal en ventana" para puntos cuyas alarmas cayeron fuera de toda ventana.
+- Nuevas vars: `CCTV_WIN_OPEN_AM`, `CCTV_WIN_OPEN_PM`, `CCTV_WIN_CLOSE_PM`,
+  `CCTV_WIN_CLOSE_MIDDAY` (vacía = desactivada), `CCTV_WIN_GRACE_MIN`,
+  `CCTV_PING_EVENT_TOLERANCE_MIN`. `cctv-automation-final`: `npm test` 64/64 (sin CI).
+- **Deuda conocida:** `GET /api/cctv/events/daily` tarda ~6 s (previo a 0010; 0010 suma ~0,6 s).
+
 ### CCTV / Mantenimiento — "Ejecución del programa" en vivo desde la API de Trello
 `specs/0008-cctv-mantenimiento-refresco/`
 - **Bug:** la vista "Ejecución del programa" mostraba datos de hace días mientras el dashboard

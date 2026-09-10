@@ -1,6 +1,38 @@
 # Alarmas y cierre operativo por ping
 
-Fecha de implementación: 2026-08-27.
+Fecha de implementación: 2026-08-27. **Ampliado 2026-09-10 (spec 0010): "Eventos diarios"
+interpreta la jornada por ventanas operativas con el ping como vector primario.**
+
+## Eventos diarios: ventanas operativas + ping (spec 0010)
+
+- **El ping SIIS es el vector primario.** No todos los puntos tienen CCTV que notifique por
+  detección; todos tienen ping. El evento CCTV es **apoyo / prueba visual**.
+- Jornada partida (hora local Bogotá, configurables por env):
+  `CCTV_WIN_OPEN_AM=05:00-09:30`, `CCTV_WIN_OPEN_PM=15:00-17:00`, `CCTV_WIN_CLOSE_PM=18:00-22:00`.
+  El **cierre a mediodía** (`CCTV_WIN_CLOSE_MIDDAY`) viene **desactivado**: casi ninguna tienda
+  cierra a mediodía y su ventana con gracia se solapaba con la mañana, marcando un cierre falso
+  a cientos de puntos que solo seguían online. Se activa por env si un punto real lo necesita.
+  `CCTV_WIN_GRACE_MIN=150` (apertura tardía / cierre temprano); `CCTV_PING_EVENT_TOLERANCE_MIN=20`.
+- Por punto y día, `platform/operational-event-policy.js` → `interpretPointDay`:
+  - **Apertura** resuelta por: transición de ping (offline→online) → evidencia CCTV → presencia
+    de ping ("el monitoreo estaba activo esa mañana").
+  - **Cierre** resuelto solo por: transición de ping (online→offline) o evidencia CCTV. La mera
+    *presencia* de ping online en la ventana **no** es un cierre — es evidencia de lo contrario.
+  - `eventPhases[eventId]` clasifica **cada** detección operativa del día por su ventana, no solo
+    una representativa (antes el resto de detecciones del punto salían con su tipo crudo,
+    "DESCONOCIDO", aunque fueran parte de la misma apertura).
+  - `notificationConfigInconsistency` (solo puntos `WITH_CCTV`): el ping indica operación en la
+    ventana pero el CCTV no notificó, o el aviso llegó > tolerancia respecto al ping. Un punto
+    `PING_ONLY` **nunca** es anomalía por falta de detección.
+  - Detección fuera de toda gracia → `anomalies[]` (aquí caen los "cierres a las 7am").
+  - `interpretation`: `NORMAL` / `CIERRE_SIN_APERTURA` / `SIN_ACTIVIDAD`; `lateBy` en minutos.
+  - `WITH_CCTV` = el punto envió ≥1 correo Dahua en 30 días (no `cctv_coverage_status`).
+- `GET /api/cctv/events/daily`: `operationalWindows`, `notificationInconsistencies[]` (slim) y
+  `summary.{notificationInconsistencies, outOfWindowDetections, cierreSinApertura,
+  pointsWithOpening}`. `hourly.openings/closures`, la lista `pointOperations` y sus KPIs
+  (`openingPoints`/`closingPoints`/`pairedPoints`) se calculan por **fase interpretada**, no por
+  `event_type` crudo; el gráfico por hora solo cuenta fases con evidencia real (transición de
+  ping o correo CCTV), no la presencia de ping.
 
 ## Cierre observado
 
