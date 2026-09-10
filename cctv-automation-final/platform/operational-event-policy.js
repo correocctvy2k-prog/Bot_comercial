@@ -33,29 +33,36 @@ function isOperationalOpeningEvidence(event) {
 // -------------------------------------------------------------------------
 
 const BOGOTA_TZ = 'America/Bogota';
+// Construir Intl.DateTimeFormat es caro; se reutiliza una sola instancia y se
+// cachea el resultado por timestamp (dailyEventsData llama esto cientos de miles
+// de veces sobre ~350 puntos).
+const _bogotaFmt = new Intl.DateTimeFormat('en-US', {
+  timeZone: BOGOTA_TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+});
+const _minutesCache = new Map();
 
 /** Minutos del día (hora local Bogotá) de un timestamp. */
 function localMinutes(value) {
   if (!value) return null;
+  if (_minutesCache.has(value)) return _minutesCache.get(value);
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: BOGOTA_TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-  }).formatToParts(d);
+  if (Number.isNaN(d.getTime())) { _minutesCache.set(value, null); return null; }
+  const parts = _bogotaFmt.formatToParts(d);
   const h = Number(parts.find((p) => p.type === 'hour')?.value);
   const m = Number(parts.find((p) => p.type === 'minute')?.value);
-  return h * 60 + m;
+  const out = h * 60 + m;
+  if (_minutesCache.size > 20000) _minutesCache.clear();
+  _minutesCache.set(value, out);
+  return out;
 }
 
 const stampOf = (x) => x?.at || x?.occurredAt || x?.receivedAt || null;
 
 /** Señal de ping para una ventana: transición hacia el estado esperado dentro de
- *  la ventana; si no hay transición, el primer/último ping online en la ventana. */
-function pingSignalForWindow(pings, win) {
-  const rows = [...(pings || [])]
-    .filter((p) => stampOf(p) != null)
-    .sort((a, b) => new Date(stampOf(a)) - new Date(stampOf(b)));
-  if (!rows.length) return null;
+ *  la ventana; si no hay transición, el primer/último ping online en la ventana.
+ *  `rows` debe venir ya ordenado ascendente por timestamp. */
+function pingSignalForWindow(rows, win) {
+  if (!rows || !rows.length) return null;
 
   const online = (p) => p.online === 1 || p.online === true;
 
@@ -96,6 +103,9 @@ function interpretPointDay(point, cfg) {
   const events = (point.events || []).filter(isOperationalEvent)
     .filter((e) => stampOf(e) != null)
     .sort((a, b) => new Date(stampOf(a)) - new Date(stampOf(b)));
+  const pings = (point.pings || [])
+    .filter((p) => stampOf(p) != null)
+    .sort((a, b) => new Date(stampOf(a)) - new Date(stampOf(b)));
 
   const phases = {};
   const missingDetections = [];
@@ -119,7 +129,7 @@ function interpretPointDay(point, cfg) {
 
   for (const [name, win] of Object.entries(windows)) {
     const gwin = graceWindows[name];
-    const ping = pingSignalForWindow(point.pings, gwin);
+    const ping = pingSignalForWindow(pings, gwin);
     const evidence = events.find((e) => inWindow(localMinutes(stampOf(e)), gwin)) || null;
 
     // Preferencia de fuente para el timestamp de la fase:
