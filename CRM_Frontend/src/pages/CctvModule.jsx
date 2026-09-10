@@ -1665,7 +1665,15 @@ function EventEvidenceModal({ event, onClose, formatTime }) {
 function RealEvents({ data, date, onDateChange, pointContext, search = "", onChanged }) {
   const [insight, setInsight] = useState(null),
     [evidence, setEvidence] = useState(null),
-    [scheduleFilter, setScheduleFilter] = useState("ALL");
+    [scheduleFilter, setScheduleFilter] = useState("ALL"),
+    [focusPoint, setFocusPoint] = useState(null);
+  useEffect(() => {
+    if (!focusPoint) return;
+    const el = document.getElementById(`jornada-pt-${focusPoint}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const timer = setTimeout(() => setFocusPoint(null), 2200);
+    return () => clearTimeout(timer);
+  }, [focusPoint]);
   if (!data)
     return (
       <div className="py-20 text-center text-muted-foreground">
@@ -2740,7 +2748,8 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "", onCha
                     visiblePointOperations.map((point) => (
                       <div
                         key={point.key}
-                        className={`rounded-xl border p-3 ${point.status === "COMPLETE" ? "border-emerald-500/15 bg-emerald-500/[.035]" : "border-amber-500/15 bg-amber-500/[.035]"}`}
+                        id={`jornada-pt-${point.locationId || point.key}`}
+                        className={`rounded-xl border p-3 transition ${focusPoint && (point.locationId === focusPoint) ? "border-cyan-400/60 bg-cyan-500/[.06] ring-2 ring-cyan-400/40" : point.status === "COMPLETE" ? "border-emerald-500/15 bg-emerald-500/[.035]" : "border-amber-500/15 bg-amber-500/[.035]"}`}
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex min-w-0 items-center gap-3">
@@ -2889,6 +2898,11 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "", onCha
               </CardContent>
             </Card>
           </div>
+          <ZoneBoards
+            boards={data.zoneBoards}
+            formatTime={formatTime}
+            onFocusPoint={setFocusPoint}
+          />
           {((data.notificationInconsistencies || []).length > 0 ||
             (data.notificationsInFollowUp || []).length > 0) && (
             <Card className="order-3 border-amber-500/20 bg-amber-500/[.03]">
@@ -3198,6 +3212,77 @@ function EventIdentityCard({ item, labels, onLinked }) {
         </div>
       )}
     </div>
+  );
+}
+
+// spec 0011 · Tanda 4 — tableros por zona: cada cubo es un punto, el color su estado del día.
+const ZONE_STATE_META = {
+  ON_TIME: { label: "A tiempo", color: "bg-emerald-500" },
+  LATE: { label: "Abrió tarde", color: "bg-amber-500" },
+  CLOSED: { label: "Cerró", color: "bg-blue-500" },
+  IDLE: { label: "Sin actividad", color: "bg-slate-600" },
+  ANOMALY: { label: "Anomalía", color: "bg-rose-500" },
+};
+const ZONE_STATE_ORDER = ["ANOMALY", "LATE", "CLOSED", "ON_TIME", "IDLE"];
+
+function ZoneBoards({ boards, formatTime, onFocusPoint }) {
+  if (!boards?.length) return null;
+  return (
+    <Card className="order-2 border-white/[.08] bg-card/40">
+      <CardHeader>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="text-base">Estado por zona</CardTitle>
+            <CardDescription>
+              Cada cubo es un punto; el color es su estado operativo del día
+            </CardDescription>
+          </div>
+          <div className="flex flex-wrap gap-x-3 gap-y-1">
+            {ZONE_STATE_ORDER.map((k) => (
+              <span key={k} className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                <i className={`h-2.5 w-2.5 rounded-[3px] ${ZONE_STATE_META[k].color}`} />
+                {ZONE_STATE_META[k].label}
+              </span>
+            ))}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {boards.map((b) => (
+            <div
+              key={b.zone || "__none__"}
+              className="rounded-xl border border-white/[.08] bg-white/[.02] p-3"
+            >
+              <div className="flex items-center justify-between">
+                <b className="text-sm text-slate-200">{b.zone || "Sin zona"}</b>
+                <span className="text-[11px] text-slate-500">{b.total} puntos</span>
+              </div>
+              <div className="mt-1 flex flex-wrap gap-x-2.5 gap-y-0.5 text-[10px] text-slate-500">
+                {ZONE_STATE_ORDER.filter((k) => b.counts[k]).map((k) => (
+                  <span key={k}>
+                    {ZONE_STATE_META[k].label} {b.counts[k]}
+                  </span>
+                ))}
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {b.points.map((p) => (
+                  <button
+                    key={p.locationId}
+                    type="button"
+                    onClick={() => onFocusPoint?.(p.locationId)}
+                    title={`${p.name || "Punto"} · ${ZONE_STATE_META[p.state].label}${
+                      p.openingAt ? ` · abrió ${formatTime(p.openingAt)}` : ""
+                    }${p.lateBy > 0 ? ` (tarde ${p.lateBy} min)` : ""}`}
+                    className={`h-4 w-4 rounded-[3px] ${ZONE_STATE_META[p.state].color} opacity-90 transition hover:opacity-100 hover:ring-2 hover:ring-white/40`}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

@@ -13,6 +13,7 @@ const { normalizeName } = require('../platform/normalize');
 const { isOperationalOpeningSignal, asOperationalOpeningEvidence, isOperationalOpeningEvidence, interpretDailyOperations } = require('../platform/operational-event-policy');
 const { loadWindowConfig } = require('../platform/window-config');
 const { normalizeResolveInput, loadActiveResolutions, insertResolution, reopenResolutions } = require('../platform/notification-resolutions');
+const { buildZoneBoards } = require('../platform/zone-boards');
 const { runtimePaths, ensureRuntimeDirectories } = require('../config/runtime-paths');
 
 ensureRuntimeDirectories();
@@ -387,6 +388,7 @@ function dailyEventsData(dateValue){
   const resolutions=loadActiveResolutions(db,date);
   const coverageByLoc=new Map(siisRows.map(r=>[r.locationId,(resolutions.pingOnlyForced.has(r.locationId)||!notifyingLocs.has(r.locationId))?'PING_ONLY':'WITH_CCTV']));
   const nameByLoc=new Map(siisRows.map(r=>[r.locationId,r.name]));
+  const zoneByLoc=new Map(siisRows.map(r=>[r.locationId,r.zone||null]));
   const interpIds=[...new Set([...pingsByLoc.keys(),...eventsByLoc.keys()])].filter(Boolean);
   const operationalDays=interpretDailyOperations(interpIds.map(locationId=>({
     locationId,name:nameByLoc.get(locationId)||null,
@@ -445,16 +447,19 @@ function dailyEventsData(dateValue){
   // silenciados esa fecha). Los PING_ONLY forzados ya no marcan inconsistencia.
   const notificationInconsistencies=operationalDays.filter(d=>d.notificationConfigInconsistency&&!resolutions.followUp.has(d.locationId)&&!resolutions.silenced.has(d.locationId)).map(slimDay);
   const notificationsInFollowUp=operationalDays.filter(d=>resolutions.followUp.has(d.locationId)).map(slimDay);
+  // spec 0011: tableros por zona (cubos de estado), sobre los operationalDays ya calculados.
+  const zoneBoards=buildZoneBoards(operationalDays,zoneByLoc);
   const opSummary={
     notificationInconsistencies:notificationInconsistencies.length,
     notificationsInFollowUp:notificationsInFollowUp.length,
     notificationsResolved:resolutions.count,
+    zones:zoneBoards.length,
     outOfWindowDetections:operationalDays.reduce((n,d)=>n+d.anomalies.length,0),
     cierreSinApertura:operationalDays.filter(d=>d.interpretation==='CIERRE_SIN_APERTURA').length,
     pointsWithOpening:operationalDays.filter(d=>d.phases.APERTURA_MANANA||d.phases.APERTURA_TARDE).length,
   };
 
-  return {generatedAt:new Date().toISOString(),date,timeZone:'America/Bogota',summary:{...totals,recognized:categories.filter(row=>row.eventType!=='UNKNOWN'&&row.eventType!=='DISCARDED').reduce((n,row)=>n+row.total,0),discarded:categories.filter(row=>row.eventType==='DISCARDED').reduce((n,row)=>n+row.total,0),review:categories.filter(row=>row.severity==='REVIEW').reduce((n,row)=>n+row.total,0),identityPercent:totals.total?Math.round(totals.linked/totals.total*100):0,openingPoints,closingPoints,pairedPoints:pointOperations.filter(row=>row.status==='COMPLETE').length,motionBursts:motionBursts.length,noisyBursts,...opSummary},operationalWindows:winCfg.windows,notificationInconsistencies:notificationInconsistencies.slice(0,60),notificationsInFollowUp:notificationsInFollowUp.slice(0,60),siis:{capturedAt:latestSiisRun?.capturedAt||null,runId:latestSiisRun?.id||null,total:siisRows.length,known:siisKnown.length,online:siisOnline,offline:siisOffline,unknown:siisRows.length-siisKnown.length,withCctv:siisRows.filter(row=>row.cctvCoverage==='ACTIVE').length,withoutCctv:siisRows.filter(row=>row.cctvCoverage!=='ACTIVE').length,onlineWithCctv:siisRows.filter(row=>row.online===1&&row.cctvCoverage==='ACTIVE').length,onlineWithoutCctv:siisRows.filter(row=>row.online===1&&row.cctvCoverage!=='ACTIVE').length},siisTimeline,operationalCoverage,categories,pointOperations,hourly,identityPending:identityPending.slice(0,30),evidenceItems,items:items.slice(0,100)};
+  return {generatedAt:new Date().toISOString(),date,timeZone:'America/Bogota',summary:{...totals,recognized:categories.filter(row=>row.eventType!=='UNKNOWN'&&row.eventType!=='DISCARDED').reduce((n,row)=>n+row.total,0),discarded:categories.filter(row=>row.eventType==='DISCARDED').reduce((n,row)=>n+row.total,0),review:categories.filter(row=>row.severity==='REVIEW').reduce((n,row)=>n+row.total,0),identityPercent:totals.total?Math.round(totals.linked/totals.total*100):0,openingPoints,closingPoints,pairedPoints:pointOperations.filter(row=>row.status==='COMPLETE').length,motionBursts:motionBursts.length,noisyBursts,...opSummary},operationalWindows:winCfg.windows,notificationInconsistencies:notificationInconsistencies.slice(0,60),notificationsInFollowUp:notificationsInFollowUp.slice(0,60),zoneBoards,siis:{capturedAt:latestSiisRun?.capturedAt||null,runId:latestSiisRun?.id||null,total:siisRows.length,known:siisKnown.length,online:siisOnline,offline:siisOffline,unknown:siisRows.length-siisKnown.length,withCctv:siisRows.filter(row=>row.cctvCoverage==='ACTIVE').length,withoutCctv:siisRows.filter(row=>row.cctvCoverage!=='ACTIVE').length,onlineWithCctv:siisRows.filter(row=>row.online===1&&row.cctvCoverage==='ACTIVE').length,onlineWithoutCctv:siisRows.filter(row=>row.online===1&&row.cctvCoverage!=='ACTIVE').length},siisTimeline,operationalCoverage,categories,pointOperations,hourly,identityPending:identityPending.slice(0,30),evidenceItems,items:items.slice(0,100)};
 }
 
 function visitorAnalytics(periodValue,dateValue){

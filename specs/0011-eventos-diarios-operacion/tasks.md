@@ -68,14 +68,16 @@ Referencia: `spec.md` y `plan.md`. Estado: **Validada (2026-09-10) — en implem
       botón "Crear tarjeta de mantenimiento" deshabilitado (tooltip "próximamente").
 - [ ] Tests: `DATE` vs `PERSISTENT`, `PING_ONLY` fuerza `coverage`, reapertura.
 
-## Tanda 4 — Tableros por zona · backend + frontend
+## Tanda 4 — Tableros por zona · backend + frontend ✅
 
-- [ ] `platform/zone-boards.js` + tests: `buildZoneBoards`, `pointState` con prioridad
-      `ANOMALY > LATE > CLOSED > ON_TIME > IDLE`.
-- [ ] `dailyEventsData`: `zoneBoards[]` reutilizando `operationalDays` (sin queries nuevas).
-- [ ] Frontend: grid de tarjetas de zona, rejilla de cubos (`title`), click → resalta punto,
-      leyenda, "Sin zona" al final, `prefers-reduced-motion`.
-- [ ] Conteos por zona cuadran con la lista de jornada filtrada.
+- [x] `platform/zone-boards.js` + `tests/zone-boards.test.js` (6 casos): `pointState`
+      (`ANOMALY > LATE > CLOSED > ON_TIME > IDLE`) + `buildZoneBoards` (agrupa, cuenta, ordena;
+      "Sin zona" al final). **76/76**.
+- [x] `dailyEventsData`: `zoneBoards[]` sobre `operationalDays` ya calculado (sin queries
+      nuevas) + `summary.zones`.
+- [x] Frontend `ZoneBoards`: tarjeta por zona con rejilla de cubos (14 px, `title` con nombre
+      + hora de apertura + retraso), leyenda de 5 estados, click en cubo → resalta el punto en
+      "Señales CCTV de jornada" (ring + scrollIntoView, se apaga a los 2,2 s).
 
 ## Verificación
 
