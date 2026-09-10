@@ -10,6 +10,34 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CCTV — "Eventos diarios" como consola operativa (zona, conciliación, resolución)
+`specs/0011-eventos-diarios-operacion/`
+- **Tarjeta de evidencia ampliada:** muestra el detalle del correo Dahua — **Evento de alarma**
+  (`payload.rawEventType`), **Canal de entrada** (`channelRaw`), **Alarma** (`alarm`), fase
+  interpretada + retraso, asunto, remitente, IP. Filas vacías se omiten.
+- **Legibilidad:** sube un escalón la tipografía y los iconos de las tarjetas de la vista.
+- **Conciliar identidades desde la vista:** el panel "Identidades por conciliar" trae un
+  buscador de punto canónico + Vincular (`POST /api/cctv/events/identity/link`); al vincular
+  refresca la vista y el cuadro se oculta al llegar a 0. Limpieza puntual de los 8 pendientes
+  con `scripts/reconcile-eventos-diarios-pendientes-20260910.mjs`.
+- **Fuera "Movimiento consolidado":** panel eliminado; `dailyEventsData` deja de devolver el
+  array `motionBursts` (se conservan `summary.motionBursts`/`noisyBursts` y la serie
+  `hourly[].motion` del gráfico).
+- **Resolver inconsistencias de notificación CCTV:** tabla nueva `cctv_notification_resolutions`
+  (`platform/schema.sql`, idempotente) + `platform/notification-resolutions.js`. Tres opciones
+  por punto: **Solo ping** (`PING_ONLY`, persistente → fuerza `coverage=PING_ONLY`), **Cámara
+  sin notificar** (`MISCONFIGURED_NO_NOTIFY`, persistente → sub-lista "En seguimiento"),
+  **Falso positivo hoy** (`FALSE_POSITIVE`, solo esa fecha). Rutas
+  `POST /api/cctv/notifications/:locationId/resolve` y `.../reopen` (`x-actor`, `audit_log`).
+  Respuesta gana `notificationsInFollowUp[]` y `summary.{notificationsInFollowUp,notificationsResolved}`.
+- **Tableros por zona:** `dailyEventsData` gana `zoneBoards[]` (`platform/zone-boards.js`, sobre
+  los `operationalDays` de spec 0010, sin consultas nuevas). Una tarjeta por zona con cubos de
+  5 estados — 🟢 a tiempo · 🟡 abrió tarde · 🔵 cerró · ⚪ sin actividad · 🔴 anomalía —
+  (prioridad `ANOMALY > LATE > CLOSED > ON_TIME > IDLE`); "Sin zona" es un tablero propio.
+  Click en un cubo resalta el punto en "Señales CCTV de jornada".
+- `cctv-automation-final`: `npm test` **76/76** (sin CI). Migración de esquema: la tabla se
+  crea en el arranque; hacer backup del `.db` antes del deploy a `.65`.
+
 ### CCTV — "Eventos diarios" interpreta la jornada por ventanas operativas + ping
 `specs/0010-eventos-diarios-interpretacion/`
 - **Problema:** el `event_type` salía solo del nombre de la alarma, sin lógica horaria →

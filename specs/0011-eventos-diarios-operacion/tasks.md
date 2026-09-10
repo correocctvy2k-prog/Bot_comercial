@@ -81,18 +81,30 @@ Referencia: `spec.md` y `plan.md`. Estado: **Validada (2026-09-10) — en implem
 
 ## Verificación
 
-- [ ] `cd cctv-automation-final && npm test` verde (anotar número en el PR; sin CI).
-- [ ] Docker local con datos reales: los 5 puntos de la spec §4.
-- [ ] `192.168.8.65`: backup `.db` → migración → rebuild `cctv-api`+`crm-frontend` →
-      `docker restart crm-frontend` → limpieza de identidades una vez → verificación.
+- [x] `cd cctv-automation-final && npm test` → **76/76**.
+- [x] Docker local (rebuild `cctv-api`+`crm-frontend` + `restart crm-frontend`):
+  - `identityPending: 0` tras correr el script `--apply` (340 eventos revinculados).
+  - `zoneBoards`: 8 zonas; conteos sanos (PALMIRA 149 pts, etc.).
+  - `motionBursts` fuera de la respuesta; `summary.motionBursts` conservado.
+  - `evidenceItems[].payload` trae `rawEventType`/`alarm`/`channelRaw`.
+  - `POST /resolve` (MISCONFIGURED) → inconsistencies 33→32, followUp 0→1, resolved 0→1;
+    `POST /reopen` → 1, estado restaurado.
+- [ ] Smoke **visual** en `127.0.0.1:3003` (requiere login): detalle del correo en la tarjeta
+      ampliada, panel de identidades vacío, resolución de inconsistencias + "En seguimiento",
+      tableros de zona + click en cubo.
+- [ ] `192.168.8.65`: **backup del `.db`** → rebuild `cctv-api`+`crm-frontend` →
+      `docker restart crm-frontend` → correr `reconcile-eventos-diarios-pendientes-20260910.mjs
+      --apply` una vez → verificación.
 
 ## Documentación (DoD)
 
-- [ ] `CHANGELOG.md` (sección CCTV, `[No publicado]`).
-- [ ] `docs/MODULO-ALARMAS-Y-CIERRE-PING.md` (resolución de inconsistencias + estados de zona).
-- [ ] `specs/README.md` fila 0011 + estados.
-- [ ] Lección aprendida si hay tropiezo (candidato: migración SQLite en prod).
+- [x] `CHANGELOG.md` (sección CCTV, `[No publicado]`).
+- [x] `docs/MODULO-ALARMAS-Y-CIERRE-PING.md` (resolución de inconsistencias + estados de zona).
+- [x] `specs/README.md` fila 0011 (Validada).
+- [ ] Lección aprendida si hay tropiezo (candidato: migración SQLite en prod — de momento sin
+      incidente, la tabla se crea idempotente al arranque).
 
 ## Cierre
 
-- [ ] PR `feat/0011` → `main` enlazando la spec. Merge. Deploy a `.65` + verificación.
+- [ ] PR `feat/0011` → `main` enlazando la spec (`npm test` 76/76; sin CI). Merge. Deploy a
+      `.65` + verificación.
