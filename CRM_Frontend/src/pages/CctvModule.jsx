@@ -1662,6 +1662,23 @@ function EventEvidenceModal({ event, onClose, formatTime }) {
   );
 }
 
+// spec 0011 (ajuste tras hallazgos 2026-09-11) — de dónde sale una hora de apertura/cierre en
+// "Señales CCTV de jornada": la tarjeta dice "CCTV" pero casi siempre es ping SIIS (el vector
+// primario, spec 0010). Se rotula la fuente para no presentar una conexión de red como si
+// fuera una detección de cámara.
+const SOURCE_LABEL = {
+  CCTV: { label: "Evidencia CCTV", tone: "text-emerald-400" },
+  PING: { label: "Ping SIIS", tone: "text-sky-400" },
+  PING_PRESENCE: { label: "Presencia de ping", tone: "text-slate-500" },
+};
+function SourceTag({ source }) {
+  const meta = SOURCE_LABEL[source];
+  if (!meta) return null;
+  return (
+    <p className={`mt-0.5 text-[10px] font-semibold ${meta.tone}`}>{meta.label}</p>
+  );
+}
+
 function RealEvents({ data, date, onDateChange, pointContext, search = "", onChanged }) {
   const [insight, setInsight] = useState(null),
     [evidence, setEvidence] = useState(null),
@@ -2734,7 +2751,8 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "", onCha
                       Señales CCTV de jornada
                     </CardTitle>
                     <CardDescription>
-                      Primera apertura y último cierre técnico por punto
+                      Primera apertura y último cierre por punto — la fuente de cada hora
+                      (ping SIIS o evidencia CCTV) se indica debajo del dato
                     </CardDescription>
                   </div>
                   <Badge variant="outline">
@@ -2778,6 +2796,9 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "", onCha
                               <b className="text-sm text-emerald-300">
                                 {formatTime(point.opening)}
                               </b>
+                              {point.opening && (
+                                <SourceTag source={point.openingSource} />
+                              )}
                             </div>
                             <div>
                               <p className="text-[11px] text-slate-500">
@@ -2786,6 +2807,9 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "", onCha
                               <b className="text-sm text-blue-300">
                                 {formatTime(point.closing)}
                               </b>
+                              {point.closing && (
+                                <SourceTag source={point.closingSource} />
+                              )}
                             </div>
                           </div>
                           <Badge variant="outline" className={point.status === "COMPLETE" ? "border-emerald-500/20 text-emerald-300" : "border-amber-500/20 text-amber-300"}>
@@ -2973,12 +2997,29 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "", onCha
               <CardContent>
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   {(() => {
-                    // Máx. 3 tiles por punto: un punto con muchas cámaras (p. ej.
-                    // OFICINA PRINCIPAL) llenaba la rejilla con decenas de
-                    // detecciones de la misma apertura.
+                    const pointKey = (item) => item.locationId || item.location || item.payload?.storeRaw || item.id;
+                    const stampOf = (item) => new Date(item.occurredAt || item.receivedAt || 0).getTime();
+                    const isOpeningPhase = (item) => item.operationalPhase === "APERTURA_MANANA" || item.operationalPhase === "APERTURA_TARDE";
+                    // Ajuste 2026-09-11: un punto ruidoso puede disparar varias alarmas reales
+                    // dentro de la misma ventana de apertura y cada una queda bien clasificada
+                    // ("Apertura mañana"), pero mostrarlas todas da la impresión de que el punto
+                    // "abrió varias veces". Para apertura se muestra solo la más temprana por
+                    // punto y fase; el resto de detecciones sigue disponible en el detalle del
+                    // punto, no se pierde.
+                    const earliestOpening = new Map(); // `${point}|${phase}` -> item más temprano
+                    for (const item of evidenceItems) {
+                      if (!isOpeningPhase(item)) continue;
+                      const k = `${pointKey(item)}|${item.operationalPhase}`;
+                      const current = earliestOpening.get(k);
+                      if (!current || stampOf(item) < stampOf(current)) earliestOpening.set(k, item);
+                    }
+                    const keepOpeningIds = new Set([...earliestOpening.values()].map((item) => item.id));
+                    // Para el resto (cierres, movimiento, alarmas...) se conserva el tope de 3
+                    // tiles por punto: un punto con muchas cámaras no debe llenar la rejilla.
                     const perPoint = new Map();
                     return evidenceItems.filter((item) => {
-                      const k = item.locationId || item.location || item.payload?.storeRaw || item.id;
+                      if (isOpeningPhase(item)) return keepOpeningIds.has(item.id);
+                      const k = pointKey(item);
                       const n = perPoint.get(k) || 0;
                       if (n >= 3) return false;
                       perPoint.set(k, n + 1);
