@@ -172,3 +172,33 @@ test('apertura fuera de toda gracia (03:00) = anomalía, sin fase', () => {
   assert.equal(r.phases.APERTURA_MANANA, null);
   assert.equal(r.anomalies.length, 1);
 });
+
+// --- spec 0012: horario real por punto (customSchedule) afina lateBy -----------------
+
+test('con horario real, "a tiempo" se mide contra el horario del punto, no la ventana global', () => {
+  // ventana global AM termina a las 09:30 (570 min); el punto abre normalmente a las 07:00 (420 min)
+  const r = interpretPointDay({
+    locationId: 'X', name: 'X', coverage: 'PING_ONLY', customSchedule: { openMin: 420, closeMin: 1260 },
+    events: [],
+    pings: [{ at: T('06:30'), online: 0 }, { at: T('07:15'), online: 1 }], // dentro de la ventana global, pero 15 min tarde para el punto
+  }, CFG);
+  assert.equal(r.phases.APERTURA_MANANA.lateBy, 15); // 07:15 vs 07:00 real, no vs 09:30 global
+});
+
+test('con horario real, cierre temprano se mide contra el cierre del punto', () => {
+  const r = interpretPointDay({
+    locationId: 'X', name: 'X', coverage: 'PING_ONLY', customSchedule: { openMin: 420, closeMin: 1260 }, // cierra 21:00
+    events: [],
+    pings: [{ at: T('20:30'), online: 1 }, { at: T('20:40'), online: 0 }], // cerró 20:40, 20 min antes de lo real
+  }, CFG);
+  assert.equal(r.phases.CIERRE_NOCHE.lateBy, 20);
+});
+
+test('sin horario real, se mantiene el comportamiento de la ventana global', () => {
+  const r = interpretPointDay({
+    locationId: 'X', name: 'X', coverage: 'PING_ONLY',
+    events: [],
+    pings: [{ at: T('06:30'), online: 0 }, { at: T('07:15'), online: 1 }],
+  }, CFG);
+  assert.equal(r.phases.APERTURA_MANANA.lateBy, 0); // 07:15 está dentro de la ventana global 05:00-09:30
+});

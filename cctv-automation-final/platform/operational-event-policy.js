@@ -146,8 +146,17 @@ function interpretPointDay(point, cfg) {
     if (at == null) { phases[name] = null; continue; }
 
     const atMin = localMinutes(at);
-    const lateBy = win.kind === 'OPEN' && atMin > win.endMin ? atMin - win.endMin
-      : win.kind === 'CLOSE' && atMin < win.startMin ? win.startMin - atMin
+    // spec 0012: si el punto trae horario real (Supabase puntos_venta.custom_open_time/
+    // custom_close_time, cacheado en crm_point_schedules), "a tiempo" se mide contra ESE
+    // horario para APERTURA_MANANA/CIERRE_NOCHE — los dos eventos con horario declarado —
+    // en vez del fin de la ventana global. El resto de fases sigue con la ventana global.
+    const customRef = name === 'APERTURA_MANANA' ? point.customSchedule?.openMin
+      : name === 'CIERRE_NOCHE' ? point.customSchedule?.closeMin
+        : null;
+    const openRef = customRef != null ? customRef : win.endMin;
+    const closeRef = customRef != null ? customRef : win.startMin;
+    const lateBy = win.kind === 'OPEN' && atMin > openRef ? atMin - openRef
+      : win.kind === 'CLOSE' && atMin < closeRef ? closeRef - atMin
         : 0;
 
     const phase = { phase: name, label: win.label, kind: win.kind, at, source, lateBy, evidence };
