@@ -1196,7 +1196,7 @@ function Zones() {
             <CardHeader>
               <div className="flex justify-between">
                 <div>
-                  <CardTitle>{z.name}</CardTitle>
+                  <CardTitle className="text-base">{z.name}</CardTitle>
                   <CardDescription>
                     {z.devices} dispositivos · {z.channels} canales
                   </CardDescription>
@@ -1671,11 +1671,18 @@ const SOURCE_LABEL = {
   PING: { label: "Ping SIIS", tone: "text-sky-400" },
   PING_PRESENCE: { label: "Presencia de ping", tone: "text-slate-500" },
 };
-function SourceTag({ source }) {
+function SourceTag({ source, ip }) {
   const meta = SOURCE_LABEL[source];
   if (!meta) return null;
+  // Los 2 últimos octetos como referencia técnica rápida del equipo — el ping SIIS
+  // solo trae online/offline, no IP; se toma la del NVR/DVR del punto.
+  const isPing = source === "PING" || source === "PING_PRESENCE";
+  const octets = isPing && ip ? ip.split(".").slice(-2).join(".") : null;
   return (
-    <p className={`mt-0.5 text-[10px] font-semibold ${meta.tone}`}>{meta.label}</p>
+    <p className={`mt-0.5 text-[10px] font-semibold ${meta.tone}`}>
+      {meta.label}
+      {octets && <span className="text-slate-600"> · .{octets}</span>}
+    </p>
   );
 }
 
@@ -2793,22 +2800,40 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "", onCha
                               <p className="text-[11px] text-slate-500">
                                 Apertura
                               </p>
-                              <b className="text-sm text-emerald-300">
-                                {formatTime(point.opening)}
-                              </b>
-                              {point.opening && (
-                                <SourceTag source={point.openingSource} />
+                              {point.opening ? (
+                                <>
+                                  <b className="text-sm text-emerald-300">
+                                    {formatTime(point.opening)}
+                                  </b>
+                                  <SourceTag
+                                    source={point.openingSource}
+                                    ip={point.deviceIp}
+                                  />
+                                </>
+                              ) : (
+                                <span className="text-sm text-slate-600">
+                                  Sin hora
+                                </span>
                               )}
                             </div>
                             <div>
                               <p className="text-[11px] text-slate-500">
                                 Cierre
                               </p>
-                              <b className="text-sm text-blue-300">
-                                {formatTime(point.closing)}
-                              </b>
-                              {point.closing && (
-                                <SourceTag source={point.closingSource} />
+                              {point.closing ? (
+                                <>
+                                  <b className="text-sm text-blue-300">
+                                    {formatTime(point.closing)}
+                                  </b>
+                                  <SourceTag
+                                    source={point.closingSource}
+                                    ip={point.deviceIp}
+                                  />
+                                </>
+                              ) : (
+                                <span className="text-sm text-slate-600">
+                                  Sin hora
+                                </span>
                               )}
                             </div>
                           </div>
@@ -3709,7 +3734,7 @@ function RealProject({ project, support, onChanged, onRegister }) {
         <Card className="relative overflow-hidden border-blue-400/[.12] bg-gradient-to-br from-card/60 via-card/40 to-blue-950/20 shadow-xl shadow-slate-950/20">
           <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-blue-400/40 to-transparent" />
           <CardHeader>
-            <CardTitle>Radiografía de ejecución del programa</CardTitle>
+            <CardTitle className="text-base">Radiografía de ejecución del programa</CardTitle>
             <CardDescription>
               Avance confirmado y señal de cobertura en una lectura integrada.
             </CardDescription>
@@ -4602,7 +4627,7 @@ function SourceHealth({ syncStatus }) {
   const config={EMAIL:{icon:Radio,tone:'text-blue-300',surface:'bg-blue-500/10'},SIIS:{icon:Activity,tone:'text-cyan-300',surface:'bg-cyan-500/10'},TRELLO:{icon:Wrench,tone:'text-violet-300',surface:'bg-violet-500/10'}};
   const state={HEALTHY:{label:'Al día',dot:'bg-emerald-400',text:'text-emerald-300'},STALE:{label:'Atrasada',dot:'bg-amber-400',text:'text-amber-300'},ERROR:{label:'Con error',dot:'bg-rose-400',text:'text-rose-300'},NO_DATA:{label:'Sin datos',dot:'bg-slate-500',text:'text-slate-400'}};
   const age=value=>value==null?'sin ejecución':value<2?'hace un momento':value<60?`hace ${value} min`:`hace ${Math.floor(value/60)} h`;
-  return <Card className="overflow-hidden border-border/80 bg-card/60 backdrop-blur-xl"><CardHeader className="border-b border-border/60 pb-3"><div className="flex items-center justify-between gap-3"><div><CardTitle className="text-base font-black uppercase tracking-wide">Salud de las fuentes</CardTitle><CardDescription>Última evidencia de ejecución del ciclo operativo</CardDescription></div><Badge variant="outline" className={syncStatus.overall==='HEALTHY'?'border-emerald-500/20 text-emerald-300':'border-amber-500/20 text-amber-300'}>{syncStatus.overall==='HEALTHY'?'Todo sincronizado':'Requiere atención'}</Badge></div></CardHeader><CardContent className="grid gap-3 pt-4 md:grid-cols-3">{syncStatus.sources.map(source=>{const visual=config[source.key],Icon=visual.icon,status=state[source.status]||state.NO_DATA;return <div key={source.key} className="rounded-xl border border-border/70 bg-muted/40 p-4"><div className="flex items-start justify-between"><span className={`grid h-12 w-12 place-items-center rounded-xl ${visual.surface} ${visual.tone}`}><Icon size={25}/></span><span className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wide ${status.text}`}><i className={`h-1.5 w-1.5 rounded-full ${status.dot}`}/>{status.label}</span></div><div className="mt-3 flex items-end justify-between gap-2"><div><b className="text-base text-foreground">{source.name}</b><p className="mt-1 text-[11px] font-medium text-muted-foreground">{age(source.ageMinutes)} · {source.cadenceMinutes?`cada ${source.cadenceMinutes} min`:'fuera de horario'}</p></div><div className="text-right"><b className="text-2xl font-black text-foreground">{source.detail}</b><p className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">{source.detailLabel}</p></div></div><p className="mt-3 border-t border-border/60 pt-2 text-[10px] text-muted-foreground">{source.message}</p></div>})}</CardContent></Card>;
+  return <Card className="overflow-hidden border-border/80 bg-card/60 backdrop-blur-xl"><CardHeader className="border-b border-border/60 pb-3"><div className="flex items-center justify-between gap-3"><div><CardTitle className="text-sm font-black uppercase tracking-wide">Salud de las fuentes</CardTitle><CardDescription>Última evidencia de ejecución del ciclo operativo</CardDescription></div><Badge variant="outline" className={syncStatus.overall==='HEALTHY'?'border-emerald-500/20 text-emerald-300':'border-amber-500/20 text-amber-300'}>{syncStatus.overall==='HEALTHY'?'Todo sincronizado':'Requiere atención'}</Badge></div></CardHeader><CardContent className="grid gap-3 pt-4 md:grid-cols-3">{syncStatus.sources.map(source=>{const visual=config[source.key],Icon=visual.icon,status=state[source.status]||state.NO_DATA;return <div key={source.key} className="rounded-xl border border-border/70 bg-muted/40 p-4"><div className="flex items-start justify-between"><span className={`grid h-12 w-12 place-items-center rounded-xl ${visual.surface} ${visual.tone}`}><Icon size={25}/></span><span className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wide ${status.text}`}><i className={`h-1.5 w-1.5 rounded-full ${status.dot}`}/>{status.label}</span></div><div className="mt-3 flex items-end justify-between gap-2"><div><b className="text-base text-foreground">{source.name}</b><p className="mt-1 text-[11px] font-medium text-muted-foreground">{age(source.ageMinutes)} · {source.cadenceMinutes?`cada ${source.cadenceMinutes} min`:'fuera de horario'}</p></div><div className="text-right"><b className="text-2xl font-black text-foreground">{source.detail}</b><p className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">{source.detailLabel}</p></div></div><p className="mt-3 border-t border-border/60 pt-2 text-[10px] text-muted-foreground">{source.message}</p></div>})}</CardContent></Card>;
 }
 
 function ApiHealthIndicator({ health, checking, onCheck }) {
@@ -5238,7 +5263,7 @@ function Detail({ code }) {
         <TabsContent value="summary" className="grid lg:grid-cols-3 gap-4">
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle>Identidad operativa</CardTitle>
+              <CardTitle className="text-base">Identidad operativa</CardTitle>
             </CardHeader>
             <CardContent className="grid sm:grid-cols-2 gap-3">
               <Fact label="Código SIIS" value={p.code} mono />

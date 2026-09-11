@@ -417,6 +417,16 @@ function dailyEventsData(dateValue){
   // (transición de ping o correo CCTV). Un punto sin identidad no se puede
   // interpretar -> se le retira el cierre crudo.
   const phaseStamp=(p,presenceOk)=>(p&&p.at&&(presenceOk||p.source==='PING'||p.source==='CCTV'))?p.at:null;
+  // Ajuste 2026-09-11: el ping SIIS no trae IP (solo online/offline); para dar una
+  // referencia técnica concreta cuando la fuente es ping se toma la IP del equipo
+  // de red del punto (prioridad NVR > DVR > otros; un punto puede tener varios
+  // activos, se toma uno solo para no prometer más precisión de la que hay).
+  const deviceIpByLoc=new Map();
+  for(const row of db.prepare(`SELECT location_id,ip_address,asset_type FROM assets
+      WHERE location_id IS NOT NULL AND ip_address IS NOT NULL AND ip_address!=''
+      ORDER BY location_id, CASE asset_type WHEN 'NVR' THEN 0 WHEN 'DVR' THEN 1 ELSE 2 END, id`).all()){
+    if(!deviceIpByLoc.has(row.location_id)) deviceIpByLoc.set(row.location_id,row.ip_address);
+  }
   for(const p of pointOperations){
     const d=p.locationId?opDayByLoc.get(p.locationId):null;
     if(d){
@@ -431,6 +441,7 @@ function dailyEventsData(dateValue){
       p.closing=null;p.closingSource=null;
     }
     p.status=p.opening&&p.closing?'COMPLETE':p.opening?'OPEN_ONLY':p.closing?'CLOSE_ONLY':'NONE';
+    p.deviceIp=p.locationId?(deviceIpByLoc.get(p.locationId)||null):null;
   }
   pointOperations.sort((a,b)=>(a.status==='COMPLETE')-(b.status==='COMPLETE')||a.name.localeCompare(b.name));
   const openingPoints=pointOperations.filter(row=>row.opening).length;
