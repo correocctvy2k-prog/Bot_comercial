@@ -573,6 +573,16 @@ CREATE TABLE IF NOT EXISTS cctv_notification_resolutions (
 );
 CREATE INDEX IF NOT EXISTS idx_notif_resolutions_active ON cctv_notification_resolutions(active, resolution, location_id);
 
+-- spec 0012: horario real por punto, cacheado desde Supabase puntos_venta
+-- (custom_open_time/custom_close_time) para que interpretPointDay ajuste "abrió tarde"
+-- contra el horario real en vez de solo la ventana global. scripts/sync-crm-points.js lo puebla.
+CREATE TABLE IF NOT EXISTS crm_point_schedules (
+  location_id TEXT PRIMARY KEY REFERENCES locations(id),
+  open_min INTEGER,
+  close_min INTEGER,
+  synced_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_stg_inventory_key ON stg_inventory_locations(import_run_id, location_name_key);
 CREATE INDEX IF NOT EXISTS idx_stg_maintenance_key ON stg_maintenance_points(import_run_id, point_name_key);
 CREATE INDEX IF NOT EXISTS idx_events_location_time ON cctv_events(location_id, occurred_at);
