@@ -10,6 +10,24 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CCTV / Mantenimiento — "Ejecución del programa" en vivo desde la API de Trello
+`specs/0008-cctv-mantenimiento-refresco/`
+- **Bug:** la vista "Ejecución del programa" mostraba datos de hace días mientras el dashboard
+  de soporte sí se actualizaba. Causa: `import-trello-support.js` llama a la API de Trello, pero
+  `import-trello-maintenance.js` leía `skylab-tareas.db` (caché del backend de "Table Trello",
+  que no corre en el `.65` y no se puede calentar desde el contenedor `cctv-operational-worker`).
+- **Fix:** `platform/import-trello-maintenance.js` reescrito para leer la lista
+  `MANTENIMIENTO CCTV 2026` **directo de la API de Trello** (board `TRELLO_MAINTENANCE_BOARD_ID`,
+  por defecto el board "Mantenimientos"), con el mismo patrón que soporte. Se elimina
+  `scripts/refresh-trello-maintenance-cache.js` y su paso en `run-operational-cycle.js`.
+  Esquema de BD y contrato de `GET /api/cctv/maintenance` sin cambios; frontend sin cambios.
+  Nuevas vars: `TRELLO_MAINTENANCE_BOARD_ID`, `TRELLO_MAINTENANCE_LIST_NAME` (opcional).
+
+## [2026-09-11] — specs 0010 y 0011 a producción
+
+Merge de los PR #4 (`857f83f`) y #5 (`4004cce`, `main` actual) y rebuild de `cctv-api` +
+`crm-frontend` en `192.168.8.65`. `npm test` 76/76.
+
 ### CCTV — "Eventos diarios" como consola operativa (zona, conciliación, resolución)
 `specs/0011-eventos-diarios-operacion/`
 - **Tarjeta de evidencia ampliada:** muestra el detalle del correo Dahua — **Evento de alarma**
@@ -63,19 +81,6 @@ a una versión fechada.
   `CCTV_WIN_CLOSE_MIDDAY` (vacía = desactivada), `CCTV_WIN_GRACE_MIN`,
   `CCTV_PING_EVENT_TOLERANCE_MIN`. `cctv-automation-final`: `npm test` 64/64 (sin CI).
 - **Deuda conocida:** `GET /api/cctv/events/daily` tarda ~6 s (previo a 0010; 0010 suma ~0,6 s).
-
-### CCTV / Mantenimiento — "Ejecución del programa" en vivo desde la API de Trello
-`specs/0008-cctv-mantenimiento-refresco/`
-- **Bug:** la vista "Ejecución del programa" mostraba datos de hace días mientras el dashboard
-  de soporte sí se actualizaba. Causa: `import-trello-support.js` llama a la API de Trello, pero
-  `import-trello-maintenance.js` leía `skylab-tareas.db` (caché del backend de "Table Trello",
-  que no corre en el `.65` y no se puede calentar desde el contenedor `cctv-operational-worker`).
-- **Fix:** `platform/import-trello-maintenance.js` reescrito para leer la lista
-  `MANTENIMIENTO CCTV 2026` **directo de la API de Trello** (board `TRELLO_MAINTENANCE_BOARD_ID`,
-  por defecto el board "Mantenimientos"), con el mismo patrón que soporte. Se elimina
-  `scripts/refresh-trello-maintenance-cache.js` y su paso en `run-operational-cycle.js`.
-  Esquema de BD y contrato de `GET /api/cctv/maintenance` sin cambios; frontend sin cambios.
-  Nuevas vars: `TRELLO_MAINTENANCE_BOARD_ID`, `TRELLO_MAINTENANCE_LIST_NAME` (opcional).
 
 ## [2026-09-09] — spec 0009 a producción
 
