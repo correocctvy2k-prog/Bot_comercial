@@ -389,11 +389,16 @@ function dailyEventsData(dateValue){
   const coverageByLoc=new Map(siisRows.map(r=>[r.locationId,(resolutions.pingOnlyForced.has(r.locationId)||!notifyingLocs.has(r.locationId))?'PING_ONLY':'WITH_CCTV']));
   const nameByLoc=new Map(siisRows.map(r=>[r.locationId,r.name]));
   const zoneByLoc=new Map(siisRows.map(r=>[r.locationId,r.zone||null]));
+  // spec 0012: horario real por punto (Supabase puntos_venta, cacheado por sync-crm-points.js)
+  // afina "abrió tarde"/"cerró temprano" contra el horario del punto, no solo la ventana global.
+  const customScheduleByLoc=new Map(db.prepare('SELECT location_id,open_min,close_min FROM crm_point_schedules').all()
+    .map(r=>[r.location_id,{openMin:r.open_min,closeMin:r.close_min}]));
   const interpIds=[...new Set([...pingsByLoc.keys(),...eventsByLoc.keys()])].filter(Boolean);
   const operationalDays=interpretDailyOperations(interpIds.map(locationId=>({
     locationId,name:nameByLoc.get(locationId)||null,
     coverage:coverageByLoc.get(locationId)||'PING_ONLY',
     events:eventsByLoc.get(locationId)||[],pings:pingsByLoc.get(locationId)||[],
+    customSchedule:customScheduleByLoc.get(locationId)||null,
   })),winCfg);
   const opDayByLoc=new Map(operationalDays.map(d=>[d.locationId,d]));
   // Cada evento operativo -> su fase interpretada (no solo el "representativo"),

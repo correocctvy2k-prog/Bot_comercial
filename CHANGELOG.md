@@ -10,6 +10,33 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CCTV — Sincronización Operación de Puntos ↔ Seguridad Electrónica
+`specs/0012-sync-puntos-cctv/`
+- **Problema:** "Operación de Puntos" (Supabase `puntos_venta`) y "Seguridad Electrónica"
+  (`cctv-automation-final`) no se hablaban: `has_cctv`/`has_alarm` no tenían formulario que
+  los editara (quedaban desactualizados a mano) y el horario real por punto
+  (`custom_open_time`/`custom_close_time`) no llegaba a la interpretación operativa de
+  spec 0010.
+- **`platform/crm-points-sync.js`** (con tests): `matchCrmPoints` (SIIS exacto → alias →
+  sin match, misma lógica que `reconcile-crm-points.mjs`), `computeCapabilities` (real:
+  `has_cctv`=`WITH_CCTV` de spec 0010, `has_alarm`=`alarmLocationIds` de
+  `platform/alarm-coverage.js`), `diffCapabilities` (solo matches `AUTO_LINKABLE`, solo
+  cuando cambia — el dato real siempre gana), `buildScheduleCache`.
+- **`scripts/sync-crm-points.js`** (`--dry-run` disponible): corrige `has_cctv`/`has_alarm`
+  en Supabase por lote (`PATCH`, service role key) y cachea el horario real por punto en
+  `crm_point_schedules` (idempotente, `schema.sql`). Corrido contra datos reales
+  (2026-09-11): **75 correcciones** (62 `has_cctv` true→false por no notificar en 30 días,
+  7 false→true, 6 solo `has_alarm`, 13 ambos), **7 puntos** con horario real cacheado. Segundo
+  run confirma 0 cambios (idempotente).
+- **`interpretPointDay`** (spec 0010) acepta `point.customSchedule`: cuando existe, "abrió
+  tarde"/"cerró temprano" (`lateBy`) de `APERTURA_MANANA`/`CIERRE_NOCHE` se mide contra el
+  horario real del punto, no solo la ventana global.
+- **`run-operational-cycle.js`**: paso `crmPointsSync` (no crítico), cadencia
+  `CRM_POINTS_SYNC_INTERVAL_MINUTES` (default 1440 = una vez al día).
+- Credencial: `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` en `.env` (reutiliza la de
+  `ChatBotSoporte`, mismo proyecto Supabase — decisión del usuario, no versionada).
+- `cctv-automation-final`: `npm test` **89/89** (sin CI).
+
 ### CCTV / Mantenimiento — "Ejecución del programa" en vivo desde la API de Trello
 `specs/0008-cctv-mantenimiento-refresco/`
 - **Bug:** la vista "Ejecución del programa" mostraba datos de hace días mientras el dashboard

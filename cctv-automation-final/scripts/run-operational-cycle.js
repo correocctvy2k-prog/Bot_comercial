@@ -140,9 +140,16 @@ try {
   // A partir de las 22:00 genera un único corte diario persistente. Antes de
   // esa hora y si el día ya fue cerrado, el script termina sin modificarlo.
   const closure = run(path.join('scripts', 'generate-operational-closure.js'));
+  // spec 0012: corrige has_cctv/has_alarm en Supabase puntos_venta con el dato real de
+  // CCTV y cachea el horario real por punto. No es crítico (como maintenance/support): si
+  // faltan las credenciales de Supabase, el paso falla pero no baja el ciclo operativo.
+  const crmPointsSyncSchedule = operationalSourceDue('crmPointsSync', Number(process.env.CRM_POINTS_SYNC_INTERVAL_MINUTES) || 1440);
+  const crmPointsSync = crmPointsSyncSchedule.due
+    ? run(path.join('scripts', 'sync-crm-points.js'), 60000)
+    : { script: 'scripts/sync-crm-points.js', status: 0, skipped: true, ...crmPointsSyncSchedule };
   const criticalOk = email.status === 0 && siis.status === 0;
-  const status = !criticalOk ? 'PARTIAL_FAILURE' : maintenance.status === 0 && support.status === 0 && visitors.status === 0 && closure.status === 0 ? 'SUCCESS' : 'SUCCESS_WITH_WARNINGS';
-  audit({ status, email, visitors, siis, maintenance, support, closure });
+  const status = !criticalOk ? 'PARTIAL_FAILURE' : maintenance.status === 0 && support.status === 0 && visitors.status === 0 && closure.status === 0 && crmPointsSync.status === 0 ? 'SUCCESS' : 'SUCCESS_WITH_WARNINGS';
+  audit({ status, email, visitors, siis, maintenance, support, closure, crmPointsSync });
   if (!criticalOk) process.exitCode = 1;
 } catch (error) {
   audit({ status: 'ERROR', error: error.message });
