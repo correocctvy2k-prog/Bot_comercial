@@ -2857,43 +2857,6 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "", onCha
                 </div>
               </CardContent>
             </Card>
-          </div>
-          <div className="order-5 grid gap-4 xl:grid-cols-[.8fr_1.2fr]">
-            {visibleIdentityPending.length > 0 && (
-            <Card className="border-amber-500/15 bg-card/40">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base">
-                      Identidades por conciliar
-                    </CardTitle>
-                    <CardDescription>
-                      Alias del correo que aún no apuntan al catálogo. Vincúlalos
-                      aquí para que dejen de aparecer.
-                    </CardDescription>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className="border-amber-500/20 text-amber-300"
-                  >
-                    {visibleIdentityPending.length}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="max-h-96 space-y-2 overflow-y-auto pr-1">
-                  {visibleIdentityPending.map((item) => (
-                    <EventIdentityCard
-                      key={item.name}
-                      item={item}
-                      labels={labels}
-                      onLinked={onChanged}
-                    />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-            )}
             <Card className="border-white/[.08] bg-card/40">
               <CardHeader>
                 <CardTitle className="text-base">
@@ -2947,6 +2910,41 @@ function RealEvents({ data, date, onDateChange, pointContext, search = "", onCha
               </CardContent>
             </Card>
           </div>
+          {visibleIdentityPending.length > 0 && (
+            <Card className="order-5 border-amber-500/15 bg-card/40">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">
+                      Identidades por conciliar
+                    </CardTitle>
+                    <CardDescription>
+                      Alias del correo que aún no apuntan al catálogo. Vincúlalos
+                      aquí para que dejen de aparecer.
+                    </CardDescription>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className="border-amber-500/20 text-amber-300"
+                  >
+                    {visibleIdentityPending.length}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                  {visibleIdentityPending.map((item) => (
+                    <EventIdentityCard
+                      key={item.name}
+                      item={item}
+                      labels={labels}
+                      onLinked={onChanged}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <ZoneBoards
             boards={data.zoneBoards}
             formatTime={formatTime}
