@@ -34,6 +34,34 @@ interpreta la jornada por ventanas operativas con el ping como vector primario.*
   `event_type` crudo; el gráfico por hora solo cuenta fases con evidencia real (transición de
   ping o correo CCTV), no la presencia de ping.
 
+## Resolución de inconsistencias de notificación (spec 0011)
+
+Tabla `cctv_notification_resolutions` (`platform/notification-resolutions.js`). El operador
+resuelve cada inconsistencia desde la vista con una de tres opciones:
+
+| `resolution` | `scope` | Efecto en `dailyEventsData` |
+|---|---|---|
+| `PING_ONLY` | `PERSISTENT` | `coverageByLoc` marca el punto como `PING_ONLY` → deja de evaluarse como inconsistente. |
+| `MISCONFIGURED_NO_NOTIFY` | `PERSISTENT` | Sale de `notificationInconsistencies` y entra en `notificationsInFollowUp[]` ("en seguimiento"). |
+| `FALSE_POSITIVE` | `DATE` | Se silencia solo para `effective_date`; si reincide otro día, vuelve. |
+
+Rutas: `POST /api/cctv/notifications/:locationId/resolve` (`{resolution, note?, effectiveDate?}`,
+header `x-actor`) y `.../reopen` (desactiva las resoluciones activas del punto). Idempotente por
+`(location_id, resolution, effective_date)`. Todo queda en `audit_log`.
+
+## Estado por zona (spec 0011)
+
+`platform/zone-boards.js` → `zoneBoards[]` en la respuesta. `pointState(operationalDay)` con
+prioridad `ANOMALY > LATE > CLOSED > ON_TIME > IDLE`:
+
+- `ANOMALY`: `interpretation='CIERRE_SIN_APERTURA'` o `anomalies.length>0`.
+- `LATE`: fase de apertura con `lateBy>0`.
+- `CLOSED`: hay fase de cierre.
+- `ON_TIME`: fase de apertura con `lateBy=0`, sin cierre.
+- `IDLE`: `interpretation='SIN_ACTIVIDAD'`.
+
+Se agrupa por `locations.zone`; "Sin zona" es un tablero propio (`zone=null`).
+
 ## Cierre observado
 
 - La llegada observada continúa tomando la primera señal válida entre CCTV y SIIS.
