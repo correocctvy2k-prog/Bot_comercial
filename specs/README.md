@@ -30,7 +30,7 @@ Detalle del modelo: [`../docs/WORKING_MODEL.md`](../docs/WORKING_MODEL.md).
 | [0009](0009-bots-tiempo-real-rediseno/spec.md) | Bots Gane Palmira: tiempo real y rediseño premium | Publicada | CRM_Frontend, `chatbot-analytics` |
 | [0010](0010-eventos-diarios-interpretacion/spec.md) | CCTV/Eventos diarios: interpretación operativa por ventanas + ping | Publicada | `cctv-automation-final`, CRM_Frontend |
 | [0011](0011-eventos-diarios-operacion/spec.md) | CCTV/Eventos diarios: operación por zona, conciliación y resolución | Publicada | `cctv-automation-final`, CRM_Frontend |
-| [0011](0011-eventos-diarios-operacion/spec.md) | CCTV/Eventos diarios: operación por zona, conciliación y resolución | Validada | `cctv-automation-final`, CRM_Frontend |
+| [0012](0012-sync-puntos-cctv/spec.md) | Sincronización Operación de Puntos ↔ Seguridad Electrónica (CCTV) | Validada | `cctv-automation-final`, Supabase (`puntos_venta`) |
 
 ## Estados
 
