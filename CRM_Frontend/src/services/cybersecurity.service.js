@@ -13,11 +13,33 @@ async function request(path) {
 export const cybersecurityService = {
   getOverview: () => request('/overview'),
   getInventoryOverview: () => request('/inventory/overview'),
-  getInventoryCandidates: ({ source = '', state = '', limit = 100, offset = 0 } = {}) => {
-    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-    if (source) params.set('source', source);
-    if (state) params.set('state', state);
-    return request(`/inventory/candidates?${params.toString()}`);
+  // `all: true` trae TODOS los candidatos paginando en el cliente (el backend topa
+  // `limit` en 200 por request). Con esto la vista de Inventario puede buscar/filtrar
+  // sobre el conjunto completo, igual que Subredes ya hace con sus ~27 segmentos —
+  // antes solo se veían los primeros 100 de más de mil candidatos.
+  getInventoryCandidates: async ({ source = '', state = '', limit = 100, offset = 0, all = false } = {}) => {
+    if (!all) {
+      const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+      if (source) params.set('source', source);
+      if (state) params.set('state', state);
+      return request(`/inventory/candidates?${params.toString()}`);
+    }
+    const pageSize = 200;
+    const items = [];
+    let total = Infinity;
+    let assessmentSummary = {};
+    for (let pageOffset = 0; pageOffset < total && items.length < 5000; pageOffset += pageSize) {
+      const params = new URLSearchParams({ limit: String(pageSize), offset: String(pageOffset) });
+      if (source) params.set('source', source);
+      if (state) params.set('state', state);
+      // eslint-disable-next-line no-await-in-loop
+      const page = await request(`/inventory/candidates?${params.toString()}`);
+      total = page.total ?? 0;
+      assessmentSummary = page.assessmentSummary || assessmentSummary;
+      if (!page.items?.length) break;
+      items.push(...page.items);
+    }
+    return { total, assessmentSummary, items };
   },
   getNetworkSegments: () => request('/network-segments'),
   getAdminNetworkSegments: async () => {

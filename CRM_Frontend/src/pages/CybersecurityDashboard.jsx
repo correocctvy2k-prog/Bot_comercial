@@ -148,23 +148,36 @@ function CaseDetail({ caseId, onClose }) {
   );
 }
 
-function CandidateDetail({ candidateId, onClose }) {
-  const query = useQuery({
-    queryKey: ['cybersecurity-candidate', candidateId],
-    queryFn: () => cybersecurityService.getInventoryCandidate(candidateId),
-    enabled: Boolean(candidateId),
-  });
-  if (!candidateId) return null;
+// Panel de detalle de candidato, embebido inline en el maestro-detalle de
+// Inventario (mismo patrón que Subredes: lista a la izquierda, detalle a la
+// derecha) en vez del cajón lateral que usaba antes.
+function CandidateDetailPane({ query, onChanged }) {
+  const promote = async () => {
+    try {
+      await cybersecurityService.promoteInventoryCandidate(query.data.id, { assetClass: 'OTHER', criticality: 'MEDIUM', canonicalName: `Activo promovido ${query.data.label}` });
+      await onChanged?.();
+    } catch (error) { alert('Error: ' + error.message); }
+  };
+  const markConflict = async () => {
+    try {
+      await cybersecurityService.markInventoryCandidateAsConflict(query.data.id, {});
+      await onChanged?.();
+    } catch (error) { alert('Error: ' + error.message); }
+  };
+  const markProtected = async () => {
+    try {
+      await cybersecurityService.markInventoryCandidateAsProtected(query.data.id, {});
+      await onChanged?.();
+    } catch (error) { alert('Error: ' + error.message); }
+  };
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/55 backdrop-blur-sm" onMouseDown={onClose}>
-      <aside className="h-full w-full max-w-2xl overflow-y-auto border-l border-border bg-background p-7 shadow-2xl" onMouseDown={(event) => event.stopPropagation()}>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">Detalle de candidato</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight">{query.data?.label || 'Cargando candidato…'}</h2>
-          </div>
-          <button onClick={onClose} className="rounded-xl border border-border p-2 hover:bg-muted" aria-label="Cerrar detalle"><X size={18} /></button>
+    <>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-blue-400">Detalle de candidato</p>
+          <h2 className="mt-2 truncate text-2xl font-black tracking-tight">{query.data?.label || 'Cargando candidato…'}</h2>
         </div>
+      </div>
         {query.isError && <EmptyState error onRetry={query.refetch} />}
         {query.isLoading && <div className="mt-7 text-center text-muted-foreground">Cargando detalle…</div>}
         {query.data && (
@@ -247,58 +260,43 @@ function CandidateDetail({ candidateId, onClose }) {
             </div>
             <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={async () => {
-                    try {
-                      await cybersecurityService.promoteInventoryCandidate(query.data.id, { assetClass: 'OTHER', criticality: 'MEDIUM', canonicalName: `Activo promovido ${query.data.label}` });
-                      alert('Candidato promovido a activo canónico');
-                    } catch (error) {
-                      alert('Error: ' + error.message);
-                    }
-                  }}
-                  className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-2.5 text-xs font-black uppercase text-emerald-300 hover:bg-emerald-500/15"
-                >
+                <button onClick={promote} className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-2.5 text-xs font-black uppercase text-emerald-300 hover:bg-emerald-500/15">
                   Promover a canónico
                 </button>
-                <button
-                  onClick={async () => {
-                    try {
-                      await cybersecurityService.markInventoryCandidateAsConflict(query.data.id, {});
-                      alert('Candidato marcado como conflicto');
-                    } catch (error) {
-                      alert('Error: ' + error.message);
-                    }
-                  }}
-                  className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-2.5 text-[10px] font-black uppercase text-amber-300 hover:bg-amber-500/10"
-                >
+                <button onClick={markConflict} className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-2.5 text-[10px] font-black uppercase text-amber-300 hover:bg-amber-500/10">
                   Marcar conflicto
                 </button>
-                <button
-                  onClick={async () => {
-                    try {
-                      await cybersecurityService.markInventoryCandidateAsProtected(query.data.id, {});
-                      alert('Candidato marcado como objetivo protegido');
-                    } catch (error) {
-                      alert('Error: ' + error.message);
-                    }
-                  }}
-                  className="rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-2.5 text-[10px] font-black uppercase text-rose-300 hover:bg-rose-500/10"
-                >
+                <button onClick={markProtected} className="rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-2.5 text-[10px] font-black uppercase text-rose-300 hover:bg-rose-500/10">
                   Marcar protegido
                 </button>
               </div>
             </div>
           </div>
         )}
-      </aside>
-    </div>
+    </>
   );
 }
 
-function InventoryView({ overview, candidates, source, state, onSourceChange, onStateChange, onRetry, onSelectCandidate }) {
+// spec: pestaña Inventario madura, mismo patrón maestro-detalle que Subredes
+// (SubnetsView) — búsqueda + filtros a la izquierda sobre el conjunto COMPLETO de
+// candidatos (antes: primeros 100 de 1046, sin paginación; `candidates` ahora se
+// trae completo vía `getInventoryCandidates({ all: true })`), detalle a la derecha.
+function InventoryView({ overview, candidates, source, state, onSourceChange, onStateChange, onRetry }) {
+  const [search, setSearch] = useState('');
+  const [selectedId, setSelectedId] = useState(null);
   const data = overview.data;
-  const rows = candidates.data?.items || [];
   if (overview.isError || candidates.isError) return <EmptyState error onRetry={onRetry} />;
+  const allRows = candidates.data?.items || [];
+  const needle = search.trim().toLowerCase();
+  const rows = allRows.filter((item) => !needle || [item.label, item.manufacturer, item.osFamily, item.assetClass, item.hostnameRaw, ...(item.referenceIps || [])].some((value) => String(value || '').toLowerCase().includes(needle)));
+  const selected = rows.find((item) => item.id === selectedId) || rows[0] || null;
+  const detail = useQuery({
+    queryKey: ['cybersecurity-candidate', selected?.id],
+    queryFn: () => cybersecurityService.getInventoryCandidate(selected.id),
+    enabled: Boolean(selected?.id),
+  });
+  const stateTone = { CANONICAL: 'bg-emerald-500/10 text-emerald-300', PROTECTED_TARGET: 'bg-rose-500/10 text-rose-300', CONFLICT_REVIEW: 'bg-amber-500/10 text-amber-300', INSUFFICIENT_EVIDENCE: 'bg-slate-500/10 text-slate-300' };
+
   return (
     <>
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -308,46 +306,59 @@ function InventoryView({ overview, candidates, source, state, onSourceChange, on
         <MetricCard label="Activos canónicos" value={data?.totals.canonicalAssets} detail="Validados por identidad fuerte" icon={Boxes} tone="emerald" />
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[0.8fr_2.2fr]">
-        <div className="rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xl p-6">
-          <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Cobertura</p>
-          <h2 className="mt-1 text-base font-semibold">Fuentes conectadas</h2>
-          <div className="mt-5 space-y-3">
-            {(data?.sourceCoverage || []).map((item) => (
-              <div key={item.source} className="rounded-xl border border-border/70 bg-background/45 p-4">
-                <div className="flex items-center justify-between gap-3"><span className="font-bold">{SOURCE_LABEL[item.source] || item.source}</span><span className="text-sm font-black">{item.candidates}</span></div>
-                <p className="mt-1 text-[11px] text-muted-foreground">Captura {item.capturedAt ? new Date(item.capturedAt).toLocaleString('es-CO') : 'sin fecha'} · {item.status}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-5 rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-4 text-xs leading-relaxed text-muted-foreground">
+      <section className="rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xl p-6">
+        <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Cobertura</p>
+        <h2 className="mt-1 text-base font-semibold">Fuentes conectadas</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          {(data?.sourceCoverage || []).map((item) => (
+            <div key={item.source} className="rounded-xl border border-border/70 bg-background/45 p-4">
+              <div className="flex items-center justify-between gap-3"><span className="font-bold">{SOURCE_LABEL[item.source] || item.source}</span><span className="text-sm font-black">{item.candidates}</span></div>
+              <p className="mt-1 text-[11px] text-muted-foreground">Captura {item.capturedAt ? new Date(item.capturedAt).toLocaleString('es-CO') : 'sin fecha'} · {item.status}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-4 text-xs leading-relaxed text-muted-foreground">
             La IP fija representa ubicación operativa, no identidad permanente. KSC tiene precedencia para Windows administrativo y FortiGate acredita actividad en red.
           </div>
-          <div className="mt-3 rounded-xl border border-blue-500/20 bg-blue-500/[0.06] p-4 text-xs leading-relaxed text-muted-foreground">
+          <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.06] p-4 text-xs leading-relaxed text-muted-foreground">
             <span className="font-bold text-foreground">{data?.totals.segmentsPendingPolicy || 0} observaciones</span> esperan clasificación de segmento antes de aplicar una política de IP fija o DHCP.
           </div>
         </div>
+      </section>
 
-        <div className="overflow-hidden rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xl">
-          <div className="flex flex-col gap-4 border-b border-border p-5 lg:flex-row lg:items-center lg:justify-between">
-            <div><p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Conciliación</p><h2 className="mt-1 text-base font-semibold">Candidatos de inventario</h2><p className="mt-1 text-xs text-muted-foreground">{candidates.data?.total ?? 0} registros bajo revisión</p></div>
-            <div className="flex flex-wrap gap-2">
-              <select value={source} onChange={(event) => onSourceChange(event.target.value)} className="rounded-lg border border-border bg-background px-3 py-2 text-xs"><option value="">Todas las fuentes</option>{Object.entries(SOURCE_LABEL).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
-              <select value={state} onChange={(event) => onStateChange(event.target.value)} className="rounded-lg border border-border bg-background px-3 py-2 text-xs"><option value="">Todos los estados</option>{Object.entries(INVENTORY_STATE_LABEL).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
+      <section className="grid min-h-[650px] overflow-hidden rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xl xl:grid-cols-[390px_1fr]">
+        <aside className="border-b border-border xl:border-b-0 xl:border-r">
+          <div className="border-b border-border p-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por etiqueta, fabricante, IP, host…" className="w-full rounded-xl border border-border bg-background py-2.5 pl-9 pr-3 text-xs outline-none focus:border-blue-500/50" />
             </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <select value={source} onChange={(event) => onSourceChange(event.target.value)} className="rounded-lg border border-border bg-background px-3 py-2 text-[11px]"><option value="">Todas las fuentes</option>{Object.entries(SOURCE_LABEL).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
+              <select value={state} onChange={(event) => onStateChange(event.target.value)} className="rounded-lg border border-border bg-background px-3 py-2 text-[11px]"><option value="">Todos los estados</option>{Object.entries(INVENTORY_STATE_LABEL).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
+            </div>
+            <p className="mt-2 text-[10px] text-muted-foreground">{rows.length} de {candidates.data?.total ?? allRows.length} registros{candidates.isFetching ? ' · cargando…' : ''}</p>
           </div>
-          {rows.length === 0 ? <div className="p-5"><EmptyState /></div> : (
-            <div className="max-h-[720px] divide-y divide-border/70 overflow-y-auto">
-              {rows.map((item) => (
-                <article key={item.id} className="grid gap-3 p-5 lg:grid-cols-[1.35fr_1fr_0.8fr_0.7fr] lg:items-center cursor-pointer hover:bg-muted/35 transition-colors" onClick={() => onSelectCandidate?.(item.id)}>
-                  <div className="min-w-0"><p className="truncate font-bold">{item.label}</p><p className="mt-1 truncate text-xs text-muted-foreground">{SOURCE_LABEL[item.source] || item.source} · {item.assetClass}</p><p className="mt-1 truncate text-[10px] text-blue-600 dark:text-blue-300">{AUTHORITY_LABEL[item.sourceAuthority] || item.sourceAuthority}</p></div>
-                  <div><p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Ciclo operativo</p><p className="mt-1 text-xs font-bold">{LIFECYCLE_LABEL[item.lifecycleStatus] || item.lifecycleStatus}</p><p className="mt-1 text-[10px] text-muted-foreground">{item.ageDays == null ? 'Sin fecha confiable' : `Última actividad hace ${item.ageDays} día${item.ageDays === 1 ? '' : 's'}`}</p></div>
-                  <div><p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Red y conciliación</p><p className="mt-1 text-xs font-bold">{NETWORK_PROFILE_LABEL[item.networkProfile] || item.networkProfile}</p><p className="mt-1 truncate text-[10px] text-muted-foreground">{INVENTORY_STATE_LABEL[item.state] || item.state} · {item.osFamily || item.manufacturer || 'Sin clasificar'}</p></div>
-                  <div className="lg:text-right"><p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Identidad</p><p className="mt-1 font-black">{Math.round((item.identityConfidence || 0) * 100)}%</p><p className="text-[10px] text-muted-foreground">{item.identityStrength}</p>{item.findingCount > 0 && <p className="text-[10px] text-rose-300">{item.findingCount} hallazgos · {Number(item.maxSeverity).toFixed(1)}</p>}</div>
-                </article>
-              ))}
-            </div>
-          )}
+          <div className="max-h-[560px] divide-y divide-border/60 overflow-y-auto">
+            {rows.map((item) => {
+              const active = selected?.id === item.id;
+              return (
+                <button key={item.id} onClick={() => setSelectedId(item.id)} className={`w-full p-4 text-left transition-colors ${active ? 'bg-blue-500/10 shadow-[inset_3px_0_0_#3b82f6]' : 'hover:bg-muted/35'}`}>
+                  <p className="truncate text-sm font-bold">{item.label}</p>
+                  <p className="mt-1 truncate text-[11px] text-muted-foreground">{SOURCE_LABEL[item.source] || item.source} · {item.assetClass}</p>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black uppercase ${stateTone[item.state] || 'bg-muted text-muted-foreground'}`}>{INVENTORY_STATE_LABEL[item.state] || item.state}</span>
+                    <span className="text-[10px] text-muted-foreground">{Math.round((item.identityConfidence || 0) * 100)}% identidad</span>
+                  </div>
+                </button>
+              );
+            })}
+            {rows.length === 0 && <div className="p-8 text-center text-xs text-muted-foreground">No hay candidatos que coincidan con la búsqueda.</div>}
+          </div>
+        </aside>
+        <div className="p-5 lg:p-7">
+          {!selected ? <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Selecciona un candidato para ver su detalle.</div> : <CandidateDetailPane query={detail} onChanged={async () => { await Promise.all([onRetry(), detail.refetch()]); }} />}
         </div>
       </section>
     </>
@@ -519,7 +530,6 @@ export default function CybersecurityDashboard() {
   const [inventorySource, setInventorySource] = useState('');
   const [inventoryState, setInventoryState] = useState('');
   const [selectedCase, setSelectedCase] = useState(null);
-  const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [segmentDrafts, setSegmentDrafts] = useState(() => {
     try { return JSON.parse(localStorage.getItem('skylab-cyber-segment-drafts') || '{}'); } catch { return {}; }
   });
@@ -532,7 +542,7 @@ export default function CybersecurityDashboard() {
   const inventoryOverview = useQuery({ queryKey: ['cybersecurity-inventory-overview'], queryFn: cybersecurityService.getInventoryOverview });
   const inventoryCandidates = useQuery({
     queryKey: ['cybersecurity-inventory-candidates', inventorySource, inventoryState],
-    queryFn: () => cybersecurityService.getInventoryCandidates({ source: inventorySource, state: inventoryState }),
+    queryFn: () => cybersecurityService.getInventoryCandidates({ source: inventorySource, state: inventoryState, all: true }),
   });
   const networkSegments = useQuery({ queryKey: ['cybersecurity-admin-network-segments'], queryFn: cybersecurityService.getAdminNetworkSegments });
   const refresh = () => {
@@ -565,7 +575,7 @@ export default function CybersecurityDashboard() {
         </nav>
 
         {activeView === 'inventory' ? (
-          <InventoryView overview={inventoryOverview} candidates={inventoryCandidates} source={inventorySource} state={inventoryState} onSourceChange={setInventorySource} onStateChange={setInventoryState} onRetry={refresh} onSelectCandidate={setSelectedCandidate} />
+          <InventoryView overview={inventoryOverview} candidates={inventoryCandidates} source={inventorySource} state={inventoryState} onSourceChange={setInventorySource} onStateChange={setInventoryState} onRetry={refresh} />
         ) : activeView === 'subnets' ? (
           <SubnetsView query={networkSegments} drafts={segmentDrafts} onDraftChange={(id, value) => setSegmentDrafts((current) => ({ ...current, [id]: value }))} onRetry={refresh} onSave={async (id, policy) => { await cybersecurityService.saveNetworkSegmentPolicy(id, policy); setSegmentDrafts((current) => { const next = { ...current }; delete next[id]; return next; }); await networkSegments.refetch(); }} onDisposition={async (id, status) => { await cybersecurityService.saveNetworkSegmentDisposition(id, { status }); setSegmentDrafts((current) => { const next = { ...current }; delete next[id]; return next; }); await networkSegments.refetch(); }} />
         ) : <>
@@ -616,7 +626,6 @@ export default function CybersecurityDashboard() {
         <section className="flex flex-col gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.06] p-5 text-sm sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3"><CheckCircle2 className="mt-0.5 shrink-0 text-emerald-400" size={20} /><div><p className="font-bold">Canal protegido activo en el diseño</p><p className="mt-1 text-xs text-muted-foreground">La interfaz consume una API read-only; no accede a Greenbone ni a SQLite desde el navegador.</p></div></div><span className="inline-flex items-center gap-1 text-[11px] font-extrabold uppercase tracking-wider text-emerald-300">Arquitectura segura <ArrowRight size={14} /></span></section>
       </div>
       <CaseDetail caseId={selectedCase} onClose={() => setSelectedCase(null)} />
-      <CandidateDetail candidateId={selectedCandidate} onClose={() => setSelectedCandidate(null)} />
     </div>
   );
 }
