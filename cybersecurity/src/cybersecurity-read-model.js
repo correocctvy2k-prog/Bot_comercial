@@ -28,6 +28,33 @@ function protectedAlias(prefix, value) {
   return `${prefix} ${suffix}`;
 }
 
+// `protectedAlias` es de un solo sentido (SHA-256 truncado a 8 hex): no hay forma de
+// decodificar el id real algebraicamente. inventory-actions.js necesitaba el id real detrás
+// de un alias de "candidate"/"canonical" (para ver detalle, promover, marcar conflicto o
+// protegido) y lo intentaba extraer con una regex sobre el propio alias -- nunca funcionó,
+// porque el alias solo contiene el hash, no el id original. La única forma correcta es
+// recorrer el universo correspondiente y volver a calcular el alias hasta encontrar el que
+// coincide (barato: unos pocos miles de filas como mucho).
+function resolveProtectedAlias(db, alias) {
+  const match = String(alias || '').match(/^(candidate|canonical)\s+([A-F0-9]{8})$/i);
+  if (!match) return null;
+  const kind = match[1].toLowerCase();
+  const target = `${kind} ${match[2].toUpperCase()}`;
+  if (kind === 'canonical') {
+    const row = db.prepare('SELECT id FROM cyber_assets').all()
+      .find((r) => protectedAlias('canonical', r.id) === target);
+    return row ? { kind: 'CANONICAL', id: row.id } : null;
+  }
+  const observation = db.prepare('SELECT id FROM cyber_asset_observations').all()
+    .find((r) => protectedAlias('candidate', r.id) === target);
+  if (observation) return { kind: 'CANDIDATE', id: observation.id };
+  // Objetivo protegido (Greenbone): el id de "candidato" sale de target_key, no de una
+  // observación -- ver el UNION ALL de listInventoryCandidates más abajo.
+  const finding = db.prepare('SELECT DISTINCT target_key FROM cyber_vulnerability_findings').all()
+    .find((r) => protectedAlias('candidate', r.target_key) === target);
+  return finding ? { kind: 'PROTECTED_TARGET', id: finding.target_key } : null;
+}
+
 function getInventoryOverview(db) {
   const canonical = db.prepare('SELECT count(*) count FROM cyber_assets').get().count;
   const observations = db.prepare(`
@@ -354,4 +381,5 @@ function getRemediationCase(db, id) {
 module.exports = {
   getCybersecurityOverview, getInventoryOverview, getRemediationCase,
   listInventoryCandidates, listNetworkSegments, listRemediationCases,
+  protectedAlias, resolveProtectedAlias,
 };

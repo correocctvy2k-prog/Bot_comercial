@@ -8,6 +8,7 @@ const { importGreenboneProtectedResults } = require('../src/greenbone-protected-
 const {
   getCybersecurityOverview, getInventoryOverview, getRemediationCase,
   listInventoryCandidates, listNetworkSegments, listRemediationCases,
+  protectedAlias,
 } = require('../src/cybersecurity-read-model');
 
 const fixture = fs.readFileSync(
@@ -95,6 +96,51 @@ test('solo un autorizador administrativo puede habilitar referencias internas', 
     const response = await fetch(`http://127.0.0.1:${port}/api/cybersecurity/admin/network-segments`, { headers: { Authorization: 'Bearer valid-test-token' } });
     assert.equal(response.status, 200);
   } finally { await new Promise((resolve) => server.close(resolve)); db.close(); }
+});
+
+// Regresión: el router devolvía 405 METHOD_NOT_ALLOWED para CUALQUIER POST antes de
+// llegar siquiera a evaluar las rutas de promote/conflict/protect (solo policy/disposition
+// se resolvían antes de ese guard) — Promover/Marcar conflicto/Marcar protegido nunca
+// respondían desde el navegador, con o sin sesión de superadmin.
+function seedCandidateObservation(db) {
+  const now = '2026-09-01T12:00:00.000Z';
+  db.prepare(`INSERT INTO cyber_source_systems(id, source_type, display_name, authority_level, created_at, updated_at)
+    VALUES ('source-forti','FORTIGATE','Firewall inventory','OBSERVATIONAL',?,?)`).run(now, now);
+  db.prepare(`INSERT INTO cyber_source_snapshots(id, source_system_id, captured_at, imported_at, source_sha256, processing_status)
+    VALUES ('snapshot-1','source-forti',?,?,?,'SUCCESS')`).run(now, now, 'a'.repeat(64));
+  const id = 'observation-api-1';
+  db.prepare(`INSERT INTO cyber_asset_observations(
+      id, snapshot_id, source_record_key, observed_at, ingested_at, ip_value, mac_value, hostname_raw
+    ) VALUES (?, 'snapshot-1', 'rec-1', ?, ?, '10.2.6.15', '02:00:00:aa:bb:cc', 'host-01')`)
+    .run(id, now, now);
+  return id;
+}
+
+test('promote/conflict/protect responden (no 405) con sesión de superadmin, y 403 sin ella', async () => {
+  const db = seededDatabase();
+  const observationId = seedCandidateObservation(db);
+  const alias = protectedAlias('candidate', observationId);
+  const server = createCybersecurityApi({ db, authorizeAdmin: async (request) => (request.headers.authorization === 'Bearer valid-test-token' ? { id: 'tester' } : false) });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  try {
+    const encoded = encodeURIComponent(alias);
+    const noAuth = await fetch(`http://127.0.0.1:${port}/api/cybersecurity/inventory/candidates/${encoded}/conflict`, { method: 'POST' });
+    assert.equal(noAuth.status, 403, 'sin sesión debe ser 403, nunca 405');
+
+    const conflict = await fetch(`http://127.0.0.1:${port}/api/cybersecurity/inventory/candidates/${encoded}/conflict`, {
+      method: 'POST', headers: { Authorization: 'Bearer valid-test-token' },
+    });
+    assert.equal(conflict.status, 200);
+
+    const promote = await fetch(`http://127.0.0.1:${port}/api/cybersecurity/inventory/candidates/${encoded}/promote`, {
+      method: 'POST', headers: { Authorization: 'Bearer valid-test-token' },
+    });
+    assert.equal(promote.status, 200);
+    assert.equal((await promote.json()).item.success, true);
+  } finally {
+    await new Promise((resolve) => server.close(resolve)); db.close();
+  }
 });
 
 test('la lista de segmentos no expone identificadores de red', () => {

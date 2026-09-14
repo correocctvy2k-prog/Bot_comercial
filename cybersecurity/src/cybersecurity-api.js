@@ -51,6 +51,33 @@ function createCybersecurityApi({ db, policyDb = null, authorizeAdmin = async ()
         const item = saveDisposition(policyDb, decodeURIComponent(dispositionMatch[1]), await readJson(request), principal.id || 'verified-superadmin');
         return sendJson(response, 200, { item });
       }
+      // Los ids de candidato/canónico son "candidate XXXXXXXX"/"canonical XXXXXXXX" (con
+      // espacio, protectedAlias() en cybersecurity-read-model.js) — [a-zA-Z0-9_-]+ nunca los
+      // capturaba, ni con el espacio literal ni con %20; estas 4 rutas nunca respondían.
+      // Los 3 matches POST (promote/conflict/protect) deben resolverse ANTES del guard
+      // "!== GET" de abajo — si no, siempre devolvía 405 antes de llegar a ellos.
+      const CANDIDATE_ID_PATTERN = '((?:candidate|canonical)(?:%20| )[A-F0-9]{8})';
+      const promoteMatch = url.pathname.match(new RegExp(`^/api/cybersecurity/inventory/candidates/${CANDIDATE_ID_PATTERN}/promote$`, 'i'));
+      if (request.method === 'POST' && promoteMatch) {
+        const principal = await authorizeAdmin(request);
+        if (!principal) return sendJson(response, 403, { error: 'SUPERADMIN_REQUIRED' });
+        const item = promoteObservationToAsset(db, decodeURIComponent(promoteMatch[1]), await readJson(request), principal.id || 'verified-superadmin');
+        return sendJson(response, 200, { item });
+      }
+      const conflictMatch = url.pathname.match(new RegExp(`^/api/cybersecurity/inventory/candidates/${CANDIDATE_ID_PATTERN}/conflict$`, 'i'));
+      if (request.method === 'POST' && conflictMatch) {
+        const principal = await authorizeAdmin(request);
+        if (!principal) return sendJson(response, 403, { error: 'SUPERADMIN_REQUIRED' });
+        const item = markObservationAsConflict(db, decodeURIComponent(conflictMatch[1]), await readJson(request), principal.id || 'verified-superadmin');
+        return sendJson(response, 200, { item });
+      }
+      const protectMatch = url.pathname.match(new RegExp(`^/api/cybersecurity/inventory/candidates/${CANDIDATE_ID_PATTERN}/protect$`, 'i'));
+      if (request.method === 'POST' && protectMatch) {
+        const principal = await authorizeAdmin(request);
+        if (!principal) return sendJson(response, 403, { error: 'SUPERADMIN_REQUIRED' });
+        const item = markObservationAsProtected(db, decodeURIComponent(protectMatch[1]), await readJson(request), principal.id || 'verified-superadmin');
+        return sendJson(response, 200, { item });
+      }
       if (request.method !== 'GET') return sendJson(response, 405, { error: 'METHOD_NOT_ALLOWED' });
       if (url.pathname === '/api/cybersecurity/health') {
         const schema = db.prepare(`
@@ -77,31 +104,12 @@ function createCybersecurityApi({ db, policyDb = null, authorizeAdmin = async ()
           offset: url.searchParams.get('offset') || 0,
         }));
       }
-      const candidateMatch = url.pathname.match(/^\/api\/cybersecurity\/inventory\/candidates\/([a-zA-Z0-9_-]+)$/);
+      // GET de detalle de candidato — los matches POST (promote/conflict/protect) ya se
+      // resolvieron arriba, antes del guard "!== GET", usando el mismo CANDIDATE_ID_PATTERN.
+      const candidateMatch = url.pathname.match(new RegExp(`^/api/cybersecurity/inventory/candidates/${CANDIDATE_ID_PATTERN}$`, 'i'));
       if (candidateMatch && request.method === 'GET') {
-        const item = getObservationDetail(db, candidateMatch[1]);
+        const item = getObservationDetail(db, decodeURIComponent(candidateMatch[1]));
         return item ? sendJson(response, 200, item) : sendJson(response, 404, { error: 'CANDIDATE_NOT_FOUND' });
-      }
-      const promoteMatch = url.pathname.match(/^\/api\/cybersecurity\/inventory\/candidates\/([a-zA-Z0-9_-]+)\/promote$/);
-      if (promoteMatch && request.method === 'POST') {
-        const principal = await authorizeAdmin(request);
-        if (!principal) return sendJson(response, 403, { error: 'SUPERADMIN_REQUIRED' });
-        const item = promoteObservationToAsset(db, decodeURIComponent(promoteMatch[1]), await readJson(request), principal.id || 'verified-superadmin');
-        return sendJson(response, 200, { item });
-      }
-      const conflictMatch = url.pathname.match(/^\/api\/cybersecurity\/inventory\/candidates\/([a-zA-Z0-9_-]+)\/conflict$/);
-      if (conflictMatch && request.method === 'POST') {
-        const principal = await authorizeAdmin(request);
-        if (!principal) return sendJson(response, 403, { error: 'SUPERADMIN_REQUIRED' });
-        const item = markObservationAsConflict(db, decodeURIComponent(conflictMatch[1]), await readJson(request), principal.id || 'verified-superadmin');
-        return sendJson(response, 200, { item });
-      }
-      const protectMatch = url.pathname.match(/^\/api\/cybersecurity\/inventory\/candidates\/([a-zA-Z0-9_-]+)\/protect$/);
-      if (protectMatch && request.method === 'POST') {
-        const principal = await authorizeAdmin(request);
-        if (!principal) return sendJson(response, 403, { error: 'SUPERADMIN_REQUIRED' });
-        const item = markObservationAsProtected(db, decodeURIComponent(protectMatch[1]), await readJson(request), principal.id || 'verified-superadmin');
-        return sendJson(response, 200, { item });
       }
       if (url.pathname === '/api/cybersecurity/network-segments') {
         return sendJson(response, 200, listNetworkSegments(db));
