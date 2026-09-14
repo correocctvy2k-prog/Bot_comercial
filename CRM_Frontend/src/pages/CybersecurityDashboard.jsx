@@ -2,7 +2,7 @@ import { createElement, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle, ArrowRight, CheckCircle2, ChevronRight, Clock3,
-  Boxes, Database, FileSearch, Fingerprint, ListChecks, MapPin, Network, Radar, RefreshCw,
+  Boxes, Database, FileSearch, Fingerprint, History, ListChecks, MapPin, Network, Radar, RefreshCw,
   Search, ShieldAlert, ShieldCheck, SlidersHorizontal, X,
 } from 'lucide-react';
 import { cybersecurityService } from '../services/cybersecurity.service';
@@ -390,6 +390,27 @@ const SERVED_POPULATIONS = {
   GUESTS: 'Invitados', INFRASTRUCTURE: 'Equipos de infraestructura', SECURITY_DEVICES: 'Dispositivos de seguridad', MIXED: 'Población mixta',
 };
 
+// Historial de cambios de un segmento (network_policy_audit). `action` de savePolicy/
+// saveDisposition; `after` trae el objeto completo salvo para CREATED/UPDATED donde también
+// puede haber `before` para diferenciar qué cambió.
+const AUDIT_ACTION_LABEL = {
+  CREATED: 'Política creada', UPDATED: 'Política actualizada',
+  NEEDS_SPLIT: 'Marcado: requiere desagregación', OUT_OF_SCOPE: 'Marcado: sin alcance',
+};
+const AUDIT_FIELD_LABEL = {
+  name: 'Nombre', zone: 'Zona', networkFunction: 'Función de red', technology: 'Tecnología',
+  topology: 'Topología', addressMode: 'Direccionamiento', population: 'Población',
+  criticality: 'Criticidad', networkAddress: 'Dirección de red', prefixLength: 'Prefijo',
+  gateway: 'Gateway', status: 'Estado', note: 'Nota',
+};
+function auditChanges(entry) {
+  const after = entry.after || {};
+  const before = entry.before || {};
+  return Object.entries(after)
+    .filter(([key, value]) => value != null && value !== '' && String(before[key] ?? '') !== String(value))
+    .map(([key, value]) => ({ key, label: AUDIT_FIELD_LABEL[key] || key, value: key === 'prefixLength' ? `/${value}` : String(value) }));
+}
+
 function ipv4Number(value) {
   const parts = String(value || '').trim().split('.').map(Number);
   if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return null;
@@ -434,7 +455,6 @@ function SubnetsView({ query, drafts, onDraftChange, onRetry, onSave, onDisposit
   const [showAudit, setShowAudit] = useState(false);
   if (query.isError) return <EmptyState error onRetry={onRetry} />;
   const rows = query.data?.items || [];
-  const audit = useQuery({ queryKey: ['cybersecurity-segment-audit', selectedId], queryFn: () => cybersecurityService.getNetworkSegmentAudit(selectedId), enabled: Boolean(selectedId) && showAudit });
   const effectiveDraft = (item) => {
     const initial = { ...suggestedPolicy(item, rows), ...Object.fromEntries(Object.entries(item?.policy || {}).filter(([, value]) => value !== null)), ...(drafts[item?.id] || {}) };
     const template = rows.find((candidate) => candidate.id !== item?.id && candidate.policy?.zone === initial.zone)?.policy || {};
@@ -453,6 +473,11 @@ function SubnetsView({ query, drafts, onDraftChange, onRetry, onSave, onDisposit
     return matchesFilter && matchesSearch;
   });
   const selected = visibleRows.find((item) => item.id === selectedId) || visibleRows[0] || null;
+  // El historial de cambios se consulta con el id realmente mostrado (`selected`), no con el
+  // crudo `selectedId`: si el usuario no ha hecho click todavía, `selected` cae al primero de
+  // la lista filtrada pero `selectedId` sigue null — con el query keyed en `selectedId` nunca
+  // se disparaba en ese caso.
+  const audit = useQuery({ queryKey: ['cybersecurity-segment-audit', selected?.id], queryFn: () => cybersecurityService.getNetworkSegmentAudit(selected.id), enabled: Boolean(selected?.id) && showAudit });
   const draft = selected ? effectiveDraft(selected) : {};
   const network = calculateNetwork(draft.networkAddress, draft.prefixLength, draft.gateway);
   const occupiedEstimate = selected ? Math.max(selected.knownIpCount || 0, selected.expectedPoints || 0) : 0;
@@ -487,7 +512,38 @@ function SubnetsView({ query, drafts, onDraftChange, onRetry, onSave, onDisposit
         </aside>
         <div className="p-5 lg:p-7">
           {!selected ? <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Selecciona un segmento para comenzar.</div> : <>
-            <div className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-blue-400"><MapPin size={14} /> Contexto de red</div><h2 className="mt-2 text-2xl font-black">{draft.name || selected.interfaceName || selected.label}</h2><p className="mt-1 text-xs text-muted-foreground">{selected.label} · última actividad {selected.lastActivityAt ? new Date(selected.lastActivityAt).toLocaleString('es-CO') : 'desconocida'}</p></div><span className={`w-fit rounded-lg border px-3 py-2 text-[10px] font-black ${selected.classificationStatus === 'APPROVED' ? 'border-emerald-500/20 bg-emerald-500/[0.07] text-emerald-300' : 'border-amber-500/20 bg-amber-500/[0.07] text-amber-300'}`}>{selected.classificationStatus === 'APPROVED' ? 'POLÍTICA APLICADA' : 'BORRADOR LOCAL'}</span></div>
+            <div className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-blue-400"><MapPin size={14} /> Contexto de red</div><h2 className="mt-2 text-2xl font-black">{draft.name || selected.interfaceName || selected.label}</h2><p className="mt-1 text-xs text-muted-foreground">{selected.label} · última actividad {selected.lastActivityAt ? new Date(selected.lastActivityAt).toLocaleString('es-CO') : 'desconocida'}</p></div><div className="flex shrink-0 items-center gap-2"><button onClick={() => setShowAudit(!showAudit)} className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-bold uppercase ${showAudit ? 'border-blue-500/30 bg-blue-500/10 text-blue-300' : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}><History size={13} /> Historial</button><span className={`w-fit rounded-lg border px-3 py-2 text-[10px] font-black ${selected.classificationStatus === 'APPROVED' ? 'border-emerald-500/20 bg-emerald-500/[0.07] text-emerald-300' : 'border-amber-500/20 bg-amber-500/[0.07] text-amber-300'}`}>{selected.classificationStatus === 'APPROVED' ? 'POLÍTICA APLICADA' : 'BORRADOR LOCAL'}</span></div></div>
+            {showAudit && (
+              <div className="mt-5 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+                <p className="text-[11px] font-extrabold uppercase tracking-wider text-blue-400">Historial de cambios</p>
+                {audit.isLoading && <p className="mt-3 text-xs text-muted-foreground">Cargando historial…</p>}
+                {audit.isError && <p className="mt-3 text-xs text-rose-300">{audit.error?.message || 'No fue posible consultar el historial.'}</p>}
+                {audit.data && (audit.data.items || []).length === 0 && <p className="mt-3 text-xs text-muted-foreground">Sin cambios registrados todavía para este segmento.</p>}
+                {audit.data && (audit.data.items || []).length > 0 && (
+                  <ol className="mt-3 space-y-3">
+                    {audit.data.items.map((entry) => {
+                      const changes = auditChanges(entry);
+                      return (
+                        <li key={entry.id} className="rounded-lg border border-border/60 bg-card/60 p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-xs font-bold">{AUDIT_ACTION_LABEL[entry.action] || entry.action}</span>
+                            <span className="text-[10px] text-muted-foreground">{new Date(entry.occurredAt).toLocaleString('es-CO')}</span>
+                          </div>
+                          <p className="mt-1 text-[10px] text-muted-foreground">Por {entry.actor ? entry.actor.slice(0, 8) : 'desconocido'}</p>
+                          {changes.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {changes.map((change) => (
+                                <span key={change.key} className="rounded-md border border-border/70 bg-muted/40 px-2 py-1 text-[10px] text-muted-foreground"><b className="text-foreground">{change.label}:</b> {change.value}</span>
+                              ))}
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                )}
+              </div>
+            )}
             {selected.derivedFrom && <div className="mt-5 rounded-xl border border-amber-500/20 bg-amber-500/[0.07] p-4 text-xs text-amber-100"><b>Pendiente generado automáticamente.</b> Estas IP no coinciden todavía con ninguna subred aplicada y fueron separadas del grupo marcado para desagregación.</div>}
             {selected.reassignedObservations > 0 && <div className="mt-5 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.07] p-4 text-xs text-emerald-100"><b>Consolidación automática:</b> {selected.reassignedObservations} observaciones procedentes de grupos desagregados coinciden con esta subred.</div>}
             {selected.coverageStatus === 'EXPECTED_NOT_OBSERVED' && <div className="mt-5 rounded-xl border border-violet-500/20 bg-violet-500/[0.07] p-4 text-xs text-violet-200"><b>Red esperada por Operación de Puntos.</b> No aparece en la captura actual de FortiGate. El CIDR {selected.inferredCidr} fue inferido por prefijo /24 y requiere confirmación.</div>}
