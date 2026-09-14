@@ -6,6 +6,7 @@ import {
   Search, ShieldAlert, ShieldCheck, SlidersHorizontal, X,
 } from 'lucide-react';
 import { cybersecurityService } from '../services/cybersecurity.service';
+import PageHeader from '../components/PageHeader';
 
 const PRIORITY_STYLE = {
   P1: 'border-rose-500/30 bg-rose-500/10 text-rose-300',
@@ -70,7 +71,7 @@ function MetricCard({ label, value, detail, icon, tone = 'blue' }) {
     <div className={`rounded-2xl border bg-gradient-to-br ${tones[tone]} to-transparent p-5 shadow-sm`}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+          <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">{label}</p>
           <p className="mt-2 text-3xl font-black tracking-tight text-foreground">{value ?? '—'}</p>
           <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
         </div>
@@ -120,7 +121,7 @@ function CaseDetail({ caseId, onClose }) {
               <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Evidencias</p><p className="mt-1 font-black">{query.data.findingCount}</p></div>
             </div>
             <div className="rounded-2xl border border-border bg-card/60 p-5">
-              <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Activo y tratamiento</p>
+              <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Activo y tratamiento</p>
               <p className="mt-3 font-bold">{query.data.asset}</p>
               <p className="mt-1 text-sm text-muted-foreground">{STATUS_LABEL[query.data.status] || query.data.status}</p>
               {query.data.treatmentReason && <p className="mt-3 rounded-lg bg-muted/60 p-3 text-sm">{query.data.treatmentReason}</p>}
@@ -135,7 +136,7 @@ function CaseDetail({ caseId, onClose }) {
                       <span>{finding.port ?? 'general'}/{finding.transport || '—'}</span><span>•</span><span>QoD {finding.qod ?? '—'}%</span><span>•</span><span>{finding.confidenceStatus.replaceAll('_', ' ')}</span>
                     </div>
                     {finding.cves.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{finding.cves.map((cve) => <span key={cve} className="rounded-md border border-border bg-muted/50 px-2 py-1 text-[10px] font-bold">{cve}</span>)}</div>}
-                    {finding.evidence?.text && <p className="mt-4 max-h-32 overflow-y-auto whitespace-pre-wrap rounded-lg bg-black/15 p-3 text-xs leading-relaxed text-muted-foreground">{finding.evidence.text}</p>}
+                    {finding.evidence?.text && <p className="mt-4 max-h-32 overflow-y-auto whitespace-pre-wrap rounded-lg bg-muted/60 p-3 text-xs leading-relaxed text-muted-foreground">{finding.evidence.text}</p>}
                   </article>
                 ))}
               </div>
@@ -175,7 +176,7 @@ function CandidateDetail({ candidateId, onClose }) {
               <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Fuerza identidad</p><p className="mt-1 font-black">{query.data.identityStrength}</p></div>
             </div>
             <div className="rounded-2xl border border-border bg-card/60 p-5">
-              <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Identidad y clasificación</p>
+              <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Identidad y clasificación</p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Clase de activo</p><p className="mt-1 font-black">{query.data.assetClass}</p></div>
                 <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Fabricante</p><p className="mt-1 font-black">{query.data.manufacturer || '—'}</p></div>
@@ -186,7 +187,7 @@ function CandidateDetail({ candidateId, onClose }) {
               </div>
             </div>
             <div className="rounded-2xl border border-border bg-card/60 p-5">
-              <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Análisis de confianza</p>
+              <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Análisis de confianza</p>
               <div className="mt-3 grid gap-3 sm:grid-cols-3">
                 <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Confianza</p><p className="mt-1 font-black text-3xl">{(query.data.confidence * 100).toFixed(0)}%</p></div>
                 <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Fuerza identidad</p><p className="mt-1 font-black text-3xl">{query.data.identityStrength}</p></div>
@@ -198,7 +199,7 @@ function CandidateDetail({ candidateId, onClose }) {
               </div>
             </div>
             <div className="rounded-2xl border border-border bg-card/60 p-5">
-              <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Señales de calidad</p>
+              <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Señales de calidad</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {(query.data.qualityFlags || []).map((flag) => (
                   <span key={flag} className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-300">{flag.replaceAll('_', ' ')}</span>
@@ -216,7 +217,7 @@ function CandidateDetail({ candidateId, onClose }) {
               )}
             </div>
             <div className="rounded-2xl border border-border bg-card/60 p-5">
-              <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Actividad y señales</p>
+              <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Actividad y señales</p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Última señal</p><p className="mt-1 font-black">{query.data.lastSeenAt ? new Date(query.data.lastSeenAt).toLocaleString('es-CO') : '—'}</p></div>
                 <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Última fuente</p><p className="mt-1 font-black">{query.data.lastSeenSourceAt ? new Date(query.data.lastSeenSourceAt).toLocaleString('es-CO') : '—'}</p></div>
@@ -225,7 +226,7 @@ function CandidateDetail({ candidateId, onClose }) {
               </div>
             </div>
             <div className="rounded-2xl border border-border bg-card/60 p-5">
-              <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Análisis de inventario</p>
+              <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Análisis de inventario</p>
               {query.data.analysis ? (
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Clase provisional</p><p className="mt-1 font-black">{query.data.analysis.provisionalAssetClass}</p></div>
@@ -309,12 +310,12 @@ function InventoryView({ overview, candidates, source, state, onSourceChange, on
 
       <section className="grid gap-5 xl:grid-cols-[0.8fr_2.2fr]">
         <div className="rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xl p-6">
-          <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Cobertura</p>
-          <h2 className="mt-1 text-lg font-black">Fuentes conectadas</h2>
+          <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Cobertura</p>
+          <h2 className="mt-1 text-base font-semibold">Fuentes conectadas</h2>
           <div className="mt-5 space-y-3">
             {(data?.sourceCoverage || []).map((item) => (
               <div key={item.source} className="rounded-xl border border-border/70 bg-background/45 p-4">
-                <div className="flex items-center justify-between gap-3"><span className="font-bold">{SOURCE_LABEL[item.source] || item.source}</span><span className="text-lg font-black">{item.candidates}</span></div>
+                <div className="flex items-center justify-between gap-3"><span className="font-bold">{SOURCE_LABEL[item.source] || item.source}</span><span className="text-sm font-black">{item.candidates}</span></div>
                 <p className="mt-1 text-[11px] text-muted-foreground">Captura {item.capturedAt ? new Date(item.capturedAt).toLocaleString('es-CO') : 'sin fecha'} · {item.status}</p>
               </div>
             ))}
@@ -329,7 +330,7 @@ function InventoryView({ overview, candidates, source, state, onSourceChange, on
 
         <div className="overflow-hidden rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xl">
           <div className="flex flex-col gap-4 border-b border-border p-5 lg:flex-row lg:items-center lg:justify-between">
-            <div><p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Conciliación</p><h2 className="mt-1 text-lg font-black">Candidatos de inventario</h2><p className="mt-1 text-xs text-muted-foreground">{candidates.data?.total ?? 0} registros bajo revisión</p></div>
+            <div><p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Conciliación</p><h2 className="mt-1 text-base font-semibold">Candidatos de inventario</h2><p className="mt-1 text-xs text-muted-foreground">{candidates.data?.total ?? 0} registros bajo revisión</p></div>
             <div className="flex flex-wrap gap-2">
               <select value={source} onChange={(event) => onSourceChange(event.target.value)} className="rounded-lg border border-border bg-background px-3 py-2 text-xs"><option value="">Todas las fuentes</option>{Object.entries(SOURCE_LABEL).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
               <select value={state} onChange={(event) => onStateChange(event.target.value)} className="rounded-lg border border-border bg-background px-3 py-2 text-xs"><option value="">Todos los estados</option>{Object.entries(INVENTORY_STATE_LABEL).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
@@ -453,7 +454,7 @@ function SubnetsView({ query, drafts, onDraftChange, onRetry, onSave, onDisposit
         <MetricCard label="Borradores completos" value={classified} detail={`${progress}% del inventario de red`} icon={ListChecks} tone="emerald" />
         <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/15 to-transparent p-5">
           <div className="flex items-start justify-between"><div><p className="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground">Cobertura prevista</p><p className="mt-2 text-3xl font-black">{impacted}</p><p className="mt-1 text-xs text-muted-foreground">observaciones bajo políticas definidas</p></div><Database className="text-amber-300" size={22} /></div>
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-black/20"><div className="h-full rounded-full bg-amber-400 transition-all" style={{ width: `${progress}%` }} /></div>
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-amber-400 transition-all" style={{ width: `${progress}%` }} /></div>
         </div>
       </section>
       <section className="grid min-h-[650px] overflow-hidden rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xl xl:grid-cols-[390px_1fr]">
@@ -502,8 +503,8 @@ function SubnetsView({ query, drafts, onDraftChange, onRetry, onSave, onDisposit
               <label className="text-xs font-bold">Población atendida<select value={draft.population || ''} onChange={(event) => update(selected.id, 'population', event.target.value)} className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-3 text-sm font-normal"><option value="">Selecciona una población</option>{Object.entries(SERVED_POPULATIONS).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
               <label className="text-xs font-bold lg:col-span-2">Criticidad<select value={draft.criticality || 'MEDIUM'} onChange={(event) => update(selected.id, 'criticality', event.target.value)} className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-3 text-sm font-normal"><option value="LOW">Baja</option><option value="MEDIUM">Media</option><option value="HIGH">Alta</option><option value="CRITICAL">Crítica</option></select></label>
             </div></div>
-            <div className="mt-7 rounded-2xl border border-blue-500/20 bg-blue-500/[0.06] p-5"><p className="text-xs font-black uppercase tracking-wider text-blue-600 dark:text-blue-300">Vista previa de la política</p><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{draft.addressMode === 'DHCP' ? 'La IP tendrá peso mínimo para identificar equipos; se priorizarán agentes, hostname e identificadores persistentes.' : draft.addressMode === 'STATIC' ? 'La IP aportará contexto operativo fuerte, pero nunca fusionará dos equipos por sí sola.' : draft.addressMode === 'MIXED' ? 'Se aplicará conciliación conservadora y los cambios de IP requerirán evidencia corroborante.' : 'Selecciona el direccionamiento para conocer cómo cambiará la conciliación.'}</p><p className="mt-3 text-xs font-bold">Impacto: {selected.observations} observaciones · no crea activos automáticamente.</p></div>
-            <div className="mt-5 flex flex-col gap-3 border-t border-border pt-5 lg:flex-row lg:items-center lg:justify-between"><div className="flex flex-wrap gap-2"><button disabled={saving} onClick={async () => { setSaving(true); setSaveError(''); try { await onDisposition(selected.id, 'NEEDS_SPLIT'); } catch (error) { setSaveError(error.message); } finally { setSaving(false); } }} className="rounded-xl border border-rose-500/25 bg-rose-500/[0.06] px-4 py-3 text-[10px] font-black uppercase text-rose-300 hover:bg-rose-500/10">Requiere desagregación</button><button disabled={saving} onClick={async () => { setSaving(true); setSaveError(''); try { await onDisposition(selected.id, 'OUT_OF_SCOPE'); } catch (error) { setSaveError(error.message); } finally { setSaving(false); } }} className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-[10px] font-black uppercase text-muted-foreground hover:text-foreground">No tengo alcance</button></div><div className="flex flex-col items-end gap-2">{saveError && <p className="text-xs text-rose-300">{saveError}</p>}<button disabled={!isComplete(draft) || saving} onClick={async () => { setSaving(true); setSaveError(''); try { await onSave(selected.id, draft); } catch (error) { setSaveError(error.message); } finally { setSaving(false); } }} className="rounded-xl bg-blue-600 px-5 py-3 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-blue-950/30 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40">{saving ? 'Guardando…' : selected.classificationStatus === 'APPROVED' ? 'Actualizar política' : 'Aplicar clasificación'}</button></div></div>
+            <div className="mt-7 rounded-2xl border border-blue-500/20 bg-blue-500/[0.06] p-5"><p className="text-[11px] font-extrabold uppercase tracking-wider text-blue-600 dark:text-blue-300">Vista previa de la política</p><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{draft.addressMode === 'DHCP' ? 'La IP tendrá peso mínimo para identificar equipos; se priorizarán agentes, hostname e identificadores persistentes.' : draft.addressMode === 'STATIC' ? 'La IP aportará contexto operativo fuerte, pero nunca fusionará dos equipos por sí sola.' : draft.addressMode === 'MIXED' ? 'Se aplicará conciliación conservadora y los cambios de IP requerirán evidencia corroborante.' : 'Selecciona el direccionamiento para conocer cómo cambiará la conciliación.'}</p><p className="mt-3 text-xs font-bold">Impacto: {selected.observations} observaciones · no crea activos automáticamente.</p></div>
+            <div className="mt-5 flex flex-col gap-3 border-t border-border pt-5 lg:flex-row lg:items-center lg:justify-between"><div className="flex flex-wrap gap-2"><button disabled={saving} onClick={async () => { setSaving(true); setSaveError(''); try { await onDisposition(selected.id, 'NEEDS_SPLIT'); } catch (error) { setSaveError(error.message); } finally { setSaving(false); } }} className="rounded-xl border border-rose-500/25 bg-rose-500/[0.06] px-4 py-3 text-[10px] font-black uppercase text-rose-300 hover:bg-rose-500/10">Requiere desagregación</button><button disabled={saving} onClick={async () => { setSaving(true); setSaveError(''); try { await onDisposition(selected.id, 'OUT_OF_SCOPE'); } catch (error) { setSaveError(error.message); } finally { setSaving(false); } }} className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-[10px] font-black uppercase text-muted-foreground hover:text-foreground">No tengo alcance</button></div><div className="flex flex-col items-end gap-2">{saveError && <p className="text-xs text-rose-300">{saveError}</p>}<button disabled={!isComplete(draft) || saving} onClick={async () => { setSaving(true); setSaveError(''); try { await onSave(selected.id, draft); } catch (error) { setSaveError(error.message); } finally { setSaving(false); } }} className="rounded-xl bg-blue-600 px-5 py-3 text-[11px] font-extrabold uppercase tracking-wider text-white shadow-lg shadow-blue-950/30 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40">{saving ? 'Guardando…' : selected.classificationStatus === 'APPROVED' ? 'Actualizar política' : 'Aplicar clasificación'}</button></div></div>
           </>}
         </div>
       </section>
@@ -544,24 +545,23 @@ export default function CybersecurityDashboard() {
   return (
     <div className="h-full overflow-y-auto bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.10),transparent_34%)] p-6 lg:p-9">
       <div className="mx-auto max-w-[1500px] space-y-7">
-        <section className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-          <div className="flex items-start gap-4">
-            <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-inner sm:flex">
-              <ShieldCheck size={24} />
+        <PageHeader
+          icon={
+            <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-inner sm:flex">
+              <ShieldCheck size={20} />
             </div>
-            <div>
-              <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.22em] text-blue-500 dark:text-blue-400"><ShieldCheck size={15} /> Skylab Cybersecurity</div>
-              <h1 className="mt-2 text-3xl font-black tracking-tight lg:text-4xl">{activeView === 'inventory' ? 'Inventario de activos' : activeView === 'subnets' ? 'Clasificación de subredes' : 'Postura y remediación'}</h1>
-              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{activeView === 'inventory' ? 'Observaciones, candidatos y activos canónicos conciliados sin convertir direcciones temporales en identidad.' : activeView === 'subnets' ? 'Define el contexto operativo de cada segmento protegido y revisa su impacto antes de aplicar políticas.' : 'Hallazgos normalizados, agrupados por causa técnica y priorizados sin exponer identificadores sensibles.'}</p>
-            </div>
-          </div>
-          <button onClick={refresh} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-muted"><RefreshCw size={15} className={(overview.isFetching || cases.isFetching || inventoryOverview.isFetching || inventoryCandidates.isFetching) ? 'animate-spin' : ''} /> Actualizar</button>
-        </section>
+          }
+          title={activeView === 'inventory' ? 'Inventario de activos' : activeView === 'subnets' ? 'Clasificación de subredes' : 'Postura y remediación'}
+          subtitle={activeView === 'inventory' ? 'Observaciones, candidatos y activos canónicos conciliados sin convertir direcciones temporales en identidad.' : activeView === 'subnets' ? 'Define el contexto operativo de cada segmento protegido y revisa su impacto antes de aplicar políticas.' : 'Hallazgos normalizados, agrupados por causa técnica y priorizados sin exponer identificadores sensibles.'}
+          actions={
+            <button onClick={refresh} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider hover:bg-muted"><RefreshCw size={15} className={(overview.isFetching || cases.isFetching || inventoryOverview.isFetching || inventoryCandidates.isFetching) ? 'animate-spin' : ''} /> Actualizar</button>
+          }
+        />
 
         <nav className="flex w-fit gap-1 rounded-xl border border-border bg-card/70 p-1">
-          <button onClick={() => setActiveView('posture')} className={`rounded-lg px-4 py-2 text-xs font-black transition-colors ${activeView === 'posture' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>Postura y remediación</button>
-          <button onClick={() => setActiveView('inventory')} className={`rounded-lg px-4 py-2 text-xs font-black transition-colors ${activeView === 'inventory' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>Inventario</button>
-          <button onClick={() => setActiveView('subnets')} className={`rounded-lg px-4 py-2 text-xs font-black transition-colors ${activeView === 'subnets' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>Subredes</button>
+          <button onClick={() => setActiveView('posture')} className={`rounded-lg px-4 py-2 text-xs font-bold transition-colors ${activeView === 'posture' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>Postura y remediación</button>
+          <button onClick={() => setActiveView('inventory')} className={`rounded-lg px-4 py-2 text-xs font-bold transition-colors ${activeView === 'inventory' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>Inventario</button>
+          <button onClick={() => setActiveView('subnets')} className={`rounded-lg px-4 py-2 text-xs font-bold transition-colors ${activeView === 'subnets' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>Subredes</button>
         </nav>
 
         {activeView === 'inventory' ? (
@@ -578,7 +578,7 @@ export default function CybersecurityDashboard() {
 
         <section className="grid gap-5 xl:grid-cols-[0.85fr_2.15fr]">
           <div className="rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xl p-6">
-            <div className="flex items-center justify-between"><div><p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Distribución</p><h2 className="mt-1 text-lg font-black">Prioridad técnica</h2></div><Radar className="text-blue-400" size={22} /></div>
+            <div className="flex items-center justify-between"><div><p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Distribución</p><h2 className="mt-1 text-base font-semibold">Prioridad técnica</h2></div><Radar className="text-blue-400" size={22} /></div>
             <div className="mt-6 space-y-4">
               {['P1', 'P2', 'P3', 'P4'].map((key) => {
                 const count = data?.cases.byPriority?.[key] || 0;
@@ -591,7 +591,7 @@ export default function CybersecurityDashboard() {
 
           <div className="overflow-hidden rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xl">
             <div className="flex flex-col gap-4 border-b border-border p-5 lg:flex-row lg:items-center lg:justify-between">
-              <div><p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Bandeja operativa</p><h2 className="mt-1 text-lg font-black">Casos de remediación</h2></div>
+              <div><p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Bandeja operativa</p><h2 className="mt-1 text-base font-semibold">Casos de remediación</h2></div>
               <div className="flex flex-wrap gap-2">
                 <select value={priority} onChange={(event) => setPriority(event.target.value)} className="rounded-lg border border-border bg-background px-3 py-2 text-xs"><option value="">Todas las prioridades</option>{['P1','P2','P3','P4'].map((item) => <option key={item}>{item}</option>)}</select>
                 <select value={status} onChange={(event) => setStatus(event.target.value)} className="rounded-lg border border-border bg-background px-3 py-2 text-xs"><option value="">Todos los estados</option>{Object.entries(STATUS_LABEL).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
@@ -613,7 +613,7 @@ export default function CybersecurityDashboard() {
         </section>
         </>}
 
-        <section className="flex flex-col gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.06] p-5 text-sm sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3"><CheckCircle2 className="mt-0.5 shrink-0 text-emerald-400" size={20} /><div><p className="font-bold">Canal protegido activo en el diseño</p><p className="mt-1 text-xs text-muted-foreground">La interfaz consume una API read-only; no accede a Greenbone ni a SQLite desde el navegador.</p></div></div><span className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-wider text-emerald-300">Arquitectura segura <ArrowRight size={14} /></span></section>
+        <section className="flex flex-col gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.06] p-5 text-sm sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3"><CheckCircle2 className="mt-0.5 shrink-0 text-emerald-400" size={20} /><div><p className="font-bold">Canal protegido activo en el diseño</p><p className="mt-1 text-xs text-muted-foreground">La interfaz consume una API read-only; no accede a Greenbone ni a SQLite desde el navegador.</p></div></div><span className="inline-flex items-center gap-1 text-[11px] font-extrabold uppercase tracking-wider text-emerald-300">Arquitectura segura <ArrowRight size={14} /></span></section>
       </div>
       <CaseDetail caseId={selectedCase} onClose={() => setSelectedCase(null)} />
       <CandidateDetail candidateId={selectedCandidate} onClose={() => setSelectedCandidate(null)} />
