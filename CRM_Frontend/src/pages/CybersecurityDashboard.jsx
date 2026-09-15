@@ -53,6 +53,43 @@ const NETWORK_PROFILE_LABEL = {
   CANONICAL: 'Segmento canónico', UNCLASSIFIED: 'Red sin clasificar',
 };
 
+// Índice de confiabilidad por host (src/inventory-reliability.js, backend) — no reemplaza la
+// "Confianza"/"Fuerza identidad" que ya existían; combina antigüedad de presencia, corroboración
+// entre fuentes y si el "conflicto" es en realidad un mismo equipo con varias tarjetas de red.
+const RELIABILITY_TONE = {
+  ALTA: 'bg-emerald-500/10 text-emerald-300',
+  MEDIA: 'bg-amber-500/10 text-amber-300',
+  BAJA: 'bg-rose-500/10 text-rose-300',
+};
+
+function ReliabilityBadge({ reliability }) {
+  return (
+    <div className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-black uppercase ${RELIABILITY_TONE[reliability.label]}`}>
+      {reliability.needsManualReview && <AlertTriangle size={12} />}
+      Confiabilidad {reliability.score}%
+    </div>
+  );
+}
+
+function ReliabilityPanel({ reliability }) {
+  return (
+    <div className={`rounded-2xl border p-5 ${reliability.needsManualReview ? 'border-rose-500/25 bg-rose-500/[0.05]' : 'border-border bg-card/60'}`}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Índice de confiabilidad</p>
+        <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${RELIABILITY_TONE[reliability.label]}`}>{reliability.label} · {reliability.score}%</span>
+      </div>
+      {reliability.needsManualReview && (
+        <p className="mt-3 flex items-center gap-1.5 text-xs font-bold text-rose-300"><AlertTriangle size={14} /> Requiere revisión manual: dos equipos distintos reclaman la misma IP y no parecen ser el mismo hardware.</p>
+      )}
+      <ul className="mt-3 space-y-1.5">
+        {reliability.signals.map((signal) => (
+          <li key={signal} className="text-xs text-muted-foreground">· {signal}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function MetricCard({ label, value, detail, icon, tone = 'blue' }) {
   const tones = {
     rose: 'from-rose-500/15 border-rose-500/20',
@@ -177,11 +214,13 @@ function CandidateDetailPane({ query, onChanged }) {
           <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-blue-400">Detalle de candidato</p>
           <h2 className="mt-2 truncate text-2xl font-black tracking-tight">{query.data?.label || 'Cargando candidato…'}</h2>
         </div>
+        {query.data?.reliability && <ReliabilityBadge reliability={query.data.reliability} />}
       </div>
         {query.isError && <EmptyState error onRetry={query.refetch} />}
         {query.isLoading && <div className="mt-7 text-center text-muted-foreground">Cargando detalle…</div>}
         {query.data && (
           <div className="mt-7 space-y-6">
+            {query.data.reliability && <ReliabilityPanel reliability={query.data.reliability} />}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Fuente</p><p className="mt-1 font-black">{query.data.source}</p></div>
               <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Estado</p><p className="mt-1 font-black">{query.data.state}</p></div>
@@ -345,11 +384,14 @@ function InventoryView({ overview, candidates, source, state, onSourceChange, on
               const active = selected?.id === item.id;
               return (
                 <button key={item.id} onClick={() => setSelectedId(item.id)} className={`w-full p-4 text-left transition-colors ${active ? 'bg-blue-500/10 shadow-[inset_3px_0_0_#3b82f6]' : 'hover:bg-muted/35'}`}>
-                  <p className="truncate text-sm font-bold">{item.label}</p>
+                  <div className="flex items-center gap-2"><p className="truncate text-sm font-bold">{item.label}</p>{item.reliability?.needsManualReview && <AlertTriangle className="shrink-0 text-rose-400" size={13} />}</div>
                   <p className="mt-1 truncate text-[11px] text-muted-foreground">{SOURCE_LABEL[item.source] || item.source} · {item.assetClass}</p>
                   <div className="mt-2 flex items-center justify-between gap-2">
                     <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black uppercase ${stateTone[item.state] || 'bg-muted text-muted-foreground'}`}>{INVENTORY_STATE_LABEL[item.state] || item.state}</span>
-                    <span className="text-[10px] text-muted-foreground">{Math.round((item.identityConfidence || 0) * 100)}% identidad</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-muted-foreground">{Math.round((item.identityConfidence || 0) * 100)}% identidad</span>
+                      {item.reliability && <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${RELIABILITY_TONE[item.reliability.label]}`}>{item.reliability.score}%</span>}
+                    </div>
                   </div>
                 </button>
               );

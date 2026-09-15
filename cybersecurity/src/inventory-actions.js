@@ -1,6 +1,7 @@
 const crypto = require('node:crypto');
 const { openCyberDatabase } = require('../db/open-database');
-const { resolveProtectedAlias } = require('./cybersecurity-read-model');
+const { resolveProtectedAlias, getCrossSourceMatchedObservationIds } = require('./cybersecurity-read-model');
+const { computeReliabilityScore, detectDeviceGroups } = require('./inventory-reliability');
 
 function argument(name) {
   const index = process.argv.indexOf(`--${name}`);
@@ -51,7 +52,15 @@ function getObservationDetail(db, candidateKey) {
   }
 
   // CANDIDATE (observación FortiGate/Kaspersky)
-  const observation = db.prepare('SELECT * FROM cyber_asset_observations WHERE id = ?').get(resolved.id);
+  // (source venía de observation.source_system_id, columna que no existe en
+  // cyber_asset_observations -- siempre daba 'UNKNOWN'. Se resuelve vía snapshot -> fuente.)
+  const observation = db.prepare(`
+    SELECT o.*, source.source_type sourceType
+    FROM cyber_asset_observations o
+    JOIN cyber_source_snapshots s ON s.id = o.snapshot_id
+    JOIN cyber_source_systems source ON source.id = s.source_system_id
+    WHERE o.id = ?
+  `).get(resolved.id);
   if (!observation) return null;
 
   const analysis = db.prepare(`
@@ -60,12 +69,24 @@ function getObservationDetail(db, candidateKey) {
     WHERE item.observation_id = ?
     ORDER BY run.completed_at DESC LIMIT 1
   `).get(observation.id);
+  const qualityFlags = JSON.parse(observation.quality_flags_json || '[]');
+  const reasonCodes = analysis ? JSON.parse(analysis.reason_codes_json || '[]') : [];
+
+  // Para saber si esta observación es "el mismo equipo con varias tarjetas de red", se agrupa
+  // contra el resto de observaciones de la misma captura con su mismo hostname (ver
+  // src/inventory-reliability.js — decisión del usuario 2026-09-15).
+  const siblings = observation.hostname_raw
+    ? db.prepare('SELECT id, hostname_raw hostnameRaw, mac_value macValue, ip_value ipValue FROM cyber_asset_observations WHERE snapshot_id = ? AND hostname_raw = ?')
+      .all(observation.snapshot_id, observation.hostname_raw)
+    : [];
+  const deviceGroups = detectDeviceGroups(siblings);
+  const crossMatched = getCrossSourceMatchedObservationIds(db);
 
   return {
     kind: 'OBSERVATION',
     id: observation.id,
     label: `Activo observado ${observation.id.slice(-8).toUpperCase()}`,
-    source: observation.source_system_id ? 'FORTIGATE' : 'UNKNOWN',
+    source: observation.sourceType || 'UNKNOWN',
     observedAt: observation.observed_at,
     ingestedAt: observation.ingested_at,
     segmentId: observation.segment_id,
@@ -80,14 +101,18 @@ function getObservationDetail(db, candidateKey) {
     lastSeenSourceAt: observation.last_seen_source_at,
     sourceSeenSeconds: observation.source_seen_seconds,
     attributeConfidence: JSON.parse(observation.attribute_confidence_json || '{}'),
-    qualityFlags: JSON.parse(observation.quality_flags_json || '[]'),
+    qualityFlags,
     sanitizedAttributes: JSON.parse(observation.sanitized_attributes_json || '{}'),
+    reliability: computeReliabilityScore(
+      { sourceSeenSeconds: observation.source_seen_seconds, hostnameRaw: observation.hostname_raw, qualityFlags, reasonCodes },
+      { hasCrossSourceMatch: crossMatched.has(observation.id), deviceGroup: deviceGroups.get(observation.id) || null },
+    ),
     analysis: analysis ? {
       provisionalAssetClass: analysis.provisional_asset_class,
       identityStrength: analysis.identity_strength,
       proposedAction: analysis.proposed_action,
       confidence: analysis.confidence,
-      reasonCodes: JSON.parse(analysis.reason_codes_json || '[]'),
+      reasonCodes,
     } : null,
   };
 }

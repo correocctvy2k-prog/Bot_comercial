@@ -1,5 +1,6 @@
 const crypto = require('node:crypto');
 const { assessInventoryCandidate } = require('./inventory-confidence-policy');
+const { computeReliabilityScore, detectDeviceGroups } = require('./inventory-reliability');
 
 const CLOSED_STATUSES = new Set(['VERIFIED', 'CLOSED']);
 const ALLOWED_PRIORITIES = new Set(['P1', 'P2', 'P3', 'P4']);
@@ -146,7 +147,9 @@ function listInventoryCandidates(db, filters = {}) {
            COALESCE(a.proposed_action, 'NEW_ASSET_REVIEW') state,
            COALESCE(a.identity_strength, 'INSUFFICIENT') identityStrength,
            COALESCE(a.confidence, 0) confidence, o.quality_flags_json qualityFlags,
-           COALESCE(a.reason_codes_json, '[]') reasonCodes, 0 findingCount, 0 maxSeverity
+           COALESCE(a.reason_codes_json, '[]') reasonCodes, 0 findingCount, 0 maxSeverity,
+           o.source_seen_seconds sourceSeenSeconds, o.hostname_raw hostnameRaw,
+           o.mac_value macValue, o.ip_value ipValue
     FROM cyber_asset_observations o
     JOIN cyber_source_snapshots s ON s.id = o.snapshot_id
     JOIN cyber_source_systems source ON source.id = s.source_system_id
@@ -158,13 +161,14 @@ function listInventoryCandidates(db, filters = {}) {
            NULL, NULL, NULL, 'OTHER', 'PROTECTED_TARGET',
            CASE WHEN min(f.qod) >= 70 THEN 'MEDIUM' ELSE 'LOW' END,
            CASE WHEN min(f.qod) >= 70 THEN 0.70 ELSE 0.40 END,
-           '[]', '[]', count(*), max(f.severity)
+           '[]', '[]', count(*), max(f.severity), NULL, NULL, NULL, NULL
     FROM cyber_vulnerability_findings f GROUP BY f.target_key
     UNION ALL
     SELECT 'CANONICAL', a.id, 'CANONICAL', a.updated_at, NULL, NULL, NULL, NULL,
            a.asset_class, 'CANONICAL', 'MEDIUM', 1.0, '[]', '[]',
            (SELECT count(*) FROM cyber_vulnerability_findings f WHERE f.asset_id = a.id),
-           COALESCE((SELECT max(f.severity) FROM cyber_vulnerability_findings f WHERE f.asset_id = a.id), 0)
+           COALESCE((SELECT max(f.severity) FROM cyber_vulnerability_findings f WHERE f.asset_id = a.id), 0),
+           NULL, NULL, NULL, NULL
     FROM cyber_assets a
   `).all();
   const filtered = rows.filter((row) => (!filters.source || row.source === filters.source)
@@ -179,10 +183,25 @@ function listInventoryCandidates(db, filters = {}) {
     summary[row.networkProfile] = (summary[row.networkProfile] || 0) + 1;
     return summary;
   }, {});
+  // Índice de confiabilidad (ver src/inventory-reliability.js): solo tiene sentido para
+  // observaciones reales (FortiGate/Kaspersky), no para hallazgos de Greenbone ni activos ya
+  // canónicos. Se calcula sobre TODO el conjunto filtrado (no solo la página visible) para que
+  // "mismo equipo, varias tarjetas de red" agrupe aunque sus observaciones caigan en páginas
+  // distintas.
+  const observationRows = assessed.filter((row) => row.kind === 'OBSERVATION');
+  const deviceGroups = detectDeviceGroups(observationRows.map((row) => ({ id: row.candidateKey, hostnameRaw: row.hostnameRaw, macValue: row.macValue, ipValue: row.ipValue })));
+  const crossMatched = getCrossSourceMatchedObservationIds(db);
+  const withReliability = assessed.map((row) => (row.kind !== 'OBSERVATION' ? row : {
+    ...row,
+    reliability: computeReliabilityScore(row, {
+      hasCrossSourceMatch: crossMatched.has(row.candidateKey),
+      deviceGroup: deviceGroups.get(row.candidateKey) || null,
+    }),
+  }));
   return {
     total: filtered.length,
     assessmentSummary,
-    items: assessed.slice(offset, offset + limit).map(({ candidateKey, ...row }) => ({
+    items: withReliability.slice(offset, offset + limit).map(({ candidateKey, ...row }) => ({
       ...row,
       id: protectedAlias(row.kind === 'CANONICAL' ? 'canonical' : 'candidate', candidateKey),
       label: row.kind === 'CANONICAL'
@@ -192,6 +211,18 @@ function listInventoryCandidates(db, filters = {}) {
           : protectedAlias('Activo observado', candidateKey),
     })),
   };
+}
+
+// Observaciones (de cualquier fuente) que ya se corroboraron contra otra fuente distinta —
+// cyber_cross_source_matches se calculaba (scripts/match-fortigate-ksc.js) pero nunca se leía
+// en ningún punto de la aplicación; ver hallazgo 2026-09-15.
+function getCrossSourceMatchedObservationIds(db) {
+  const rows = db.prepare(`
+    SELECT left_observation_id id FROM cyber_cross_source_matches WHERE match_status = 'PROPOSED'
+    UNION
+    SELECT right_observation_id id FROM cyber_cross_source_matches WHERE match_status = 'PROPOSED'
+  `).all();
+  return new Set(rows.map((row) => row.id));
 }
 
 function listNetworkSegments(db, options = {}) {
@@ -380,6 +411,7 @@ function getRemediationCase(db, id) {
 
 module.exports = {
   getCybersecurityOverview, getInventoryOverview, getRemediationCase,
+  getCrossSourceMatchedObservationIds,
   listInventoryCandidates, listNetworkSegments, listRemediationCases,
   protectedAlias, resolveProtectedAlias,
 };
