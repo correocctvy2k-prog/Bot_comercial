@@ -80,11 +80,25 @@ function getInventoryOverview(db) {
     FROM cyber_vulnerability_findings f
     JOIN cyber_source_snapshots s ON s.id = f.snapshot_id
   `).get();
+  // Contar sobre TODA cyber_inventory_analysis_items (sin filtrar por snapshot) sumaba también
+  // los análisis de capturas de FortiGate/Kaspersky ya superadas por una reimportación más
+  // reciente -- invisible mientras solo existió un snapshot por fuente; con la segunda
+  // reimportación de FortiGate (2026-09-15) los conflictos aparecían duplicados (417 de la
+  // captura vieja + 404 de la nueva = 821). Se limita a las observaciones del snapshot más
+  // reciente por fuente, igual que ya hacen listInventoryCandidates/listNetworkSegments.
   const review = db.prepare(`
+    WITH latest AS (
+      SELECT source_system_id, max(captured_at) captured_at
+      FROM cyber_source_snapshots WHERE processing_status = 'SUCCESS'
+      GROUP BY source_system_id
+    )
     SELECT count(*) total,
-      COALESCE(sum(CASE WHEN proposed_action = 'CONFLICT_REVIEW' THEN 1 ELSE 0 END), 0) conflicts,
-      COALESCE(sum(CASE WHEN identity_strength = 'INSUFFICIENT' THEN 1 ELSE 0 END), 0) insufficient
-    FROM cyber_inventory_analysis_items
+      COALESCE(sum(CASE WHEN item.proposed_action = 'CONFLICT_REVIEW' THEN 1 ELSE 0 END), 0) conflicts,
+      COALESCE(sum(CASE WHEN item.identity_strength = 'INSUFFICIENT' THEN 1 ELSE 0 END), 0) insufficient
+    FROM cyber_inventory_analysis_items item
+    JOIN cyber_asset_observations o ON o.id = item.observation_id
+    JOIN cyber_source_snapshots s ON s.id = o.snapshot_id
+    JOIN latest l ON l.source_system_id = s.source_system_id AND l.captured_at = s.captured_at
   `).get();
   const sourceCoverage = observations.map((row) => ({
     source: row.source, candidates: row.candidates, capturedAt: row.capturedAt, status: row.status,

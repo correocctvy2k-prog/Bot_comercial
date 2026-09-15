@@ -89,6 +89,13 @@ function importFortiGateInventory({
       cidr_fingerprint = excluded.cidr_fingerprint,
       updated_at = excluded.updated_at
   `);
+  // cidr_fingerprint es UNIQUE -- si ya existe un segmento para esta misma CIDR (de una
+  // captura anterior, con OTRO id), hay que reutilizar SU id en vez de calcular uno nuevo por
+  // CIDR: si no, la fila vieja se queda con el fingerprint y el INSERT de la fila nueva viola
+  // la restricción UNIQUE, y de paso el id de la red cambiaría en cada reimportación (huérfano
+  // en cualquier política/observación ya vinculada a esa CIDR — ver hallazgo 2026-09-15,
+  // scripts/reconcile-segment-policies.js).
+  const findSegmentByCidrFingerprint = db.prepare('SELECT id FROM cyber_network_segments WHERE cidr_fingerprint = ?');
   const insertObservation = db.prepare(`
     INSERT INTO cyber_asset_observations(
       id, snapshot_id, source_record_key, observed_at, ingested_at, segment_id,
@@ -116,14 +123,16 @@ function importFortiGateInventory({
     );
 
     for (const route of inventory.connectedRoutes) {
-      const segmentId = deterministicId('segment', route.cidr.toLowerCase());
+      const cidrFingerprint = sha256(route.cidr);
+      const existingSegment = findSegmentByCidrFingerprint.get(cidrFingerprint);
+      const segmentId = existingSegment ? existingSegment.id : deterministicId('segment', route.cidr.toLowerCase());
       const routes = segmentByInterface.get(route.interfaceName) || [];
       routes.push({ ...route, segmentId });
       segmentByInterface.set(route.interfaceName, routes);
       insertSegment.run(
         segmentId,
         `${route.interfaceName} · ${route.cidr}`,
-        sha256(route.cidr),
+        cidrFingerprint,
         importedAt,
         importedAt,
       );

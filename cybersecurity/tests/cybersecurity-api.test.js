@@ -5,6 +5,7 @@ const path = require('node:path');
 const { openCyberDatabase } = require('../db/open-database');
 const { createCybersecurityApi } = require('../src/cybersecurity-api');
 const { importGreenboneProtectedResults } = require('../src/greenbone-protected-importer');
+const { importFortiGateInventory } = require('../src/fortigate-importer');
 const {
   getCybersecurityOverview, getInventoryOverview, getRemediationCase,
   listInventoryCandidates, listNetworkSegments, listRemediationCases,
@@ -13,6 +14,9 @@ const {
 
 const fixture = fs.readFileSync(
   path.join(__dirname, '..', 'fixtures', 'greenbone-protected-anonymized.json'), 'utf8',
+);
+const fortigateFixture = fs.readFileSync(
+  path.join(__dirname, '..', 'fixtures', 'fortigate-anonymized.txt'), 'utf8',
 );
 
 function seededDatabase() {
@@ -141,6 +145,42 @@ test('promote/conflict/protect responden (no 405) con sesión de superadmin, y 4
   } finally {
     await new Promise((resolve) => server.close(resolve)); db.close();
   }
+});
+
+// Regresión 2026-09-15: getInventoryOverview().totals.conflicts sumaba
+// cyber_inventory_analysis_items de TODOS los snapshots de FortiGate alguna vez importados,
+// no solo el más reciente -- invisible mientras solo existió un snapshot por fuente; al
+// reimportar (misma fuente, snapshot nuevo) los conflictos de la captura ya superada seguían
+// contando, duplicando el total real.
+test('getInventoryOverview solo cuenta conflictos del snapshot más reciente por fuente', () => {
+  const db = openCyberDatabase();
+  try {
+    const first = importFortiGateInventory({
+      db, text: fortigateFixture,
+      capturedAt: '2026-08-29T16:00:00.000Z', importedAt: '2026-08-29T16:05:00.000Z',
+      custodyReference: 'restricted://fixture/old',
+    });
+    const laterText = fortigateFixture.replace('System time: Sat Aug 29 11:00:00 2026', 'System time: Mon Sep 15 09:00:00 2026');
+    const second = importFortiGateInventory({
+      db, text: laterText,
+      capturedAt: '2026-09-15T14:00:00.000Z', importedAt: '2026-09-15T14:05:00.000Z',
+      custodyReference: 'restricted://fixture/new',
+    });
+
+    // Simula un conflicto real solo en el snapshot VIEJO (ya superado por el nuevo import).
+    const oldObservation = db.prepare('SELECT id FROM cyber_asset_observations WHERE snapshot_id = ? LIMIT 1').get(first.snapshotId);
+    const runId = 'analysis-test-old';
+    db.prepare(`INSERT INTO cyber_inventory_analysis_runs (id, snapshot_id, policy_version, started_at, completed_at, status)
+      VALUES (?, ?, 'inventory-confidence-v2', ?, ?, 'SUCCESS')`)
+      .run(runId, first.snapshotId, '2026-08-29T17:00:00.000Z', '2026-08-29T17:00:00.000Z');
+    db.prepare(`INSERT INTO cyber_inventory_analysis_items (analysis_run_id, observation_id, provisional_asset_class, identity_strength, proposed_action, confidence, reason_codes_json, created_at)
+      VALUES (?, ?, 'OTHER', 'LOW', 'CONFLICT_REVIEW', 0.5, '[]', ?)`)
+      .run(runId, oldObservation.id, '2026-08-29T17:00:00.000Z');
+
+    assert.equal(db.prepare("SELECT count(*) n FROM cyber_inventory_analysis_items WHERE proposed_action = 'CONFLICT_REVIEW'").get().n, 1, 'precondición: hay 1 conflicto guardado, pero pertenece al snapshot viejo');
+    const overview = getInventoryOverview(db);
+    assert.equal(overview.totals.conflicts, 0, 'el conflicto del snapshot superado no debe contarse en el total actual');
+  } finally { db.close(); }
 });
 
 test('la lista de segmentos no expone identificadores de red', () => {
