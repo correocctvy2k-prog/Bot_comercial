@@ -25,6 +25,24 @@ const STATUS_LABEL = {
 const SOURCE_LABEL = {
   FORTIGATE: 'FortiGate', KASPERSKY: 'Kaspersky KSC', GREENBONE: 'Greenbone', CANONICAL: 'Canónico',
 };
+// Icono por fuente — pedido del usuario 2026-09-16 ("manejar mejor infografía e iconos"):
+// reconocer de un vistazo si un dato viene de la red (FortiGate), del antivirus (Kaspersky) o
+// de un escaneo de vulnerabilidades (Greenbone), sin tener que leer la etiqueta de texto.
+const SOURCE_ICON = { FORTIGATE: Network, KASPERSKY: ShieldCheck, GREENBONE: Radar, CANONICAL: Boxes };
+function SourceTag({ source, className = '' }) {
+  const Icon = SOURCE_ICON[source] || Network;
+  return <span className={`inline-flex items-center gap-1 ${className}`}><Icon size={12} className="shrink-0" />{SOURCE_LABEL[source] || source}</span>;
+}
+// Barra de confiabilidad — antes solo se veía el número ("BAJA · 34%"); una barra da una
+// lectura de un vistazo sin tener que leer el porcentaje exacto.
+function ReliabilityMeter({ score, label }) {
+  const barTone = label === 'ALTA' ? 'bg-emerald-400' : label === 'MEDIA' ? 'bg-amber-400' : 'bg-rose-400';
+  return (
+    <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+      <div className={`h-full rounded-full ${barTone}`} style={{ width: `${Math.max(4, score)}%` }} />
+    </div>
+  );
+}
 
 const INVENTORY_STATE_LABEL = {
   NEW_ASSET_REVIEW: 'Nuevo por revisar', EPHEMERAL_REVIEW: 'Identidad efímera',
@@ -122,6 +140,7 @@ function ReliabilityPanel({ reliability }) {
         <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Índice de confiabilidad</p>
         <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${RELIABILITY_TONE[reliability.label]}`}>{reliability.label} · {reliability.score}%</span>
       </div>
+      <div className="mt-3"><ReliabilityMeter score={reliability.score} label={reliability.label} /></div>
       {reliability.needsManualReview && (
         <p className="mt-3 flex items-center gap-1.5 text-xs font-bold text-rose-300"><AlertTriangle size={14} /> Requiere revisión manual: dos equipos distintos reclaman la misma IP y no parecen ser el mismo hardware.</p>
       )}
@@ -331,9 +350,15 @@ function CandidateDetailPane({ query, onChanged }) {
             <div className="rounded-2xl border border-border bg-card/60 p-5">
               <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Clasificación</p>
               <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
-                <div><p className="text-[10px] uppercase text-muted-foreground">Fuente</p><p className="mt-1 font-black">{SOURCE_LABEL[query.data.source] || query.data.source}</p></div>
+                <div><p className="text-[10px] uppercase text-muted-foreground">Fuente</p><p className="mt-1 font-black"><SourceTag source={query.data.source} /></p></div>
                 <div><p className="text-[10px] uppercase text-muted-foreground">Estado</p><p className="mt-1 font-black">{INVENTORY_STATE_LABEL[query.data.state] || query.data.state}</p></div>
-                <div><p className="text-[10px] uppercase text-muted-foreground">Clase de activo</p><p className="mt-1 font-black">{ASSET_CLASS_LABEL[query.data.assetClass] || query.data.assetClass}</p></div>
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground">Clase de activo</p>
+                  <p className="mt-1 flex items-center gap-1.5 font-black">
+                    {createElement(GROUP_ICON[ASSET_CLASS_GROUP[query.data.assetClass]] || SlidersHorizontal, { size: 13, className: 'shrink-0 text-muted-foreground' })}
+                    {ASSET_CLASS_LABEL[query.data.assetClass] || query.data.assetClass}
+                  </p>
+                </div>
                 <div><p className="text-[10px] uppercase text-muted-foreground">Confianza</p><p className="mt-1 font-black">{Number.isFinite(query.data.confidence) ? `${(query.data.confidence * 100).toFixed(0)}%` : '—'}</p></div>
                 <div><p className="text-[10px] uppercase text-muted-foreground">Fuerza identidad</p><p className="mt-1 font-black">{query.data.identityStrength || '—'}</p></div>
               </div>
@@ -456,11 +481,14 @@ function InventoryView({ overview, candidates, source, state, onSourceChange, on
 
   return (
     <>
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard label="Observaciones" value={data?.totals.observedCandidates} detail={`${data?.totals.active || 0} con actividad reciente`} icon={Database} tone="blue" />
         <MetricCard label="Objetivos protegidos" value={data?.totals.protectedTargets} detail={`${data?.totals.findings || 0} hallazgos asociados`} icon={Fingerprint} tone="rose" />
         <MetricCard label="Pendientes de revisión" value={data?.totals.pendingReview} detail={`${data?.totals.conflicts || 0} conflictos detectados`} icon={ListChecks} tone="amber" />
         <MetricCard label="Activos canónicos" value={data?.totals.canonicalAssets} detail="Validados por identidad fuerte" icon={Boxes} tone="emerald" />
+        {/* Ciberseguridad proactiva (2026-09-16): equipos Windows administrativos vistos en red
+            pero nunca corroborados por Kaspersky — sospecha de falta de antivirus. */}
+        <MetricCard label="Posible sin antivirus" value={candidates.data?.assessmentSummary?.ANTIVIRUS_GAP_SUSPECTED ?? 0} detail="Windows administrativo sin corroborar en Kaspersky" icon={ShieldAlert} tone="rose" />
       </section>
 
       <section className="rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xl p-6">
@@ -469,7 +497,7 @@ function InventoryView({ overview, candidates, source, state, onSourceChange, on
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           {(data?.sourceCoverage || []).map((item) => (
             <div key={item.source} className="rounded-xl border border-border/70 bg-background/45 p-4">
-              <div className="flex items-center justify-between gap-3"><span className="font-bold">{SOURCE_LABEL[item.source] || item.source}</span><span className="text-sm font-black">{item.candidates}</span></div>
+              <div className="flex items-center justify-between gap-3"><span className="font-bold"><SourceTag source={item.source} /></span><span className="text-sm font-black">{item.candidates}</span></div>
               <p className="mt-1 text-[11px] text-muted-foreground">Captura {item.capturedAt ? new Date(item.capturedAt).toLocaleString('es-CO') : 'sin fecha'} · {item.status}</p>
             </div>
           ))}
@@ -521,11 +549,12 @@ function InventoryView({ overview, candidates, source, state, onSourceChange, on
                           {item.antivirusGapSuspected && <ShieldAlert className="shrink-0 text-rose-400" size={13} />}
                           {item.reliability?.needsManualReview && <AlertTriangle className="shrink-0 text-rose-400" size={13} />}
                         </div>
-                        <p className="mt-1 truncate text-[11px] text-muted-foreground">{SOURCE_LABEL[item.source] || item.source} · {ASSET_CLASS_LABEL[item.assetClass] || item.assetClass}{item.hostnameRaw ? ` · ${item.hostnameRaw}` : ''}</p>
+                        <p className="mt-1 truncate text-[11px] text-muted-foreground"><SourceTag source={item.source} /> · {ASSET_CLASS_LABEL[item.assetClass] || item.assetClass}{item.hostnameRaw ? ` · ${item.hostnameRaw}` : ''}</p>
                         <div className="mt-2 flex items-center justify-between gap-2">
                           <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black uppercase ${stateTone[item.state] || 'bg-muted text-muted-foreground'}`}>{INVENTORY_STATE_LABEL[item.state] || item.state}</span>
                           {item.reliability && <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${RELIABILITY_TONE[item.reliability.label]}`}>{item.reliability.score}%</span>}
                         </div>
+                        {item.reliability && <div className="mt-1.5"><ReliabilityMeter score={item.reliability.score} label={item.reliability.label} /></div>}
                       </button>
                     );
                   })}
