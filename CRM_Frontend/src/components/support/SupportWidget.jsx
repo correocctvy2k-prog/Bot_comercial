@@ -247,20 +247,18 @@ export default function SupportWidget() {
             {/* Botón Flotante Launcher — burbuja minimalista (decisión del usuario 2026-09-16):
                 arranca como círculo con solo el icono; al pasar el cursor se despliega mostrando
                 la etiqueta (gap/padding-right y el ancho del texto animados con group-hover, sin
-                JS extra). Color cambiado de azul/índigo/morado a esmeralda/teal para no competir
-                con el azul que ya usa el resto de la marca. La funcionalidad del chat no cambió. */}
+                JS extra). Color esmeralda/teal para no competir con el azul de marca. Ronda 2
+                (mismo día): sin el punto verde parpadeante (ya lo decía el color de fondo), icono
+                en un tono oscuro para que contraste contra el degradé claro (antes blanco, se
+                perdía un poco), y un poco más grande. La funcionalidad del chat no cambió. */}
             <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setIsOpen(!isOpen)}
-                className="group relative flex items-center overflow-hidden rounded-full border border-white/20 bg-gradient-to-r from-emerald-500 to-teal-500 p-3.5 text-white shadow-xl shadow-emerald-950/30 transition-all duration-300 hover:gap-2.5 hover:pr-5"
+                className="group relative flex items-center overflow-hidden rounded-full border border-white/20 bg-gradient-to-r from-emerald-500 to-teal-500 p-4 text-white shadow-xl shadow-emerald-950/30 transition-all duration-300 hover:gap-2.5 hover:pr-5"
             >
-                <div className="relative shrink-0">
-                    <SkylabBot size={26} />
-                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-300 border-2 border-emerald-600"></span>
-                    </span>
+                <div className="relative shrink-0 text-emerald-950">
+                    <SkylabBot size={30} />
                 </div>
                 <span className="max-w-0 overflow-hidden whitespace-nowrap text-xs font-black tracking-wide opacity-0 transition-all duration-300 group-hover:max-w-[140px] group-hover:opacity-100">Soporte Skylab</span>
             </motion.button>

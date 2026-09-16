@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { cybersecurityService } from '../services/cybersecurity.service';
 import PageHeader from '../components/PageHeader';
+import fortinetLogo from '../assets/sources/fortinet.webp';
+import kasperskyLogo from '../assets/sources/kaspersky.png';
 
 const PRIORITY_STYLE = {
   P1: 'border-rose-500/30 bg-rose-500/10 text-rose-300',
@@ -32,6 +34,29 @@ const SOURCE_ICON = { FORTIGATE: Network, KASPERSKY: ShieldCheck, GREENBONE: Rad
 function SourceTag({ source, className = '' }) {
   const Icon = SOURCE_ICON[source] || Network;
   return <span className={`inline-flex items-center gap-1 ${className}`}><Icon size={12} className="shrink-0" />{SOURCE_LABEL[source] || source}</span>;
+}
+// Logo real por fuente — solo FortiGate y Kaspersky tienen logo disponible (carpeta que aportó
+// el usuario 2026-09-16); Greenbone/Canónico se quedan con el icono genérico de SOURCE_ICON.
+// Se envuelve en una chapa blanca porque el logo de Fortinet trae fondo blanco sólido (no
+// transparente) — sin la chapa se vería como un rectángulo blanco pegado sobre el fondo oscuro.
+const SOURCE_LOGO = { FORTIGATE: fortinetLogo, KASPERSKY: kasperskyLogo };
+function SourceBadge({ source, className = '' }) {
+  const logo = SOURCE_LOGO[source];
+  const Icon = SOURCE_ICON[source] || Network;
+  return (
+    <span className={`inline-flex items-center gap-2 ${className}`}>
+      {logo ? (
+        <span className="flex h-8 w-11 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm">
+          <img src={logo} alt="" className="h-full w-full object-contain" />
+        </span>
+      ) : (
+        <span className="flex h-8 w-11 shrink-0 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground">
+          <Icon size={20} />
+        </span>
+      )}
+      <span className="text-sm font-bold">{SOURCE_LABEL[source] || source}</span>
+    </span>
+  );
 }
 // Barra de confiabilidad — antes solo se veía el número ("BAJA · 34%"); una barra da una
 // lectura de un vistazo sin tener que leer el porcentaje exacto.
@@ -505,9 +530,12 @@ function InventoryView({ overview, candidates, source, state, onSourceChange, on
         </div>
         <div className="mt-3 grid gap-2.5 sm:grid-cols-3">
           {(data?.sourceCoverage || []).map((item) => (
-            <div key={item.source} className="rounded-xl border border-border/70 bg-background/45 p-3">
-              <div className="flex items-center justify-between gap-3"><span className="text-sm font-bold"><SourceTag source={item.source} /></span><span className="text-base font-black">{item.candidates}</span></div>
-              <p className="mt-1 text-[11px] text-muted-foreground">Captura {item.capturedAt ? new Date(item.capturedAt).toLocaleString('es-CO') : 'sin fecha'} · {item.status}</p>
+            <div key={item.source} className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-background/45 p-3">
+              <div>
+                <SourceBadge source={item.source} />
+                <p className="mt-1.5 text-[11px] text-muted-foreground">Captura {item.capturedAt ? new Date(item.capturedAt).toLocaleString('es-CO') : 'sin fecha'} · {item.status}</p>
+              </div>
+              <span className="shrink-0 text-xl font-black">{item.candidates}</span>
             </div>
           ))}
         </div>
@@ -825,8 +853,8 @@ export default function CybersecurityDashboard() {
   const data = overview.data;
 
   return (
-    <div className="h-full overflow-y-auto bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.10),transparent_34%)] p-6 lg:p-9">
-      <div className="mx-auto max-w-[1500px] space-y-5">
+    <div className="h-full overflow-y-auto bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.10),transparent_34%)] p-4 lg:p-6">
+      <div className="mx-auto max-w-[1900px] space-y-5">
         <PageHeader
           icon={
             <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-inner sm:flex">
