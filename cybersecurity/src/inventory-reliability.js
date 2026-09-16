@@ -126,10 +126,25 @@ function computeReliabilityScore(candidate, context = {}) {
   return { score, label, needsManualReview, signals };
 }
 
+const ADMIN_ASSET_CLASSES = new Set(['WORKSTATION', 'LAPTOP', 'SERVER']);
+
+// Ciberseguridad proactiva (decisión del usuario, 2026-09-16): un equipo Windows visto por
+// FortiGate que NUNCA aparece corroborado por Kaspersky (KSC = el agente antivirus/EDR de la
+// organización) es sospechoso de no tener protección instalada -- no es una certeza (KSC podría
+// no haberlo reportado ese día, o el hostname pudo no coincidir en el cruce exacto), por eso es
+// una "sospecha" a revisar, no una alerta absoluta. Solo aplica a equipos de tipo administrativo
+// (estación de trabajo/portátil/servidor) -- un móvil o un IoT con Windows embebido no aplica.
+function detectAntivirusGap({ osFamily, source, assetClass }, context = {}) {
+  const isWindows = /windows/i.test(osFamily || '');
+  const isAdminClass = ADMIN_ASSET_CLASSES.has(assetClass);
+  return Boolean(isWindows && source === 'FORTIGATE' && isAdminClass && !context.hasCrossSourceMatch);
+}
+
 module.exports = {
   MAC_GROUP_MAX_DISTANCE,
   MAX_PRESENCE_DAYS,
   computeReliabilityScore,
+  detectAntivirusGap,
   detectDeviceGroups,
   isGenericHostname,
   isSameDeviceMacPair,

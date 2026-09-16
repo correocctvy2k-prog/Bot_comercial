@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
-  computeReliabilityScore, detectDeviceGroups, isGenericHostname, isSameDeviceMacPair,
+  computeReliabilityScore, detectAntivirusGap, detectDeviceGroups, isGenericHostname, isSameDeviceMacPair,
 } = require('../src/inventory-reliability');
 
 // Casos reales encontrados en la base local (2026-09-15) al revisar los 12 conflictos de
@@ -81,4 +81,32 @@ test('computeReliabilityScore: corroboración cruzada con Kaspersky suma puntos'
   const withMatch = computeReliabilityScore(base, { hasCrossSourceMatch: true });
   const withoutMatch = computeReliabilityScore(base, { hasCrossSourceMatch: false });
   assert.ok(withMatch.score > withoutMatch.score);
+});
+
+// Ciberseguridad proactiva (decisión del usuario, 2026-09-16): equipo Windows visto por
+// FortiGate sin corroborar con Kaspersky (KSC = agente antivirus) -> sospecha de falta de
+// protección. Caso real: DESKTOP-VFD1JHD (Windows, WORKSTATION, sin match en Kaspersky).
+
+test('detectAntivirusGap marca un Windows administrativo de FortiGate sin corroborar con Kaspersky', () => {
+  assert.equal(detectAntivirusGap(
+    { osFamily: 'Windows', source: 'FORTIGATE', assetClass: 'WORKSTATION' },
+    { hasCrossSourceMatch: false },
+  ), true);
+});
+
+test('detectAntivirusGap NO marca si ya está corroborado por Kaspersky', () => {
+  assert.equal(detectAntivirusGap(
+    { osFamily: 'Windows', source: 'FORTIGATE', assetClass: 'WORKSTATION' },
+    { hasCrossSourceMatch: true },
+  ), false);
+});
+
+test('detectAntivirusGap NO marca equipos no-Windows ni fuera de clases administrativas', () => {
+  assert.equal(detectAntivirusGap({ osFamily: 'Android', source: 'FORTIGATE', assetClass: 'MOBILE' }, {}), false);
+  assert.equal(detectAntivirusGap({ osFamily: 'Windows', source: 'FORTIGATE', assetClass: 'MOBILE' }, {}), false);
+  assert.equal(detectAntivirusGap({ osFamily: 'FortiAP OS', source: 'FORTIGATE', assetClass: 'NETWORK' }, {}), false);
+});
+
+test('detectAntivirusGap NO marca observaciones que ya vienen de Kaspersky (es la fuente antivirus)', () => {
+  assert.equal(detectAntivirusGap({ osFamily: 'Microsoft Windows 10', source: 'KASPERSKY', assetClass: 'WORKSTATION' }, {}), false);
 });

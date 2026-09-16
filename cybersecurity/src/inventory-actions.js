@@ -1,7 +1,8 @@
 const crypto = require('node:crypto');
 const { openCyberDatabase } = require('../db/open-database');
 const { resolveProtectedAlias, getCrossSourceMatchedObservationIds } = require('./cybersecurity-read-model');
-const { computeReliabilityScore, detectDeviceGroups } = require('./inventory-reliability');
+const { computeReliabilityScore, detectAntivirusGap, detectDeviceGroups } = require('./inventory-reliability');
+const { assessInventoryCandidate } = require('./inventory-confidence-policy');
 
 function argument(name) {
   const index = process.argv.indexOf(`--${name}`);
@@ -81,12 +82,30 @@ function getObservationDetail(db, candidateKey) {
     : [];
   const deviceGroups = detectDeviceGroups(siblings);
   const crossMatched = getCrossSourceMatchedObservationIds(db);
+  const hasCrossSourceMatch = crossMatched.has(observation.id);
+
+  // La vista de detalle mostraba "Confianza: NaN%" y "Autoridad: undefined" -- nunca corría
+  // assessInventoryCandidate (a diferencia de la lista), así que confidence/sourceAuthority/
+  // identityPolicy/networkIdentityRule/lifecycleStatus/networkProfile no existían en la
+  // respuesta. Se corre el mismo cálculo que usa listInventoryCandidates para que detalle y
+  // lista muestren exactamente los mismos números.
+  const assessed = assessInventoryCandidate({
+    source: observation.sourceType || 'UNKNOWN',
+    lastSeenAt: observation.observed_at,
+    lastSeenSourceAt: observation.last_seen_source_at,
+    osFamily: observation.os_family,
+    assetClass: analysis?.provisional_asset_class || 'OTHER',
+    state: analysis?.proposed_action || 'NEW_ASSET_REVIEW',
+    identityStrength: analysis?.identity_strength || 'INSUFFICIENT',
+    confidence: analysis?.confidence || 0,
+    qualityFlags,
+    reasonCodes,
+  });
 
   return {
     kind: 'OBSERVATION',
     id: observation.id,
     label: `Activo observado ${observation.id.slice(-8).toUpperCase()}`,
-    source: observation.sourceType || 'UNKNOWN',
     observedAt: observation.observed_at,
     ingestedAt: observation.ingested_at,
     segmentId: observation.segment_id,
@@ -94,19 +113,18 @@ function getObservationDetail(db, candidateKey) {
     macValue: observation.mac_value,
     hostnameRaw: observation.hostname_raw,
     manufacturer: observation.manufacturer,
-    osFamily: observation.os_family,
     osVersion: observation.os_version,
     deviceClassRaw: observation.device_class_raw,
     firstSeenSourceAt: observation.first_seen_source_at,
-    lastSeenSourceAt: observation.last_seen_source_at,
     sourceSeenSeconds: observation.source_seen_seconds,
     attributeConfidence: JSON.parse(observation.attribute_confidence_json || '{}'),
-    qualityFlags,
     sanitizedAttributes: JSON.parse(observation.sanitized_attributes_json || '{}'),
+    ...assessed,
     reliability: computeReliabilityScore(
       { sourceSeenSeconds: observation.source_seen_seconds, hostnameRaw: observation.hostname_raw, qualityFlags, reasonCodes },
-      { hasCrossSourceMatch: crossMatched.has(observation.id), deviceGroup: deviceGroups.get(observation.id) || null },
+      { hasCrossSourceMatch, deviceGroup: deviceGroups.get(observation.id) || null },
     ),
+    antivirusGapSuspected: detectAntivirusGap(assessed, { hasCrossSourceMatch }),
     analysis: analysis ? {
       provisionalAssetClass: analysis.provisional_asset_class,
       identityStrength: analysis.identity_strength,

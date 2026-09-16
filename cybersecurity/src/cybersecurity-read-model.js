@@ -1,6 +1,6 @@
 const crypto = require('node:crypto');
 const { assessInventoryCandidate } = require('./inventory-confidence-policy');
-const { computeReliabilityScore, detectDeviceGroups } = require('./inventory-reliability');
+const { computeReliabilityScore, detectAntivirusGap, detectDeviceGroups } = require('./inventory-reliability');
 
 const CLOSED_STATUSES = new Set(['VERIFIED', 'CLOSED']);
 const ALLOWED_PRIORITIES = new Set(['P1', 'P2', 'P3', 'P4']);
@@ -205,16 +205,19 @@ function listInventoryCandidates(db, filters = {}) {
   const observationRows = assessed.filter((row) => row.kind === 'OBSERVATION');
   const deviceGroups = detectDeviceGroups(observationRows.map((row) => ({ id: row.candidateKey, hostnameRaw: row.hostnameRaw, macValue: row.macValue, ipValue: row.ipValue })));
   const crossMatched = getCrossSourceMatchedObservationIds(db);
-  const withReliability = assessed.map((row) => (row.kind !== 'OBSERVATION' ? row : {
-    ...row,
-    reliability: computeReliabilityScore(row, {
-      hasCrossSourceMatch: crossMatched.has(row.candidateKey),
-      deviceGroup: deviceGroups.get(row.candidateKey) || null,
-    }),
-  }));
+  const withReliability = assessed.map((row) => {
+    if (row.kind !== 'OBSERVATION') return row;
+    const hasCrossSourceMatch = crossMatched.has(row.candidateKey);
+    return {
+      ...row,
+      reliability: computeReliabilityScore(row, { hasCrossSourceMatch, deviceGroup: deviceGroups.get(row.candidateKey) || null }),
+      antivirusGapSuspected: detectAntivirusGap(row, { hasCrossSourceMatch }),
+    };
+  });
+  const antivirusGapCount = withReliability.filter((row) => row.antivirusGapSuspected).length;
   return {
     total: filtered.length,
-    assessmentSummary,
+    assessmentSummary: { ...assessmentSummary, ANTIVIRUS_GAP_SUSPECTED: antivirusGapCount },
     items: withReliability.slice(offset, offset + limit).map(({ candidateKey, ...row }) => ({
       ...row,
       id: protectedAlias(row.kind === 'CANONICAL' ? 'canonical' : 'candidate', candidateKey),
