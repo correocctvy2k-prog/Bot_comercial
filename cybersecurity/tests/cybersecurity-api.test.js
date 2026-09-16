@@ -147,6 +147,34 @@ test('promote/conflict/protect responden (no 405) con sesión de superadmin, y 4
   }
 });
 
+// Regresión real de flujo completo (2026-09-16, reportada con captura + logs de nginx): la UI
+// nunca vuelve a usar el alias con el que pidió el detalle -- pide GET .../candidates/{alias},
+// y para Promover/Marcar conflicto/Marcar protegido usa el `id` que trae ESA respuesta. Si el
+// backend devuelve ahí el id crudo interno en vez del alias, este flujo (el que en verdad hace
+// el navegador) se rompe con 405, aunque el test anterior (que arma el alias él mismo, sin
+// pasar por GET) pase perfecto.
+test('el flujo real del navegador (GET detalle, reusar su id para promover) funciona de punta a punta', async () => {
+  const db = seededDatabase();
+  const observationId = seedCandidateObservation(db);
+  const listAlias = protectedAlias('candidate', observationId);
+  const server = createCybersecurityApi({ db, authorizeAdmin: async (request) => (request.headers.authorization === 'Bearer valid-test-token' ? { id: 'tester' } : false) });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  try {
+    const detailResponse = await fetch(`http://127.0.0.1:${port}/api/cybersecurity/inventory/candidates/${encodeURIComponent(listAlias)}`);
+    assert.equal(detailResponse.status, 200);
+    const detail = await detailResponse.json();
+    assert.equal(detail.id, listAlias, 'el id que trae el detalle debe ser el mismo alias con el que se pidió, no el id crudo');
+
+    const promote = await fetch(`http://127.0.0.1:${port}/api/cybersecurity/inventory/candidates/${encodeURIComponent(detail.id)}/promote`, {
+      method: 'POST', headers: { Authorization: 'Bearer valid-test-token', 'Content-Type': 'application/json' }, body: JSON.stringify({ note: 'Serv OpenVAS Piloto' }),
+    });
+    assert.equal(promote.status, 200, 'debe ser 200, no 405 -- este es exactamente el bug reportado');
+  } finally {
+    await new Promise((resolve) => server.close(resolve)); db.close();
+  }
+});
+
 // Regresión 2026-09-15: getInventoryOverview().totals.conflicts sumaba
 // cyber_inventory_analysis_items de TODOS los snapshots de FortiGate alguna vez importados,
 // no solo el más reciente -- invisible mientras solo existió un snapshot por fuente; al

@@ -54,7 +54,12 @@ test('getObservationDetail encuentra la observación real a partir del alias de 
   const detail = getObservationDetail(db, alias);
   assert.ok(detail, 'antes de la corrección esto devolvía null aunque la observación existiera');
   assert.equal(detail.kind, 'OBSERVATION');
-  assert.equal(detail.id, id);
+  // Regresión real 2026-09-16 (clic real en el navegador): getObservationDetail devolvía el id
+  // crudo interno en `id`, no el alias público -- el panel de detalle reusa `query.data.id`
+  // para Promover/Marcar conflicto/Marcar protegido, así que con el id crudo esas 3 rutas
+  // nunca coincidían (405 METHOD_NOT_ALLOWED). `detail.id` debe ser el MISMO alias que se usó
+  // para pedir el detalle, no el id de la fila.
+  assert.equal(detail.id, alias);
   assert.equal(detail.ipValue, '10.2.6.20');
 }));
 
@@ -115,4 +120,18 @@ test('una nota demasiado larga se rechaza con un mensaje claro', () => withDatab
   const id = seedObservation(db);
   const alias = protectedAlias('candidate', id);
   assert.throws(() => promoteObservationToAsset(db, alias, { note: 'x'.repeat(501) }, 'jbeltran'), /INVALID_NOTE_TOO_LONG/);
+}));
+
+// Regresión del flujo real de la UI (2026-09-16, reportada con captura de pantalla + logs de
+// nginx): la interfaz pide el detalle de un candidato y reusa el `id` de ESA respuesta para
+// Promover/Marcar conflicto/Marcar protegido -- no vuelve a usar el alias original de la lista.
+// Si getObservationDetail() devuelve el id crudo en vez del alias, este flujo se rompe aunque
+// promoteObservationToAsset() funcione perfecto si se lo llama con el alias "correcto" a mano
+// (que es justo lo que hacían los demás tests, sin ver el bug).
+test('el flujo real detalle -> promover funciona usando el id que trae la respuesta de detalle', () => withDatabase((db) => {
+  const id = seedObservation(db);
+  const listAlias = protectedAlias('candidate', id);
+  const detail = getObservationDetail(db, listAlias);
+  const result = promoteObservationToAsset(db, detail.id, { note: 'Serv OpenVAS Piloto' }, 'jbeltran');
+  assert.equal(result.success, true);
 }));

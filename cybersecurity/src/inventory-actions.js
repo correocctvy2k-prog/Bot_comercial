@@ -1,6 +1,6 @@
 const crypto = require('node:crypto');
 const { openCyberDatabase } = require('../db/open-database');
-const { resolveProtectedAlias, getCrossSourceMatchedObservationIds } = require('./cybersecurity-read-model');
+const { resolveProtectedAlias, getCrossSourceMatchedObservationIds, protectedAlias } = require('./cybersecurity-read-model');
 const { computeReliabilityScore, detectAntivirusGap, detectDeviceGroups } = require('./inventory-reliability');
 const { assessInventoryCandidate } = require('./inventory-confidence-policy');
 
@@ -30,7 +30,13 @@ function getObservationDetail(db, candidateKey) {
     if (!asset) return null;
     return {
       kind: 'CANONICAL',
-      id: asset.id,
+      // Bug real (2026-09-16, encontrado con clic real en el navegador): estos 3 `id` daban el
+      // id crudo interno (ej. "observation-c97dd53c...") en vez del alias público
+      // ("candidate XXXXXXXX"/"canonical XXXXXXXX") que ya usa listInventoryCandidates. El
+      // panel de detalle reutiliza query.data.id para Promover/Marcar conflicto/Marcar
+      // protegido -- con el id crudo, la ruta nunca coincidía (CANDIDATE_ID_PATTERN exige el
+      // prefijo "candidate "/"canonical ") y siempre daba 405 METHOD_NOT_ALLOWED.
+      id: protectedAlias('canonical', asset.id),
       label: `Activo canónico ${asset.id.slice(-8).toUpperCase()}`,
       canonicalName: asset.canonical_name,
       assetClass: asset.asset_class,
@@ -50,7 +56,7 @@ function getObservationDetail(db, candidateKey) {
     if (!findings.length) return null;
     return {
       kind: 'PROTECTED_TARGET',
-      id: resolved.id,
+      id: protectedAlias('candidate', resolved.id),
       label: `Objetivo protegido ${resolved.id.replace(/[^a-f0-9]/gi, '').slice(-8).toUpperCase()}`,
       source: 'GREENBONE',
       findingCount: findings.length,
@@ -111,7 +117,7 @@ function getObservationDetail(db, candidateKey) {
 
   return {
     kind: 'OBSERVATION',
-    id: observation.id,
+    id: protectedAlias('candidate', observation.id),
     label: `Activo observado ${observation.id.slice(-8).toUpperCase()}`,
     observedAt: observation.observed_at,
     ingestedAt: observation.ingested_at,
