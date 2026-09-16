@@ -36,6 +36,11 @@ const LIFECYCLE_LABEL = {
   ACTIVE: 'Activo', INTERMITTENT: 'Intermitente', INACTIVE: 'Inactivo',
   STALE_REVIEW: 'Revisar antigüedad', UNKNOWN: 'Sin actividad conocida',
 };
+const LIFECYCLE_TONE = {
+  ACTIVE: 'bg-emerald-500/10 text-emerald-300', INTERMITTENT: 'bg-amber-500/10 text-amber-300',
+  INACTIVE: 'bg-muted text-muted-foreground', STALE_REVIEW: 'bg-rose-500/10 text-rose-300',
+  UNKNOWN: 'bg-muted text-muted-foreground',
+};
 
 // Agrupación de Inventario por tipo de activo (decisión del usuario 2026-09-16: "mostrar los
 // activos por grupos desplegables, por tipos, equipos administrativos, equipos cctv,
@@ -305,24 +310,39 @@ function CandidateDetailPane({ query, onChanged }) {
               )}
             </div>
 
-            {/* Actividad: solo las 2 fechas que importan, no 4 cajas repetidas. */}
-            <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+            {/* Actividad: ¿sigue apareciendo, o ya se fue? Esto es justo lo que responde si un
+                dispositivo visto una sola vez (ej. una IP de CCTV usada brevemente) sigue
+                activo o ya no — decisión del usuario 2026-09-16, se había quitado sin querer
+                al simplificar este panel. */}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
+              <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${LIFECYCLE_TONE[query.data.lifecycleStatus] || 'bg-muted text-muted-foreground'}`}>
+                {LIFECYCLE_LABEL[query.data.lifecycleStatus] || query.data.lifecycleStatus}{Number.isFinite(query.data.ageDays) ? ` · hace ${query.data.ageDays} día${query.data.ageDays === 1 ? '' : 's'}` : ''}
+              </span>
               <span><span className="text-foreground font-bold">Primera vista:</span> {query.data.firstSeenSourceAt ? new Date(query.data.firstSeenSourceAt).toLocaleString('es-CO') : '—'}</span>
               <span><span className="text-foreground font-bold">Última señal:</span> {query.data.lastSeenSourceAt ? new Date(query.data.lastSeenSourceAt).toLocaleString('es-CO') : '—'}</span>
             </div>
 
-            <div className="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-wrap gap-2">
-                <button onClick={promote} className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-2.5 text-xs font-black uppercase text-emerald-300 hover:bg-emerald-500/15">
-                  Promover a canónico
-                </button>
-                <button onClick={markConflict} className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-2.5 text-[10px] font-black uppercase text-amber-300 hover:bg-amber-500/10">
-                  Marcar conflicto
-                </button>
-                <button onClick={markProtected} className="rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-2.5 text-[10px] font-black uppercase text-rose-300 hover:bg-rose-500/10">
-                  Marcar protegido
-                </button>
+            {/* Guía de qué hace cada botón — antes no se explicaba nada y el usuario no sabía
+                qué acción correspondía a un caso como "IP usada un momento, ya no responde"
+                (no requiere ninguna de las 3: no es un activo confirmado para promover, no hay
+                ambigüedad real que investigar, y no es sensible para proteger). */}
+            <div className="rounded-2xl border border-border bg-card/40 p-5">
+              <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">¿Qué hacer con este candidato?</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div>
+                  <button onClick={promote} className="w-full rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-2.5 text-xs font-black uppercase text-emerald-300 hover:bg-emerald-500/15">Promover a canónico</button>
+                  <p className="mt-2 text-[11px] text-muted-foreground">Confirmas que es un equipo real y estable — pasa a tu inventario oficial permanente.</p>
+                </div>
+                <div>
+                  <button onClick={markConflict} className="w-full rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-2.5 text-[10px] font-black uppercase text-amber-300 hover:bg-amber-500/10">Marcar conflicto</button>
+                  <p className="mt-2 text-[11px] text-muted-foreground">Hay algo ambiguo que alguien debe investigar (ej. dos equipos con la misma IP).</p>
+                </div>
+                <div>
+                  <button onClick={markProtected} className="w-full rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-2.5 text-[10px] font-black uppercase text-rose-300 hover:bg-rose-500/10">Marcar protegido</button>
+                  <p className="mt-2 text-[11px] text-muted-foreground">Es un activo sensible que no debe tocarse ni escanearse sin autorización.</p>
+                </div>
               </div>
+              <p className="mt-4 border-t border-border pt-3 text-[11px] text-muted-foreground">Si fue una IP usada un momento y ya no aparece (como "{LIFECYCLE_LABEL.INACTIVE}"/"{LIFECYCLE_LABEL.STALE_REVIEW}" arriba), no necesitas ninguno de estos botones — es evidencia histórica sin riesgo, no exige una decisión.</p>
             </div>
           </div>
         )}
