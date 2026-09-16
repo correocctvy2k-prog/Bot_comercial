@@ -1,13 +1,31 @@
 const API_ROOT = '/api/cybersecurity';
 import { supabase } from './supabase';
 
-async function request(path) {
-  const response = await fetch(`${API_ROOT}${path}`, { headers: { Accept: 'application/json' } });
+// Bug real (2026-09-16, reportado con captura): request() ignoraba por completo el segundo
+// argumento -- promoteInventoryCandidate/markInventoryCandidateAsConflict/
+// markInventoryCandidateAsProtected armaban { method: 'POST', body: ... } pero SIEMPRE se
+// mandaba como GET sin cuerpo (fetch(url, { headers }) descartaba el resto). El backend nunca
+// tuvo ruta GET para /promote|/conflict|/protect, así que caía siempre en 404 NOT_FOUND —
+// "Promover a canónico" nunca funcionó desde el navegador, en ninguna sesión anterior.
+async function request(path, options = {}) {
+  const response = await fetch(`${API_ROOT}${path}`, {
+    ...options,
+    headers: { Accept: 'application/json', ...options.headers },
+  });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     throw new Error(body.error || 'No fue posible consultar el módulo de ciberseguridad');
   }
   return response.json();
+}
+
+// Las acciones de inventario (promote/conflict/protect) exigen rol superadmin del lado del
+// servidor (authorizeAdmin), igual que /admin/network-segments -- mismo patrón que
+// getAdminNetworkSegments/saveNetworkSegmentPolicy.
+async function adminRequest(path, options = {}) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error('Se requiere una sesión administrativa activa');
+  return request(path, { ...options, headers: { Authorization: `Bearer ${session.access_token}`, ...options.headers } });
 }
 
 export const cybersecurityService = {
@@ -98,17 +116,17 @@ export const cybersecurityService = {
 
   // Inventory actions
   getInventoryCandidate: (id) => request(`/inventory/candidates/${encodeURIComponent(id)}`),
-  promoteInventoryCandidate: (id, data) => request(`/inventory/candidates/${encodeURIComponent(id)}/promote`, {
+  promoteInventoryCandidate: (id, data) => adminRequest(`/inventory/candidates/${encodeURIComponent(id)}/promote`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   }),
-  markInventoryCandidateAsConflict: (id, data) => request(`/inventory/candidates/${encodeURIComponent(id)}/conflict`, {
+  markInventoryCandidateAsConflict: (id, data) => adminRequest(`/inventory/candidates/${encodeURIComponent(id)}/conflict`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   }),
-  markInventoryCandidateAsProtected: (id, data) => request(`/inventory/candidates/${encodeURIComponent(id)}/protect`, {
+  markInventoryCandidateAsProtected: (id, data) => adminRequest(`/inventory/candidates/${encodeURIComponent(id)}/protect`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),

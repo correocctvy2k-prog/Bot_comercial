@@ -244,25 +244,38 @@ function CaseDetail({ caseId, onClose }) {
 // Panel de detalle de candidato, embebido inline en el maestro-detalle de
 // Inventario (mismo patrón que Subredes: lista a la izquierda, detalle a la
 // derecha) en vez del cajón lateral que usaba antes.
+// Traduce los códigos de error de la API a algo que un humano pueda leer sin tener que
+// adivinar (antes se mostraba el código crudo, o ni eso — ver alert() nativo reemplazado
+// abajo, decisión del usuario 2026-09-16: "mejorar más la interfaz para que sea más fácil de
+// leer").
+const ACTION_ERROR_LABEL = {
+  SUPERADMIN_REQUIRED: 'Tu sesión no tiene permiso de superadministrador para esta acción.',
+  OBSERVATION_ALREADY_LINKED: 'Este candidato ya está vinculado a un activo canónico.',
+  INVALID_NOTE_TOO_LONG: 'La nota es demasiado larga (máximo 500 caracteres).',
+  NOT_FOUND: 'La API no encontró esta ruta — puede que la sesión haya caducado, intenta recargar.',
+};
+
 function CandidateDetailPane({ query, onChanged }) {
-  const promote = async () => {
+  const [note, setNote] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [pendingAction, setPendingAction] = useState('');
+
+  const runAction = async (actionKey, serviceCall) => {
+    setActionError('');
+    setPendingAction(actionKey);
     try {
-      await cybersecurityService.promoteInventoryCandidate(query.data.id, { assetClass: 'OTHER', criticality: 'MEDIUM', canonicalName: `Activo promovido ${query.data.label}` });
+      await serviceCall();
+      setNote('');
       await onChanged?.();
-    } catch (error) { alert('Error: ' + error.message); }
+    } catch (error) {
+      setActionError(ACTION_ERROR_LABEL[error.message] || error.message);
+    } finally {
+      setPendingAction('');
+    }
   };
-  const markConflict = async () => {
-    try {
-      await cybersecurityService.markInventoryCandidateAsConflict(query.data.id, {});
-      await onChanged?.();
-    } catch (error) { alert('Error: ' + error.message); }
-  };
-  const markProtected = async () => {
-    try {
-      await cybersecurityService.markInventoryCandidateAsProtected(query.data.id, {});
-      await onChanged?.();
-    } catch (error) { alert('Error: ' + error.message); }
-  };
+  const promote = () => runAction('promote', () => cybersecurityService.promoteInventoryCandidate(query.data.id, { assetClass: 'OTHER', criticality: 'MEDIUM', canonicalName: `Activo promovido ${query.data.label}`, note }));
+  const markConflict = () => runAction('conflict', () => cybersecurityService.markInventoryCandidateAsConflict(query.data.id, { note }));
+  const markProtected = () => runAction('protect', () => cybersecurityService.markInventoryCandidateAsProtected(query.data.id, { note }));
   return (
     <>
       <div className="flex items-start justify-between gap-4">
@@ -274,7 +287,33 @@ function CandidateDetailPane({ query, onChanged }) {
       </div>
         {query.isError && <EmptyState error onRetry={query.refetch} />}
         {query.isLoading && <div className="mt-7 text-center text-muted-foreground">Cargando detalle…</div>}
-        {query.data && (
+
+        {/* Un activo ya promovido/protegido (kind CANONICAL) tiene una forma de datos distinta
+            a una observación (canonicalName/criticality/reconciliationStatus, no ipValue/
+            macValue) — antes este panel asumía siempre forma de observación y mostraría campos
+            vacíos. Aquí es también donde se ve la nota que se guardó al promover. */}
+        {query.data?.kind === 'CANONICAL' && (
+          <div className="mt-7 space-y-5">
+            <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.05] p-5">
+              <div className="flex items-center gap-2 text-emerald-300"><CheckCircle2 size={16} /><p className="text-[11px] font-extrabold uppercase tracking-wider">Activo canónico confirmado</p></div>
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div><p className="text-[10px] uppercase text-muted-foreground">Nombre</p><p className="mt-1 truncate font-black">{query.data.canonicalName}</p></div>
+                <div><p className="text-[10px] uppercase text-muted-foreground">Clase</p><p className="mt-1 font-black">{ASSET_CLASS_LABEL[query.data.assetClass] || query.data.assetClass}</p></div>
+                <div><p className="text-[10px] uppercase text-muted-foreground">Criticidad</p><p className="mt-1 font-black">{query.data.criticality}</p></div>
+                <div><p className="text-[10px] uppercase text-muted-foreground">Estado</p><p className="mt-1 font-black">{LIFECYCLE_LABEL[query.data.lifecycleStatus] || query.data.lifecycleStatus}</p></div>
+              </div>
+            </div>
+            {query.data.reviewReason && (
+              <div className="rounded-2xl border border-border bg-card/60 p-5">
+                <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Nota</p>
+                <p className="mt-2 text-sm">{query.data.reviewReason}</p>
+                <p className="mt-2 text-[11px] text-muted-foreground">{query.data.reviewedBy || 'Sin autor'} · {query.data.reviewedAt ? new Date(query.data.reviewedAt).toLocaleString('es-CO') : '—'}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {query.data?.kind === 'OBSERVATION' && (
           <div className="mt-7 space-y-5">
             {query.data.antivirusGapSuspected && <AntivirusGapPanel />}
             {query.data.reliability && <ReliabilityPanel reliability={query.data.reliability} />}
@@ -328,22 +367,49 @@ function CandidateDetailPane({ query, onChanged }) {
                 ambigüedad real que investigar, y no es sensible para proteger). */}
             <div className="rounded-2xl border border-border bg-card/40 p-5">
               <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">¿Qué hacer con este candidato?</p>
+
+              {/* Nota libre (decisión del usuario 2026-09-16: "este equipo lo instalé
+                  recientemente para nuestro servidor openvas de prueba piloto" — antes no había
+                  dónde dejar constancia del motivo). Se guarda junto con Promover/Proteger. */}
+              <label className="mt-3 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nota / observación (opcional)</span>
+                <textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} rows={2} placeholder="Ej. Instalado para el piloto de OpenVAS, lo agregué esta semana." className="mt-1.5 w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-xs outline-none focus:border-blue-500/50" />
+              </label>
+
               <div className="mt-3 grid gap-3 sm:grid-cols-3">
                 <div>
-                  <button onClick={promote} className="w-full rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-2.5 text-xs font-black uppercase text-emerald-300 hover:bg-emerald-500/15">Promover a canónico</button>
-                  <p className="mt-2 text-[11px] text-muted-foreground">Confirmas que es un equipo real y estable — pasa a tu inventario oficial permanente.</p>
+                  <button onClick={promote} disabled={Boolean(pendingAction)} className="w-full rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-2.5 text-xs font-black uppercase text-emerald-300 hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-50">{pendingAction === 'promote' ? 'Promoviendo…' : 'Promover a canónico'}</button>
+                  <p className="mt-2 text-[11px] text-muted-foreground">Confirmas que es un equipo real y estable — pasa a tu inventario oficial permanente. Aquí sí queda guardada la nota de arriba.</p>
                 </div>
                 <div>
-                  <button onClick={markConflict} className="w-full rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-2.5 text-[10px] font-black uppercase text-amber-300 hover:bg-amber-500/10">Marcar conflicto</button>
+                  <button onClick={markConflict} disabled={Boolean(pendingAction)} className="w-full rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-2.5 text-[10px] font-black uppercase text-amber-300 hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-50">{pendingAction === 'conflict' ? 'Marcando…' : 'Marcar conflicto'}</button>
                   <p className="mt-2 text-[11px] text-muted-foreground">Hay algo ambiguo que alguien debe investigar (ej. dos equipos con la misma IP).</p>
                 </div>
                 <div>
-                  <button onClick={markProtected} className="w-full rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-2.5 text-[10px] font-black uppercase text-rose-300 hover:bg-rose-500/10">Marcar protegido</button>
-                  <p className="mt-2 text-[11px] text-muted-foreground">Es un activo sensible que no debe tocarse ni escanearse sin autorización.</p>
+                  <button onClick={markProtected} disabled={Boolean(pendingAction)} className="w-full rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-2.5 text-[10px] font-black uppercase text-rose-300 hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-50">{pendingAction === 'protect' ? 'Marcando…' : 'Marcar protegido'}</button>
+                  <p className="mt-2 text-[11px] text-muted-foreground">Es un activo sensible que no debe tocarse ni escanearse sin autorización. También guarda la nota.</p>
                 </div>
               </div>
+              {actionError && (
+                <p className="mt-4 flex items-center gap-1.5 rounded-xl border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-300"><AlertTriangle size={14} className="shrink-0" /> {actionError}</p>
+              )}
               <p className="mt-4 border-t border-border pt-3 text-[11px] text-muted-foreground">Si fue una IP usada un momento y ya no aparece (como "{LIFECYCLE_LABEL.INACTIVE}"/"{LIFECYCLE_LABEL.STALE_REVIEW}" arriba), no necesitas ninguno de estos botones — es evidencia histórica sin riesgo, no exige una decisión.</p>
             </div>
+          </div>
+        )}
+
+        {query.data?.kind === 'PROTECTED_TARGET' && (
+          <div className="mt-7 space-y-5">
+            <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.05] p-5">
+              <div className="flex items-center gap-2 text-rose-300"><ShieldAlert size={16} /><p className="text-[11px] font-extrabold uppercase tracking-wider">Objetivo protegido (Greenbone)</p></div>
+              <p className="mt-2 text-xs text-muted-foreground">{query.data.findingCount} hallazgo(s), severidad máxima {query.data.maxSeverity}.</p>
+            </div>
+            {(query.data.findings || []).map((finding) => (
+              <div key={finding.title + finding.observedAt} className="rounded-xl border border-border bg-card p-3">
+                <p className="text-sm font-bold">{finding.title}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">Severidad {finding.severity} · {finding.observedAt ? new Date(finding.observedAt).toLocaleString('es-CO') : '—'}</p>
+              </div>
+            ))}
           </div>
         )}
     </>

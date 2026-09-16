@@ -9,6 +9,13 @@ function argument(name) {
   return index >= 0 ? process.argv[index + 1] : null;
 }
 
+function cleanNote(value) {
+  const text = String(value || '').trim();
+  if (!text) return null;
+  if (text.length > 500) throw new Error('INVALID_NOTE_TOO_LONG');
+  return text;
+}
+
 function findingsSummaryForTarget(db, targetKey) {
   const rows = db.prepare('SELECT title, severity, cves_json, observed_at FROM cyber_vulnerability_findings WHERE target_key = ? ORDER BY severity DESC LIMIT 20').all(targetKey);
   return rows.map((row) => ({ title: row.title, severity: row.severity, cves: JSON.parse(row.cves_json || '[]'), observedAt: row.observed_at }));
@@ -155,11 +162,16 @@ function promoteObservationToAsset(db, candidateKey, body, actorId) {
   const assetClass = body.assetClass || 'OTHER';
   const criticality = body.criticality || 'MEDIUM';
   const canonicalName = body.canonicalName || `Activo promovido ${observation.id.slice(-8).toUpperCase()}`;
+  // Nota libre del humano que promueve (decisión del usuario 2026-09-16: "este equipo lo
+  // instalé recientemente para nuestro servidor openvas de prueba piloto" -- el motivo de la
+  // decisión no debía quedar solo en la cabeza de quien la tomó). cyber_assets ya tenía
+  // review_reason/reviewed_by/reviewed_at, pero promote nunca los llenaba.
+  const note = cleanNote(body.note);
 
   db.prepare(`
-    INSERT INTO cyber_assets (id, canonical_name, asset_class, criticality, lifecycle_status, reconciliation_status, created_at, updated_at)
-    VALUES (?, ?, ?, ?, 'CONFIRMED_ACTIVE', 'HUMAN_VERIFIED', ?, ?)
-  `).run(assetId, canonicalName, assetClass, criticality, now, now);
+    INSERT INTO cyber_assets (id, canonical_name, asset_class, criticality, lifecycle_status, reconciliation_status, created_at, updated_at, reviewed_at, reviewed_by, review_reason)
+    VALUES (?, ?, ?, ?, 'CONFIRMED_ACTIVE', 'HUMAN_VERIFIED', ?, ?, ?, ?, ?)
+  `).run(assetId, canonicalName, assetClass, criticality, now, now, now, actorId, note);
 
   db.prepare(`
     INSERT INTO cyber_asset_observation_links (observation_id, asset_id, link_method, confidence, decision_status, decided_at, decided_by, reason)
@@ -228,12 +240,13 @@ function markObservationAsProtected(db, candidateKey, body, actorId) {
 
   const assetId = `asset_${crypto.randomBytes(8).toString('hex')}`;
   const now = new Date().toISOString();
-  const canonicalName = `Objetivo protegido ${observation.id.slice(-8).toUpperCase()}`;
+  const canonicalName = body?.canonicalName || `Objetivo protegido ${observation.id.slice(-8).toUpperCase()}`;
+  const note = cleanNote(body?.note);
 
   db.prepare(`
-    INSERT INTO cyber_assets (id, canonical_name, asset_class, criticality, lifecycle_status, reconciliation_status, created_at, updated_at)
-    VALUES (?, ?, 'OTHER', 'HIGH', 'CONFIRMED_ACTIVE', 'HUMAN_VERIFIED', ?, ?)
-  `).run(assetId, canonicalName, now, now);
+    INSERT INTO cyber_assets (id, canonical_name, asset_class, criticality, lifecycle_status, reconciliation_status, created_at, updated_at, reviewed_at, reviewed_by, review_reason)
+    VALUES (?, ?, 'OTHER', 'HIGH', 'CONFIRMED_ACTIVE', 'HUMAN_VERIFIED', ?, ?, ?, ?, ?)
+  `).run(assetId, canonicalName, now, now, now, actorId, note);
 
   db.prepare(`
     INSERT INTO cyber_asset_observation_links (observation_id, asset_id, link_method, confidence, decision_status, decided_at, decided_by, reason)

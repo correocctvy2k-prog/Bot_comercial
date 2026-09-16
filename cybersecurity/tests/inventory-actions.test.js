@@ -83,3 +83,36 @@ test('promover con un alias que no existe falla con un mensaje claro, no un cras
   seedObservation(db);
   assert.throws(() => promoteObservationToAsset(db, 'candidate FFFFFFFF', {}, 'actor-1'), /INVALID_CANDIDATE_KEY/);
 }));
+
+// Decisión del usuario 2026-09-16: poder anotar por qué se tomó una decisión (ej. "este equipo
+// lo instalé recientemente para nuestro servidor openvas de prueba piloto") -- cyber_assets ya
+// tenía review_reason/reviewed_by/reviewed_at, pero promote/protect nunca los llenaban.
+test('promoteObservationToAsset guarda la nota y quién/cuándo decidió', () => withDatabase((db) => {
+  const id = seedObservation(db);
+  const alias = protectedAlias('candidate', id);
+  const result = promoteObservationToAsset(db, alias, { note: 'Instalado para el piloto de OpenVAS' }, 'jbeltran');
+  const asset = db.prepare('SELECT review_reason, reviewed_by FROM cyber_assets WHERE id = ?').get(result.assetId);
+  assert.equal(asset.review_reason, 'Instalado para el piloto de OpenVAS');
+  assert.equal(asset.reviewed_by, 'jbeltran');
+}));
+
+test('markObservationAsProtected también guarda la nota', () => withDatabase((db) => {
+  const id = seedObservation(db);
+  const alias = protectedAlias('candidate', id);
+  const result = markObservationAsProtected(db, alias, { note: 'Servidor de dominio, no tocar' }, 'jbeltran');
+  const asset = db.prepare('SELECT review_reason FROM cyber_assets WHERE id = ?').get(result.assetId);
+  assert.equal(asset.review_reason, 'Servidor de dominio, no tocar');
+}));
+
+test('una nota vacía se guarda como null, no como cadena vacía', () => withDatabase((db) => {
+  const id = seedObservation(db);
+  const alias = protectedAlias('candidate', id);
+  const result = promoteObservationToAsset(db, alias, {}, 'jbeltran');
+  assert.equal(db.prepare('SELECT review_reason FROM cyber_assets WHERE id = ?').get(result.assetId).review_reason, null);
+}));
+
+test('una nota demasiado larga se rechaza con un mensaje claro', () => withDatabase((db) => {
+  const id = seedObservation(db);
+  const alias = protectedAlias('candidate', id);
+  assert.throws(() => promoteObservationToAsset(db, alias, { note: 'x'.repeat(501) }, 'jbeltran'), /INVALID_NOTE_TOO_LONG/);
+}));
