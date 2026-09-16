@@ -176,14 +176,14 @@ function MetricCard({ label, value, detail, icon, tone = 'blue' }) {
     emerald: 'bg-gradient-to-tr from-emerald-600 to-teal-500',
   };
   return (
-    <div className={`rounded-2xl border bg-gradient-to-br ${tones[tone]} to-transparent p-5 shadow-sm`}>
+    <div className={`rounded-2xl border bg-gradient-to-br ${tones[tone]} to-transparent p-4 shadow-sm`}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">{label}</p>
-          <p className="mt-2 text-3xl font-black tracking-tight text-foreground">{value ?? '—'}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+          <p className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{label}</p>
+          <p className="mt-1.5 text-4xl font-black tracking-tight text-foreground">{value ?? '—'}</p>
+          <p className="mt-1 text-[13px] text-muted-foreground">{detail}</p>
         </div>
-        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white shadow-inner ${badges[tone]}`}>{createElement(icon, { size: 20 })}</span>
+        <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-inner ${badges[tone]}`}>{createElement(icon, { size: 24 })}</span>
       </div>
     </div>
   );
@@ -488,7 +488,7 @@ function InventoryView({ overview, candidates, source, state, onSourceChange, on
 
   return (
     <>
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard label="Observaciones" value={data?.totals.observedCandidates} detail={`${data?.totals.active || 0} con actividad reciente`} icon={Database} tone="blue" />
         <MetricCard label="Objetivos protegidos" value={data?.totals.protectedTargets} detail={`${data?.totals.findings || 0} hallazgos asociados`} icon={Fingerprint} tone="rose" />
         <MetricCard label="Pendientes de revisión" value={data?.totals.pendingReview} detail={`${data?.totals.conflicts || 0} conflictos detectados`} icon={ListChecks} tone="amber" />
@@ -498,22 +498,24 @@ function InventoryView({ overview, candidates, source, state, onSourceChange, on
         <MetricCard label="Posible sin antivirus" value={candidates.data?.assessmentSummary?.ANTIVIRUS_GAP_SUSPECTED ?? 0} detail="Windows administrativo sin corroborar en Kaspersky" icon={ShieldAlert} tone="rose" />
       </section>
 
-      <section className="rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xl p-6">
-        <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Cobertura</p>
-        <h2 className="mt-1 text-base font-semibold">Fuentes conectadas</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      <section className="rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xl p-4">
+        <div className="flex items-baseline gap-2">
+          <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Cobertura</p>
+          <h2 className="text-base font-semibold">Fuentes conectadas</h2>
+        </div>
+        <div className="mt-3 grid gap-2.5 sm:grid-cols-3">
           {(data?.sourceCoverage || []).map((item) => (
-            <div key={item.source} className="rounded-xl border border-border/70 bg-background/45 p-4">
-              <div className="flex items-center justify-between gap-3"><span className="font-bold"><SourceTag source={item.source} /></span><span className="text-sm font-black">{item.candidates}</span></div>
+            <div key={item.source} className="rounded-xl border border-border/70 bg-background/45 p-3">
+              <div className="flex items-center justify-between gap-3"><span className="text-sm font-bold"><SourceTag source={item.source} /></span><span className="text-base font-black">{item.candidates}</span></div>
               <p className="mt-1 text-[11px] text-muted-foreground">Captura {item.capturedAt ? new Date(item.capturedAt).toLocaleString('es-CO') : 'sin fecha'} · {item.status}</p>
             </div>
           ))}
         </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-4 text-xs leading-relaxed text-muted-foreground">
+        <div className="mt-2.5 grid gap-2.5 sm:grid-cols-2">
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-3 text-xs leading-relaxed text-muted-foreground">
             La IP fija representa ubicación operativa, no identidad permanente. KSC tiene precedencia para Windows administrativo y FortiGate acredita actividad en red.
           </div>
-          <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.06] p-4 text-xs leading-relaxed text-muted-foreground">
+          <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.06] p-3 text-xs leading-relaxed text-muted-foreground">
             <span className="font-bold text-foreground">{data?.totals.segmentsPendingPolicy || 0} observaciones</span> esperan clasificación de segmento antes de aplicar una política de IP fija o DHCP.
           </div>
         </div>
@@ -824,11 +826,11 @@ export default function CybersecurityDashboard() {
 
   return (
     <div className="h-full overflow-y-auto bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.10),transparent_34%)] p-6 lg:p-9">
-      <div className="mx-auto max-w-[1500px] space-y-7">
+      <div className="mx-auto max-w-[1500px] space-y-5">
         <PageHeader
           icon={
-            <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-inner sm:flex">
-              <ShieldCheck size={20} />
+            <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-inner sm:flex">
+              <ShieldCheck size={24} />
             </div>
           }
           title={activeView === 'inventory' ? 'Inventario de activos' : activeView === 'subnets' ? 'Clasificación de subredes' : 'Postura y remediación'}

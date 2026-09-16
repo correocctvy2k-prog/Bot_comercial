@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, createContext } from 'react';
-import { Bot, MapPin, Users, Settings, LogOut, Cable, Terminal, ChevronDown, ChevronRight, PieChart, Sparkles, Building2, ShieldCheck, User, Image, UserCircle, Loader2, X, Activity, LayoutDashboard, Server, Cctv, LockKeyhole, LifeBuoy, Zap } from 'lucide-react';
+import { Bot, MapPin, Users, Settings, LogOut, Cable, Terminal, ChevronDown, ChevronRight, PieChart, Sparkles, Building2, ShieldCheck, ShieldAlert, User, Image, UserCircle, Loader2, X, Activity, LayoutDashboard, Server, Cctv, LockKeyhole, LifeBuoy, Zap } from 'lucide-react';
 import SkylabBot from '../components/SkylabBot';
 import { ModeToggle } from "@/components/mode-toggle";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -45,7 +45,7 @@ const MENU_ITEMS_RAW = [
                 icon: ShieldCheck,
                 module: 'points',
                 subItems: [
-                    { to: '/points/cybersecurity', icon: Cable, label: 'Ciberseguridad', module: 'points' },
+                    { to: '/points/cybersecurity', icon: ShieldAlert, label: 'Ciberseguridad', module: 'points' },
                     { to: '/points/cctv', icon: Cctv, label: 'Seguridad Electrónica', module: 'points' },
                     { icon: LockKeyhole, label: 'Seguridad de la Información', module: 'points', comingSoon: true }
                 ]
