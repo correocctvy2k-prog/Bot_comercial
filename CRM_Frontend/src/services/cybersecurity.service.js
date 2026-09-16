@@ -131,4 +131,11 @@ export const cybersecurityService = {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   }),
+  // "Ignorar" (2026-09-16): descarta a mano un falso positivo de "Requiere atención" sin
+  // promoverlo/protegerlo -- mismo patrón que las 3 acciones de arriba.
+  markInventoryCandidateAsIgnored: (id, data) => adminRequest(`/inventory/candidates/${encodeURIComponent(id)}/ignore`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }),
 };

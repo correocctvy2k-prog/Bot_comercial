@@ -154,8 +154,12 @@ function getObservationDetail(db, decisionsDb, policyDb, candidateKey) {
     osFamily: observation.os_family,
     assetClass: analysis?.provisional_asset_class || 'OTHER',
     // Un candidato marcado en conflicto a mano (decision.decision === 'CONFLICT') se muestra
-    // como tal aunque el análisis automático original no lo hubiera detectado.
-    state: decision?.decision === 'CONFLICT' ? 'CONFLICT_REVIEW' : (analysis?.proposed_action || 'NEW_ASSET_REVIEW'),
+    // como tal aunque el análisis automático original no lo hubiera detectado. Uno ignorado a
+    // mano (decisión del usuario 2026-09-16: "agregar un botón de ignorar para otros activos
+    // irrelevantes") sale de "Requiere atención" aunque el análisis automático sí lo marcara.
+    state: decision?.decision === 'CONFLICT' ? 'CONFLICT_REVIEW'
+      : decision?.decision === 'IGNORED' ? 'IGNORED'
+        : (analysis?.proposed_action || 'NEW_ASSET_REVIEW'),
     identityStrength: analysis?.identity_strength || 'INSUFFICIENT',
     confidence: analysis?.confidence || 0,
     qualityFlags,
@@ -185,8 +189,8 @@ function getObservationDetail(db, decisionsDb, policyDb, candidateKey) {
       { hasCrossSourceMatch, deviceGroup: deviceGroups.get(observation.id) || null },
     ),
     antivirusGapSuspected: detectAntivirusGap(assessed, { hasCrossSourceMatch }),
-    // Nota dejada al marcar conflicto a mano (decision_store), si la hay.
-    decisionNote: decision?.decision === 'CONFLICT' ? decision.note : null,
+    // Nota dejada al marcar conflicto o ignorar a mano (decision_store), si la hay.
+    decisionNote: (decision?.decision === 'CONFLICT' || decision?.decision === 'IGNORED') ? decision.note : null,
     analysis: analysis ? {
       provisionalAssetClass: analysis.provisional_asset_class,
       identityStrength: analysis.identity_strength,
@@ -258,9 +262,33 @@ function markObservationAsProtected(db, decisionsDb, candidateKey, body, actorId
   return { success: true, assetId, message: 'Observación marcada como objetivo protegido' };
 }
 
+// Pedido del usuario 2026-09-16: "podemos ignorar los identificados de las redes wifi y
+// agregar un botón de ignorar para otros activos irrelevantes" -- la exclusión de WiFi es
+// automática (ver onWifiSegment en listInventoryCandidates), esto cubre el resto: un humano
+// descarta a mano un falso positivo de "Requiere atención" sin tener que promoverlo/protegerlo.
+// Igual que promote/protect, no se puede ignorar algo ya promovido/protegido por accidente
+// (saveDecision hace upsert, así que sin este guard se perdería la decisión anterior).
+function markObservationAsIgnored(db, decisionsDb, candidateKey, body, actorId) {
+  const observation = requireObservation(db, candidateKey);
+  const existing = getDecisionByObservationId(decisionsDb, observation.id);
+  if (existing && (existing.decision === 'PROMOTED' || existing.decision === 'PROTECTED')) {
+    throw new Error('OBSERVATION_ALREADY_LINKED');
+  }
+  const note = cleanNote(body?.note);
+
+  saveDecision(decisionsDb, {
+    observationId: observation.id, assetId: `decision_${crypto.randomBytes(8).toString('hex')}`, decision: 'IGNORED',
+    macValue: observation.mac_value, ipValue: observation.ip_value, hostnameRaw: observation.hostname_raw,
+    note, decidedBy: actorId || 'verified-superadmin',
+  });
+
+  return { success: true, message: 'Observación marcada como irrelevante e ignorada' };
+}
+
 module.exports = {
   promoteObservationToAsset,
   markObservationAsConflict,
+  markObservationAsIgnored,
   markObservationAsProtected,
   getObservationDetail,
 };

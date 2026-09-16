@@ -15,6 +15,12 @@ const { DatabaseSync } = require('node:sqlite');
 // intentar el INSERT real contra la base de solo lectura -- el 500 solo aparece con una sesión
 // de superadmin real completando la petición.
 
+// Sin CHECK sobre `decision` a propósito (validado en JS en saveDecision) -- un CHECK vive
+// pegado a la tabla desde que se creó, y ALTER TABLE en SQLite no puede tocarlo; agregar un
+// tipo de decisión nuevo (ver 'IGNORED', 2026-09-16) habría exigido reconstruir la tabla otra
+// vez. Sin CHECK, agregar tipos nuevos en el futuro no vuelve a tocar el esquema.
+const ALLOWED_DECISIONS = new Set(['PROMOTED', 'PROTECTED', 'CONFLICT', 'IGNORED']);
+
 function openInventoryDecisionStore(path) {
   const db = new DatabaseSync(path);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL; PRAGMA foreign_keys = ON;');
@@ -22,7 +28,7 @@ function openInventoryDecisionStore(path) {
     CREATE TABLE IF NOT EXISTS cyber_inventory_decisions (
       observation_id TEXT PRIMARY KEY,
       asset_id TEXT NOT NULL,
-      decision TEXT NOT NULL CHECK(decision IN ('PROMOTED', 'PROTECTED', 'CONFLICT')),
+      decision TEXT NOT NULL,
       canonical_name TEXT,
       asset_class TEXT,
       criticality TEXT,
@@ -34,6 +40,37 @@ function openInventoryDecisionStore(path) {
       decided_at TEXT NOT NULL
     );
   `);
+  // Migración 2026-09-16: una base creada antes de este cambio tiene la tabla con el CHECK
+  // viejo (solo PROMOTED/PROTECTED/CONFLICT) -- CREATE TABLE IF NOT EXISTS no la toca. Se
+  // detecta leyendo la definición real en sqlite_master y, si hace falta, se reconstruye
+  // preservando las filas existentes (hubo 2 decisiones reales de un usuario probando en
+  // producción-local al momento de escribir esto -- no se pueden perder).
+  const currentSql = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'cyber_inventory_decisions'").get()?.sql || '';
+  if (currentSql.includes('CHECK(decision')) {
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      db.exec('ALTER TABLE cyber_inventory_decisions RENAME TO cyber_inventory_decisions_old_check');
+      db.exec(`
+        CREATE TABLE cyber_inventory_decisions (
+          observation_id TEXT PRIMARY KEY,
+          asset_id TEXT NOT NULL,
+          decision TEXT NOT NULL,
+          canonical_name TEXT,
+          asset_class TEXT,
+          criticality TEXT,
+          mac_value TEXT,
+          ip_value TEXT,
+          hostname_raw TEXT,
+          note TEXT,
+          decided_by TEXT NOT NULL,
+          decided_at TEXT NOT NULL
+        );
+      `);
+      db.exec('INSERT INTO cyber_inventory_decisions SELECT * FROM cyber_inventory_decisions_old_check');
+      db.exec('DROP TABLE cyber_inventory_decisions_old_check');
+      db.exec('COMMIT');
+    } catch (error) { db.exec('ROLLBACK'); throw error; }
+  }
   return db;
 }
 
@@ -41,6 +78,7 @@ function saveDecision(db, {
   observationId, assetId, decision, canonicalName, assetClass, criticality,
   macValue, ipValue, hostnameRaw, note, decidedBy, decidedAt = new Date().toISOString(),
 }) {
+  if (!ALLOWED_DECISIONS.has(decision)) throw new Error('INVALID_DECISION');
   db.prepare(`
     INSERT INTO cyber_inventory_decisions (
       observation_id, asset_id, decision, canonical_name, asset_class, criticality,

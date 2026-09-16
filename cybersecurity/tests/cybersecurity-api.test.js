@@ -5,7 +5,8 @@ const path = require('node:path');
 const { openCyberDatabase } = require('../db/open-database');
 const { createCybersecurityApi } = require('../src/cybersecurity-api');
 const { openInventoryDecisionStore, getDecisionByObservationId } = require('../src/inventory-decision-store');
-const { promoteObservationToAsset, markObservationAsConflict } = require('../src/inventory-actions');
+const { promoteObservationToAsset, markObservationAsConflict, markObservationAsIgnored } = require('../src/inventory-actions');
+const { openNetworkPolicyStore, savePolicy } = require('../src/network-policy-store');
 const { importGreenboneProtectedResults } = require('../src/greenbone-protected-importer');
 const { importFortiGateInventory } = require('../src/fortigate-importer');
 const {
@@ -118,9 +119,17 @@ function seedCandidateObservation(db, overrides = {}) {
   }
   const id = overrides.id || 'observation-api-1';
   db.prepare(`INSERT INTO cyber_asset_observations(
-      id, snapshot_id, source_record_key, observed_at, ingested_at, ip_value, mac_value, hostname_raw
-    ) VALUES (?, 'snapshot-1', ?, ?, ?, ?, ?, ?)`)
-    .run(id, `rec-${id}`, now, now, overrides.ip || '10.2.6.15', overrides.mac || '02:00:00:aa:bb:cc', overrides.hostname || 'host-01');
+      id, snapshot_id, source_record_key, observed_at, ingested_at, segment_id, ip_value, mac_value, hostname_raw
+    ) VALUES (?, 'snapshot-1', ?, ?, ?, ?, ?, ?, ?)`)
+    .run(id, `rec-${id}`, now, now, overrides.segmentId || null, overrides.ip || '10.2.6.15', overrides.mac || '02:00:00:aa:bb:cc', overrides.hostname || 'host-01');
+  return id;
+}
+
+function seedSegment(db, overrides = {}) {
+  const now = '2026-09-01T12:00:00.000Z';
+  const id = overrides.id || 'segment-api-1';
+  db.prepare(`INSERT INTO cyber_network_segments(id, canonical_name, security_zone, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?)`).run(id, overrides.canonicalName || 'AP1PisoSSO', overrides.zone || 'RESTRICTED', now, now);
   return id;
 }
 
@@ -279,4 +288,56 @@ test('la lista de segmentos no expone identificadores de red', () => {
     assert.equal(segments.total, 0);
     assert.deepEqual(segments.items, []);
   } finally { db.close(); }
+});
+
+// Pedido del usuario 2026-09-16: "creo que podemos ignorar los identificados de las redes wifi"
+// -- listInventoryCandidates debe marcar onWifiSegment=true para un candidato cuyo segmento ya
+// tiene una política aplicada en Subredes con networkFunction CORPORATE_WIFI/GUEST_WIFI (dato
+// real: así están clasificadas hoy AP1PisoSSO, WIFI INVITADOS, etc.), y false para uno en un
+// segmento LAN normal o sin segmento en absoluto. El id interno del segmento nunca se expone.
+test('listInventoryCandidates marca onWifiSegment usando la política ya aplicada en Subredes', () => {
+  const db = seededDatabase();
+  const policyDb = openNetworkPolicyStore(':memory:');
+  try {
+    const wifiSegmentId = seedSegment(db, { id: 'segment-wifi', canonicalName: 'AP1PisoSSO' });
+    const lanSegmentId = seedSegment(db, { id: 'segment-lan', canonicalName: 'VLAN_Comercial' });
+    const wifiObservationId = seedCandidateObservation(db, { id: 'observation-wifi', segmentId: wifiSegmentId, ip: '10.50.1.20' });
+    const lanObservationId = seedCandidateObservation(db, { id: 'observation-lan', segmentId: lanSegmentId, ip: '10.2.12.20', mac: '02:00:00:aa:bb:ee', hostname: 'host-lan' });
+
+    savePolicy(policyDb, protectedAlias('segment', wifiSegmentId), {
+      name: 'AP Piso 1 SSO', zone: 'Edificio Principal Palmira', networkFunction: 'CORPORATE_WIFI',
+      technology: 'FORTIAP_WIFI', topology: 'WLAN', addressMode: 'DHCP', population: 'CORPORATE_USERS',
+      criticality: 'LOW', networkAddress: '10.50.1.0', prefixLength: 24, gateway: '10.50.1.1',
+    }, 'tester');
+    savePolicy(policyDb, protectedAlias('segment', lanSegmentId), {
+      name: 'VLAN Comercial', zone: 'Edificio Principal Palmira', networkFunction: 'CORPORATE_LAN',
+      technology: 'ETHERNET', topology: 'ACCESS_LAN', addressMode: 'STATIC', population: 'CORPORATE_USERS',
+      criticality: 'MEDIUM', networkAddress: '10.2.12.0', prefixLength: 24, gateway: '10.2.12.1',
+    }, 'tester');
+
+    const list = listInventoryCandidates(db, {}, null, policyDb);
+    const wifiItem = list.items.find((item) => item.id === protectedAlias('candidate', wifiObservationId));
+    const lanItem = list.items.find((item) => item.id === protectedAlias('candidate', lanObservationId));
+    assert.equal(wifiItem.onWifiSegment, true);
+    assert.equal(lanItem.onWifiSegment, false);
+    assert.equal(wifiItem.segmentId, undefined, 'el id interno del segmento no debe salir en la respuesta');
+  } finally { db.close(); policyDb.close(); }
+});
+
+// Flujo real del botón "Ignorar" a través del endpoint de lista: un candidato marcado como
+// ignorado debe aparecer al filtrar state=IGNORED (para poder auditarlo) y NO al filtrar por
+// el estado automático que tenía antes.
+test('un candidato ignorado aparece bajo state=IGNORED en la lista, con su nota', () => {
+  const db = seededDatabase();
+  const decisionsDb = openInventoryDecisionStore(':memory:');
+  try {
+    const observationId = seedCandidateObservation(db);
+    const alias = protectedAlias('candidate', observationId);
+    markObservationAsIgnored(db, decisionsDb, alias, { note: 'Falso positivo, no relevante' }, 'tester');
+
+    const list = listInventoryCandidates(db, { state: 'IGNORED' }, decisionsDb);
+    assert.equal(list.items.length, 1);
+    assert.equal(list.items[0].id, alias);
+    assert.equal(list.items[0].decisionNote, 'Falso positivo, no relevante');
+  } finally { db.close(); decisionsDb.close(); }
 });

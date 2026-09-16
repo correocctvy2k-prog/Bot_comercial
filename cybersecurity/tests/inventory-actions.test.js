@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openCyberDatabase } = require('../db/open-database');
 const { protectedAlias, resolveProtectedAlias } = require('../src/cybersecurity-read-model');
-const { getObservationDetail, promoteObservationToAsset, markObservationAsConflict, markObservationAsProtected } = require('../src/inventory-actions');
+const { getObservationDetail, promoteObservationToAsset, markObservationAsConflict, markObservationAsProtected, markObservationAsIgnored } = require('../src/inventory-actions');
 const { openInventoryDecisionStore, getDecisionByObservationId } = require('../src/inventory-decision-store');
 const { openNetworkPolicyStore, savePolicy } = require('../src/network-policy-store');
 
@@ -215,4 +215,40 @@ test('un candidato sin segmento asignado no rompe getObservationDetail (segment 
   const alias = protectedAlias('candidate', id);
   const detail = getObservationDetail(db, decisionsDb, null, alias);
   assert.equal(detail.segment, null);
+}));
+
+// Pedido del usuario 2026-09-16: "agregar un botón de ignorar para otros activos irrelevantes"
+// -- un candidato marcado a mano como IGNORED se sigue viendo como OBSERVATION (no se convierte
+// en CANONICAL como promover/proteger), pero con state=IGNORED para que salga de "Requiere
+// atención" en la lista sin perder su ficha real.
+test('markObservationAsIgnored marca la observación como IGNORED con su nota', () => withDatabase((db, decisionsDb) => {
+  const id = seedObservation(db);
+  const alias = protectedAlias('candidate', id);
+  const result = markObservationAsIgnored(db, decisionsDb, alias, { note: 'Impresora de invitados, no relevante' }, 'jbeltran');
+  assert.equal(result.success, true);
+
+  const decision = getDecisionByObservationId(decisionsDb, id);
+  assert.equal(decision.decision, 'IGNORED');
+  assert.equal(decision.note, 'Impresora de invitados, no relevante');
+
+  const detail = getObservationDetail(db, decisionsDb, null, alias);
+  assert.equal(detail.kind, 'OBSERVATION');
+  assert.equal(detail.state, 'IGNORED');
+  assert.equal(detail.decisionNote, 'Impresora de invitados, no relevante');
+}));
+
+test('ignorar un candidato ya promovido falla con OBSERVATION_ALREADY_LINKED (no pisa la promoción)', () => withDatabase((db, decisionsDb) => {
+  const id = seedObservation(db);
+  const alias = protectedAlias('candidate', id);
+  promoteObservationToAsset(db, decisionsDb, alias, {}, 'jbeltran');
+  assert.throws(() => markObservationAsIgnored(db, decisionsDb, alias, {}, 'jbeltran'), /OBSERVATION_ALREADY_LINKED/);
+  assert.equal(getDecisionByObservationId(decisionsDb, id).decision, 'PROMOTED', 'la promoción original no debe perderse');
+}));
+
+test('marcar en conflicto y luego ignorar reemplaza la decisión (ignorar es la más reciente)', () => withDatabase((db, decisionsDb) => {
+  const id = seedObservation(db);
+  const alias = protectedAlias('candidate', id);
+  markObservationAsConflict(db, decisionsDb, alias, {}, 'jbeltran');
+  markObservationAsIgnored(db, decisionsDb, alias, {}, 'jbeltran');
+  assert.equal(getDecisionByObservationId(decisionsDb, id).decision, 'IGNORED');
 }));

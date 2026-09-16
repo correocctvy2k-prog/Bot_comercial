@@ -2,6 +2,7 @@ const crypto = require('node:crypto');
 const { assessInventoryCandidate } = require('./inventory-confidence-policy');
 const { computeReliabilityScore, detectAntivirusGap, detectDeviceGroups } = require('./inventory-reliability');
 const { listDecisions } = require('./inventory-decision-store');
+const { listPolicies } = require('./network-policy-store');
 
 const CLOSED_STATUSES = new Set(['VERIFIED', 'CLOSED']);
 const ALLOWED_PRIORITIES = new Set(['P1', 'P2', 'P3', 'P4']);
@@ -12,8 +13,12 @@ const ALLOWED_STATUSES = new Set([
 const ALLOWED_INVENTORY_SOURCES = new Set(['FORTIGATE', 'KASPERSKY', 'GREENBONE', 'CANONICAL']);
 const ALLOWED_INVENTORY_STATES = new Set([
   'NEW_ASSET_REVIEW', 'EPHEMERAL_REVIEW', 'CONFLICT_REVIEW',
-  'INSUFFICIENT_EVIDENCE', 'PROTECTED_TARGET', 'CANONICAL',
+  'INSUFFICIENT_EVIDENCE', 'PROTECTED_TARGET', 'CANONICAL', 'IGNORED',
 ]);
+// Segmentos ya clasificados en Subredes como WiFi corporativo/invitados (network-policy-store.js,
+// networkFunction) -- pedido del usuario 2026-09-16: "podemos ignorar los identificados de las
+// redes wifi" en "Requiere atención" (ruido DHCP/MAC aleatoria ya despriorizado 2026-09-15).
+const WIFI_NETWORK_FUNCTIONS = new Set(['CORPORATE_WIFI', 'GUEST_WIFI']);
 
 function safeJson(value, fallback) {
   try { return JSON.parse(value); } catch { return fallback; }
@@ -145,7 +150,7 @@ function getInventoryOverview(db, decisionsDb = null) {
   };
 }
 
-function listInventoryCandidates(db, filters = {}, decisionsDb = null) {
+function listInventoryCandidates(db, filters = {}, decisionsDb = null, policyDb = null) {
   if (filters.source && !ALLOWED_INVENTORY_SOURCES.has(filters.source)) {
     throw new Error('INVALID_INVENTORY_SOURCE_FILTER');
   }
@@ -179,7 +184,7 @@ function listInventoryCandidates(db, filters = {}, decisionsDb = null) {
            COALESCE(a.confidence, 0) confidence, o.quality_flags_json qualityFlags,
            COALESCE(a.reason_codes_json, '[]') reasonCodes, 0 findingCount, 0 maxSeverity,
            o.source_seen_seconds sourceSeenSeconds, o.hostname_raw hostnameRaw,
-           o.mac_value macValue, o.ip_value ipValue
+           o.mac_value macValue, o.ip_value ipValue, o.segment_id segmentId
     FROM cyber_asset_observations o
     JOIN cyber_source_snapshots s ON s.id = o.snapshot_id
     JOIN cyber_source_systems source ON source.id = s.source_system_id
@@ -191,14 +196,14 @@ function listInventoryCandidates(db, filters = {}, decisionsDb = null) {
            NULL, NULL, NULL, 'OTHER', 'PROTECTED_TARGET',
            CASE WHEN min(f.qod) >= 70 THEN 'MEDIUM' ELSE 'LOW' END,
            CASE WHEN min(f.qod) >= 70 THEN 0.70 ELSE 0.40 END,
-           '[]', '[]', count(*), max(f.severity), NULL, NULL, NULL, NULL
+           '[]', '[]', count(*), max(f.severity), NULL, NULL, NULL, NULL, NULL
     FROM cyber_vulnerability_findings f GROUP BY f.target_key
     UNION ALL
     SELECT 'CANONICAL', a.id, 'CANONICAL', a.updated_at, NULL, NULL, NULL, NULL,
            a.asset_class, 'CANONICAL', 'MEDIUM', 1.0, '[]', '[]',
            (SELECT count(*) FROM cyber_vulnerability_findings f WHERE f.asset_id = a.id),
            COALESCE((SELECT max(f.severity) FROM cyber_vulnerability_findings f WHERE f.asset_id = a.id), 0),
-           NULL, NULL, NULL, NULL
+           NULL, NULL, NULL, NULL, NULL
     FROM cyber_assets a
   `).all();
   // Promover/proteger/marcar conflicto ya no escriben en cyber-inventory.db (es de solo lectura
@@ -211,7 +216,18 @@ function listInventoryCandidates(db, filters = {}, decisionsDb = null) {
   const decisionsByObservationId = new Map(
     listDecisions(decisionsDb).map((decision) => [decision.observation_id, decision]),
   );
-  const overlaidRows = rows.map((row) => {
+  // Segmentos WiFi ya clasificados en Subredes (networkFunction CORPORATE_WIFI/GUEST_WIFI) --
+  // se resuelve una sola vez por request (39 segmentos, ~50 políticas: barato) en vez de por
+  // candidato. El id de política se calcula igual que en /admin/network-segments
+  // (protectedAlias('segment', segment.id)) para poder cruzarlo contra listPolicies().
+  const policiesBySegmentAlias = new Map(listPolicies(policyDb).map((policy) => [policy.id, policy]));
+  const wifiSegmentIds = new Set(
+    db.prepare('SELECT id FROM cyber_network_segments').all()
+      .filter((segment) => WIFI_NETWORK_FUNCTIONS.has(policiesBySegmentAlias.get(protectedAlias('segment', segment.id))?.networkFunction))
+      .map((segment) => segment.id),
+  );
+  const rowsWithWifiFlag = rows.map((row) => ({ ...row, onWifiSegment: wifiSegmentIds.has(row.segmentId) }));
+  const overlaidRows = rowsWithWifiFlag.map((row) => {
     if (row.kind !== 'OBSERVATION') return row;
     const decision = decisionsByObservationId.get(row.candidateKey);
     if (!decision) return row;
@@ -230,6 +246,11 @@ function listInventoryCandidates(db, filters = {}, decisionsDb = null) {
     }
     if (decision.decision === 'CONFLICT') {
       return { ...row, state: 'CONFLICT_REVIEW', decisionNote: decision.note };
+    }
+    // Ignorado a mano (botón "Ignorar", pedido del usuario 2026-09-16): sale de "Requiere
+    // atención" aunque el análisis automático original lo hubiera marcado.
+    if (decision.decision === 'IGNORED') {
+      return { ...row, state: 'IGNORED', decisionNote: decision.note };
     }
     return row;
   });
@@ -266,7 +287,7 @@ function listInventoryCandidates(db, filters = {}, decisionsDb = null) {
   return {
     total: filtered.length,
     assessmentSummary: { ...assessmentSummary, ANTIVIRUS_GAP_SUSPECTED: antivirusGapCount },
-    items: withReliability.slice(offset, offset + limit).map(({ candidateKey, ...row }) => ({
+    items: withReliability.slice(offset, offset + limit).map(({ candidateKey, segmentId, ...row }) => ({
       ...row,
       id: protectedAlias(row.aliasPrefix || (row.kind === 'CANONICAL' ? 'canonical' : 'candidate'), candidateKey),
       label: row.kind === 'CANONICAL'

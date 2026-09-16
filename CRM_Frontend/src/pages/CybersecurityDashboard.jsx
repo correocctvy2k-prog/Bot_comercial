@@ -2,13 +2,11 @@ import { createElement, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle, ArrowRight, CheckCircle2, ChevronRight, Clock3,
-  Boxes, Database, FileSearch, Fingerprint, History, ListChecks, MapPin, Network, Radar, RefreshCw,
+  Boxes, Database, EyeOff, FileSearch, Fingerprint, History, ListChecks, MapPin, Network, Radar, RefreshCw,
   Search, ShieldAlert, ShieldCheck, SlidersHorizontal, X,
 } from 'lucide-react';
 import { cybersecurityService } from '../services/cybersecurity.service';
 import PageHeader from '../components/PageHeader';
-import fortinetLogo from '../assets/sources/fortinet.webp';
-import kasperskyLogo from '../assets/sources/kaspersky.png';
 
 const PRIORITY_STYLE = {
   P1: 'border-rose-500/30 bg-rose-500/10 text-rose-300',
@@ -31,28 +29,25 @@ const SOURCE_LABEL = {
 // reconocer de un vistazo si un dato viene de la red (FortiGate), del antivirus (Kaspersky) o
 // de un escaneo de vulnerabilidades (Greenbone), sin tener que leer la etiqueta de texto.
 const SOURCE_ICON = { FORTIGATE: Network, KASPERSKY: ShieldCheck, GREENBONE: Radar, CANONICAL: Boxes };
-function SourceTag({ source, className = '' }) {
+function SourceTag({ source, size = 14, className = '' }) {
   const Icon = SOURCE_ICON[source] || Network;
-  return <span className={`inline-flex items-center gap-1 ${className}`}><Icon size={12} className="shrink-0" />{SOURCE_LABEL[source] || source}</span>;
+  return <span className={`inline-flex items-center gap-1 ${className}`}><Icon size={size} className="shrink-0" />{SOURCE_LABEL[source] || source}</span>;
 }
-// Logo real por fuente — solo FortiGate y Kaspersky tienen logo disponible (carpeta que aportó
-// el usuario 2026-09-16); Greenbone/Canónico se quedan con el icono genérico de SOURCE_ICON.
-// Se envuelve en una chapa blanca porque el logo de Fortinet trae fondo blanco sólido (no
-// transparente) — sin la chapa se vería como un rectángulo blanco pegado sobre el fondo oscuro.
-const SOURCE_LOGO = { FORTIGATE: fortinetLogo, KASPERSKY: kasperskyLogo };
+// Logo real por fuente (carpeta que aportó el usuario 2026-09-16, servido desde public/ igual
+// que ya hace Monitoring.jsx con /kaspersky_logo.png) — Canónico se queda con el icono genérico
+// de SOURCE_ICON porque no es una fuente externa real. Los 3 PNG/WEBP ya traen fondo
+// transparente (verificado con PIL, alpha 0-255) -- sin chapa/recuadro, directo sobre la tarjeta,
+// como ya se ve en Monitoreo IT.
+const SOURCE_LOGO = { FORTIGATE: '/fortinet_logo.webp', KASPERSKY: '/kaspersky_logo.png', GREENBONE: '/greenbone_logo.png' };
 function SourceBadge({ source, className = '' }) {
   const logo = SOURCE_LOGO[source];
   const Icon = SOURCE_ICON[source] || Network;
   return (
     <span className={`inline-flex items-center gap-2 ${className}`}>
       {logo ? (
-        <span className="flex h-8 w-11 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm">
-          <img src={logo} alt="" className="h-full w-full object-contain" />
-        </span>
+        <img src={logo} alt="" className="h-10 w-10 shrink-0 object-contain" />
       ) : (
-        <span className="flex h-8 w-11 shrink-0 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground">
-          <Icon size={20} />
-        </span>
+        <Icon size={26} className="shrink-0 text-muted-foreground" />
       )}
       <span className="text-sm font-bold">{SOURCE_LABEL[source] || source}</span>
     </span>
@@ -72,7 +67,7 @@ function ReliabilityMeter({ score, label }) {
 const INVENTORY_STATE_LABEL = {
   NEW_ASSET_REVIEW: 'Nuevo por revisar', EPHEMERAL_REVIEW: 'Identidad efímera',
   CONFLICT_REVIEW: 'Conflicto', INSUFFICIENT_EVIDENCE: 'Evidencia insuficiente',
-  PROTECTED_TARGET: 'Objetivo protegido', CANONICAL: 'Activo canónico',
+  PROTECTED_TARGET: 'Objetivo protegido', CANONICAL: 'Activo canónico', IGNORED: 'Ignorado',
 };
 
 const LIFECYCLE_LABEL = {
@@ -99,16 +94,17 @@ const ASSET_CLASS_GROUP = {
   NETWORK: 'NETWORK', SECURITY: 'NETWORK', MOBILE: 'MOBILE', GUEST_BYOD: 'MOBILE',
   PRINTER: 'PRINTERS', IOT: 'IOT', VIRTUAL_MACHINE: 'VMS', OTHER: 'OTHER',
 };
-const GROUP_ORDER = ['ATTENTION', 'SERVERS', 'CCTV', 'ADMIN', 'NETWORK', 'VMS', 'PRINTERS', 'IOT', 'MOBILE', 'PROTECTED', 'CANONICAL', 'OTHER'];
+const GROUP_ORDER = ['ATTENTION', 'SERVERS', 'CCTV', 'ADMIN', 'NETWORK', 'VMS', 'PRINTERS', 'IOT', 'MOBILE', 'PROTECTED', 'CANONICAL', 'IGNORED', 'OTHER'];
 const GROUP_LABEL = {
   ATTENTION: 'Requiere atención', SERVERS: 'Servidores', CCTV: 'CCTV', ADMIN: 'Equipos administrativos',
   NETWORK: 'Red e infraestructura', VMS: 'Máquinas virtuales', PRINTERS: 'Impresoras', IOT: 'IoT',
-  MOBILE: 'Móviles', PROTECTED: 'Objetivos protegidos', CANONICAL: 'Activos canónicos', OTHER: 'Sin clasificar',
+  MOBILE: 'Móviles', PROTECTED: 'Objetivos protegidos', CANONICAL: 'Activos canónicos',
+  IGNORED: 'Ignorados', OTHER: 'Sin clasificar',
 };
 const GROUP_ICON = {
   ATTENTION: AlertTriangle, SERVERS: Database, CCTV: Radar, ADMIN: ShieldCheck, NETWORK: Network,
   VMS: Boxes, PRINTERS: FileSearch, IOT: Radar, MOBILE: Fingerprint, PROTECTED: ShieldAlert,
-  CANONICAL: CheckCircle2, OTHER: SlidersHorizontal,
+  CANONICAL: CheckCircle2, IGNORED: EyeOff, OTHER: SlidersHorizontal,
 };
 // needsManualReview (IP duplicada sin explicar) se dispara sobre todo en las redes WiFi
 // (móviles con DHCP reasignando IP durante el día) -- ruido esperado y ya despriorizado por
@@ -119,8 +115,14 @@ const ATTENTION_EXCLUDED_CLASSES = new Set(['MOBILE', 'GUEST_BYOD', 'OTHER']);
 function groupForCandidate(item) {
   if (item.kind === 'PROTECTED_TARGET') return 'PROTECTED';
   if (item.kind === 'CANONICAL') return 'CANONICAL';
+  // Ignorado a mano (botón "Ignorar") sale de "Requiere atención" pero sigue visible/auditable
+  // en su propio grupo, en vez de desaparecer del Inventario.
+  if (item.state === 'IGNORED') return 'IGNORED';
   const manualReviewRelevant = item.reliability?.needsManualReview && !ATTENTION_EXCLUDED_CLASSES.has(item.assetClass);
-  if (item.antivirusGapSuspected || manualReviewRelevant) return 'ATTENTION';
+  // Segmento ya clasificado en Subredes como WiFi corporativo/invitados (decisión del usuario
+  // 2026-09-16: "podemos ignorar los identificados de las redes wifi") -- ruido DHCP/MAC
+  // aleatoria esperado, igual que MOBILE/GUEST_BYOD/OTHER arriba, pero por red en vez de clase.
+  if (!item.onWifiSegment && (item.antivirusGapSuspected || manualReviewRelevant)) return 'ATTENTION';
   return ASSET_CLASS_GROUP[item.assetClass] || 'OTHER';
 }
 
@@ -316,6 +318,7 @@ function CandidateDetailPane({ query, onChanged }) {
   const promote = () => runAction('promote', () => cybersecurityService.promoteInventoryCandidate(query.data.id, { assetClass: 'OTHER', criticality: 'MEDIUM', canonicalName: `Activo promovido ${query.data.label}`, note }));
   const markConflict = () => runAction('conflict', () => cybersecurityService.markInventoryCandidateAsConflict(query.data.id, { note }));
   const markProtected = () => runAction('protect', () => cybersecurityService.markInventoryCandidateAsProtected(query.data.id, { note }));
+  const markIgnored = () => runAction('ignore', () => cybersecurityService.markInventoryCandidateAsIgnored(query.data.id, { note }));
   return (
     <>
       <div className="flex items-start justify-between gap-4">
@@ -386,7 +389,7 @@ function CandidateDetailPane({ query, onChanged }) {
                 <div>
                   <p className="text-[9px] uppercase text-muted-foreground">Clase de activo</p>
                   <p className="mt-0.5 flex items-center gap-1.5 text-xs font-black">
-                    {createElement(GROUP_ICON[ASSET_CLASS_GROUP[query.data.assetClass]] || SlidersHorizontal, { size: 12, className: 'shrink-0 text-muted-foreground' })}
+                    {createElement(GROUP_ICON[ASSET_CLASS_GROUP[query.data.assetClass]] || SlidersHorizontal, { size: 14, className: 'shrink-0 text-muted-foreground' })}
                     {ASSET_CLASS_LABEL[query.data.assetClass] || query.data.assetClass}
                   </p>
                 </div>
@@ -425,15 +428,23 @@ function CandidateDetailPane({ query, onChanged }) {
             <div className="rounded-xl border border-border bg-card/40 p-3">
               <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">¿Qué hacer con este candidato?</p>
 
+              {/* Ya se marcó en conflicto o se ignoró antes -- se muestra la nota para no tener
+                  que recordar por qué, en vez de dejarla enterrada sin usar (decisionNote). */}
+              {query.data.decisionNote && (
+                <p className="mt-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
+                  <span className="font-bold text-foreground">{INVENTORY_STATE_LABEL[query.data.state] || query.data.state}:</span> {query.data.decisionNote}
+                </p>
+              )}
+
               {/* Nota libre (decisión del usuario 2026-09-16: "este equipo lo instalé
                   recientemente para nuestro servidor openvas de prueba piloto" — antes no había
-                  dónde dejar constancia del motivo). Se guarda junto con Promover/Proteger. */}
+                  dónde dejar constancia del motivo). Se guarda junto con la acción elegida. */}
               <label className="mt-2 block">
                 <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Nota / observación (opcional)</span>
                 <textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} rows={1} placeholder="Ej. Instalado para el piloto de OpenVAS, lo agregué esta semana." className="mt-1 w-full resize-none rounded-lg border border-border bg-background px-3 py-1.5 text-xs outline-none focus:border-blue-500/50" />
               </label>
 
-              <div className="mt-2 grid gap-2 sm:grid-cols-3">
+              <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
                   <button onClick={promote} disabled={Boolean(pendingAction)} className="w-full rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-[11px] font-black uppercase text-emerald-300 hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-50">{pendingAction === 'promote' ? 'Promoviendo…' : 'Promover a canónico'}</button>
                   <p className="mt-1 text-[10px] leading-snug text-muted-foreground">Equipo real y estable — pasa al inventario oficial. Guarda la nota.</p>
@@ -445,6 +456,10 @@ function CandidateDetailPane({ query, onChanged }) {
                 <div>
                   <button onClick={markProtected} disabled={Boolean(pendingAction)} className="w-full rounded-lg border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-[10px] font-black uppercase text-rose-300 hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-50">{pendingAction === 'protect' ? 'Marcando…' : 'Marcar protegido'}</button>
                   <p className="mt-1 text-[10px] leading-snug text-muted-foreground">Activo sensible: no tocar ni escanear sin autorización.</p>
+                </div>
+                <div>
+                  <button onClick={markIgnored} disabled={Boolean(pendingAction)} className="w-full rounded-lg border border-border bg-muted/40 px-3 py-2 text-[10px] font-black uppercase text-muted-foreground hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-50">{pendingAction === 'ignore' ? 'Ignorando…' : 'Ignorar'}</button>
+                  <p className="mt-1 text-[10px] leading-snug text-muted-foreground">Falso positivo o irrelevante — sale de "Requiere atención", sigue visible en Ignorados.</p>
                 </div>
               </div>
               {actionError && (
@@ -492,7 +507,7 @@ function InventoryView({ overview, candidates, source, state, onSourceChange, on
     queryFn: () => cybersecurityService.getInventoryCandidate(selected.id),
     enabled: Boolean(selected?.id),
   });
-  const stateTone = { CANONICAL: 'bg-emerald-500/10 text-emerald-300', PROTECTED_TARGET: 'bg-rose-500/10 text-rose-300', CONFLICT_REVIEW: 'bg-amber-500/10 text-amber-300', INSUFFICIENT_EVIDENCE: 'bg-slate-500/10 text-slate-300' };
+  const stateTone = { CANONICAL: 'bg-emerald-500/10 text-emerald-300', PROTECTED_TARGET: 'bg-rose-500/10 text-rose-300', CONFLICT_REVIEW: 'bg-amber-500/10 text-amber-300', INSUFFICIENT_EVIDENCE: 'bg-slate-500/10 text-slate-300', IGNORED: 'bg-muted text-muted-foreground' };
 
   // Agrupación por tipo de activo (decisión del usuario 2026-09-16) en vez de una lista plana
   // muy larga — "Requiere atención" (conflicto real sin explicar + sospecha de sin antivirus)
@@ -569,13 +584,13 @@ function InventoryView({ overview, candidates, source, state, onSourceChange, on
               const attentionGroup = key === 'ATTENTION';
               return (
                 <div key={key}>
-                  <button onClick={() => toggleGroup(key)} className={`flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/25 ${attentionGroup ? 'bg-rose-500/[0.04]' : ''}`}>
-                    <span className="flex min-w-0 items-center gap-2">
-                      <GroupIcon size={14} className={attentionGroup ? 'shrink-0 text-rose-400' : 'shrink-0 text-muted-foreground'} />
-                      <span className={`truncate text-xs font-extrabold uppercase tracking-wider ${attentionGroup ? 'text-rose-300' : 'text-foreground'}`}>{GROUP_LABEL[key]}</span>
-                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-black text-muted-foreground">{items.length}</span>
+                  <button onClick={() => toggleGroup(key)} className={`flex w-full items-center justify-between gap-2 px-4 py-3.5 text-left transition-colors hover:bg-muted/25 ${attentionGroup ? 'bg-rose-500/[0.04]' : ''}`}>
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <GroupIcon size={18} className={attentionGroup ? 'shrink-0 text-rose-400' : 'shrink-0 text-muted-foreground'} />
+                      <span className={`truncate text-sm font-extrabold uppercase tracking-wider ${attentionGroup ? 'text-rose-300' : 'text-foreground'}`}>{GROUP_LABEL[key]}</span>
+                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-black text-muted-foreground">{items.length}</span>
                     </span>
-                    <ChevronRight size={14} className={`shrink-0 text-muted-foreground transition-transform ${expanded ? 'rotate-90' : ''}`} />
+                    <ChevronRight size={16} className={`shrink-0 text-muted-foreground transition-transform ${expanded ? 'rotate-90' : ''}`} />
                   </button>
                   {expanded && items.map((item) => {
                     const active = selected?.id === item.id;
@@ -583,8 +598,8 @@ function InventoryView({ overview, candidates, source, state, onSourceChange, on
                       <button key={item.id} onClick={() => setSelectedId(item.id)} className={`w-full border-t border-border/40 p-4 pl-9 text-left transition-colors ${active ? 'bg-blue-500/10 shadow-[inset_3px_0_0_#3b82f6]' : 'hover:bg-muted/35'}`}>
                         <div className="flex items-center gap-2">
                           <p className="truncate text-sm font-bold">{item.label}</p>
-                          {item.antivirusGapSuspected && <ShieldAlert className="shrink-0 text-rose-400" size={13} />}
-                          {item.reliability?.needsManualReview && <AlertTriangle className="shrink-0 text-rose-400" size={13} />}
+                          {item.antivirusGapSuspected && <ShieldAlert className="shrink-0 text-rose-400" size={15} />}
+                          {item.reliability?.needsManualReview && <AlertTriangle className="shrink-0 text-rose-400" size={15} />}
                         </div>
                         <p className="mt-1 truncate text-[11px] text-muted-foreground"><SourceTag source={item.source} /> · {ASSET_CLASS_LABEL[item.assetClass] || item.assetClass}{item.hostnameRaw ? ` · ${item.hostnameRaw}` : ''}</p>
                         <div className="mt-2 flex items-center justify-between gap-2">
