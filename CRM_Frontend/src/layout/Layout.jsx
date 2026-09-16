@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, createContext } from 'react';
-import { Bot, MapPin, Users, Settings, LogOut, Cable, Terminal, PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, PieChart, Sparkles, Building2, ShieldCheck, User, Image, UserCircle, Loader2, X, Activity, LayoutDashboard, Server, Cctv, LockKeyhole, LifeBuoy, Zap } from 'lucide-react';
+import { Bot, MapPin, Users, Settings, LogOut, Cable, Terminal, ChevronDown, ChevronRight, PieChart, Sparkles, Building2, ShieldCheck, User, Image, UserCircle, Loader2, X, Activity, LayoutDashboard, Server, Cctv, LockKeyhole, LifeBuoy, Zap } from 'lucide-react';
 import SkylabBot from '../components/SkylabBot';
 import { ModeToggle } from "@/components/mode-toggle";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -97,7 +97,11 @@ export default function Layout({ children }) {
     const location = useLocation();
     const navigate = useNavigate();
     const { profile, logout, hasPermission, user, refreshProfile } = useAuth();
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    // El panel lateral arranca contraído y se expande al pasar el mouse (decisión del usuario
+    // 2026-09-16: "que el panel del extremo izquierdo de los módulos de skylab se contraiga
+    // automáticamente" — ya no hay botón manual "Ocultar Panel", ver onMouseEnter/onMouseLeave
+    // en el <aside>) para dejar más ancho disponible a cada módulo sin exigir un clic.
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [openMenus, setOpenMenus] = useState({ 'Seguridad Perimetral': true, 'Configuraciones': true, 'Monitoreo IT': true });
     const [pageHeader, setPageHeader] = useState(null);
     
@@ -165,8 +169,9 @@ export default function Layout({ children }) {
         }
     };
 
+    // Ya no hace falta forzar isSidebarOpen aquí: el panel solo puede recibir un clic con el
+    // mouse encima, y eso ya lo expandió vía onMouseEnter.
     const toggleMenu = (label) => {
-        if (!isSidebarOpen) setIsSidebarOpen(true);
         setOpenMenus(prev => ({ ...prev, [label]: !prev[label] }));
     };
 
@@ -220,8 +225,13 @@ export default function Layout({ children }) {
 
     return (
         <div className="flex h-screen bg-background text-foreground font-sans antialiased overflow-hidden">
-            {/* Sidebar Glass */}
-            <aside className={`${isSidebarOpen ? 'w-[260px]' : 'w-20'} transition-all duration-300 ease-in-out bg-card/60 backdrop-blur-2xl border-r border-border flex flex-col z-20 relative`}>
+            {/* Sidebar Glass — arranca contraído y se expande al pasar el mouse (ver estado
+                isSidebarOpen arriba); ya no hay botón manual para fijarlo abierto. */}
+            <aside
+                onMouseEnter={() => setIsSidebarOpen(true)}
+                onMouseLeave={() => setIsSidebarOpen(false)}
+                className={`${isSidebarOpen ? 'w-[260px]' : 'w-20'} transition-all duration-300 ease-in-out bg-card/60 backdrop-blur-2xl border-r border-border flex flex-col z-20 relative`}
+            >
                 <div className={`p-6 flex items-center ${!isSidebarOpen && 'justify-center px-0'} h-24`}>
                     {isSidebarOpen ? (
                         <div className="animate-in fade-in duration-500">
@@ -234,7 +244,9 @@ export default function Layout({ children }) {
                             <p className="text-[11px] uppercase tracking-widest text-muted-foreground mt-0.5 ml-[36px] font-semibold">CRM Inteligente</p>
                         </div>
                     ) : (
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-900/20">
+                        // Sin fondo azul al contraerse (pedido del usuario 2026-09-16) — el
+                        // icono se queda solo, mismo color que en el estado expandido.
+                        <div className="w-12 h-12 flex items-center justify-center text-blue-500">
                             <SkylabBot size={28} />
                         </div>
                     )}
@@ -311,14 +323,6 @@ export default function Layout({ children }) {
 
                 <div className="p-4 border-t border-border/80 flex flex-col gap-2 bg-muted/30">
                     <button
-                        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                        className={`flex items-center ${isSidebarOpen ? 'justify-start p-3' : 'justify-center w-12 h-12 mx-auto'} gap-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-xl transition-colors`}
-                        title="Alternar Panel Lateral"
-                    >
-                        {isSidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
-                        {isSidebarOpen && <span>Ocultar Panel</span>}
-                    </button>
-                    <button 
                         onClick={handleLogout}
                         className={`flex items-center ${isSidebarOpen ? 'justify-start p-3' : 'justify-center w-12 h-12 mx-auto'} gap-3 text-sm font-medium text-red-500/70 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors`} 
                         title="Cerrar Sesión"
