@@ -135,20 +135,16 @@ function ReliabilityBadge({ reliability }) {
 
 function ReliabilityPanel({ reliability }) {
   return (
-    <div className={`rounded-2xl border p-5 ${reliability.needsManualReview ? 'border-rose-500/25 bg-rose-500/[0.05]' : 'border-border bg-card/60'}`}>
+    <div className={`rounded-xl border p-3 ${reliability.needsManualReview ? 'border-rose-500/25 bg-rose-500/[0.05]' : 'border-border bg-card/60'}`}>
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Índice de confiabilidad</p>
-        <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${RELIABILITY_TONE[reliability.label]}`}>{reliability.label} · {reliability.score}%</span>
+        <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Índice de confiabilidad</p>
+        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase ${RELIABILITY_TONE[reliability.label]}`}>{reliability.label} · {reliability.score}%</span>
       </div>
-      <div className="mt-3"><ReliabilityMeter score={reliability.score} label={reliability.label} /></div>
+      <div className="mt-2"><ReliabilityMeter score={reliability.score} label={reliability.label} /></div>
       {reliability.needsManualReview && (
-        <p className="mt-3 flex items-center gap-1.5 text-xs font-bold text-rose-300"><AlertTriangle size={14} /> Requiere revisión manual: dos equipos distintos reclaman la misma IP y no parecen ser el mismo hardware.</p>
+        <p className="mt-2 flex items-center gap-1.5 text-xs font-bold text-rose-300"><AlertTriangle size={14} className="shrink-0" /> Revisión manual: dos equipos reclaman la misma IP y no parecen ser el mismo hardware.</p>
       )}
-      <ul className="mt-3 space-y-1.5">
-        {reliability.signals.map((signal) => (
-          <li key={signal} className="text-xs text-muted-foreground">· {signal}</li>
-        ))}
-      </ul>
+      {reliability.signals.length > 0 && <p className="mt-1.5 text-[11px] text-muted-foreground">{reliability.signals.join(' · ')}</p>}
     </div>
   );
 }
@@ -158,9 +154,9 @@ function ReliabilityPanel({ reliability }) {
 // de falta de protección, a revisar por un humano.
 function AntivirusGapPanel() {
   return (
-    <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.05] p-5">
-      <div className="flex items-center gap-2 text-rose-300"><ShieldAlert size={16} /><p className="text-[11px] font-extrabold uppercase tracking-wider">Posible falta de antivirus</p></div>
-      <p className="mt-2 text-xs text-muted-foreground">Equipo Windows administrativo visto por FortiGate que nunca aparece corroborado por Kaspersky (el agente antivirus de la organización). No es una certeza — puede que Kaspersky no lo haya reportado ese día — pero vale la pena confirmar que tenga protección instalada.</p>
+    <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.05] p-3">
+      <div className="flex items-center gap-2 text-rose-300"><ShieldAlert size={15} className="shrink-0" /><p className="text-[10px] font-extrabold uppercase tracking-wider">Posible falta de antivirus</p></div>
+      <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">Windows administrativo visto por FortiGate, nunca corroborado por Kaspersky. No es certeza, pero vale la pena confirmar que tenga protección instalada.</p>
     </div>
   );
 }
@@ -315,11 +311,12 @@ function CandidateDetailPane({ query, onChanged }) {
           <div className="mt-7 space-y-5">
             <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.05] p-5">
               <div className="flex items-center gap-2 text-emerald-300"><CheckCircle2 size={16} /><p className="text-[11px] font-extrabold uppercase tracking-wider">Activo canónico confirmado</p></div>
-              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
                 <div><p className="text-[10px] uppercase text-muted-foreground">Nombre</p><p className="mt-1 truncate font-black">{query.data.canonicalName}</p></div>
                 <div><p className="text-[10px] uppercase text-muted-foreground">Clase</p><p className="mt-1 font-black">{ASSET_CLASS_LABEL[query.data.assetClass] || query.data.assetClass}</p></div>
                 <div><p className="text-[10px] uppercase text-muted-foreground">Criticidad</p><p className="mt-1 font-black">{query.data.criticality}</p></div>
                 <div><p className="text-[10px] uppercase text-muted-foreground">Estado</p><p className="mt-1 font-black">{LIFECYCLE_LABEL[query.data.lifecycleStatus] || query.data.lifecycleStatus}</p></div>
+                <div><p className="text-[10px] uppercase text-muted-foreground">Subred</p><p className="mt-1 truncate font-black">{query.data.segment?.name || 'Sin segmento'}</p></div>
               </div>
             </div>
             {query.data.reviewReason && (
@@ -333,42 +330,51 @@ function CandidateDetailPane({ query, onChanged }) {
         )}
 
         {query.data?.kind === 'OBSERVATION' && (
-          <div className="mt-7 space-y-5">
+          <div className="mt-4 space-y-3">
             {query.data.antivirusGapSuspected && <AntivirusGapPanel />}
             {query.data.reliability && <ReliabilityPanel reliability={query.data.reliability} />}
 
-            {/* Identidad: lo que un humano necesita para reconocer el equipo físico. */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">IP observada</p><p className="mt-1 font-black font-mono text-sm">{query.data.ipValue || '—'}</p></div>
-              <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">MAC</p><p className="mt-1 font-black font-mono text-sm">{query.data.macValue || '—'}</p></div>
-              <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Hostname</p><p className="mt-1 truncate font-black font-mono text-sm">{query.data.hostnameRaw || '—'}</p></div>
-              <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Fabricante</p><p className="mt-1 truncate font-black">{query.data.manufacturer || '—'}</p></div>
-              <div className="rounded-xl border border-border bg-card p-3 col-span-2 sm:col-span-1"><p className="text-[10px] uppercase text-muted-foreground">Sistema operativo</p><p className="mt-1 truncate font-black">{query.data.osFamily || '—'} {query.data.osVersion || ''}</p></div>
+            {/* Identidad + subred: lo que un humano necesita para reconocer el equipo físico y
+                dónde vive en la red — una sola franja de 6, para que quepa sin scroll. La subred
+                ya se asignó desde la importación de FortiGate (segment_id, por IP contra CIDR);
+                promover no la crea ni la cambia, solo se hace visible aquí (pedido del usuario
+                2026-09-16: "se debe mostrar la subred a la que fue asociado"). */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+              <div className="rounded-lg border border-border bg-card p-2"><p className="text-[9px] uppercase text-muted-foreground">IP observada</p><p className="mt-0.5 font-black font-mono text-xs">{query.data.ipValue || '—'}</p></div>
+              <div className="rounded-lg border border-border bg-card p-2"><p className="text-[9px] uppercase text-muted-foreground">MAC</p><p className="mt-0.5 font-black font-mono text-xs">{query.data.macValue || '—'}</p></div>
+              <div className="rounded-lg border border-border bg-card p-2"><p className="text-[9px] uppercase text-muted-foreground">Hostname</p><p className="mt-0.5 truncate font-black font-mono text-xs">{query.data.hostnameRaw || '—'}</p></div>
+              <div className="rounded-lg border border-border bg-card p-2"><p className="text-[9px] uppercase text-muted-foreground">Fabricante</p><p className="mt-0.5 truncate font-black text-xs">{query.data.manufacturer || '—'}</p></div>
+              <div className="rounded-lg border border-border bg-card p-2"><p className="text-[9px] uppercase text-muted-foreground">Sistema operativo</p><p className="mt-0.5 truncate font-black text-xs">{query.data.osFamily || '—'} {query.data.osVersion || ''}</p></div>
+              <div className={`rounded-lg border p-2 ${query.data.segment ? (query.data.segment.classified ? 'border-emerald-500/25 bg-emerald-500/[0.05]' : 'border-amber-500/25 bg-amber-500/[0.05]') : 'border-border bg-card'}`}>
+                <p className="text-[9px] uppercase text-muted-foreground">Subred</p>
+                <p className="mt-0.5 truncate text-xs font-black">{query.data.segment?.name || 'Sin segmento'}</p>
+                {query.data.segment && !query.data.segment.classified && <p className="truncate text-[9px] font-bold text-amber-400">Sin clasificar aún</p>}
+              </div>
             </div>
 
             {/* Clasificación: una sola franja, sin repetir "confianza"/"fuerza identidad" tres veces. */}
-            <div className="rounded-2xl border border-border bg-card/60 p-5">
-              <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Clasificación</p>
-              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
-                <div><p className="text-[10px] uppercase text-muted-foreground">Fuente</p><p className="mt-1 font-black"><SourceTag source={query.data.source} /></p></div>
-                <div><p className="text-[10px] uppercase text-muted-foreground">Estado</p><p className="mt-1 font-black">{INVENTORY_STATE_LABEL[query.data.state] || query.data.state}</p></div>
+            <div className="rounded-xl border border-border bg-card/60 p-3">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Clasificación</p>
+              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                <div><p className="text-[9px] uppercase text-muted-foreground">Fuente</p><p className="mt-0.5 text-xs font-black"><SourceTag source={query.data.source} /></p></div>
+                <div><p className="text-[9px] uppercase text-muted-foreground">Estado</p><p className="mt-0.5 text-xs font-black">{INVENTORY_STATE_LABEL[query.data.state] || query.data.state}</p></div>
                 <div>
-                  <p className="text-[10px] uppercase text-muted-foreground">Clase de activo</p>
-                  <p className="mt-1 flex items-center gap-1.5 font-black">
-                    {createElement(GROUP_ICON[ASSET_CLASS_GROUP[query.data.assetClass]] || SlidersHorizontal, { size: 13, className: 'shrink-0 text-muted-foreground' })}
+                  <p className="text-[9px] uppercase text-muted-foreground">Clase de activo</p>
+                  <p className="mt-0.5 flex items-center gap-1.5 text-xs font-black">
+                    {createElement(GROUP_ICON[ASSET_CLASS_GROUP[query.data.assetClass]] || SlidersHorizontal, { size: 12, className: 'shrink-0 text-muted-foreground' })}
                     {ASSET_CLASS_LABEL[query.data.assetClass] || query.data.assetClass}
                   </p>
                 </div>
-                <div><p className="text-[10px] uppercase text-muted-foreground">Confianza</p><p className="mt-1 font-black">{Number.isFinite(query.data.confidence) ? `${(query.data.confidence * 100).toFixed(0)}%` : '—'}</p></div>
-                <div><p className="text-[10px] uppercase text-muted-foreground">Fuerza identidad</p><p className="mt-1 font-black">{query.data.identityStrength || '—'}</p></div>
+                <div><p className="text-[9px] uppercase text-muted-foreground">Confianza</p><p className="mt-0.5 text-xs font-black">{Number.isFinite(query.data.confidence) ? `${(query.data.confidence * 100).toFixed(0)}%` : '—'}</p></div>
+                <div><p className="text-[9px] uppercase text-muted-foreground">Fuerza identidad</p><p className="mt-0.5 text-xs font-black">{query.data.identityStrength || '—'}</p></div>
               </div>
               {(query.data.qualityFlags?.length > 0 || query.data.reasonCodes?.length > 0) && (
-                <div className="mt-4 flex flex-wrap gap-1.5 border-t border-border pt-4">
+                <div className="mt-2 flex flex-wrap gap-1.5 border-t border-border pt-2">
                   {(query.data.qualityFlags || []).map((flag) => (
-                    <span key={flag} className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-[9px] font-bold text-amber-300">{flag.replaceAll('_', ' ')}</span>
+                    <span key={flag} className="rounded-md border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">{flag.replaceAll('_', ' ')}</span>
                   ))}
                   {(query.data.reasonCodes || []).map((code) => (
-                    <span key={code} className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[9px] font-bold text-rose-300">{code.replaceAll('_', ' ')}</span>
+                    <span key={code} className="rounded-md border border-rose-500/20 bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-bold text-rose-300">{code.replaceAll('_', ' ')}</span>
                   ))}
                 </div>
               )}
@@ -378,8 +384,8 @@ function CandidateDetailPane({ query, onChanged }) {
                 dispositivo visto una sola vez (ej. una IP de CCTV usada brevemente) sigue
                 activo o ya no — decisión del usuario 2026-09-16, se había quitado sin querer
                 al simplificar este panel. */}
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
-              <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${LIFECYCLE_TONE[query.data.lifecycleStatus] || 'bg-muted text-muted-foreground'}`}>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[11px] text-muted-foreground">
+              <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${LIFECYCLE_TONE[query.data.lifecycleStatus] || 'bg-muted text-muted-foreground'}`}>
                 {LIFECYCLE_LABEL[query.data.lifecycleStatus] || query.data.lifecycleStatus}{Number.isFinite(query.data.ageDays) ? ` · hace ${query.data.ageDays} día${query.data.ageDays === 1 ? '' : 's'}` : ''}
               </span>
               <span><span className="text-foreground font-bold">Primera vista:</span> {query.data.firstSeenSourceAt ? new Date(query.data.firstSeenSourceAt).toLocaleString('es-CO') : '—'}</span>
@@ -389,36 +395,37 @@ function CandidateDetailPane({ query, onChanged }) {
             {/* Guía de qué hace cada botón — antes no se explicaba nada y el usuario no sabía
                 qué acción correspondía a un caso como "IP usada un momento, ya no responde"
                 (no requiere ninguna de las 3: no es un activo confirmado para promover, no hay
-                ambigüedad real que investigar, y no es sensible para proteger). */}
-            <div className="rounded-2xl border border-border bg-card/40 p-5">
-              <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">¿Qué hacer con este candidato?</p>
+                ambigüedad real que investigar, y no es sensible para proteger). Compactado
+                (2026-09-16, pedido del usuario) para que no haga falta scroll para llegar aquí. */}
+            <div className="rounded-xl border border-border bg-card/40 p-3">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">¿Qué hacer con este candidato?</p>
 
               {/* Nota libre (decisión del usuario 2026-09-16: "este equipo lo instalé
                   recientemente para nuestro servidor openvas de prueba piloto" — antes no había
                   dónde dejar constancia del motivo). Se guarda junto con Promover/Proteger. */}
-              <label className="mt-3 block">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nota / observación (opcional)</span>
-                <textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} rows={2} placeholder="Ej. Instalado para el piloto de OpenVAS, lo agregué esta semana." className="mt-1.5 w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-xs outline-none focus:border-blue-500/50" />
+              <label className="mt-2 block">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Nota / observación (opcional)</span>
+                <textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} rows={1} placeholder="Ej. Instalado para el piloto de OpenVAS, lo agregué esta semana." className="mt-1 w-full resize-none rounded-lg border border-border bg-background px-3 py-1.5 text-xs outline-none focus:border-blue-500/50" />
               </label>
 
-              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <div className="mt-2 grid gap-2 sm:grid-cols-3">
                 <div>
-                  <button onClick={promote} disabled={Boolean(pendingAction)} className="w-full rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-2.5 text-xs font-black uppercase text-emerald-300 hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-50">{pendingAction === 'promote' ? 'Promoviendo…' : 'Promover a canónico'}</button>
-                  <p className="mt-2 text-[11px] text-muted-foreground">Confirmas que es un equipo real y estable — pasa a tu inventario oficial permanente. Aquí sí queda guardada la nota de arriba.</p>
+                  <button onClick={promote} disabled={Boolean(pendingAction)} className="w-full rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-[11px] font-black uppercase text-emerald-300 hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-50">{pendingAction === 'promote' ? 'Promoviendo…' : 'Promover a canónico'}</button>
+                  <p className="mt-1 text-[10px] leading-snug text-muted-foreground">Equipo real y estable — pasa al inventario oficial. Guarda la nota.</p>
                 </div>
                 <div>
-                  <button onClick={markConflict} disabled={Boolean(pendingAction)} className="w-full rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-2.5 text-[10px] font-black uppercase text-amber-300 hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-50">{pendingAction === 'conflict' ? 'Marcando…' : 'Marcar conflicto'}</button>
-                  <p className="mt-2 text-[11px] text-muted-foreground">Hay algo ambiguo que alguien debe investigar (ej. dos equipos con la misma IP).</p>
+                  <button onClick={markConflict} disabled={Boolean(pendingAction)} className="w-full rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-[10px] font-black uppercase text-amber-300 hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-50">{pendingAction === 'conflict' ? 'Marcando…' : 'Marcar conflicto'}</button>
+                  <p className="mt-1 text-[10px] leading-snug text-muted-foreground">Algo ambiguo que investigar (ej. dos equipos, la misma IP).</p>
                 </div>
                 <div>
-                  <button onClick={markProtected} disabled={Boolean(pendingAction)} className="w-full rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-2.5 text-[10px] font-black uppercase text-rose-300 hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-50">{pendingAction === 'protect' ? 'Marcando…' : 'Marcar protegido'}</button>
-                  <p className="mt-2 text-[11px] text-muted-foreground">Es un activo sensible que no debe tocarse ni escanearse sin autorización. También guarda la nota.</p>
+                  <button onClick={markProtected} disabled={Boolean(pendingAction)} className="w-full rounded-lg border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-[10px] font-black uppercase text-rose-300 hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-50">{pendingAction === 'protect' ? 'Marcando…' : 'Marcar protegido'}</button>
+                  <p className="mt-1 text-[10px] leading-snug text-muted-foreground">Activo sensible: no tocar ni escanear sin autorización.</p>
                 </div>
               </div>
               {actionError && (
-                <p className="mt-4 flex items-center gap-1.5 rounded-xl border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-300"><AlertTriangle size={14} className="shrink-0" /> {actionError}</p>
+                <p className="mt-3 flex items-center gap-1.5 rounded-lg border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-300"><AlertTriangle size={14} className="shrink-0" /> {actionError}</p>
               )}
-              <p className="mt-4 border-t border-border pt-3 text-[11px] text-muted-foreground">Si fue una IP usada un momento y ya no aparece (como "{LIFECYCLE_LABEL.INACTIVE}"/"{LIFECYCLE_LABEL.STALE_REVIEW}" arriba), no necesitas ninguno de estos botones — es evidencia histórica sin riesgo, no exige una decisión.</p>
+              <p className="mt-3 border-t border-border pt-2 text-[10px] leading-snug text-muted-foreground">Si fue una IP usada un momento y ya no aparece (como "{LIFECYCLE_LABEL.INACTIVE}"/"{LIFECYCLE_LABEL.STALE_REVIEW}" arriba), no necesitas ninguno de estos botones.</p>
             </div>
           </div>
         )}

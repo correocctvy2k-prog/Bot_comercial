@@ -4,6 +4,7 @@ const { openCyberDatabase } = require('../db/open-database');
 const { protectedAlias, resolveProtectedAlias } = require('../src/cybersecurity-read-model');
 const { getObservationDetail, promoteObservationToAsset, markObservationAsConflict, markObservationAsProtected } = require('../src/inventory-actions');
 const { openInventoryDecisionStore, getDecisionByObservationId } = require('../src/inventory-decision-store');
+const { openNetworkPolicyStore, savePolicy } = require('../src/network-policy-store');
 
 // Regresión: protectedAlias() es un hash de un solo sentido ("candidate XXXXXXXX" / SHA-256
 // truncado); getObservationDetail/promote/conflict/protect intentaban "decodificarlo" con una
@@ -31,9 +32,16 @@ function seedObservation(db, overrides = {}) {
   }
   const id = overrides.id || 'observation-1';
   db.prepare(`INSERT INTO cyber_asset_observations(
-      id, snapshot_id, source_record_key, observed_at, ingested_at, ip_value, mac_value, hostname_raw
-    ) VALUES (?, 'snapshot-1', ?, ?, ?, ?, ?, ?)`)
-    .run(id, `rec-${id}`, now, now, overrides.ip || '10.2.6.15', overrides.mac || '02:00:00:aa:bb:cc', overrides.hostname || 'host-01');
+      id, snapshot_id, source_record_key, observed_at, ingested_at, segment_id, ip_value, mac_value, hostname_raw
+    ) VALUES (?, 'snapshot-1', ?, ?, ?, ?, ?, ?, ?)`)
+    .run(id, `rec-${id}`, now, now, overrides.segmentId || null, overrides.ip || '10.2.6.15', overrides.mac || '02:00:00:aa:bb:cc', overrides.hostname || 'host-01');
+  return id;
+}
+
+function seedSegment(db, overrides = {}) {
+  const id = overrides.id || 'segment-1';
+  db.prepare(`INSERT INTO cyber_network_segments(id, canonical_name, security_zone, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?)`).run(id, overrides.canonicalName || 'port10 · 10.220.1.0/24', overrides.zone || 'RESTRICTED', now, now);
   return id;
 }
 
@@ -60,7 +68,7 @@ test('resolveProtectedAlias acepta el alias con %20 (como llega en la URL sin de
 test('getObservationDetail encuentra la observación real a partir del alias de la lista', () => withDatabase((db, decisionsDb) => {
   const id = seedObservation(db, { ip: '10.2.6.20' });
   const alias = protectedAlias('candidate', id);
-  const detail = getObservationDetail(db, decisionsDb, alias);
+  const detail = getObservationDetail(db, decisionsDb, null, alias);
   assert.ok(detail, 'antes de la corrección esto devolvía null aunque la observación existiera');
   assert.equal(detail.kind, 'OBSERVATION');
   // Regresión real 2026-09-16 (clic real en el navegador): getObservationDetail devolvía el id
@@ -140,7 +148,7 @@ test('una nota demasiado larga se rechaza con un mensaje claro', () => withDatab
 test('el flujo real detalle -> promover funciona usando el id que trae la respuesta de detalle', () => withDatabase((db, decisionsDb) => {
   const id = seedObservation(db);
   const listAlias = protectedAlias('candidate', id);
-  const detail = getObservationDetail(db, decisionsDb, listAlias);
+  const detail = getObservationDetail(db, decisionsDb, null, listAlias);
   const result = promoteObservationToAsset(db, decisionsDb, detail.id, { note: 'Serv OpenVAS Piloto' }, 'jbeltran');
   assert.equal(result.success, true);
 }));
@@ -161,7 +169,7 @@ test('después de promover, getObservationDetail muestra el candidato como CANON
   const id = seedObservation(db);
   const alias = protectedAlias('candidate', id);
   promoteObservationToAsset(db, decisionsDb, alias, { canonicalName: 'Servidor OpenVAS piloto', note: 'piloto' }, 'jbeltran');
-  const detail = getObservationDetail(db, decisionsDb, alias);
+  const detail = getObservationDetail(db, decisionsDb, null, alias);
   assert.equal(detail.kind, 'CANONICAL');
   assert.equal(detail.id, alias);
   assert.equal(detail.canonicalName, 'Servidor OpenVAS piloto');
@@ -172,4 +180,39 @@ test('promover dos veces la misma observación falla con OBSERVATION_ALREADY_LIN
   const alias = protectedAlias('candidate', id);
   promoteObservationToAsset(db, decisionsDb, alias, {}, 'jbeltran');
   assert.throws(() => promoteObservationToAsset(db, decisionsDb, alias, {}, 'jbeltran'), /OBSERVATION_ALREADY_LINKED/);
+}));
+
+// Regresión 2026-09-16 (pedido del usuario: "se debe mostrar la subred a la que fue asociado" --
+// la asociación ya existe desde la importación de FortiGate (segment_id), promover no la crea ni
+// la repite; solo faltaba exponerla en el detalle). Sin política aplicada se ve el nombre crudo
+// de interfaz; con política aplicada (Subredes) debe preferir el nombre que el usuario le dio.
+test('getObservationDetail muestra la subred asociada desde la importación, con o sin política aplicada', () => withDatabase((db, decisionsDb) => {
+  const segmentId = seedSegment(db, { canonicalName: 'port10 · 10.220.1.0/24' });
+  const id = seedObservation(db, { ip: '10.220.1.83', segmentId });
+  const alias = protectedAlias('candidate', id);
+
+  const withoutPolicy = getObservationDetail(db, decisionsDb, null, alias);
+  assert.equal(withoutPolicy.segment.name, 'port10 · 10.220.1.0/24');
+  assert.equal(withoutPolicy.segment.classified, false);
+
+  const policyDb = openNetworkPolicyStore(':memory:');
+  const segmentAlias = protectedAlias('segment', segmentId);
+  savePolicy(policyDb, segmentAlias, {
+    name: 'CCTV, control de acceso y alarmas', zone: 'RESTRICTED', networkFunction: 'CCTV',
+    technology: 'ETHERNET', topology: 'ACCESS_LAN', addressMode: 'STATIC', population: 'SECURITY_DEVICES',
+    criticality: 'HIGH', networkAddress: '10.220.1.0', prefixLength: 24, gateway: '10.220.1.1',
+  }, 'tester');
+
+  const withPolicy = getObservationDetail(db, decisionsDb, policyDb, alias);
+  assert.equal(withPolicy.segment.name, 'CCTV, control de acceso y alarmas', 'con política aplicada debe preferir el nombre que el usuario le dio en Subredes');
+  assert.equal(withPolicy.segment.classified, true);
+  assert.equal(withPolicy.segment.id, segmentAlias);
+  policyDb.close();
+}));
+
+test('un candidato sin segmento asignado no rompe getObservationDetail (segment null)', () => withDatabase((db, decisionsDb) => {
+  const id = seedObservation(db);
+  const alias = protectedAlias('candidate', id);
+  const detail = getObservationDetail(db, decisionsDb, null, alias);
+  assert.equal(detail.segment, null);
 }));

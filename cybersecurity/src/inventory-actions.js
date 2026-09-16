@@ -4,6 +4,7 @@ const { resolveProtectedAlias, getCrossSourceMatchedObservationIds, protectedAli
 const { computeReliabilityScore, detectAntivirusGap, detectDeviceGroups } = require('./inventory-reliability');
 const { assessInventoryCandidate } = require('./inventory-confidence-policy');
 const { getDecisionByObservationId, saveDecision } = require('./inventory-decision-store');
+const { listPolicies } = require('./network-policy-store');
 
 function argument(name) {
   const index = process.argv.indexOf(`--${name}`);
@@ -15,6 +16,22 @@ function cleanNote(value) {
   if (!text) return null;
   if (text.length > 500) throw new Error('INVALID_NOTE_TOO_LONG');
   return text;
+}
+
+// Un candidato ya queda asociado a su subred desde que FortiGate lo importó (segment_id se
+// calcula una sola vez, por IP contra el CIDR de cada segmento en fortigate-importer.js) --
+// promover/proteger no cambia ni repite esa asociación, solo la hace visible. Se prefiere el
+// nombre que el usuario ya le dio en Subredes (policy.name, ej. "CCTV, control de acceso y
+// alarmas") sobre el nombre crudo de interfaz de FortiGate (canonical_name, ej. "port10") si ya
+// se clasificó (decisión del usuario 2026-09-16: "se debe mostrar la subred a la que fue
+// asociado").
+function resolveObservationSegment(db, policyDb, segmentId) {
+  if (!segmentId) return null;
+  const segment = db.prepare('SELECT canonical_name FROM cyber_network_segments WHERE id = ?').get(segmentId);
+  if (!segment) return null;
+  const alias = protectedAlias('segment', segmentId);
+  const policy = listPolicies(policyDb).find((item) => item.id === alias);
+  return { id: alias, name: policy?.name || segment.canonical_name, classified: Boolean(policy) };
 }
 
 function findingsSummaryForTarget(db, targetKey) {
@@ -30,7 +47,7 @@ function findingsSummaryForTarget(db, targetKey) {
 // (/admin-data). Un candidato promovido/protegido se sigue resolviendo por su alias "candidate"
 // original (la observación no cambia, cambia el "overlay" de decisión) y se devuelve con forma
 // CANONICAL para que el frontend lo muestre igual que antes.
-function getObservationDetail(db, decisionsDb, candidateKey) {
+function getObservationDetail(db, decisionsDb, policyDb, candidateKey) {
   const resolved = resolveProtectedAlias(db, candidateKey);
   if (!resolved) return null;
 
@@ -84,6 +101,7 @@ function getObservationDetail(db, decisionsDb, candidateKey) {
 
   const decision = getDecisionByObservationId(decisionsDb, observation.id);
   const candidateAlias = protectedAlias('candidate', observation.id);
+  const segment = resolveObservationSegment(db, policyDb, observation.segment_id);
 
   // Si ya se promovió o protegió, se muestra con la misma forma CANONICAL que antes usaba
   // cyber_assets -- el frontend no necesita saber que ahora vive en otro almacén.
@@ -95,6 +113,7 @@ function getObservationDetail(db, decisionsDb, candidateKey) {
       canonicalName: decision.canonical_name,
       assetClass: decision.asset_class,
       criticality: decision.criticality,
+      segment,
       lifecycleStatus: 'CONFIRMED_ACTIVE',
       reconciliationStatus: 'HUMAN_VERIFIED',
       reviewedAt: decision.decided_at,
@@ -149,7 +168,7 @@ function getObservationDetail(db, decisionsDb, candidateKey) {
     label: `Activo observado ${observation.id.slice(-8).toUpperCase()}`,
     observedAt: observation.observed_at,
     ingestedAt: observation.ingested_at,
-    segmentId: observation.segment_id,
+    segment,
     ipValue: observation.ip_value,
     macValue: observation.mac_value,
     hostnameRaw: observation.hostname_raw,

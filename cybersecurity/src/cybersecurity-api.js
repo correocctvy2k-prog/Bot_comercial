@@ -111,7 +111,7 @@ function createCybersecurityApi({ db, policyDb = null, decisionsDb = null, autho
       // resolvieron arriba, antes del guard "!== GET", usando el mismo CANDIDATE_ID_PATTERN.
       const candidateMatch = url.pathname.match(new RegExp(`^/api/cybersecurity/inventory/candidates/${CANDIDATE_ID_PATTERN}$`, 'i'));
       if (candidateMatch && request.method === 'GET') {
-        const item = getObservationDetail(db, decisionsDb, decodeURIComponent(candidateMatch[1]));
+        const item = getObservationDetail(db, decisionsDb, policyDb, decodeURIComponent(candidateMatch[1]));
         return item ? sendJson(response, 200, item) : sendJson(response, 404, { error: 'CANDIDATE_NOT_FOUND' });
       }
       if (url.pathname === '/api/cybersecurity/network-segments') {
