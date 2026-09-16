@@ -57,7 +57,7 @@ function resolveProtectedAlias(db, alias) {
   return finding ? { kind: 'PROTECTED_TARGET', id: finding.target_key } : null;
 }
 
-function getInventoryOverview(db) {
+function getInventoryOverview(db, decisionsDb = null) {
   const canonical = db.prepare('SELECT count(*) count FROM cyber_assets').get().count;
   const observations = db.prepare(`
     WITH latest AS (
@@ -87,20 +87,35 @@ function getInventoryOverview(db) {
   // reimportación de FortiGate (2026-09-15) los conflictos aparecían duplicados (417 de la
   // captura vieja + 404 de la nueva = 821). Se limita a las observaciones del snapshot más
   // reciente por fuente, igual que ya hacen listInventoryCandidates/listNetworkSegments.
-  const review = db.prepare(`
+  const analysisRows = db.prepare(`
     WITH latest AS (
       SELECT source_system_id, max(captured_at) captured_at
       FROM cyber_source_snapshots WHERE processing_status = 'SUCCESS'
       GROUP BY source_system_id
     )
-    SELECT count(*) total,
-      COALESCE(sum(CASE WHEN item.proposed_action = 'CONFLICT_REVIEW' THEN 1 ELSE 0 END), 0) conflicts,
-      COALESCE(sum(CASE WHEN item.identity_strength = 'INSUFFICIENT' THEN 1 ELSE 0 END), 0) insufficient
+    SELECT item.observation_id observationId, item.proposed_action proposedAction,
+      item.identity_strength identityStrength
     FROM cyber_inventory_analysis_items item
     JOIN cyber_asset_observations o ON o.id = item.observation_id
     JOIN cyber_source_snapshots s ON s.id = o.snapshot_id
     JOIN latest l ON l.source_system_id = s.source_system_id AND l.captured_at = s.captured_at
-  `).get();
+  `).all();
+  // canonicalAssets/pendingReview/conflicts contaban solo lo que vive en cyber-inventory.db
+  // (de solo lectura -- ver inventory-decision-store.js) y nunca se movían al promover/marcar
+  // conflicto desde decisionsDb. Un candidato promovido o protegido ya no es "pendiente" y sí
+  // es un activo canónico; uno marcado en conflicto a mano cuenta como conflicto aunque el
+  // análisis automático original no lo hubiera detectado, y uno ya promovido dejó de serlo.
+  const decisions = listDecisions(decisionsDb);
+  const promotedOrProtectedIds = new Set(
+    decisions.filter((d) => d.decision === 'PROMOTED' || d.decision === 'PROTECTED').map((d) => d.observation_id),
+  );
+  const conflictObservationIds = new Set(analysisRows.filter((r) => r.proposedAction === 'CONFLICT_REVIEW').map((r) => r.observationId));
+  decisions.filter((d) => d.decision === 'CONFLICT').forEach((d) => conflictObservationIds.add(d.observation_id));
+  promotedOrProtectedIds.forEach((id) => conflictObservationIds.delete(id));
+  const review = {
+    conflicts: conflictObservationIds.size,
+    insufficient: analysisRows.filter((r) => r.identityStrength === 'INSUFFICIENT').length,
+  };
   const sourceCoverage = observations.map((row) => ({
     source: row.source, candidates: row.candidates, capturedAt: row.capturedAt, status: row.status,
   }));
@@ -109,14 +124,14 @@ function getInventoryOverview(db) {
     capturedAt: greenbone.capturedAt, status: greenbone.status,
   });
   const observedCandidates = observations.reduce((sum, row) => sum + row.candidates, 0);
-  const assessed = listInventoryCandidates(db, { limit: 1 }).assessmentSummary;
+  const assessed = listInventoryCandidates(db, { limit: 1 }, decisionsDb).assessmentSummary;
   return {
     generatedAt: new Date().toISOString(),
     totals: {
       observedCandidates,
       protectedTargets: greenbone.candidates,
-      canonicalAssets: canonical,
-      pendingReview: observedCandidates + greenbone.candidates,
+      canonicalAssets: canonical + promotedOrProtectedIds.size,
+      pendingReview: observedCandidates + greenbone.candidates - promotedOrProtectedIds.size,
       conflicts: review.conflicts,
       insufficientEvidence: review.insufficient,
       findings: greenbone.findings,

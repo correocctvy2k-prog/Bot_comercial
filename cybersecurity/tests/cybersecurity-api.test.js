@@ -5,6 +5,7 @@ const path = require('node:path');
 const { openCyberDatabase } = require('../db/open-database');
 const { createCybersecurityApi } = require('../src/cybersecurity-api');
 const { openInventoryDecisionStore, getDecisionByObservationId } = require('../src/inventory-decision-store');
+const { promoteObservationToAsset, markObservationAsConflict } = require('../src/inventory-actions');
 const { importGreenboneProtectedResults } = require('../src/greenbone-protected-importer');
 const { importFortiGateInventory } = require('../src/fortigate-importer');
 const {
@@ -107,17 +108,19 @@ test('solo un autorizador administrativo puede habilitar referencias internas', 
 // llegar siquiera a evaluar las rutas de promote/conflict/protect (solo policy/disposition
 // se resolvían antes de ese guard) — Promover/Marcar conflicto/Marcar protegido nunca
 // respondían desde el navegador, con o sin sesión de superadmin.
-function seedCandidateObservation(db) {
+function seedCandidateObservation(db, overrides = {}) {
   const now = '2026-09-01T12:00:00.000Z';
-  db.prepare(`INSERT INTO cyber_source_systems(id, source_type, display_name, authority_level, created_at, updated_at)
-    VALUES ('source-forti','FORTIGATE','Firewall inventory','OBSERVATIONAL',?,?)`).run(now, now);
-  db.prepare(`INSERT INTO cyber_source_snapshots(id, source_system_id, captured_at, imported_at, source_sha256, processing_status)
-    VALUES ('snapshot-1','source-forti',?,?,?,'SUCCESS')`).run(now, now, 'a'.repeat(64));
-  const id = 'observation-api-1';
+  if (!db.prepare("SELECT 1 FROM cyber_source_systems WHERE id = 'source-forti'").get()) {
+    db.prepare(`INSERT INTO cyber_source_systems(id, source_type, display_name, authority_level, created_at, updated_at)
+      VALUES ('source-forti','FORTIGATE','Firewall inventory','OBSERVATIONAL',?,?)`).run(now, now);
+    db.prepare(`INSERT INTO cyber_source_snapshots(id, source_system_id, captured_at, imported_at, source_sha256, processing_status)
+      VALUES ('snapshot-1','source-forti',?,?,?,'SUCCESS')`).run(now, now, 'a'.repeat(64));
+  }
+  const id = overrides.id || 'observation-api-1';
   db.prepare(`INSERT INTO cyber_asset_observations(
       id, snapshot_id, source_record_key, observed_at, ingested_at, ip_value, mac_value, hostname_raw
-    ) VALUES (?, 'snapshot-1', 'rec-1', ?, ?, '10.2.6.15', '02:00:00:aa:bb:cc', 'host-01')`)
-    .run(id, now, now);
+    ) VALUES (?, 'snapshot-1', ?, ?, ?, ?, ?, ?)`)
+    .run(id, `rec-${id}`, now, now, overrides.ip || '10.2.6.15', overrides.mac || '02:00:00:aa:bb:cc', overrides.hostname || 'host-01');
   return id;
 }
 
@@ -206,6 +209,31 @@ test('el flujo real del navegador (GET detalle, reusar su id para promover) func
   } finally {
     await new Promise((resolve) => server.close(resolve)); db.close(); decisionsDb.close();
   }
+});
+
+// Regresión 2026-09-16 (reportada por el usuario: "se agregan a la lista, pero los KPIs no se
+// actualizan"): canonicalAssets/pendingReview/conflicts se calculaban solo contra
+// cyber-inventory.db (de solo lectura), así que promover/proteger/marcar conflicto desde
+// decisionsDb nunca los movía -- el candidato aparecía en la lista de canónicos, pero la
+// tarjeta "Activos canónicos" seguía en 0 y "Pendientes de revisión" no bajaba.
+test('getInventoryOverview refleja promover/marcar conflicto aunque vivan en decisionsDb, no en cyber_assets', () => {
+  const db = seededDatabase();
+  const decisionsDb = openInventoryDecisionStore(':memory:');
+  try {
+    const id1 = seedCandidateObservation(db);
+    const before = getInventoryOverview(db, decisionsDb);
+    assert.equal(before.totals.canonicalAssets, 0);
+
+    promoteObservationToAsset(db, decisionsDb, protectedAlias('candidate', id1), {}, 'tester');
+    const afterPromote = getInventoryOverview(db, decisionsDb);
+    assert.equal(afterPromote.totals.canonicalAssets, before.totals.canonicalAssets + 1, 'un candidato promovido debe sumar a activos canónicos aunque viva en decisionsDb');
+    assert.equal(afterPromote.totals.pendingReview, before.totals.pendingReview - 1, 'un candidato promovido ya no debe contar como pendiente de revisión');
+
+    const id2 = seedCandidateObservation(db, { id: 'observation-api-2', ip: '10.2.6.16', mac: '02:00:00:aa:bb:dd', hostname: 'host-02' });
+    markObservationAsConflict(db, decisionsDb, protectedAlias('candidate', id2), {}, 'tester');
+    const afterConflict = getInventoryOverview(db, decisionsDb);
+    assert.equal(afterConflict.totals.conflicts, before.totals.conflicts + 1, 'un candidato marcado en conflicto a mano debe sumar a conflictos aunque el análisis automático no lo hubiera detectado');
+  } finally { db.close(); decisionsDb.close(); }
 });
 
 // Regresión 2026-09-15: getInventoryOverview().totals.conflicts sumaba

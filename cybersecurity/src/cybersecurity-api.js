@@ -97,7 +97,7 @@ function createCybersecurityApi({ db, policyDb = null, decisionsDb = null, autho
         return sendJson(response, 200, getCybersecurityOverview(db));
       }
       if (url.pathname === '/api/cybersecurity/inventory/overview') {
-        return sendJson(response, 200, getInventoryOverview(db));
+        return sendJson(response, 200, getInventoryOverview(db, decisionsDb));
       }
       if (url.pathname === '/api/cybersecurity/inventory/candidates') {
         return sendJson(response, 200, listInventoryCandidates(db, {
