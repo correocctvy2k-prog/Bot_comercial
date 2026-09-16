@@ -37,6 +37,45 @@ const LIFECYCLE_LABEL = {
   STALE_REVIEW: 'Revisar antigüedad', UNKNOWN: 'Sin actividad conocida',
 };
 
+// Agrupación de Inventario por tipo de activo (decisión del usuario 2026-09-16: "mostrar los
+// activos por grupos desplegables, por tipos, equipos administrativos, equipos cctv,
+// servidores..."). GROUP_ORDER fija el orden de aparición; ASSET_CLASS_GROUP mapea el
+// assetClass ya calculado por el backend (inventory-analyzer.js) a su grupo visual.
+const ASSET_CLASS_LABEL = {
+  SERVER: 'Servidor', NETWORK: 'Red', SECURITY: 'Seguridad', WORKSTATION: 'Estación de trabajo',
+  LAPTOP: 'Portátil', PRINTER: 'Impresora', IOT: 'IoT', CCTV: 'CCTV', MOBILE: 'Móvil',
+  GUEST_BYOD: 'Invitado / BYOD', VIRTUAL_MACHINE: 'Máquina virtual', OTHER: 'Sin clasificar',
+};
+const ASSET_CLASS_GROUP = {
+  SERVER: 'SERVERS', CCTV: 'CCTV', WORKSTATION: 'ADMIN', LAPTOP: 'ADMIN',
+  NETWORK: 'NETWORK', SECURITY: 'NETWORK', MOBILE: 'MOBILE', GUEST_BYOD: 'MOBILE',
+  PRINTER: 'PRINTERS', IOT: 'IOT', VIRTUAL_MACHINE: 'VMS', OTHER: 'OTHER',
+};
+const GROUP_ORDER = ['ATTENTION', 'SERVERS', 'CCTV', 'ADMIN', 'NETWORK', 'VMS', 'PRINTERS', 'IOT', 'MOBILE', 'PROTECTED', 'CANONICAL', 'OTHER'];
+const GROUP_LABEL = {
+  ATTENTION: 'Requiere atención', SERVERS: 'Servidores', CCTV: 'CCTV', ADMIN: 'Equipos administrativos',
+  NETWORK: 'Red e infraestructura', VMS: 'Máquinas virtuales', PRINTERS: 'Impresoras', IOT: 'IoT',
+  MOBILE: 'Móviles', PROTECTED: 'Objetivos protegidos', CANONICAL: 'Activos canónicos', OTHER: 'Sin clasificar',
+};
+const GROUP_ICON = {
+  ATTENTION: AlertTriangle, SERVERS: Database, CCTV: Radar, ADMIN: ShieldCheck, NETWORK: Network,
+  VMS: Boxes, PRINTERS: FileSearch, IOT: Radar, MOBILE: Fingerprint, PROTECTED: ShieldAlert,
+  CANONICAL: CheckCircle2, OTHER: SlidersHorizontal,
+};
+// needsManualReview (IP duplicada sin explicar) se dispara sobre todo en las redes WiFi
+// (móviles con DHCP reasignando IP durante el día) -- ruido esperado y ya despriorizado por
+// el usuario (2026-09-15), no un caso real para "requiere atención". Se excluyen MOBILE/
+// GUEST_BYOD/OTHER de ese disparador (verificado: 327 needsManualReview totales, 301 eran
+// MOBILE/OTHER; con el filtro quedan solo los 32 casos reales en clases administrativas/red).
+const ATTENTION_EXCLUDED_CLASSES = new Set(['MOBILE', 'GUEST_BYOD', 'OTHER']);
+function groupForCandidate(item) {
+  if (item.kind === 'PROTECTED_TARGET') return 'PROTECTED';
+  if (item.kind === 'CANONICAL') return 'CANONICAL';
+  const manualReviewRelevant = item.reliability?.needsManualReview && !ATTENTION_EXCLUDED_CLASSES.has(item.assetClass);
+  if (item.antivirusGapSuspected || manualReviewRelevant) return 'ATTENTION';
+  return ASSET_CLASS_GROUP[item.assetClass] || 'OTHER';
+}
+
 const AUTHORITY_LABEL = {
   AUTHORITATIVE_WINDOWS: 'KSC · identidad Windows',
   MANAGED_DEVICE_EVIDENCE: 'KSC · equipo administrado',
@@ -86,6 +125,18 @@ function ReliabilityPanel({ reliability }) {
           <li key={signal} className="text-xs text-muted-foreground">· {signal}</li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+// Ciberseguridad proactiva (decisión del usuario, 2026-09-16): equipo Windows administrativo
+// visto por FortiGate que nunca se corrobora con Kaspersky (el agente antivirus/EDR) — sospecha
+// de falta de protección, a revisar por un humano.
+function AntivirusGapPanel() {
+  return (
+    <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.05] p-5">
+      <div className="flex items-center gap-2 text-rose-300"><ShieldAlert size={16} /><p className="text-[11px] font-extrabold uppercase tracking-wider">Posible falta de antivirus</p></div>
+      <p className="mt-2 text-xs text-muted-foreground">Equipo Windows administrativo visto por FortiGate que nunca aparece corroborado por Kaspersky (el agente antivirus de la organización). No es una certeza — puede que Kaspersky no lo haya reportado ese día — pero vale la pena confirmar que tenga protección instalada.</p>
     </div>
   );
 }
@@ -219,85 +270,48 @@ function CandidateDetailPane({ query, onChanged }) {
         {query.isError && <EmptyState error onRetry={query.refetch} />}
         {query.isLoading && <div className="mt-7 text-center text-muted-foreground">Cargando detalle…</div>}
         {query.data && (
-          <div className="mt-7 space-y-6">
+          <div className="mt-7 space-y-5">
+            {query.data.antivirusGapSuspected && <AntivirusGapPanel />}
             {query.data.reliability && <ReliabilityPanel reliability={query.data.reliability} />}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Fuente</p><p className="mt-1 font-black">{query.data.source}</p></div>
-              <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Estado</p><p className="mt-1 font-black">{query.data.state}</p></div>
-              <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Confianza</p><p className="mt-1 font-black">{(query.data.confidence * 100).toFixed(0)}%</p></div>
-              <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Fuerza identidad</p><p className="mt-1 font-black">{query.data.identityStrength}</p></div>
+
+            {/* Identidad: lo que un humano necesita para reconocer el equipo físico. */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">IP observada</p><p className="mt-1 font-black font-mono text-sm">{query.data.ipValue || '—'}</p></div>
+              <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">MAC</p><p className="mt-1 font-black font-mono text-sm">{query.data.macValue || '—'}</p></div>
+              <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Hostname</p><p className="mt-1 truncate font-black font-mono text-sm">{query.data.hostnameRaw || '—'}</p></div>
+              <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Fabricante</p><p className="mt-1 truncate font-black">{query.data.manufacturer || '—'}</p></div>
+              <div className="rounded-xl border border-border bg-card p-3 col-span-2 sm:col-span-1"><p className="text-[10px] uppercase text-muted-foreground">Sistema operativo</p><p className="mt-1 truncate font-black">{query.data.osFamily || '—'} {query.data.osVersion || ''}</p></div>
             </div>
+
+            {/* Clasificación: una sola franja, sin repetir "confianza"/"fuerza identidad" tres veces. */}
             <div className="rounded-2xl border border-border bg-card/60 p-5">
-              <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Identidad y clasificación</p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Clase de activo</p><p className="mt-1 font-black">{query.data.assetClass}</p></div>
-                <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Fabricante</p><p className="mt-1 font-black">{query.data.manufacturer || '—'}</p></div>
-                <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">OS</p><p className="mt-1 font-black">{query.data.osFamily || '—'} {query.data.osVersion || ''}</p></div>
-                <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">MAC</p><p className="mt-1 font-black font-mono text-xs">{query.data.macValue || '—'}</p></div>
-                <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">IP observada</p><p className="mt-1 font-black font-mono text-xs">{query.data.ipValue || '—'}</p></div>
-                <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Hostname</p><p className="mt-1 font-black font-mono text-xs truncate">{query.data.hostnameRaw || '—'}</p></div>
+              <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Clasificación</p>
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                <div><p className="text-[10px] uppercase text-muted-foreground">Fuente</p><p className="mt-1 font-black">{SOURCE_LABEL[query.data.source] || query.data.source}</p></div>
+                <div><p className="text-[10px] uppercase text-muted-foreground">Estado</p><p className="mt-1 font-black">{INVENTORY_STATE_LABEL[query.data.state] || query.data.state}</p></div>
+                <div><p className="text-[10px] uppercase text-muted-foreground">Clase de activo</p><p className="mt-1 font-black">{ASSET_CLASS_LABEL[query.data.assetClass] || query.data.assetClass}</p></div>
+                <div><p className="text-[10px] uppercase text-muted-foreground">Confianza</p><p className="mt-1 font-black">{Number.isFinite(query.data.confidence) ? `${(query.data.confidence * 100).toFixed(0)}%` : '—'}</p></div>
+                <div><p className="text-[10px] uppercase text-muted-foreground">Fuerza identidad</p><p className="mt-1 font-black">{query.data.identityStrength || '—'}</p></div>
               </div>
-            </div>
-            <div className="rounded-2xl border border-border bg-card/60 p-5">
-              <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Análisis de confianza</p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Confianza</p><p className="mt-1 font-black text-3xl">{(query.data.confidence * 100).toFixed(0)}%</p></div>
-                <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Fuerza identidad</p><p className="mt-1 font-black text-3xl">{query.data.identityStrength}</p></div>
-                <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Autoridad</p><p className="mt-1 font-black text-3xl">{query.data.sourceAuthority}</p></div>
-              </div>
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Política de identidad</p><p className="mt-1 font-black text-sm">{query.data.identityPolicy}</p></div>
-                <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Regla de red</p><p className="mt-1 font-black text-sm">{query.data.networkIdentityRule}</p></div>
-              </div>
-            </div>
-            <div className="rounded-2xl border border-border bg-card/60 p-5">
-              <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Señales de calidad</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {(query.data.qualityFlags || []).map((flag) => (
-                  <span key={flag} className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-300">{flag.replaceAll('_', ' ')}</span>
-                ))}
-              </div>
-              {(query.data.reasonCodes || []).length > 0 && (
-                <div className="mt-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Códigos de razón</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {(query.data.reasonCodes || []).map((code) => (
-                      <span key={code} className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[9px] font-bold text-rose-300">{code.replaceAll('_', ' ')}</span>
-                    ))}
-                  </div>
+              {(query.data.qualityFlags?.length > 0 || query.data.reasonCodes?.length > 0) && (
+                <div className="mt-4 flex flex-wrap gap-1.5 border-t border-border pt-4">
+                  {(query.data.qualityFlags || []).map((flag) => (
+                    <span key={flag} className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-[9px] font-bold text-amber-300">{flag.replaceAll('_', ' ')}</span>
+                  ))}
+                  {(query.data.reasonCodes || []).map((code) => (
+                    <span key={code} className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[9px] font-bold text-rose-300">{code.replaceAll('_', ' ')}</span>
+                  ))}
                 </div>
               )}
             </div>
-            <div className="rounded-2xl border border-border bg-card/60 p-5">
-              <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Actividad y señales</p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Última señal</p><p className="mt-1 font-black">{query.data.lastSeenAt ? new Date(query.data.lastSeenAt).toLocaleString('es-CO') : '—'}</p></div>
-                <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Última fuente</p><p className="mt-1 font-black">{query.data.lastSeenSourceAt ? new Date(query.data.lastSeenSourceAt).toLocaleString('es-CO') : '—'}</p></div>
-                <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Primera vista</p><p className="mt-1 font-black">{query.data.firstSeenSourceAt ? new Date(query.data.firstSeenSourceAt).toLocaleString('es-CO') : '—'}</p></div>
-                <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Segundos vistos</p><p className="mt-1 font-black">{query.data.sourceSeenSeconds ?? '—'}</p></div>
-              </div>
+
+            {/* Actividad: solo las 2 fechas que importan, no 4 cajas repetidas. */}
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+              <span><span className="text-foreground font-bold">Primera vista:</span> {query.data.firstSeenSourceAt ? new Date(query.data.firstSeenSourceAt).toLocaleString('es-CO') : '—'}</span>
+              <span><span className="text-foreground font-bold">Última señal:</span> {query.data.lastSeenSourceAt ? new Date(query.data.lastSeenSourceAt).toLocaleString('es-CO') : '—'}</span>
             </div>
-            <div className="rounded-2xl border border-border bg-card/60 p-5">
-              <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Análisis de inventario</p>
-              {query.data.analysis ? (
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Clase provisional</p><p className="mt-1 font-black">{query.data.analysis.provisionalAssetClass}</p></div>
-                  <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Fuerza identidad</p><p className="mt-1 font-black">{query.data.analysis.identityStrength}</p></div>
-                  <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Acción propuesta</p><p className="mt-1 font-black">{query.data.analysis.proposedAction}</p></div>
-                  <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Confianza análisis</p><p className="mt-1 font-black">{(query.data.analysis.confidence * 100).toFixed(0)}%</p></div>
-                  <div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Códigos de razón</p>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {(query.data.analysis.reasonCodes || []).map((code) => (
-                        <span key={code} className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-[9px] font-bold text-amber-300">{code.replaceAll('_', ' ')}</span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <p className="mt-3 text-sm text-muted-foreground">Sin análisis de inventario disponible para esta observación.</p>
-              )}
-            </div>
-            <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
+
+            <div className="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-wrap gap-2">
                 <button onClick={promote} className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-2.5 text-xs font-black uppercase text-emerald-300 hover:bg-emerald-500/15">
                   Promover a canónico
@@ -323,6 +337,7 @@ function CandidateDetailPane({ query, onChanged }) {
 function InventoryView({ overview, candidates, source, state, onSourceChange, onStateChange, onRetry }) {
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState(null);
+  const [expandedGroups, setExpandedGroups] = useState(() => new Set(['ATTENTION']));
   const data = overview.data;
   if (overview.isError || candidates.isError) return <EmptyState error onRetry={onRetry} />;
   const allRows = candidates.data?.items || [];
@@ -335,6 +350,23 @@ function InventoryView({ overview, candidates, source, state, onSourceChange, on
     enabled: Boolean(selected?.id),
   });
   const stateTone = { CANONICAL: 'bg-emerald-500/10 text-emerald-300', PROTECTED_TARGET: 'bg-rose-500/10 text-rose-300', CONFLICT_REVIEW: 'bg-amber-500/10 text-amber-300', INSUFFICIENT_EVIDENCE: 'bg-slate-500/10 text-slate-300' };
+
+  // Agrupación por tipo de activo (decisión del usuario 2026-09-16) en vez de una lista plana
+  // muy larga — "Requiere atención" (conflicto real sin explicar + sospecha de sin antivirus)
+  // va primero y arranca desplegada; el resto arranca plegado, mostrando solo el conteo.
+  const groups = new Map();
+  for (const item of rows) {
+    const key = groupForCandidate(item);
+    const bucket = groups.get(key) || [];
+    bucket.push(item);
+    groups.set(key, bucket);
+  }
+  const orderedGroups = GROUP_ORDER.map((key) => ({ key, items: groups.get(key) || [] })).filter((group) => group.items.length > 0);
+  const toggleGroup = (key) => setExpandedGroups((current) => {
+    const next = new Set(current);
+    next.has(key) ? next.delete(key) : next.add(key);
+    return next;
+  });
 
   return (
     <>
@@ -380,20 +412,38 @@ function InventoryView({ overview, candidates, source, state, onSourceChange, on
             <p className="mt-2 text-[10px] text-muted-foreground">{rows.length} de {candidates.data?.total ?? allRows.length} registros{candidates.isFetching ? ' · cargando…' : ''}</p>
           </div>
           <div className="max-h-[560px] divide-y divide-border/60 overflow-y-auto">
-            {rows.map((item) => {
-              const active = selected?.id === item.id;
+            {orderedGroups.map(({ key, items }) => {
+              const expanded = expandedGroups.has(key);
+              const GroupIcon = GROUP_ICON[key];
+              const attentionGroup = key === 'ATTENTION';
               return (
-                <button key={item.id} onClick={() => setSelectedId(item.id)} className={`w-full p-4 text-left transition-colors ${active ? 'bg-blue-500/10 shadow-[inset_3px_0_0_#3b82f6]' : 'hover:bg-muted/35'}`}>
-                  <div className="flex items-center gap-2"><p className="truncate text-sm font-bold">{item.label}</p>{item.reliability?.needsManualReview && <AlertTriangle className="shrink-0 text-rose-400" size={13} />}</div>
-                  <p className="mt-1 truncate text-[11px] text-muted-foreground">{SOURCE_LABEL[item.source] || item.source} · {item.assetClass}</p>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black uppercase ${stateTone[item.state] || 'bg-muted text-muted-foreground'}`}>{INVENTORY_STATE_LABEL[item.state] || item.state}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-muted-foreground">{Math.round((item.identityConfidence || 0) * 100)}% identidad</span>
-                      {item.reliability && <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${RELIABILITY_TONE[item.reliability.label]}`}>{item.reliability.score}%</span>}
-                    </div>
-                  </div>
-                </button>
+                <div key={key}>
+                  <button onClick={() => toggleGroup(key)} className={`flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/25 ${attentionGroup ? 'bg-rose-500/[0.04]' : ''}`}>
+                    <span className="flex min-w-0 items-center gap-2">
+                      <GroupIcon size={14} className={attentionGroup ? 'shrink-0 text-rose-400' : 'shrink-0 text-muted-foreground'} />
+                      <span className={`truncate text-xs font-extrabold uppercase tracking-wider ${attentionGroup ? 'text-rose-300' : 'text-foreground'}`}>{GROUP_LABEL[key]}</span>
+                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-black text-muted-foreground">{items.length}</span>
+                    </span>
+                    <ChevronRight size={14} className={`shrink-0 text-muted-foreground transition-transform ${expanded ? 'rotate-90' : ''}`} />
+                  </button>
+                  {expanded && items.map((item) => {
+                    const active = selected?.id === item.id;
+                    return (
+                      <button key={item.id} onClick={() => setSelectedId(item.id)} className={`w-full border-t border-border/40 p-4 pl-9 text-left transition-colors ${active ? 'bg-blue-500/10 shadow-[inset_3px_0_0_#3b82f6]' : 'hover:bg-muted/35'}`}>
+                        <div className="flex items-center gap-2">
+                          <p className="truncate text-sm font-bold">{item.label}</p>
+                          {item.antivirusGapSuspected && <ShieldAlert className="shrink-0 text-rose-400" size={13} />}
+                          {item.reliability?.needsManualReview && <AlertTriangle className="shrink-0 text-rose-400" size={13} />}
+                        </div>
+                        <p className="mt-1 truncate text-[11px] text-muted-foreground">{SOURCE_LABEL[item.source] || item.source} · {ASSET_CLASS_LABEL[item.assetClass] || item.assetClass}{item.hostnameRaw ? ` · ${item.hostnameRaw}` : ''}</p>
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black uppercase ${stateTone[item.state] || 'bg-muted text-muted-foreground'}`}>{INVENTORY_STATE_LABEL[item.state] || item.state}</span>
+                          {item.reliability && <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${RELIABILITY_TONE[item.reliability.label]}`}>{item.reliability.score}%</span>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               );
             })}
             {rows.length === 0 && <div className="p-8 text-center text-xs text-muted-foreground">No hay candidatos que coincidan con la búsqueda.</div>}
