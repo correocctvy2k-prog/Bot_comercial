@@ -30,7 +30,7 @@ function sendJson(response, status, body) {
   response.end(`${JSON.stringify(body)}\n`);
 }
 
-function createCybersecurityApi({ db, policyDb = null, authorizeAdmin = async () => false, getExpectedNetworks = async () => [] }) {
+function createCybersecurityApi({ db, policyDb = null, decisionsDb = null, authorizeAdmin = async () => false, getExpectedNetworks = async () => [] }) {
   if (!db) throw new Error('db is required');
   return http.createServer(async (request, response) => {
     const url = new URL(request.url, 'http://127.0.0.1');
@@ -61,21 +61,24 @@ function createCybersecurityApi({ db, policyDb = null, authorizeAdmin = async ()
       if (request.method === 'POST' && promoteMatch) {
         const principal = await authorizeAdmin(request);
         if (!principal) return sendJson(response, 403, { error: 'SUPERADMIN_REQUIRED' });
-        const item = promoteObservationToAsset(db, decodeURIComponent(promoteMatch[1]), await readJson(request), principal.id || 'verified-superadmin');
+        if (!decisionsDb) return sendJson(response, 503, { error: 'DECISION_STORE_NOT_READY' });
+        const item = promoteObservationToAsset(db, decisionsDb, decodeURIComponent(promoteMatch[1]), await readJson(request), principal.id || 'verified-superadmin');
         return sendJson(response, 200, { item });
       }
       const conflictMatch = url.pathname.match(new RegExp(`^/api/cybersecurity/inventory/candidates/${CANDIDATE_ID_PATTERN}/conflict$`, 'i'));
       if (request.method === 'POST' && conflictMatch) {
         const principal = await authorizeAdmin(request);
         if (!principal) return sendJson(response, 403, { error: 'SUPERADMIN_REQUIRED' });
-        const item = markObservationAsConflict(db, decodeURIComponent(conflictMatch[1]), await readJson(request), principal.id || 'verified-superadmin');
+        if (!decisionsDb) return sendJson(response, 503, { error: 'DECISION_STORE_NOT_READY' });
+        const item = markObservationAsConflict(db, decisionsDb, decodeURIComponent(conflictMatch[1]), await readJson(request), principal.id || 'verified-superadmin');
         return sendJson(response, 200, { item });
       }
       const protectMatch = url.pathname.match(new RegExp(`^/api/cybersecurity/inventory/candidates/${CANDIDATE_ID_PATTERN}/protect$`, 'i'));
       if (request.method === 'POST' && protectMatch) {
         const principal = await authorizeAdmin(request);
         if (!principal) return sendJson(response, 403, { error: 'SUPERADMIN_REQUIRED' });
-        const item = markObservationAsProtected(db, decodeURIComponent(protectMatch[1]), await readJson(request), principal.id || 'verified-superadmin');
+        if (!decisionsDb) return sendJson(response, 503, { error: 'DECISION_STORE_NOT_READY' });
+        const item = markObservationAsProtected(db, decisionsDb, decodeURIComponent(protectMatch[1]), await readJson(request), principal.id || 'verified-superadmin');
         return sendJson(response, 200, { item });
       }
       if (request.method !== 'GET') return sendJson(response, 405, { error: 'METHOD_NOT_ALLOWED' });
@@ -102,13 +105,13 @@ function createCybersecurityApi({ db, policyDb = null, authorizeAdmin = async ()
           state: url.searchParams.get('state') || null,
           limit: url.searchParams.get('limit') || 100,
           offset: url.searchParams.get('offset') || 0,
-        }));
+        }, decisionsDb));
       }
       // GET de detalle de candidato — los matches POST (promote/conflict/protect) ya se
       // resolvieron arriba, antes del guard "!== GET", usando el mismo CANDIDATE_ID_PATTERN.
       const candidateMatch = url.pathname.match(new RegExp(`^/api/cybersecurity/inventory/candidates/${CANDIDATE_ID_PATTERN}$`, 'i'));
       if (candidateMatch && request.method === 'GET') {
-        const item = getObservationDetail(db, decodeURIComponent(candidateMatch[1]));
+        const item = getObservationDetail(db, decisionsDb, decodeURIComponent(candidateMatch[1]));
         return item ? sendJson(response, 200, item) : sendJson(response, 404, { error: 'CANDIDATE_NOT_FOUND' });
       }
       if (url.pathname === '/api/cybersecurity/network-segments') {

@@ -150,6 +150,7 @@ services:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_KEY=${SUPABASE_KEY}
       - CYBER_POLICY_DB=/admin-data/network-policies.db
+      - CYBER_DECISIONS_DB=/admin-data/inventory-decisions.db
     user: "${CYBER_INGEST_UID:-996}:${CYBERDROP_GID:-987}"
     read_only: true
     init: true

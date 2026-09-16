@@ -3,6 +3,7 @@ const { openCyberDatabase } = require('../db/open-database');
 const { resolveProtectedAlias, getCrossSourceMatchedObservationIds, protectedAlias } = require('./cybersecurity-read-model');
 const { computeReliabilityScore, detectAntivirusGap, detectDeviceGroups } = require('./inventory-reliability');
 const { assessInventoryCandidate } = require('./inventory-confidence-policy');
+const { getDecisionByObservationId, saveDecision } = require('./inventory-decision-store');
 
 function argument(name) {
   const index = process.argv.indexOf(`--${name}`);
@@ -21,21 +22,25 @@ function findingsSummaryForTarget(db, targetKey) {
   return rows.map((row) => ({ title: row.title, severity: row.severity, cves: JSON.parse(row.cves_json || '[]'), observedAt: row.observed_at }));
 }
 
-function getObservationDetail(db, candidateKey) {
+// getObservationDetail acepta `decisionsDb` opcional (los scripts/tests que solo leen no
+// necesitan pasarlo) -- ver hallazgo 2026-09-16 en inventory-decision-store.js: cyber-inventory.db
+// es de solo lectura en producción (tres capas: :ro, read_only del contenedor, --immutable), así
+// que promover/proteger/marcar conflicto ya NO escriben en cyber_assets/cyber_asset_observation_links
+// (viven en esa base) -- se guardan en un almacén aparte, en el único volumen escribible
+// (/admin-data). Un candidato promovido/protegido se sigue resolviendo por su alias "candidate"
+// original (la observación no cambia, cambia el "overlay" de decisión) y se devuelve con forma
+// CANONICAL para que el frontend lo muestre igual que antes.
+function getObservationDetail(db, decisionsDb, candidateKey) {
   const resolved = resolveProtectedAlias(db, candidateKey);
   if (!resolved) return null;
 
   if (resolved.kind === 'CANONICAL') {
+    // Compatibilidad hacia atrás: si alguna vez existió un activo promovido antes de este
+    // cambio (cyber_assets), se sigue pudiendo ver. Los nuevos ya no se crean así.
     const asset = db.prepare('SELECT * FROM cyber_assets WHERE id = ?').get(resolved.id);
     if (!asset) return null;
     return {
       kind: 'CANONICAL',
-      // Bug real (2026-09-16, encontrado con clic real en el navegador): estos 3 `id` daban el
-      // id crudo interno (ej. "observation-c97dd53c...") en vez del alias público
-      // ("candidate XXXXXXXX"/"canonical XXXXXXXX") que ya usa listInventoryCandidates. El
-      // panel de detalle reutiliza query.data.id para Promover/Marcar conflicto/Marcar
-      // protegido -- con el id crudo, la ruta nunca coincidía (CANDIDATE_ID_PATTERN exige el
-      // prefijo "candidate "/"canonical ") y siempre daba 405 METHOD_NOT_ALLOWED.
       id: protectedAlias('canonical', asset.id),
       label: `Activo canónico ${asset.id.slice(-8).toUpperCase()}`,
       canonicalName: asset.canonical_name,
@@ -77,6 +82,27 @@ function getObservationDetail(db, candidateKey) {
   `).get(resolved.id);
   if (!observation) return null;
 
+  const decision = getDecisionByObservationId(decisionsDb, observation.id);
+  const candidateAlias = protectedAlias('candidate', observation.id);
+
+  // Si ya se promovió o protegió, se muestra con la misma forma CANONICAL que antes usaba
+  // cyber_assets -- el frontend no necesita saber que ahora vive en otro almacén.
+  if (decision && (decision.decision === 'PROMOTED' || decision.decision === 'PROTECTED')) {
+    return {
+      kind: 'CANONICAL',
+      id: candidateAlias,
+      label: decision.canonical_name || `Activo ${decision.decision === 'PROTECTED' ? 'protegido' : 'promovido'} ${observation.id.slice(-8).toUpperCase()}`,
+      canonicalName: decision.canonical_name,
+      assetClass: decision.asset_class,
+      criticality: decision.criticality,
+      lifecycleStatus: 'CONFIRMED_ACTIVE',
+      reconciliationStatus: 'HUMAN_VERIFIED',
+      reviewedAt: decision.decided_at,
+      reviewedBy: decision.decided_by,
+      reviewReason: decision.note,
+    };
+  }
+
   const analysis = db.prepare(`
     SELECT item.* FROM cyber_inventory_analysis_items item
     JOIN cyber_inventory_analysis_runs run ON run.id = item.analysis_run_id
@@ -108,7 +134,9 @@ function getObservationDetail(db, candidateKey) {
     lastSeenSourceAt: observation.last_seen_source_at,
     osFamily: observation.os_family,
     assetClass: analysis?.provisional_asset_class || 'OTHER',
-    state: analysis?.proposed_action || 'NEW_ASSET_REVIEW',
+    // Un candidato marcado en conflicto a mano (decision.decision === 'CONFLICT') se muestra
+    // como tal aunque el análisis automático original no lo hubiera detectado.
+    state: decision?.decision === 'CONFLICT' ? 'CONFLICT_REVIEW' : (analysis?.proposed_action || 'NEW_ASSET_REVIEW'),
     identityStrength: analysis?.identity_strength || 'INSUFFICIENT',
     confidence: analysis?.confidence || 0,
     qualityFlags,
@@ -117,7 +145,7 @@ function getObservationDetail(db, candidateKey) {
 
   return {
     kind: 'OBSERVATION',
-    id: protectedAlias('candidate', observation.id),
+    id: candidateAlias,
     label: `Activo observado ${observation.id.slice(-8).toUpperCase()}`,
     observedAt: observation.observed_at,
     ingestedAt: observation.ingested_at,
@@ -138,6 +166,8 @@ function getObservationDetail(db, candidateKey) {
       { hasCrossSourceMatch, deviceGroup: deviceGroups.get(observation.id) || null },
     ),
     antivirusGapSuspected: detectAntivirusGap(assessed, { hasCrossSourceMatch }),
+    // Nota dejada al marcar conflicto a mano (decision_store), si la hay.
+    decisionNote: decision?.decision === 'CONFLICT' ? decision.note : null,
     analysis: analysis ? {
       provisionalAssetClass: analysis.provisional_asset_class,
       identityStrength: analysis.identity_strength,
@@ -156,108 +186,55 @@ function requireObservation(db, candidateKey) {
   return observation;
 }
 
-function promoteObservationToAsset(db, candidateKey, body, actorId) {
+function promoteObservationToAsset(db, decisionsDb, candidateKey, body, actorId) {
   const observation = requireObservation(db, candidateKey);
+  if (getDecisionByObservationId(decisionsDb, observation.id)) throw new Error('OBSERVATION_ALREADY_LINKED');
 
-  const existingLink = db.prepare('SELECT asset_id FROM cyber_asset_observation_links WHERE observation_id = ? AND decision_status = \'ACCEPTED\'').get(observation.id);
-  if (existingLink) throw new Error('OBSERVATION_ALREADY_LINKED');
-
-  const now = new Date().toISOString();
   const assetId = `asset_${crypto.randomBytes(8).toString('hex')}`;
-
   const assetClass = body.assetClass || 'OTHER';
   const criticality = body.criticality || 'MEDIUM';
   const canonicalName = body.canonicalName || `Activo promovido ${observation.id.slice(-8).toUpperCase()}`;
   // Nota libre del humano que promueve (decisión del usuario 2026-09-16: "este equipo lo
-  // instalé recientemente para nuestro servidor openvas de prueba piloto" -- el motivo de la
-  // decisión no debía quedar solo en la cabeza de quien la tomó). cyber_assets ya tenía
-  // review_reason/reviewed_by/reviewed_at, pero promote nunca los llenaba.
+  // instalé recientemente para nuestro servidor openvas de prueba piloto").
   const note = cleanNote(body.note);
 
-  db.prepare(`
-    INSERT INTO cyber_assets (id, canonical_name, asset_class, criticality, lifecycle_status, reconciliation_status, created_at, updated_at, reviewed_at, reviewed_by, review_reason)
-    VALUES (?, ?, ?, ?, 'CONFIRMED_ACTIVE', 'HUMAN_VERIFIED', ?, ?, ?, ?, ?)
-  `).run(assetId, canonicalName, assetClass, criticality, now, now, now, actorId, note);
-
-  db.prepare(`
-    INSERT INTO cyber_asset_observation_links (observation_id, asset_id, link_method, confidence, decision_status, decided_at, decided_by, reason)
-    VALUES (?, ?, 'HUMAN_DECISION', 1.0, 'ACCEPTED', ?, ?, ?)
-  `).run(observation.id, assetId, now, actorId, 'Promovido manualmente desde inventario');
-
-  if (observation.mac_value) {
-    db.prepare(`
-      INSERT INTO cyber_asset_identifiers (id, asset_id, identifier_type, normalized_value, display_value_masked, valid_from, confidence, verification_status, is_locally_administered, created_at, updated_at)
-      VALUES (?, ?, 'MAC', ?, ?, ?, 1.0, 'HUMAN_VERIFIED', ?, ?, ?)
-    `).run(
-      `ident_${crypto.randomBytes(8).toString('hex')}`, assetId,
-      observation.mac_value.toLowerCase(), observation.mac_value, now,
-      observation.mac_value.startsWith('02:') || observation.mac_value.startsWith('06:') || observation.mac_value.startsWith('0a:') ? 1 : 0,
-      now, now,
-    );
-  }
-
-  if (observation.ip_value) {
-    db.prepare(`
-      INSERT INTO cyber_asset_identifiers (id, asset_id, identifier_type, normalized_value, display_value_masked, valid_from, confidence, verification_status, created_at, updated_at)
-      VALUES (?, ?, 'IPV4', ?, ?, ?, 1.0, 'CORROBORATED', ?, ?)
-    `).run(`ident_${crypto.randomBytes(8).toString('hex')}`, assetId, observation.ip_value, observation.ip_value, now, now, now);
-  }
-
-  if (observation.hostname_raw) {
-    db.prepare(`
-      INSERT INTO cyber_asset_identifiers (id, asset_id, identifier_type, normalized_value, display_value_masked, valid_from, confidence, verification_status, created_at, updated_at)
-      VALUES (?, ?, 'HOSTNAME', ?, ?, ?, 0.8, 'CORROBORATED', ?, ?)
-    `).run(`ident_${crypto.randomBytes(8).toString('hex')}`, assetId, observation.hostname_raw.toLowerCase(), observation.hostname_raw, now, now, now);
-  }
+  saveDecision(decisionsDb, {
+    observationId: observation.id, assetId, decision: 'PROMOTED',
+    canonicalName, assetClass, criticality,
+    macValue: observation.mac_value, ipValue: observation.ip_value, hostnameRaw: observation.hostname_raw,
+    note, decidedBy: actorId,
+  });
 
   return { success: true, assetId, message: 'Observación promovida a activo canónico exitosamente' };
 }
 
-function markObservationAsConflict(db, candidateKey) {
+function markObservationAsConflict(db, decisionsDb, candidateKey, body, actorId) {
   const observation = requireObservation(db, candidateKey);
+  const note = cleanNote(body?.note);
 
-  const existingRun = db.prepare('SELECT id FROM cyber_inventory_analysis_runs WHERE snapshot_id = (SELECT snapshot_id FROM cyber_asset_observations WHERE id = ?) AND completed_at = (SELECT MAX(completed_at) FROM cyber_inventory_analysis_runs WHERE snapshot_id = (SELECT snapshot_id FROM cyber_asset_observations WHERE id = ?))').get(observation.id, observation.id);
-
-  let runId = existingRun?.id;
-  if (!runId) {
-    runId = `analysis_${crypto.randomBytes(8).toString('hex')}`;
-    const runTimestamp = new Date().toISOString();
-    db.prepare(`
-      INSERT INTO cyber_inventory_analysis_runs (id, snapshot_id, policy_version, started_at, completed_at, status)
-      VALUES (?, (SELECT snapshot_id FROM cyber_asset_observations WHERE id = ?), 'inventory-confidence-v2', ?, ?, 'SUCCESS')
-    `).run(runId, observation.id, runTimestamp, runTimestamp);
-  }
-
-  db.prepare(`
-    INSERT INTO cyber_inventory_analysis_items (analysis_run_id, observation_id, provisional_asset_class, identity_strength, proposed_action, confidence, reason_codes_json, created_at)
-    VALUES (?, ?, 'OTHER', 'LOW', 'CONFLICT_REVIEW', 0.5, '["MANUAL_CONFLICT"]', ?)
-    ON CONFLICT(analysis_run_id, observation_id) DO UPDATE SET
-      proposed_action = 'CONFLICT_REVIEW',
-      identity_strength = 'LOW',
-      confidence = 0.5,
-      reason_codes_json = '["MANUAL_CONFLICT"]'
-  `).run(runId, observation.id, new Date().toISOString());
+  saveDecision(decisionsDb, {
+    observationId: observation.id, assetId: `decision_${crypto.randomBytes(8).toString('hex')}`, decision: 'CONFLICT',
+    macValue: observation.mac_value, ipValue: observation.ip_value, hostnameRaw: observation.hostname_raw,
+    note, decidedBy: actorId || 'verified-superadmin',
+  });
 
   return { success: true, message: 'Observación marcada como conflicto para revisión' };
 }
 
-function markObservationAsProtected(db, candidateKey, body, actorId) {
+function markObservationAsProtected(db, decisionsDb, candidateKey, body, actorId) {
   const observation = requireObservation(db, candidateKey);
+  if (getDecisionByObservationId(decisionsDb, observation.id)) throw new Error('OBSERVATION_ALREADY_LINKED');
 
   const assetId = `asset_${crypto.randomBytes(8).toString('hex')}`;
-  const now = new Date().toISOString();
   const canonicalName = body?.canonicalName || `Objetivo protegido ${observation.id.slice(-8).toUpperCase()}`;
   const note = cleanNote(body?.note);
 
-  db.prepare(`
-    INSERT INTO cyber_assets (id, canonical_name, asset_class, criticality, lifecycle_status, reconciliation_status, created_at, updated_at, reviewed_at, reviewed_by, review_reason)
-    VALUES (?, ?, 'OTHER', 'HIGH', 'CONFIRMED_ACTIVE', 'HUMAN_VERIFIED', ?, ?, ?, ?, ?)
-  `).run(assetId, canonicalName, now, now, now, actorId, note);
-
-  db.prepare(`
-    INSERT INTO cyber_asset_observation_links (observation_id, asset_id, link_method, confidence, decision_status, decided_at, decided_by, reason)
-    VALUES (?, ?, 'HUMAN_DECISION', 1.0, 'ACCEPTED', ?, ?, ?)
-  `).run(observation.id, assetId, now, actorId, 'Marcado como objetivo protegido');
+  saveDecision(decisionsDb, {
+    observationId: observation.id, assetId, decision: 'PROTECTED',
+    canonicalName, assetClass: 'OTHER', criticality: 'HIGH',
+    macValue: observation.mac_value, ipValue: observation.ip_value, hostnameRaw: observation.hostname_raw,
+    note, decidedBy: actorId,
+  });
 
   return { success: true, assetId, message: 'Observación marcada como objetivo protegido' };
 }

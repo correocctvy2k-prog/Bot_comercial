@@ -3,28 +3,37 @@ const assert = require('node:assert/strict');
 const { openCyberDatabase } = require('../db/open-database');
 const { protectedAlias, resolveProtectedAlias } = require('../src/cybersecurity-read-model');
 const { getObservationDetail, promoteObservationToAsset, markObservationAsConflict, markObservationAsProtected } = require('../src/inventory-actions');
+const { openInventoryDecisionStore, getDecisionByObservationId } = require('../src/inventory-decision-store');
 
 // Regresión: protectedAlias() es un hash de un solo sentido ("candidate XXXXXXXX" / SHA-256
 // truncado); getObservationDetail/promote/conflict/protect intentaban "decodificarlo" con una
 // regex sobre el propio alias, lo que nunca podía funcionar — ver resolveProtectedAlias.
+//
+// Hallazgo 2026-09-16: cyber-inventory.db es de solo lectura en producción (Docker read_only +
+// /data:ro + --immutable), así que promote/conflict/protect ya no escriben ahí — las decisiones
+// humanas se guardan en un almacén aparte (inventory-decision-store.js), montado sobre
+// :memory: en estos tests igual que openCyberDatabase() lo hace para la base principal.
 
 const now = '2026-09-01T12:00:00.000Z';
 
 function withDatabase(run) {
   const db = openCyberDatabase();
-  try { return run(db); } finally { db.close(); }
+  const decisionsDb = openInventoryDecisionStore(':memory:');
+  try { return run(db, decisionsDb); } finally { db.close(); decisionsDb.close(); }
 }
 
 function seedObservation(db, overrides = {}) {
-  db.prepare(`INSERT INTO cyber_source_systems(id, source_type, display_name, authority_level, created_at, updated_at)
-    VALUES ('source-forti','FORTIGATE','Firewall inventory','OBSERVATIONAL',?,?)`).run(now, now);
-  db.prepare(`INSERT INTO cyber_source_snapshots(id, source_system_id, captured_at, imported_at, source_sha256, processing_status)
-    VALUES ('snapshot-1','source-forti',?,?,?,'SUCCESS')`).run(now, now, 'a'.repeat(64));
+  if (!db.prepare("SELECT 1 FROM cyber_source_systems WHERE id = 'source-forti'").get()) {
+    db.prepare(`INSERT INTO cyber_source_systems(id, source_type, display_name, authority_level, created_at, updated_at)
+      VALUES ('source-forti','FORTIGATE','Firewall inventory','OBSERVATIONAL',?,?)`).run(now, now);
+    db.prepare(`INSERT INTO cyber_source_snapshots(id, source_system_id, captured_at, imported_at, source_sha256, processing_status)
+      VALUES ('snapshot-1','source-forti',?,?,?,'SUCCESS')`).run(now, now, 'a'.repeat(64));
+  }
   const id = overrides.id || 'observation-1';
   db.prepare(`INSERT INTO cyber_asset_observations(
       id, snapshot_id, source_record_key, observed_at, ingested_at, ip_value, mac_value, hostname_raw
-    ) VALUES (?, 'snapshot-1', 'rec-1', ?, ?, ?, ?, ?)`)
-    .run(id, now, now, overrides.ip || '10.2.6.15', overrides.mac || '02:00:00:aa:bb:cc', overrides.hostname || 'host-01');
+    ) VALUES (?, 'snapshot-1', ?, ?, ?, ?, ?, ?)`)
+    .run(id, `rec-${id}`, now, now, overrides.ip || '10.2.6.15', overrides.mac || '02:00:00:aa:bb:cc', overrides.hostname || 'host-01');
   return id;
 }
 
@@ -48,10 +57,10 @@ test('resolveProtectedAlias acepta el alias con %20 (como llega en la URL sin de
   assert.deepEqual(resolveProtectedAlias(db, decodeURIComponent(alias)), { kind: 'CANDIDATE', id });
 }));
 
-test('getObservationDetail encuentra la observación real a partir del alias de la lista', () => withDatabase((db) => {
+test('getObservationDetail encuentra la observación real a partir del alias de la lista', () => withDatabase((db, decisionsDb) => {
   const id = seedObservation(db, { ip: '10.2.6.20' });
   const alias = protectedAlias('candidate', id);
-  const detail = getObservationDetail(db, alias);
+  const detail = getObservationDetail(db, decisionsDb, alias);
   assert.ok(detail, 'antes de la corrección esto devolvía null aunque la observación existiera');
   assert.equal(detail.kind, 'OBSERVATION');
   // Regresión real 2026-09-16 (clic real en el navegador): getObservationDetail devolvía el id
@@ -63,63 +72,63 @@ test('getObservationDetail encuentra la observación real a partir del alias de 
   assert.equal(detail.ipValue, '10.2.6.20');
 }));
 
-test('promoteObservationToAsset promueve usando el alias público, no el id crudo', () => withDatabase((db) => {
+test('promoteObservationToAsset promueve usando el alias público, no el id crudo', () => withDatabase((db, decisionsDb) => {
   const id = seedObservation(db);
   const alias = protectedAlias('candidate', id);
-  const result = promoteObservationToAsset(db, alias, { assetClass: 'OTHER', criticality: 'MEDIUM' }, 'actor-1');
+  const result = promoteObservationToAsset(db, decisionsDb, alias, { assetClass: 'OTHER', criticality: 'MEDIUM' }, 'actor-1');
   assert.equal(result.success, true);
-  assert.equal(db.prepare('SELECT count(*) n FROM cyber_assets WHERE id = ?').get(result.assetId).n, 1);
+  const decision = getDecisionByObservationId(decisionsDb, id);
+  assert.equal(decision.decision, 'PROMOTED');
+  assert.equal(decision.asset_id, result.assetId);
 }));
 
-test('markObservationAsConflict y markObservationAsProtected también usan el alias público', () => withDatabase((db) => {
+test('markObservationAsConflict y markObservationAsProtected también usan el alias público', () => withDatabase((db, decisionsDb) => {
   const id = seedObservation(db);
   const alias = protectedAlias('candidate', id);
-  assert.equal(markObservationAsConflict(db, alias).success, true);
-  assert.equal(
-    db.prepare("SELECT count(*) n FROM cyber_inventory_analysis_items WHERE observation_id = ? AND proposed_action = 'CONFLICT_REVIEW'").get(id).n,
-    1,
-  );
-  const protectedResult = markObservationAsProtected(db, alias, {}, 'actor-1');
+  assert.equal(markObservationAsConflict(db, decisionsDb, alias, {}, 'actor-1').success, true);
+  assert.equal(getDecisionByObservationId(decisionsDb, id).decision, 'CONFLICT');
+
+  const id2 = seedObservation(db, { id: 'observation-2', mac: '02:00:00:aa:bb:dd', hostname: 'host-02' });
+  const alias2 = protectedAlias('candidate', id2);
+  const protectedResult = markObservationAsProtected(db, decisionsDb, alias2, {}, 'actor-1');
   assert.equal(protectedResult.success, true);
-  assert.equal(db.prepare('SELECT count(*) n FROM cyber_assets WHERE id = ?').get(protectedResult.assetId).n, 1);
+  assert.equal(getDecisionByObservationId(decisionsDb, id2).decision, 'PROTECTED');
 }));
 
-test('promover con un alias que no existe falla con un mensaje claro, no un crash', () => withDatabase((db) => {
+test('promover con un alias que no existe falla con un mensaje claro, no un crash', () => withDatabase((db, decisionsDb) => {
   seedObservation(db);
-  assert.throws(() => promoteObservationToAsset(db, 'candidate FFFFFFFF', {}, 'actor-1'), /INVALID_CANDIDATE_KEY/);
+  assert.throws(() => promoteObservationToAsset(db, decisionsDb, 'candidate FFFFFFFF', {}, 'actor-1'), /INVALID_CANDIDATE_KEY/);
 }));
 
 // Decisión del usuario 2026-09-16: poder anotar por qué se tomó una decisión (ej. "este equipo
-// lo instalé recientemente para nuestro servidor openvas de prueba piloto") -- cyber_assets ya
-// tenía review_reason/reviewed_by/reviewed_at, pero promote/protect nunca los llenaban.
-test('promoteObservationToAsset guarda la nota y quién/cuándo decidió', () => withDatabase((db) => {
+// lo instalé recientemente para nuestro servidor openvas de prueba piloto").
+test('promoteObservationToAsset guarda la nota y quién/cuándo decidió', () => withDatabase((db, decisionsDb) => {
   const id = seedObservation(db);
   const alias = protectedAlias('candidate', id);
-  const result = promoteObservationToAsset(db, alias, { note: 'Instalado para el piloto de OpenVAS' }, 'jbeltran');
-  const asset = db.prepare('SELECT review_reason, reviewed_by FROM cyber_assets WHERE id = ?').get(result.assetId);
-  assert.equal(asset.review_reason, 'Instalado para el piloto de OpenVAS');
-  assert.equal(asset.reviewed_by, 'jbeltran');
+  promoteObservationToAsset(db, decisionsDb, alias, { note: 'Instalado para el piloto de OpenVAS' }, 'jbeltran');
+  const decision = getDecisionByObservationId(decisionsDb, id);
+  assert.equal(decision.note, 'Instalado para el piloto de OpenVAS');
+  assert.equal(decision.decided_by, 'jbeltran');
 }));
 
-test('markObservationAsProtected también guarda la nota', () => withDatabase((db) => {
+test('markObservationAsProtected también guarda la nota', () => withDatabase((db, decisionsDb) => {
   const id = seedObservation(db);
   const alias = protectedAlias('candidate', id);
-  const result = markObservationAsProtected(db, alias, { note: 'Servidor de dominio, no tocar' }, 'jbeltran');
-  const asset = db.prepare('SELECT review_reason FROM cyber_assets WHERE id = ?').get(result.assetId);
-  assert.equal(asset.review_reason, 'Servidor de dominio, no tocar');
+  markObservationAsProtected(db, decisionsDb, alias, { note: 'Servidor de dominio, no tocar' }, 'jbeltran');
+  assert.equal(getDecisionByObservationId(decisionsDb, id).note, 'Servidor de dominio, no tocar');
 }));
 
-test('una nota vacía se guarda como null, no como cadena vacía', () => withDatabase((db) => {
+test('una nota vacía se guarda como null, no como cadena vacía', () => withDatabase((db, decisionsDb) => {
   const id = seedObservation(db);
   const alias = protectedAlias('candidate', id);
-  const result = promoteObservationToAsset(db, alias, {}, 'jbeltran');
-  assert.equal(db.prepare('SELECT review_reason FROM cyber_assets WHERE id = ?').get(result.assetId).review_reason, null);
+  promoteObservationToAsset(db, decisionsDb, alias, {}, 'jbeltran');
+  assert.equal(getDecisionByObservationId(decisionsDb, id).note, null);
 }));
 
-test('una nota demasiado larga se rechaza con un mensaje claro', () => withDatabase((db) => {
+test('una nota demasiado larga se rechaza con un mensaje claro', () => withDatabase((db, decisionsDb) => {
   const id = seedObservation(db);
   const alias = protectedAlias('candidate', id);
-  assert.throws(() => promoteObservationToAsset(db, alias, { note: 'x'.repeat(501) }, 'jbeltran'), /INVALID_NOTE_TOO_LONG/);
+  assert.throws(() => promoteObservationToAsset(db, decisionsDb, alias, { note: 'x'.repeat(501) }, 'jbeltran'), /INVALID_NOTE_TOO_LONG/);
 }));
 
 // Regresión del flujo real de la UI (2026-09-16, reportada con captura de pantalla + logs de
@@ -128,10 +137,39 @@ test('una nota demasiado larga se rechaza con un mensaje claro', () => withDatab
 // Si getObservationDetail() devuelve el id crudo en vez del alias, este flujo se rompe aunque
 // promoteObservationToAsset() funcione perfecto si se lo llama con el alias "correcto" a mano
 // (que es justo lo que hacían los demás tests, sin ver el bug).
-test('el flujo real detalle -> promover funciona usando el id que trae la respuesta de detalle', () => withDatabase((db) => {
+test('el flujo real detalle -> promover funciona usando el id que trae la respuesta de detalle', () => withDatabase((db, decisionsDb) => {
   const id = seedObservation(db);
   const listAlias = protectedAlias('candidate', id);
-  const detail = getObservationDetail(db, listAlias);
-  const result = promoteObservationToAsset(db, detail.id, { note: 'Serv OpenVAS Piloto' }, 'jbeltran');
+  const detail = getObservationDetail(db, decisionsDb, listAlias);
+  const result = promoteObservationToAsset(db, decisionsDb, detail.id, { note: 'Serv OpenVAS Piloto' }, 'jbeltran');
   assert.equal(result.success, true);
+}));
+
+// Regresión 2026-09-16 (3er reporte del usuario, 500 Internal Server Error): antes de que
+// existiera decisionsDb, promote/conflict/protect escribían en cyber-inventory.db -- que en el
+// contenedor real es de solo lectura (read_only + :ro + --immutable). Con una base principal
+// realmente inmutable (query_only=ON), cualquier intento de escribir ahí debe fallar; el punto
+// de esta prueba es que la acción NUNCA toca `db`, solo `decisionsDb`.
+test('promover/conflicto/proteger nunca escriben en la base principal (solo lectura en producción)', () => withDatabase((db, decisionsDb) => {
+  const id = seedObservation(db);
+  const alias = protectedAlias('candidate', id);
+  db.exec('PRAGMA query_only = ON');
+  assert.doesNotThrow(() => promoteObservationToAsset(db, decisionsDb, alias, {}, 'jbeltran'));
+}));
+
+test('después de promover, getObservationDetail muestra el candidato como CANONICAL usando el decisionsDb', () => withDatabase((db, decisionsDb) => {
+  const id = seedObservation(db);
+  const alias = protectedAlias('candidate', id);
+  promoteObservationToAsset(db, decisionsDb, alias, { canonicalName: 'Servidor OpenVAS piloto', note: 'piloto' }, 'jbeltran');
+  const detail = getObservationDetail(db, decisionsDb, alias);
+  assert.equal(detail.kind, 'CANONICAL');
+  assert.equal(detail.id, alias);
+  assert.equal(detail.canonicalName, 'Servidor OpenVAS piloto');
+}));
+
+test('promover dos veces la misma observación falla con OBSERVATION_ALREADY_LINKED', () => withDatabase((db, decisionsDb) => {
+  const id = seedObservation(db);
+  const alias = protectedAlias('candidate', id);
+  promoteObservationToAsset(db, decisionsDb, alias, {}, 'jbeltran');
+  assert.throws(() => promoteObservationToAsset(db, decisionsDb, alias, {}, 'jbeltran'), /OBSERVATION_ALREADY_LINKED/);
 }));

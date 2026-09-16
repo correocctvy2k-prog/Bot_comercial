@@ -1,6 +1,7 @@
 const crypto = require('node:crypto');
 const { assessInventoryCandidate } = require('./inventory-confidence-policy');
 const { computeReliabilityScore, detectAntivirusGap, detectDeviceGroups } = require('./inventory-reliability');
+const { listDecisions } = require('./inventory-decision-store');
 
 const CLOSED_STATUSES = new Set(['VERIFIED', 'CLOSED']);
 const ALLOWED_PRIORITIES = new Set(['P1', 'P2', 'P3', 'P4']);
@@ -129,7 +130,7 @@ function getInventoryOverview(db) {
   };
 }
 
-function listInventoryCandidates(db, filters = {}) {
+function listInventoryCandidates(db, filters = {}, decisionsDb = null) {
   if (filters.source && !ALLOWED_INVENTORY_SOURCES.has(filters.source)) {
     throw new Error('INVALID_INVENTORY_SOURCE_FILTER');
   }
@@ -185,7 +186,39 @@ function listInventoryCandidates(db, filters = {}) {
            NULL, NULL, NULL, NULL
     FROM cyber_assets a
   `).all();
-  const filtered = rows.filter((row) => (!filters.source || row.source === filters.source)
+  // Promover/proteger/marcar conflicto ya no escriben en cyber-inventory.db (es de solo lectura
+  // en producción -- ver hallazgo en inventory-decision-store.js); las decisiones humanas viven
+  // en decisionsDb y se superponen aquí sobre la observación original ANTES de filtrar por
+  // estado, para que "state=CANONICAL" encuentre los promovidos/protegidos igual que si de
+  // verdad vivieran en cyber_assets. El id se mantiene con el prefijo "candidate" (no
+  // "canonical") a propósito: es el mismo alias que ya usa getObservationDetail para estas
+  // decisiones, y cambiarlo rompería el enlace lista -> detalle.
+  const decisionsByObservationId = new Map(
+    listDecisions(decisionsDb).map((decision) => [decision.observation_id, decision]),
+  );
+  const overlaidRows = rows.map((row) => {
+    if (row.kind !== 'OBSERVATION') return row;
+    const decision = decisionsByObservationId.get(row.candidateKey);
+    if (!decision) return row;
+    if (decision.decision === 'PROMOTED' || decision.decision === 'PROTECTED') {
+      return {
+        ...row,
+        kind: 'CANONICAL',
+        aliasPrefix: 'candidate',
+        state: 'CANONICAL',
+        assetClass: decision.asset_class || row.assetClass,
+        canonicalName: decision.canonical_name,
+        reviewedAt: decision.decided_at,
+        reviewedBy: decision.decided_by,
+        reviewReason: decision.note,
+      };
+    }
+    if (decision.decision === 'CONFLICT') {
+      return { ...row, state: 'CONFLICT_REVIEW', decisionNote: decision.note };
+    }
+    return row;
+  });
+  const filtered = overlaidRows.filter((row) => (!filters.source || row.source === filters.source)
     && (!filters.state || row.state === filters.state));
   const assessed = filtered.map((row) => assessInventoryCandidate({
     ...row,
@@ -220,9 +253,9 @@ function listInventoryCandidates(db, filters = {}) {
     assessmentSummary: { ...assessmentSummary, ANTIVIRUS_GAP_SUSPECTED: antivirusGapCount },
     items: withReliability.slice(offset, offset + limit).map(({ candidateKey, ...row }) => ({
       ...row,
-      id: protectedAlias(row.kind === 'CANONICAL' ? 'canonical' : 'candidate', candidateKey),
+      id: protectedAlias(row.aliasPrefix || (row.kind === 'CANONICAL' ? 'canonical' : 'candidate'), candidateKey),
       label: row.kind === 'CANONICAL'
-        ? protectedAlias('Activo canónico', candidateKey)
+        ? (row.canonicalName || protectedAlias('Activo canónico', candidateKey))
         : row.kind === 'PROTECTED_TARGET'
           ? protectedAlias('Objetivo protegido', candidateKey)
           : protectedAlias('Activo observado', candidateKey),

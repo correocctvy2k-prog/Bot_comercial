@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { openCyberDatabase } = require('../db/open-database');
 const { createCybersecurityApi } = require('../src/cybersecurity-api');
+const { openInventoryDecisionStore, getDecisionByObservationId } = require('../src/inventory-decision-store');
 const { importGreenboneProtectedResults } = require('../src/greenbone-protected-importer');
 const { importFortiGateInventory } = require('../src/fortigate-importer');
 const {
@@ -122,9 +123,10 @@ function seedCandidateObservation(db) {
 
 test('promote/conflict/protect responden (no 405) con sesión de superadmin, y 403 sin ella', async () => {
   const db = seededDatabase();
+  const decisionsDb = openInventoryDecisionStore(':memory:');
   const observationId = seedCandidateObservation(db);
   const alias = protectedAlias('candidate', observationId);
-  const server = createCybersecurityApi({ db, authorizeAdmin: async (request) => (request.headers.authorization === 'Bearer valid-test-token' ? { id: 'tester' } : false) });
+  const server = createCybersecurityApi({ db, decisionsDb, authorizeAdmin: async (request) => (request.headers.authorization === 'Bearer valid-test-token' ? { id: 'tester' } : false) });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address();
   try {
@@ -136,12 +138,29 @@ test('promote/conflict/protect responden (no 405) con sesión de superadmin, y 4
       method: 'POST', headers: { Authorization: 'Bearer valid-test-token' },
     });
     assert.equal(conflict.status, 200);
+    assert.equal(getDecisionByObservationId(decisionsDb, observationId).decision, 'CONFLICT');
+  } finally {
+    await new Promise((resolve) => server.close(resolve)); db.close(); decisionsDb.close();
+  }
+});
 
-    const promote = await fetch(`http://127.0.0.1:${port}/api/cybersecurity/inventory/candidates/${encoded}/promote`, {
+// Regresión 2026-09-16 (3er reporte del usuario, 500 Internal Server Error): promote fallaba
+// contra cyber-inventory.db real porque el servidor la abre de solo lectura (ver
+// inventory-decision-store.js) -- sin decisionsDb configurado, la ruta debe responder 503, no
+// intentar escribir ahí y reventar con un 500 críptico.
+test('promote/conflict/protect responden 503 si el almacén de decisiones no está configurado', async () => {
+  const db = seededDatabase();
+  const observationId = seedCandidateObservation(db);
+  const alias = protectedAlias('candidate', observationId);
+  const server = createCybersecurityApi({ db, authorizeAdmin: async () => ({ id: 'tester' }) });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  try {
+    const promote = await fetch(`http://127.0.0.1:${port}/api/cybersecurity/inventory/candidates/${encodeURIComponent(alias)}/promote`, {
       method: 'POST', headers: { Authorization: 'Bearer valid-test-token' },
     });
-    assert.equal(promote.status, 200);
-    assert.equal((await promote.json()).item.success, true);
+    assert.equal(promote.status, 503);
+    assert.equal((await promote.json()).error, 'DECISION_STORE_NOT_READY');
   } finally {
     await new Promise((resolve) => server.close(resolve)); db.close();
   }
@@ -155,9 +174,10 @@ test('promote/conflict/protect responden (no 405) con sesión de superadmin, y 4
 // pasar por GET) pase perfecto.
 test('el flujo real del navegador (GET detalle, reusar su id para promover) funciona de punta a punta', async () => {
   const db = seededDatabase();
+  const decisionsDb = openInventoryDecisionStore(':memory:');
   const observationId = seedCandidateObservation(db);
   const listAlias = protectedAlias('candidate', observationId);
-  const server = createCybersecurityApi({ db, authorizeAdmin: async (request) => (request.headers.authorization === 'Bearer valid-test-token' ? { id: 'tester' } : false) });
+  const server = createCybersecurityApi({ db, decisionsDb, authorizeAdmin: async (request) => (request.headers.authorization === 'Bearer valid-test-token' ? { id: 'tester' } : false) });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address();
   try {
@@ -170,8 +190,21 @@ test('el flujo real del navegador (GET detalle, reusar su id para promover) func
       method: 'POST', headers: { Authorization: 'Bearer valid-test-token', 'Content-Type': 'application/json' }, body: JSON.stringify({ note: 'Serv OpenVAS Piloto' }),
     });
     assert.equal(promote.status, 200, 'debe ser 200, no 405 -- este es exactamente el bug reportado');
+    assert.equal((await promote.json()).item.success, true);
+
+    // Regresión 2026-09-16 (3er reporte, 500 real en el navegador): después de promover, tanto
+    // el detalle como la lista deben mostrar el candidato como CANONICAL usando decisionsDb, no
+    // volver a mostrarlo como NEW_ASSET_REVIEW.
+    const detailAfter = await fetch(`http://127.0.0.1:${port}/api/cybersecurity/inventory/candidates/${encodeURIComponent(listAlias)}`);
+    const detailAfterBody = await detailAfter.json();
+    assert.equal(detailAfterBody.kind, 'CANONICAL');
+    assert.equal(detailAfterBody.id, listAlias);
+
+    const listResponse = await fetch(`http://127.0.0.1:${port}/api/cybersecurity/inventory/candidates?state=CANONICAL`);
+    const list = await listResponse.json();
+    assert.ok(list.items.some((item) => item.id === listAlias), 'el candidato promovido debe aparecer al filtrar state=CANONICAL');
   } finally {
-    await new Promise((resolve) => server.close(resolve)); db.close();
+    await new Promise((resolve) => server.close(resolve)); db.close(); decisionsDb.close();
   }
 });
 
