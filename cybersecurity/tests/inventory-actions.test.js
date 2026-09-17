@@ -5,6 +5,7 @@ const { protectedAlias, resolveProtectedAlias } = require('../src/cybersecurity-
 const { getObservationDetail, promoteObservationToAsset, markObservationAsConflict, markObservationAsProtected, markObservationAsIgnored } = require('../src/inventory-actions');
 const { openInventoryDecisionStore, getDecisionByObservationId } = require('../src/inventory-decision-store');
 const { openNetworkPolicyStore, savePolicy } = require('../src/network-policy-store');
+const { matchSnapshots } = require('../src/cross-source-matcher');
 
 // Regresión: protectedAlias() es un hash de un solo sentido ("candidate XXXXXXXX" / SHA-256
 // truncado); getObservationDetail/promote/conflict/protect intentaban "decodificarlo" con una
@@ -32,9 +33,24 @@ function seedObservation(db, overrides = {}) {
   }
   const id = overrides.id || 'observation-1';
   db.prepare(`INSERT INTO cyber_asset_observations(
-      id, snapshot_id, source_record_key, observed_at, ingested_at, segment_id, ip_value, mac_value, hostname_raw
-    ) VALUES (?, 'snapshot-1', ?, ?, ?, ?, ?, ?, ?)`)
-    .run(id, `rec-${id}`, now, now, overrides.segmentId || null, overrides.ip || '10.2.6.15', overrides.mac || '02:00:00:aa:bb:cc', overrides.hostname || 'host-01');
+      id, snapshot_id, source_record_key, observed_at, ingested_at, segment_id, ip_value, mac_value, hostname_raw, hostname_key
+    ) VALUES (?, 'snapshot-1', ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(id, `rec-${id}`, now, now, overrides.segmentId || null, overrides.ip || '10.2.6.15', overrides.mac || '02:00:00:aa:bb:cc', overrides.hostname || 'host-01', overrides.hostnameKey || null);
+  return id;
+}
+
+function seedKasperskyObservation(db, overrides = {}) {
+  if (!db.prepare("SELECT 1 FROM cyber_source_systems WHERE id = 'source-ksc'").get()) {
+    db.prepare(`INSERT INTO cyber_source_systems(id, source_type, display_name, authority_level, created_at, updated_at)
+      VALUES ('source-ksc','KASPERSKY','Kaspersky Security Center','AUTHORITATIVE',?,?)`).run(now, now);
+    db.prepare(`INSERT INTO cyber_source_snapshots(id, source_system_id, captured_at, imported_at, source_sha256, processing_status)
+      VALUES ('snapshot-ksc-1','source-ksc',?,?,?,'SUCCESS')`).run(now, now, 'b'.repeat(64));
+  }
+  const id = overrides.id || 'observation-ksc-1';
+  db.prepare(`INSERT INTO cyber_asset_observations(
+      id, snapshot_id, source_record_key, observed_at, ingested_at, hostname_raw, hostname_key, os_family
+    ) VALUES (?, 'snapshot-ksc-1', ?, ?, ?, ?, ?, ?)`)
+    .run(id, `rec-${id}`, now, now, overrides.hostname || 'PC-FINANZAS-01', overrides.hostnameKey || 'pc-finanzas-01', overrides.osFamily || 'Windows 10');
   return id;
 }
 
@@ -213,6 +229,31 @@ test('getObservationDetail muestra la subred asociada desde la importación, con
 test('un candidato sin segmento asignado no rompe getObservationDetail (segment null)', () => withDatabase((db, decisionsDb) => {
   const id = seedObservation(db);
   const alias = protectedAlias('candidate', id);
+  const detail = getObservationDetail(db, decisionsDb, null, alias);
+  assert.equal(detail.segment, null);
+}));
+
+// Pedido del usuario 2026-09-16: "aplicar el cruce FortiGate↔Kaspersky ya calculado" -- Kaspersky
+// nunca trae IP, así que getObservationDetail debe mostrar la subred heredada del equipo
+// FortiGate corroborado (mismo hostname, SO compatible) en vez de "Sin segmento".
+test('getObservationDetail hereda la subred de un equipo Kaspersky corroborado contra FortiGate', () => withDatabase((db, decisionsDb) => {
+  const segmentId = seedSegment(db, { canonicalName: 'VLAN_Finanzas' });
+  seedObservation(db, {
+    id: 'observation-forti-finanzas', segmentId, ip: '10.2.13.20',
+    hostname: 'PC-FINANZAS-01', hostnameKey: 'pc-finanzas-01',
+  });
+  const kscId = seedKasperskyObservation(db, { hostname: 'PC-FINANZAS-01', hostnameKey: 'pc-finanzas-01' });
+  matchSnapshots({ db, leftSnapshotId: 'snapshot-1', rightSnapshotId: 'snapshot-ksc-1' });
+
+  const alias = protectedAlias('candidate', kscId);
+  const detail = getObservationDetail(db, decisionsDb, null, alias);
+  assert.equal(detail.segment.name, 'VLAN_Finanzas');
+  assert.equal(detail.segment.inherited, true);
+}));
+
+test('un equipo Kaspersky sin corroborar contra FortiGate no hereda ninguna subred', () => withDatabase((db, decisionsDb) => {
+  const kscId = seedKasperskyObservation(db, { hostname: 'PC-SIN-PAR', hostnameKey: 'pc-sin-par' });
+  const alias = protectedAlias('candidate', kscId);
   const detail = getObservationDetail(db, decisionsDb, null, alias);
   assert.equal(detail.segment, null);
 }));

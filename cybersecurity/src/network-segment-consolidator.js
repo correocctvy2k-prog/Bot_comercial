@@ -39,17 +39,18 @@ function inferDominantNetwork(members = [], minimumShare = 0.8) {
 function summarizeMembers(item, members) {
   const uniqueIps = [...new Set(members.map((member) => member.ip).filter(Boolean))];
   const counts = { ACTIVE: 0, INTERMITTENT: 0, INACTIVE: 0, STALE_REVIEW: 0 };
-  let ephemeralMacs = 0; let lastActivityAt = null;
+  let ephemeralMacs = 0; let lastActivityAt = null; let inheritedKasperskyCount = 0;
   for (const member of members) {
     if (Object.hasOwn(counts, member.lifecycleStatus)) counts[member.lifecycleStatus] += 1;
     if (member.ephemeralMac) ephemeralMacs += 1;
+    if (member.source === 'KASPERSKY') inheritedKasperskyCount += 1;
     if (member.lastActivityAt && (!lastActivityAt || member.lastActivityAt > lastActivityAt)) lastActivityAt = member.lastActivityAt;
   }
   return {
     ...item, members, observations: members.length, knownIpCount: uniqueIps.length,
     referenceIps: uniqueIps.slice(0, 3), active: counts.ACTIVE,
     intermittent: counts.INTERMITTENT, inactive: counts.INACTIVE,
-    staleReview: counts.STALE_REVIEW, ephemeralMacs, lastActivityAt,
+    staleReview: counts.STALE_REVIEW, ephemeralMacs, inheritedKasperskyCount, lastActivityAt,
   };
 }
 
@@ -68,6 +69,21 @@ function consolidateNetworkSegments(items = []) {
     }
     const buckets = new Map();
     for (const member of source.members) {
+      // Un miembro sin IP (equipo Kaspersky heredado por corroboración de hostname, ver
+      // listNetworkSegments/getKasperskyInheritedSegments -- Kaspersky nunca trae IP) no se
+      // puede reconciliar por CIDR: sin este corte, containsIp(..., null) siempre da false y
+      // caía en el bucket residual "SIN-IP", separándolo de la subred a la que en realidad
+      // pertenece cada vez que esa subred ya tuviera una política aplicada.
+      // Límite conocido: si el segmento dueño está marcado NEEDS_SPLIT, este miembro queda
+      // "retenido" para un id que el filtro final descarta (los NEEDS_SPLIT no se devuelven
+      // tal cual) -- desaparece de la respuesta en vez de aparecer mal ubicado. No hay una
+      // subred correcta a la que asignarlo sin IP, así que se prefiere que desaparezca (visible
+      // como discrepancia de conteo) a inventar una ubicación.
+      if (!member.ip) {
+        const kept = retainedMembers.get(source.id) || [];
+        kept.push(member); retainedMembers.set(source.id, kept);
+        continue;
+      }
       if (partitionApplied && containsIp(source.policy, member.ip)) {
         const kept = retainedMembers.get(source.id) || [];
         kept.push(member); retainedMembers.set(source.id, kept);

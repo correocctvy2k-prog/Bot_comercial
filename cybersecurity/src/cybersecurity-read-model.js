@@ -299,16 +299,61 @@ function listInventoryCandidates(db, filters = {}, decisionsDb = null, policyDb 
   };
 }
 
+// Un match calculado contra un snapshot de FortiGate ya superado por una reimportación más
+// reciente queda "huérfano": el left_observation_id ya no corresponde a nada que
+// listInventoryCandidates/listNetworkSegments muestren hoy (ambos se limitan al snapshot más
+// reciente por fuente, igual que el fix de conflictos duplicados de 2026-09-15). Se limita cada
+// corrida de match a los pares de snapshots que SIGUEN siendo los más recientes de su fuente —
+// hallazgo 2026-09-16 al retomar el cruce FortiGate↔Kaspersky calculado el 29-ago: seguía
+// apuntando al FortiGate viejo tras la reimportación del 15-sep (56 coincidencias del run viejo
+// vs 49 del run fresco contra los 870 observados hoy).
+function getCurrentCrossMatchRunIds(db) {
+  return db.prepare(`
+    WITH latest AS (
+      SELECT source_system_id, max(captured_at) captured_at
+      FROM cyber_source_snapshots WHERE processing_status = 'SUCCESS'
+      GROUP BY source_system_id
+    )
+    SELECT run.id
+    FROM cyber_cross_source_match_runs run
+    JOIN cyber_source_snapshots ls ON ls.id = run.left_snapshot_id
+    JOIN latest ll ON ll.source_system_id = ls.source_system_id AND ll.captured_at = ls.captured_at
+    JOIN cyber_source_snapshots rs ON rs.id = run.right_snapshot_id
+    JOIN latest rl ON rl.source_system_id = rs.source_system_id AND rl.captured_at = rs.captured_at
+  `).all().map((row) => row.id);
+}
+
 // Observaciones (de cualquier fuente) que ya se corroboraron contra otra fuente distinta —
 // cyber_cross_source_matches se calculaba (scripts/match-fortigate-ksc.js) pero nunca se leía
 // en ningún punto de la aplicación; ver hallazgo 2026-09-15.
 function getCrossSourceMatchedObservationIds(db) {
+  const runIds = getCurrentCrossMatchRunIds(db);
+  if (runIds.length === 0) return new Set();
+  const placeholders = runIds.map(() => '?').join(',');
   const rows = db.prepare(`
-    SELECT left_observation_id id FROM cyber_cross_source_matches WHERE match_status = 'PROPOSED'
+    SELECT left_observation_id id FROM cyber_cross_source_matches WHERE match_status = 'PROPOSED' AND match_run_id IN (${placeholders})
     UNION
-    SELECT right_observation_id id FROM cyber_cross_source_matches WHERE match_status = 'PROPOSED'
-  `).all();
+    SELECT right_observation_id id FROM cyber_cross_source_matches WHERE match_status = 'PROPOSED' AND match_run_id IN (${placeholders})
+  `).all(...runIds, ...runIds);
   return new Set(rows.map((row) => row.id));
+}
+
+// Un equipo Kaspersky nunca trae IP (el .ps1 que sube el inventario diario no lee esa columna
+// -- ver ciberseguridad-modulo.md, "falta validar si trae IP") así que jamás puede clasificarse
+// en una subred por sí solo. Si ya se corroboró contra un equipo FortiGate (PROPOSED, hostname
+// exacto + SO compatible), hereda la subred de su par -- decisión del usuario 2026-09-16:
+// "aplicar el cruce FortiGate↔Kaspersky ya calculado" para que dejen de verse sueltos sin red.
+function getKasperskyInheritedSegments(db) {
+  const runIds = getCurrentCrossMatchRunIds(db);
+  if (runIds.length === 0) return new Map();
+  const placeholders = runIds.map(() => '?').join(',');
+  const rows = db.prepare(`
+    SELECT m.right_observation_id kasperskyId, fo.segment_id segmentId
+    FROM cyber_cross_source_matches m
+    JOIN cyber_asset_observations fo ON fo.id = m.left_observation_id
+    WHERE m.match_status = 'PROPOSED' AND m.match_run_id IN (${placeholders}) AND fo.segment_id IS NOT NULL
+  `).all(...runIds);
+  return new Map(rows.map((row) => [row.kasperskyId, row.segmentId]));
 }
 
 function listNetworkSegments(db, options = {}) {
@@ -329,40 +374,85 @@ function listNetworkSegments(db, options = {}) {
     WHERE source.source_type = 'FORTIGATE' AND o.segment_id IS NOT NULL
   `).all();
   const segments = new Map();
+  // Kaspersky nunca trae IP (ver getKasperskyInheritedSegments) así que no puede clasificarse
+  // por sí solo -- si ya se corroboró contra un equipo FortiGate en este mismo segmento, se
+  // agrega a la misma subred como miembro "heredado" en vez de quedar suelto sin red (decisión
+  // del usuario 2026-09-16: aplicar el cruce ya calculado).
+  const inheritedSegmentByKasperskyId = getKasperskyInheritedSegments(db);
+  const kasperskyObservations = inheritedSegmentByKasperskyId.size === 0 ? [] : db.prepare(`
+    WITH latest AS (
+      SELECT source_system_id, max(captured_at) captured_at
+      FROM cyber_source_snapshots WHERE processing_status = 'SUCCESS'
+      GROUP BY source_system_id
+    )
+    SELECT o.id observationId, o.observed_at lastSeenAt, o.last_seen_source_at lastSeenSourceAt,
+           o.quality_flags_json qualityFlags
+    FROM cyber_asset_observations o
+    JOIN cyber_source_snapshots s ON s.id = o.snapshot_id
+    JOIN cyber_source_systems source ON source.id = s.source_system_id
+    JOIN latest l ON l.source_system_id = s.source_system_id AND l.captured_at = s.captured_at
+    WHERE source.source_type = 'KASPERSKY'
+      AND o.id IN (${[...inheritedSegmentByKasperskyId.keys()].map(() => '?').join(',')})
+  `).all(...inheritedSegmentByKasperskyId.keys());
+
+  const addMember = (segmentKey, interfaceName, member) => {
+    const item = segments.get(segmentKey) || {
+      segmentKey, interfaceName,
+      observations: 0, active: 0, intermittent: 0,
+      inactive: 0, staleReview: 0, ephemeralMacs: 0, inheritedKasperskyCount: 0, lastActivityAt: null,
+      referenceIps: new Set(),
+      knownIps: new Set(),
+      members: [],
+    };
+    item.observations += 1;
+    if (member.source === 'KASPERSKY') item.inheritedKasperskyCount += 1;
+    if (member.ip) {
+      item.knownIps.add(member.ip);
+      if (item.referenceIps.size < 3) item.referenceIps.add(member.ip);
+    }
+    item.members.push(member);
+    if (member.lifecycleStatus === 'ACTIVE') item.active += 1;
+    if (member.lifecycleStatus === 'INTERMITTENT') item.intermittent += 1;
+    if (member.lifecycleStatus === 'INACTIVE') item.inactive += 1;
+    if (member.lifecycleStatus === 'STALE_REVIEW') item.staleReview += 1;
+    if (member.ephemeralMac) item.ephemeralMacs += 1;
+    if (member.lastActivityAt && (!item.lastActivityAt || member.lastActivityAt > item.lastActivityAt)) item.lastActivityAt = member.lastActivityAt;
+    segments.set(segmentKey, item);
+  };
+
   for (const observation of observations) {
     const assessed = assessInventoryCandidate({
       source: 'FORTIGATE', lastSeenAt: observation.lastSeenAt,
       lastSeenSourceAt: observation.lastSeenSourceAt,
       qualityFlags: safeJson(observation.qualityFlags, []), reasonCodes: [], confidence: 0.5,
     });
-    const item = segments.get(observation.segmentKey) || {
-      segmentKey: observation.segmentKey, interfaceName: observation.interfaceName,
-      observations: 0, active: 0, intermittent: 0,
-      inactive: 0, staleReview: 0, ephemeralMacs: 0, lastActivityAt: null,
-      referenceIps: new Set(),
-      knownIps: new Set(),
-      members: [],
-    };
-    item.observations += 1;
-    if (observation.ipValue) {
-      item.knownIps.add(observation.ipValue);
-      if (item.referenceIps.size < 3) item.referenceIps.add(observation.ipValue);
-    }
-    item.members.push({
+    addMember(observation.segmentKey, observation.interfaceName, {
       id: observation.observationId,
       ip: observation.ipValue,
+      source: 'FORTIGATE',
       lifecycleStatus: assessed.lifecycleStatus,
       ephemeralMac: assessed.qualityFlags.includes('LOCALLY_ADMINISTERED_MAC'),
       lastActivityAt: observation.lastSeenSourceAt || observation.lastSeenAt || null,
     });
-    if (assessed.lifecycleStatus === 'ACTIVE') item.active += 1;
-    if (assessed.lifecycleStatus === 'INTERMITTENT') item.intermittent += 1;
-    if (assessed.lifecycleStatus === 'INACTIVE') item.inactive += 1;
-    if (assessed.lifecycleStatus === 'STALE_REVIEW') item.staleReview += 1;
-    if (assessed.qualityFlags.includes('LOCALLY_ADMINISTERED_MAC')) item.ephemeralMacs += 1;
-    const seen = observation.lastSeenSourceAt || observation.lastSeenAt;
-    if (seen && (!item.lastActivityAt || seen > item.lastActivityAt)) item.lastActivityAt = seen;
-    segments.set(observation.segmentKey, item);
+  }
+  for (const observation of kasperskyObservations) {
+    const segmentKey = inheritedSegmentByKasperskyId.get(observation.observationId);
+    const existing = segments.get(segmentKey);
+    if (!existing) continue; // el FortiGate que corroboró este segmento ya debió agregarlo arriba
+    const assessed = assessInventoryCandidate({
+      source: 'KASPERSKY', lastSeenAt: observation.lastSeenAt,
+      lastSeenSourceAt: observation.lastSeenSourceAt,
+      qualityFlags: safeJson(observation.qualityFlags, []), reasonCodes: [], confidence: 0.5,
+    });
+    addMember(segmentKey, existing.interfaceName, {
+      id: observation.observationId,
+      ip: null,
+      source: 'KASPERSKY',
+      inheritedFromFortiGate: true,
+      lifecycleStatus: assessed.lifecycleStatus,
+      ephemeralMac: false,
+      lastActivityAt: observation.lastSeenSourceAt || observation.lastSeenAt || null,
+    });
   }
   return {
     total: segments.size,
@@ -497,7 +587,7 @@ function getRemediationCase(db, id) {
 
 module.exports = {
   getCybersecurityOverview, getInventoryOverview, getRemediationCase,
-  getCrossSourceMatchedObservationIds,
+  getCrossSourceMatchedObservationIds, getKasperskyInheritedSegments,
   listInventoryCandidates, listNetworkSegments, listRemediationCases,
   protectedAlias, resolveProtectedAlias,
 };

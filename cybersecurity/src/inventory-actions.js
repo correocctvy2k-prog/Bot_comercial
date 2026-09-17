@@ -1,6 +1,6 @@
 const crypto = require('node:crypto');
 const { openCyberDatabase } = require('../db/open-database');
-const { resolveProtectedAlias, getCrossSourceMatchedObservationIds, protectedAlias } = require('./cybersecurity-read-model');
+const { resolveProtectedAlias, getCrossSourceMatchedObservationIds, getKasperskyInheritedSegments, protectedAlias } = require('./cybersecurity-read-model');
 const { computeReliabilityScore, detectAntivirusGap, detectDeviceGroups } = require('./inventory-reliability');
 const { assessInventoryCandidate } = require('./inventory-confidence-policy');
 const { getDecisionByObservationId, saveDecision } = require('./inventory-decision-store');
@@ -18,20 +18,32 @@ function cleanNote(value) {
   return text;
 }
 
-// Un candidato ya queda asociado a su subred desde que FortiGate lo importó (segment_id se
+// Un candidato de FortiGate ya queda asociado a su subred desde que se importó (segment_id se
 // calcula una sola vez, por IP contra el CIDR de cada segmento en fortigate-importer.js) --
 // promover/proteger no cambia ni repite esa asociación, solo la hace visible. Se prefiere el
 // nombre que el usuario ya le dio en Subredes (policy.name, ej. "CCTV, control de acceso y
 // alarmas") sobre el nombre crudo de interfaz de FortiGate (canonical_name, ej. "port10") si ya
 // se clasificó (decisión del usuario 2026-09-16: "se debe mostrar la subred a la que fue
 // asociado").
-function resolveObservationSegment(db, policyDb, segmentId) {
+//
+// Kaspersky nunca trae IP (el .ps1 que sube el inventario diario no lee esa columna) así que no
+// puede tener segment_id propio -- si ya se corroboró contra un equipo FortiGate (cruce por
+// hostname exacto + SO compatible, ver cross-source-matcher.js), hereda la subred de su par en
+// vez de mostrarse sin red (decisión del usuario 2026-09-16: "aplicar el cruce FortiGate↔
+// Kaspersky ya calculado").
+function resolveObservationSegment(db, policyDb, observation) {
+  let segmentId = observation.segment_id;
+  let inherited = false;
+  if (!segmentId && observation.sourceType === 'KASPERSKY') {
+    segmentId = getKasperskyInheritedSegments(db).get(observation.id) || null;
+    inherited = Boolean(segmentId);
+  }
   if (!segmentId) return null;
   const segment = db.prepare('SELECT canonical_name FROM cyber_network_segments WHERE id = ?').get(segmentId);
   if (!segment) return null;
   const alias = protectedAlias('segment', segmentId);
   const policy = listPolicies(policyDb).find((item) => item.id === alias);
-  return { id: alias, name: policy?.name || segment.canonical_name, classified: Boolean(policy) };
+  return { id: alias, name: policy?.name || segment.canonical_name, classified: Boolean(policy), inherited };
 }
 
 function findingsSummaryForTarget(db, targetKey) {
@@ -101,7 +113,7 @@ function getObservationDetail(db, decisionsDb, policyDb, candidateKey) {
 
   const decision = getDecisionByObservationId(decisionsDb, observation.id);
   const candidateAlias = protectedAlias('candidate', observation.id);
-  const segment = resolveObservationSegment(db, policyDb, observation.segment_id);
+  const segment = resolveObservationSegment(db, policyDb, observation);
 
   // Si ya se promovió o protegió, se muestra con la misma forma CANONICAL que antes usaba
   // cyber_assets -- el frontend no necesita saber que ahora vive en otro almacén.

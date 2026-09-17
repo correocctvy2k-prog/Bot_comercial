@@ -9,6 +9,7 @@ const { promoteObservationToAsset, markObservationAsConflict, markObservationAsI
 const { openNetworkPolicyStore, savePolicy } = require('../src/network-policy-store');
 const { importGreenboneProtectedResults } = require('../src/greenbone-protected-importer');
 const { importFortiGateInventory } = require('../src/fortigate-importer');
+const { matchSnapshots } = require('../src/cross-source-matcher');
 const {
   getCybersecurityOverview, getInventoryOverview, getRemediationCase,
   listInventoryCandidates, listNetworkSegments, listRemediationCases,
@@ -119,9 +120,9 @@ function seedCandidateObservation(db, overrides = {}) {
   }
   const id = overrides.id || 'observation-api-1';
   db.prepare(`INSERT INTO cyber_asset_observations(
-      id, snapshot_id, source_record_key, observed_at, ingested_at, segment_id, ip_value, mac_value, hostname_raw
-    ) VALUES (?, 'snapshot-1', ?, ?, ?, ?, ?, ?, ?)`)
-    .run(id, `rec-${id}`, now, now, overrides.segmentId || null, overrides.ip || '10.2.6.15', overrides.mac || '02:00:00:aa:bb:cc', overrides.hostname || 'host-01');
+      id, snapshot_id, source_record_key, observed_at, ingested_at, segment_id, ip_value, mac_value, hostname_raw, hostname_key
+    ) VALUES (?, 'snapshot-1', ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(id, `rec-${id}`, now, now, overrides.segmentId || null, overrides.ip || '10.2.6.15', overrides.mac || '02:00:00:aa:bb:cc', overrides.hostname || 'host-01', overrides.hostnameKey || null);
   return id;
 }
 
@@ -340,4 +341,90 @@ test('un candidato ignorado aparece bajo state=IGNORED en la lista, con su nota'
     assert.equal(list.items[0].id, alias);
     assert.equal(list.items[0].decisionNote, 'Falso positivo, no relevante');
   } finally { db.close(); decisionsDb.close(); }
+});
+
+// Pedido del usuario 2026-09-16: "aplicar el cruce FortiGate↔Kaspersky ya calculado" -- Kaspersky
+// nunca trae IP, así que no puede clasificarse en una subred por sí solo. Si ya se corroboró
+// contra un equipo FortiGate (mismo hostname, SO compatible), debe heredar la subred de su par
+// en vez de quedar suelto sin red.
+function seedKasperskyObservation(db, overrides = {}) {
+  const now = '2026-09-01T12:00:00.000Z';
+  if (!db.prepare("SELECT 1 FROM cyber_source_systems WHERE id = 'source-ksc'").get()) {
+    db.prepare(`INSERT INTO cyber_source_systems(id, source_type, display_name, authority_level, created_at, updated_at)
+      VALUES ('source-ksc','KASPERSKY','Kaspersky Security Center','AUTHORITATIVE',?,?)`).run(now, now);
+    db.prepare(`INSERT INTO cyber_source_snapshots(id, source_system_id, captured_at, imported_at, source_sha256, processing_status)
+      VALUES ('snapshot-ksc-1','source-ksc',?,?,?,'SUCCESS')`).run(now, now, 'b'.repeat(64));
+  }
+  const id = overrides.id || 'observation-ksc-1';
+  db.prepare(`INSERT INTO cyber_asset_observations(
+      id, snapshot_id, source_record_key, observed_at, ingested_at, hostname_raw, hostname_key, os_family
+    ) VALUES (?, 'snapshot-ksc-1', ?, ?, ?, ?, ?, ?)`)
+    .run(id, `rec-${id}`, now, now, overrides.hostname || 'PC-FINANZAS-01', overrides.hostnameKey || 'pc-finanzas-01', overrides.osFamily || 'Windows 10');
+  return id;
+}
+
+test('listNetworkSegments agrupa un equipo Kaspersky corroborado en la subred real de su par FortiGate', () => {
+  const db = seededDatabase();
+  try {
+    const now = '2026-09-01T12:00:00.000Z';
+    db.prepare(`INSERT INTO cyber_network_segments(id, canonical_name, security_zone, created_at, updated_at)
+      VALUES ('segment-finanzas', 'VLAN_Finanzas', 'RESTRICTED', ?, ?)`).run(now, now);
+    seedCandidateObservation(db, {
+      id: 'observation-forti-finanzas', segmentId: 'segment-finanzas', ip: '10.2.13.20',
+      hostname: 'PC-FINANZAS-01', hostnameKey: 'pc-finanzas-01',
+    });
+    const kscId = seedKasperskyObservation(db, { hostname: 'PC-FINANZAS-01', hostnameKey: 'pc-finanzas-01' });
+
+    const match = matchSnapshots({ db, leftSnapshotId: 'snapshot-1', rightSnapshotId: 'snapshot-ksc-1' });
+    assert.equal(match.status, 'SUCCESS');
+    assert.equal(match.summary.proposed, 1);
+
+    const segments = listNetworkSegments(db, { includeSensitive: true });
+    const segment = segments.items.find((item) => item.id === protectedAlias('segment', 'segment-finanzas'));
+    assert.ok(segment, 'la subred debe existir');
+    assert.equal(segment.observations, 2, 'debe contar el FortiGate real y el Kaspersky heredado');
+    assert.equal(segment.inheritedKasperskyCount, 1);
+    const kasperskyMember = segment.members.find((member) => member.id === kscId);
+    assert.ok(kasperskyMember, 'el equipo Kaspersky debe aparecer como miembro de la subred');
+    assert.equal(kasperskyMember.source, 'KASPERSKY');
+    assert.equal(kasperskyMember.inheritedFromFortiGate, true);
+    assert.equal(kasperskyMember.ip, null, 'Kaspersky nunca trae IP');
+  } finally { db.close(); }
+});
+
+test('un equipo Kaspersky sin corroborar sigue sin subred (no se inventa una asociación)', () => {
+  const db = seededDatabase();
+  try {
+    seedKasperskyObservation(db, { hostname: 'PC-SIN-PAR', hostnameKey: 'pc-sin-par' });
+    const segments = listNetworkSegments(db, { includeSensitive: true });
+    assert.equal(segments.items.every((item) => item.inheritedKasperskyCount === 0), true);
+  } finally { db.close(); }
+});
+
+// Regresión 2026-09-16: el cruce se había calculado el 29-ago contra un snapshot de FortiGate
+// que luego quedó superado por una reimportación real -- el match run viejo seguía apuntando a
+// observaciones que listInventoryCandidates/listNetworkSegments ya no muestran (ambos se limitan
+// al snapshot más reciente por fuente). Un match run "huérfano" no debe heredar nada.
+test('un match calculado contra un snapshot de FortiGate ya superado no hereda subred', () => {
+  const db = seededDatabase();
+  try {
+    const now = '2026-09-01T12:00:00.000Z';
+    db.prepare(`INSERT INTO cyber_network_segments(id, canonical_name, security_zone, created_at, updated_at)
+      VALUES ('segment-viejo', 'VLAN_Vieja', 'RESTRICTED', ?, ?)`).run(now, now);
+    // Snapshot FortiGate NUEVO primero (crea source-forti/snapshot-1) -- simula que ya llegó
+    // una reimportación real antes de intentar heredar desde el match viejo.
+    seedCandidateObservation(db, { id: 'observation-forti-new', ip: '10.2.13.30' });
+    // Snapshot FortiGate VIEJO (ya superado): captured_at anterior a snapshot-1.
+    db.prepare(`INSERT INTO cyber_source_snapshots(id, source_system_id, captured_at, imported_at, source_sha256, processing_status)
+      VALUES ('snapshot-forti-old','source-forti','2026-08-29T16:00:00.000Z',?,?,'SUCCESS')`).run(now, 'c'.repeat(64));
+    db.prepare(`INSERT INTO cyber_asset_observations(id, snapshot_id, source_record_key, observed_at, ingested_at, segment_id, hostname_raw, hostname_key)
+      VALUES ('observation-forti-old', 'snapshot-forti-old', 'rec-old', ?, ?, 'segment-viejo', 'PC-VIEJO', 'pc-viejo')`).run(now, now);
+    const kscId = seedKasperskyObservation(db, { hostname: 'PC-VIEJO', hostnameKey: 'pc-viejo' });
+    const staleMatch = matchSnapshots({ db, leftSnapshotId: 'snapshot-forti-old', rightSnapshotId: 'snapshot-ksc-1' });
+    assert.equal(staleMatch.summary.proposed, 1, 'precondición: el cruce viejo sí encontró la coincidencia');
+
+    const segments = listNetworkSegments(db, { includeSensitive: true });
+    assert.equal(segments.items.every((item) => item.inheritedKasperskyCount === 0), true, 'el match huérfano no debe heredar subred');
+    void kscId;
+  } finally { db.close(); }
 });
