@@ -325,6 +325,38 @@ test('listInventoryCandidates marca onWifiSegment usando la política ya aplicad
   } finally { db.close(); policyDb.close(); }
 });
 
+// Regresión 2026-09-17: el usuario vio, en el mismo panel, la subred real ya nombrada
+// ("VLAN Informatica") junto a un aviso "requiere clasificación de segmento" -- confuso, porque
+// assessInventoryCandidate() no sabe nada de Subredes y siempre agrega esa señal para cualquier
+// observación de FortiGate, esté o no el segmento ya clasificado.
+test('listInventoryCandidates no marca "requiere clasificación" para un segmento que ya tiene política aplicada', () => {
+  const db = seededDatabase();
+  const policyDb = openNetworkPolicyStore(':memory:');
+  try {
+    const classifiedSegmentId = seedSegment(db, { id: 'segment-informatica', canonicalName: 'VLANInformatica' });
+    const unclassifiedSegmentId = seedSegment(db, { id: 'segment-sin-clasificar', canonicalName: 'port9' });
+    const classifiedObservationId = seedCandidateObservation(db, { id: 'observation-clasificado', segmentId: classifiedSegmentId, ip: '10.2.2.70' });
+    const unclassifiedObservationId = seedCandidateObservation(db, { id: 'observation-sin-clasificar', segmentId: unclassifiedSegmentId, ip: '172.19.26.5', mac: '02:00:00:aa:bb:ff', hostname: 'host-sin-clasificar' });
+
+    savePolicy(policyDb, protectedAlias('segment', classifiedSegmentId), {
+      name: 'VLAN Informática', zone: 'Edificio Principal Palmira', networkFunction: 'CORPORATE_LAN',
+      technology: 'ETHERNET', topology: 'ACCESS_LAN', addressMode: 'STATIC', population: 'CORPORATE_USERS',
+      criticality: 'MEDIUM', networkAddress: '10.2.2.0', prefixLength: 24, gateway: '10.2.2.1',
+    }, 'tester');
+
+    const list = listInventoryCandidates(db, {}, null, policyDb);
+    const classifiedItem = list.items.find((item) => item.id === protectedAlias('candidate', classifiedObservationId));
+    const unclassifiedItem = list.items.find((item) => item.id === protectedAlias('candidate', unclassifiedObservationId));
+
+    assert.equal(classifiedItem.reasonCodes.includes('NETWORK_SEGMENT_REQUIRES_CLASSIFICATION'), false, 'ya tiene política aplicada, no debe seguir pidiendo clasificación');
+    assert.equal(classifiedItem.networkProfile, 'SEGMENT_CLASSIFIED');
+    assert.equal(unclassifiedItem.reasonCodes.includes('NETWORK_SEGMENT_REQUIRES_CLASSIFICATION'), true, 'sin política aplicada, sí debe seguir pidiendo clasificación');
+    assert.equal(unclassifiedItem.networkProfile, 'SEGMENT_POLICY_REQUIRED');
+    assert.equal(list.assessmentSummary.SEGMENT_CLASSIFIED, 1);
+    assert.equal(list.assessmentSummary.SEGMENT_POLICY_REQUIRED, 1, 'el conteo de "pendientes de clasificar" ya no debe incluir el segmento clasificado');
+  } finally { db.close(); policyDb.close(); }
+});
+
 // Flujo real del botón "Ignorar" a través del endpoint de lista: un candidato marcado como
 // ignorado debe aparecer al filtrar state=IGNORED (para poder auditarlo) y NO al filtrar por
 // el estado automático que tenía antes.

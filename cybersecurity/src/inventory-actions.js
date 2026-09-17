@@ -159,7 +159,7 @@ function getObservationDetail(db, decisionsDb, policyDb, candidateKey) {
   // identityPolicy/networkIdentityRule/lifecycleStatus/networkProfile no existían en la
   // respuesta. Se corre el mismo cálculo que usa listInventoryCandidates para que detalle y
   // lista muestren exactamente los mismos números.
-  const assessed = assessInventoryCandidate({
+  let assessed = assessInventoryCandidate({
     source: observation.sourceType || 'UNKNOWN',
     lastSeenAt: observation.observed_at,
     lastSeenSourceAt: observation.last_seen_source_at,
@@ -177,6 +177,18 @@ function getObservationDetail(db, decisionsDb, policyDb, candidateKey) {
     qualityFlags,
     reasonCodes,
   });
+  // Mismo hallazgo del usuario 2026-09-17 que en listInventoryCandidates: assessInventoryCandidate
+  // no sabe que este segmento ya tiene política aplicada en Subredes (`segment.classified`, ya
+  // resuelto arriba) y siempre agrega NETWORK_SEGMENT_REQUIRES_CLASSIFICATION/
+  // SEGMENT_POLICY_REQUIRED para cualquier observación de FortiGate -- confuso mostrarlo junto
+  // al nombre real de la subred en el mismo panel de detalle.
+  if (segment?.classified) {
+    assessed = {
+      ...assessed,
+      networkProfile: assessed.networkProfile === 'SEGMENT_POLICY_REQUIRED' ? 'SEGMENT_CLASSIFIED' : assessed.networkProfile,
+      reasonCodes: assessed.reasonCodes.filter((code) => code !== 'NETWORK_SEGMENT_REQUIRES_CLASSIFICATION'),
+    };
+  }
 
   return {
     kind: 'OBSERVATION',

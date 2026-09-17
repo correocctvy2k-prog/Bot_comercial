@@ -221,10 +221,19 @@ function listInventoryCandidates(db, filters = {}, decisionsDb = null, policyDb 
   // candidato. El id de política se calcula igual que en /admin/network-segments
   // (protectedAlias('segment', segment.id)) para poder cruzarlo contra listPolicies().
   const policiesBySegmentAlias = new Map(listPolicies(policyDb).map((policy) => [policy.id, policy]));
+  const networkSegmentIds = db.prepare('SELECT id FROM cyber_network_segments').all().map((segment) => segment.id);
   const wifiSegmentIds = new Set(
-    db.prepare('SELECT id FROM cyber_network_segments').all()
-      .filter((segment) => WIFI_NETWORK_FUNCTIONS.has(policiesBySegmentAlias.get(protectedAlias('segment', segment.id))?.networkFunction))
-      .map((segment) => segment.id),
+    networkSegmentIds.filter((segmentId) => WIFI_NETWORK_FUNCTIONS.has(policiesBySegmentAlias.get(protectedAlias('segment', segmentId))?.networkFunction)),
+  );
+  // Un segmento con política ya aplicada en Subredes no "requiere clasificación" -- pero
+  // assessInventoryCandidate() no sabe nada de Subredes, así que siempre agregaba
+  // NETWORK_SEGMENT_REQUIRES_CLASSIFICATION y networkProfile=SEGMENT_POLICY_REQUIRED para
+  // CUALQUIER observación de FortiGate, incluso una ya clasificada (ej. VLAN_Informatica, IP
+  // 10.2.2.70) -- hallazgo del usuario 2026-09-17 al ver ese aviso junto al nombre real de la
+  // subred en el mismo panel. Se corrige después del cálculo, con la misma info de políticas
+  // que ya se resuelve arriba para el filtro de WiFi.
+  const classifiedSegmentIds = new Set(
+    networkSegmentIds.filter((segmentId) => policiesBySegmentAlias.has(protectedAlias('segment', segmentId))),
   );
   const rowsWithWifiFlag = rows.map((row) => ({ ...row, onWifiSegment: wifiSegmentIds.has(row.segmentId) }));
   const overlaidRows = rowsWithWifiFlag.map((row) => {
@@ -256,11 +265,21 @@ function listInventoryCandidates(db, filters = {}, decisionsDb = null, policyDb 
   });
   const filtered = overlaidRows.filter((row) => (!filters.source || row.source === filters.source)
     && (!filters.state || row.state === filters.state));
-  const assessed = filtered.map((row) => assessInventoryCandidate({
-    ...row,
-    qualityFlags: safeJson(row.qualityFlags, []),
-    reasonCodes: safeJson(row.reasonCodes, []),
-  }));
+  const assessed = filtered.map((row) => {
+    const result = assessInventoryCandidate({
+      ...row,
+      qualityFlags: safeJson(row.qualityFlags, []),
+      reasonCodes: safeJson(row.reasonCodes, []),
+    });
+    if (row.segmentId && classifiedSegmentIds.has(row.segmentId)) {
+      return {
+        ...result,
+        networkProfile: result.networkProfile === 'SEGMENT_POLICY_REQUIRED' ? 'SEGMENT_CLASSIFIED' : result.networkProfile,
+        reasonCodes: result.reasonCodes.filter((code) => code !== 'NETWORK_SEGMENT_REQUIRES_CLASSIFICATION'),
+      };
+    }
+    return result;
+  });
   const assessmentSummary = assessed.reduce((summary, row) => {
     summary[row.lifecycleStatus] = (summary[row.lifecycleStatus] || 0) + 1;
     summary[row.networkProfile] = (summary[row.networkProfile] || 0) + 1;

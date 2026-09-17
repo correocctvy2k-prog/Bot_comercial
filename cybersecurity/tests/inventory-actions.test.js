@@ -223,6 +223,12 @@ test('getObservationDetail muestra la subred asociada desde la importación, con
   assert.equal(withPolicy.segment.name, 'CCTV, control de acceso y alarmas', 'con política aplicada debe preferir el nombre que el usuario le dio en Subredes');
   assert.equal(withPolicy.segment.classified, true);
   assert.equal(withPolicy.segment.id, segmentAlias);
+  // Regresión 2026-09-17: assessInventoryCandidate() no sabe nada de Subredes y siempre agrega
+  // NETWORK_SEGMENT_REQUIRES_CLASSIFICATION/SEGMENT_POLICY_REQUIRED para cualquier observación
+  // de FortiGate -- confuso mostrarlo junto al nombre real de la subred ya aplicada.
+  assert.equal(withPolicy.reasonCodes.includes('NETWORK_SEGMENT_REQUIRES_CLASSIFICATION'), false, 'con política aplicada, no debe seguir pidiendo clasificación');
+  assert.equal(withPolicy.networkProfile, 'SEGMENT_CLASSIFIED');
+  assert.equal(withoutPolicy.reasonCodes.includes('NETWORK_SEGMENT_REQUIRES_CLASSIFICATION'), true, 'sin política aplicada, sí debe seguir pidiendo clasificación');
   policyDb.close();
 }));
 
