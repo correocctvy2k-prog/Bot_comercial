@@ -32,6 +32,7 @@ alcances expresamente autorizados.
 - [Runbook del receptor Greenbone protegido](./RUNBOOK-RECEPTOR-GREENBONE-PROTEGIDO.md)
 - [Runbook del exportador Greenbone protegido](./RUNBOOK-EXPORTADOR-GREENBONE-PROTEGIDO.md)
 - [Interfaz Skylab Cybersecurity MVP](./INTERFAZ-CIBERSEGURIDAD-MVP.md)
+- [Nota tecnica: IP en los reportes de KSC](./NOTA-KSC-DIRECCION-IP.md)
 
 ## Limites de la primera fase
 

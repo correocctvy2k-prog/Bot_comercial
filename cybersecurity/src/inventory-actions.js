@@ -1,27 +1,87 @@
 const crypto = require('node:crypto');
 const { openCyberDatabase } = require('../db/open-database');
-const { protectedAlias } = require('./cybersecurity-read-model');
+const {
+  resolveProtectedAlias, getCrossSourceMatchedObservationIds, getKasperskyInheritedSegments,
+  buildSegmentCidrIndex, resolveTrueSegmentId, protectedAlias,
+} = require('./cybersecurity-read-model');
+const { computeReliabilityScore, detectAntivirusGap, detectDeviceGroups } = require('./inventory-reliability');
+const { assessInventoryCandidate } = require('./inventory-confidence-policy');
+const { getDecisionByObservationId, saveDecision } = require('./inventory-decision-store');
+const { listPolicies } = require('./network-policy-store');
 
 function argument(name) {
   const index = process.argv.indexOf(`--${name}`);
   return index >= 0 ? process.argv[index + 1] : null;
 }
 
-function getObservationDetail(db, candidateKey) {
-  // The candidateKey format is like "candidate BF05F0E8" or "canonical ABC12345"
-  // We need to extract the actual key from the label
-  const match = candidateKey.match(/^(candidate|canonical|segment)\s+(.+)$/);
-  if (!match) return null;
-  
-  const kind = match[1].toUpperCase();
-  const key = match[2];
-  
-  if (kind === 'CANONICAL') {
-    const asset = db.prepare('SELECT * FROM cyber_assets WHERE id = ?').get(key);
+function cleanNote(value) {
+  const text = String(value || '').trim();
+  if (!text) return null;
+  if (text.length > 500) throw new Error('INVALID_NOTE_TOO_LONG');
+  return text;
+}
+
+// Un candidato de FortiGate ya queda asociado a su subred desde que se importó (segment_id se
+// calcula una sola vez, por IP contra el CIDR de cada segmento en fortigate-importer.js) --
+// promover/proteger no cambia ni repite esa asociación, solo la hace visible. Se prefiere el
+// nombre que el usuario ya le dio en Subredes (policy.name, ej. "CCTV, control de acceso y
+// alarmas") sobre el nombre crudo de interfaz de FortiGate (canonical_name, ej. "port10") si ya
+// se clasificó (decisión del usuario 2026-09-16: "se debe mostrar la subred a la que fue
+// asociado").
+//
+// Kaspersky nunca trae IP (el .ps1 que sube el inventario diario no lee esa columna) así que no
+// puede tener segment_id propio -- si ya se corroboró contra un equipo FortiGate (cruce por
+// hostname exacto + SO compatible, ver cross-source-matcher.js), hereda la subred de su par en
+// vez de mostrarse sin red (decisión del usuario 2026-09-16: "aplicar el cruce FortiGate↔
+// Kaspersky ya calculado").
+//
+// Hallazgo del usuario 2026-09-17: 2 impresoras de la red administrativa (10.2.2.x) aparecían
+// clasificadas en VLAN_Auditoria/VLAN_Comercial -- CIDR completamente distinto. El importador
+// asignaba segment_id por la interfaz que reportó el dispositivo, sin verificar que su IP real
+// perteneciera a esa interfaz (187 de 826 observaciones de FortiGate, 22.6%, tenían el mismo
+// problema). Como las observaciones son append-only, se corrige aquí, en el momento de leer.
+function resolveObservationSegment(db, policyDb, observation) {
+  let segmentId = observation.segment_id;
+  let inherited = false;
+  if (observation.sourceType === 'FORTIGATE') {
+    segmentId = resolveTrueSegmentId(buildSegmentCidrIndex(db), segmentId, observation.ip_value).segmentId;
+  } else if (!segmentId && observation.sourceType === 'KASPERSKY') {
+    segmentId = getKasperskyInheritedSegments(db).get(observation.id) || null;
+    inherited = Boolean(segmentId);
+  }
+  if (!segmentId) return null;
+  const segment = db.prepare('SELECT canonical_name FROM cyber_network_segments WHERE id = ?').get(segmentId);
+  if (!segment) return null;
+  const alias = protectedAlias('segment', segmentId);
+  const policy = listPolicies(policyDb).find((item) => item.id === alias);
+  return { id: alias, name: policy?.name || segment.canonical_name, classified: Boolean(policy), inherited };
+}
+
+function findingsSummaryForTarget(db, targetKey) {
+  const rows = db.prepare('SELECT title, severity, cves_json, observed_at FROM cyber_vulnerability_findings WHERE target_key = ? ORDER BY severity DESC LIMIT 20').all(targetKey);
+  return rows.map((row) => ({ title: row.title, severity: row.severity, cves: JSON.parse(row.cves_json || '[]'), observedAt: row.observed_at }));
+}
+
+// getObservationDetail acepta `decisionsDb` opcional (los scripts/tests que solo leen no
+// necesitan pasarlo) -- ver hallazgo 2026-09-16 en inventory-decision-store.js: cyber-inventory.db
+// es de solo lectura en producción (tres capas: :ro, read_only del contenedor, --immutable), así
+// que promover/proteger/marcar conflicto ya NO escriben en cyber_assets/cyber_asset_observation_links
+// (viven en esa base) -- se guardan en un almacén aparte, en el único volumen escribible
+// (/admin-data). Un candidato promovido/protegido se sigue resolviendo por su alias "candidate"
+// original (la observación no cambia, cambia el "overlay" de decisión) y se devuelve con forma
+// CANONICAL para que el frontend lo muestre igual que antes.
+function getObservationDetail(db, decisionsDb, policyDb, candidateKey) {
+  const resolved = resolveProtectedAlias(db, candidateKey);
+  if (!resolved) return null;
+
+  if (resolved.kind === 'CANONICAL') {
+    // Compatibilidad hacia atrás: si alguna vez existió un activo promovido antes de este
+    // cambio (cyber_assets), se sigue pudiendo ver. Los nuevos ya no se crean así.
+    const asset = db.prepare('SELECT * FROM cyber_assets WHERE id = ?').get(resolved.id);
     if (!asset) return null;
     return {
       kind: 'CANONICAL',
-      id: asset.id,
+      id: protectedAlias('canonical', asset.id),
       label: `Activo canónico ${asset.id.slice(-8).toUpperCase()}`,
       canonicalName: asset.canonical_name,
       assetClass: asset.asset_class,
@@ -35,330 +95,235 @@ function getObservationDetail(db, candidateKey) {
       reviewReason: asset.review_reason,
     };
   }
-  
-  if (kind === 'CANDIDATE') {
-    // The candidate key is the observation ID
-    const observation = db.prepare('SELECT * FROM cyber_asset_observations WHERE id = ?').get(key);
-    if (!observation) return null;
-    
-    // Get analysis if exists
-    const analysis = db.prepare(`
-      SELECT item.* FROM cyber_inventory_analysis_items item
-      JOIN cyber_inventory_analysis_runs run ON run.id = item.analysis_run_id
-      WHERE item.observation_id = ?
-      ORDER BY run.completed_at DESC LIMIT 1
-    `).get(observation.id);
-    
+
+  if (resolved.kind === 'PROTECTED_TARGET') {
+    const findings = findingsSummaryForTarget(db, resolved.id);
+    if (!findings.length) return null;
     return {
-      kind: 'OBSERVATION',
-      id: observation.id,
-      label: `Activo observado ${observation.id.slice(-8).toUpperCase()}`,
-      source: observation.source_system_id ? 'FORTIGATE' : 'UNKNOWN',
-      observedAt: observation.observed_at,
-      ingestedAt: observation.ingested_at,
-      segmentId: observation.segment_id,
-      ipValue: observation.ip_value,
-      macValue: observation.mac_value,
-      hostnameRaw: observation.hostname_raw,
-      manufacturer: observation.manufacturer,
-      osFamily: observation.os_family,
-      osVersion: observation.os_version,
-      deviceClassRaw: observation.device_class_raw,
-      firstSeenSourceAt: observation.first_seen_source_at,
-      lastSeenSourceAt: observation.last_seen_source_at,
-      sourceSeenSeconds: observation.source_seen_seconds,
-      attributeConfidence: JSON.parse(observation.attribute_confidence_json || '{}'),
-      qualityFlags: JSON.parse(observation.quality_flags_json || '[]'),
-      sanitizedAttributes: JSON.parse(observation.sanitized_attributes_json || '{}'),
-      analysis: analysis ? {
-        provisionalAssetClass: analysis.provisional_asset_class,
-        identityStrength: analysis.identity_strength,
-        proposedAction: analysis.proposed_action,
-        confidence: analysis.confidence,
-        reasonCodes: JSON.parse(analysis.reason_codes_json || '[]'),
-      } : null,
+      kind: 'PROTECTED_TARGET',
+      id: protectedAlias('candidate', resolved.id),
+      label: `Objetivo protegido ${resolved.id.replace(/[^a-f0-9]/gi, '').slice(-8).toUpperCase()}`,
+      source: 'GREENBONE',
+      findingCount: findings.length,
+      maxSeverity: findings.reduce((max, item) => Math.max(max, item.severity || 0), 0),
+      findings,
     };
   }
-  
-  return null;
+
+  // CANDIDATE (observación FortiGate/Kaspersky)
+  // (source venía de observation.source_system_id, columna que no existe en
+  // cyber_asset_observations -- siempre daba 'UNKNOWN'. Se resuelve vía snapshot -> fuente.)
+  const observation = db.prepare(`
+    SELECT o.*, source.source_type sourceType
+    FROM cyber_asset_observations o
+    JOIN cyber_source_snapshots s ON s.id = o.snapshot_id
+    JOIN cyber_source_systems source ON source.id = s.source_system_id
+    WHERE o.id = ?
+  `).get(resolved.id);
+  if (!observation) return null;
+
+  const decision = getDecisionByObservationId(decisionsDb, observation.id);
+  const candidateAlias = protectedAlias('candidate', observation.id);
+  const segment = resolveObservationSegment(db, policyDb, observation);
+
+  // Si ya se promovió o protegió, se muestra con la misma forma CANONICAL que antes usaba
+  // cyber_assets -- el frontend no necesita saber que ahora vive en otro almacén.
+  if (decision && (decision.decision === 'PROMOTED' || decision.decision === 'PROTECTED')) {
+    return {
+      kind: 'CANONICAL',
+      id: candidateAlias,
+      label: decision.canonical_name || `Activo ${decision.decision === 'PROTECTED' ? 'protegido' : 'promovido'} ${observation.id.slice(-8).toUpperCase()}`,
+      canonicalName: decision.canonical_name,
+      assetClass: decision.asset_class,
+      criticality: decision.criticality,
+      segment,
+      lifecycleStatus: 'CONFIRMED_ACTIVE',
+      reconciliationStatus: 'HUMAN_VERIFIED',
+      reviewedAt: decision.decided_at,
+      reviewedBy: decision.decided_by,
+      reviewReason: decision.note,
+    };
+  }
+
+  const analysis = db.prepare(`
+    SELECT item.* FROM cyber_inventory_analysis_items item
+    JOIN cyber_inventory_analysis_runs run ON run.id = item.analysis_run_id
+    WHERE item.observation_id = ?
+    ORDER BY run.completed_at DESC LIMIT 1
+  `).get(observation.id);
+  const qualityFlags = JSON.parse(observation.quality_flags_json || '[]');
+  const reasonCodes = analysis ? JSON.parse(analysis.reason_codes_json || '[]') : [];
+
+  // Para saber si esta observación es "el mismo equipo con varias tarjetas de red", se agrupa
+  // contra el resto de observaciones de la misma captura con su mismo hostname (ver
+  // src/inventory-reliability.js — decisión del usuario 2026-09-15).
+  const siblings = observation.hostname_raw
+    ? db.prepare('SELECT id, hostname_raw hostnameRaw, mac_value macValue, ip_value ipValue FROM cyber_asset_observations WHERE snapshot_id = ? AND hostname_raw = ?')
+      .all(observation.snapshot_id, observation.hostname_raw)
+    : [];
+  const deviceGroups = detectDeviceGroups(siblings);
+  const crossMatched = getCrossSourceMatchedObservationIds(db);
+  const hasCrossSourceMatch = crossMatched.has(observation.id);
+
+  // La vista de detalle mostraba "Confianza: NaN%" y "Autoridad: undefined" -- nunca corría
+  // assessInventoryCandidate (a diferencia de la lista), así que confidence/sourceAuthority/
+  // identityPolicy/networkIdentityRule/lifecycleStatus/networkProfile no existían en la
+  // respuesta. Se corre el mismo cálculo que usa listInventoryCandidates para que detalle y
+  // lista muestren exactamente los mismos números.
+  let assessed = assessInventoryCandidate({
+    source: observation.sourceType || 'UNKNOWN',
+    lastSeenAt: observation.observed_at,
+    lastSeenSourceAt: observation.last_seen_source_at,
+    osFamily: observation.os_family,
+    assetClass: analysis?.provisional_asset_class || 'OTHER',
+    // Un candidato marcado en conflicto a mano (decision.decision === 'CONFLICT') se muestra
+    // como tal aunque el análisis automático original no lo hubiera detectado. Uno ignorado a
+    // mano (decisión del usuario 2026-09-16: "agregar un botón de ignorar para otros activos
+    // irrelevantes") sale de "Requiere atención" aunque el análisis automático sí lo marcara.
+    state: decision?.decision === 'CONFLICT' ? 'CONFLICT_REVIEW'
+      : decision?.decision === 'IGNORED' ? 'IGNORED'
+        : (analysis?.proposed_action || 'NEW_ASSET_REVIEW'),
+    identityStrength: analysis?.identity_strength || 'INSUFFICIENT',
+    confidence: analysis?.confidence || 0,
+    qualityFlags,
+    reasonCodes,
+  });
+  // Mismo hallazgo del usuario 2026-09-17 que en listInventoryCandidates: assessInventoryCandidate
+  // no sabe que este segmento ya tiene política aplicada en Subredes (`segment.classified`, ya
+  // resuelto arriba) y siempre agrega NETWORK_SEGMENT_REQUIRES_CLASSIFICATION/
+  // SEGMENT_POLICY_REQUIRED para cualquier observación de FortiGate -- confuso mostrarlo junto
+  // al nombre real de la subred en el mismo panel de detalle.
+  if (segment?.classified) {
+    assessed = {
+      ...assessed,
+      networkProfile: assessed.networkProfile === 'SEGMENT_POLICY_REQUIRED' ? 'SEGMENT_CLASSIFIED' : assessed.networkProfile,
+      reasonCodes: assessed.reasonCodes.filter((code) => code !== 'NETWORK_SEGMENT_REQUIRES_CLASSIFICATION'),
+    };
+  }
+
+  return {
+    kind: 'OBSERVATION',
+    id: candidateAlias,
+    label: `Activo observado ${observation.id.slice(-8).toUpperCase()}`,
+    observedAt: observation.observed_at,
+    ingestedAt: observation.ingested_at,
+    segment,
+    ipValue: observation.ip_value,
+    macValue: observation.mac_value,
+    hostnameRaw: observation.hostname_raw,
+    manufacturer: observation.manufacturer,
+    osVersion: observation.os_version,
+    deviceClassRaw: observation.device_class_raw,
+    firstSeenSourceAt: observation.first_seen_source_at,
+    sourceSeenSeconds: observation.source_seen_seconds,
+    attributeConfidence: JSON.parse(observation.attribute_confidence_json || '{}'),
+    sanitizedAttributes: JSON.parse(observation.sanitized_attributes_json || '{}'),
+    ...assessed,
+    reliability: computeReliabilityScore(
+      { sourceSeenSeconds: observation.source_seen_seconds, hostnameRaw: observation.hostname_raw, qualityFlags, reasonCodes },
+      { hasCrossSourceMatch, deviceGroup: deviceGroups.get(observation.id) || null },
+    ),
+    antivirusGapSuspected: detectAntivirusGap(assessed, { hasCrossSourceMatch }),
+    // Nota dejada al marcar conflicto o ignorar a mano (decision_store), si la hay.
+    decisionNote: (decision?.decision === 'CONFLICT' || decision?.decision === 'IGNORED') ? decision.note : null,
+    analysis: analysis ? {
+      provisionalAssetClass: analysis.provisional_asset_class,
+      identityStrength: analysis.identity_strength,
+      proposedAction: analysis.proposed_action,
+      confidence: analysis.confidence,
+      reasonCodes,
+    } : null,
+  };
 }
 
-function promoteObservationToAsset(db, candidateKey, body, actorId) {
-  const match = candidateKey.match(/^(candidate|canonical|segment)\s+(.+)$/);
-  if (!match) throw new Error('INVALID_CANDIDATE_KEY');
-  
-  const kind = match[1].toUpperCase();
-  const key = match[2];
-  
-  if (kind !== 'CANDIDATE') {
-    throw new Error('ONLY_OBSERVATIONS_CAN_BE_PROMOTED');
-  }
-  
-  const observation = db.prepare('SELECT * FROM cyber_asset_observations WHERE id = ?').get(key);
+function requireObservation(db, candidateKey) {
+  const resolved = resolveProtectedAlias(db, candidateKey);
+  if (!resolved || resolved.kind !== 'CANDIDATE') throw new Error('INVALID_CANDIDATE_KEY');
+  const observation = db.prepare('SELECT * FROM cyber_asset_observations WHERE id = ?').get(resolved.id);
   if (!observation) throw new Error('OBSERVATION_NOT_FOUND');
-  
-  // Check if already linked to an asset
-  const existingLink = db.prepare('SELECT asset_id FROM cyber_asset_observation_links WHERE observation_id = ? AND decision_status = \'ACCEPTED\'').get(observation.id);
-  if (existingLink) {
-    throw new Error('OBSERVATION_ALREADY_LINKED');
-  }
-  
-  const now = new Date().toISOString();
+  return observation;
+}
+
+function promoteObservationToAsset(db, decisionsDb, candidateKey, body, actorId) {
+  const observation = requireObservation(db, candidateKey);
+  if (getDecisionByObservationId(decisionsDb, observation.id)) throw new Error('OBSERVATION_ALREADY_LINKED');
+
   const assetId = `asset_${crypto.randomBytes(8).toString('hex')}`;
-  
-  // Create the asset
   const assetClass = body.assetClass || 'OTHER';
   const criticality = body.criticality || 'MEDIUM';
   const canonicalName = body.canonicalName || `Activo promovido ${observation.id.slice(-8).toUpperCase()}`;
-  
-  db.prepare(`
-    INSERT INTO cyber_assets (id, canonical_name, asset_class, criticality, lifecycle_status, reconciliation_status, created_at, updated_at)
-    VALUES (?, ?, ?, ?, 'CONFIRMED_ACTIVE', 'HUMAN_VERIFIED', ?, ?)
-  `).run(
-    assetId,
-    canonicalName,
-    assetClass,
-    criticality,
-    now,
-    now
-  );
-  
-  // Link observation to asset
-  db.prepare(`
-    INSERT INTO cyber_asset_observation_links (observation_id, asset_id, link_method, confidence, decision_status, decided_at, decided_by, reason)
-    VALUES (?, ?, 'HUMAN_DECISION', 1.0, 'ACCEPTED', ?, ?, ?)
-  `).run(observation.id, assetId, new Date().toISOString(), actorId, 'Promovido manualmente desde inventario');
-  
-  // Update observation with link
-  db.prepare('UPDATE cyber_asset_observations SET updated_at = ? WHERE id = ?').run(new Date().toISOString(), observation.id);
-  
-  // Create identifiers from observation
-  if (observation.mac_value) {
-    db.prepare(`
-      INSERT INTO cyber_asset_identifiers (id, asset_id, identifier_type, normalized_value, display_value_masked, valid_from, confidence, verification_status, is_locally_administered, created_at, updated_at)
-      VALUES (?, ?, 'MAC', ?, ?, ?, 1.0, 'HUMAN_VERIFIED', ?, ?, ?)
-    `).run(
-      `ident_${crypto.randomBytes(8).toString('hex')}`,
-      assetId,
-      observation.mac_value.toLowerCase(),
-      observation.mac_value,
-      new Date().toISOString(),
-      observation.mac_value.startsWith('02:') || observation.mac_value.startsWith('06:') || observation.mac_value.startsWith('0a:') ? 1 : 0,
-      new Date().toISOString(),
-      new Date().toISOString()
-    );
-  }
-  
-  if (observation.ip_value) {
-    db.prepare(`
-      INSERT INTO cyber_asset_identifiers (id, asset_id, identifier_type, normalized_value, display_value_masked, valid_from, confidence, verification_status, created_at, updated_at)
-      VALUES (?, ?, 'IPV4', ?, ?, ?, 1.0, 'CORROBORATED', ?, ?)
-    `).run(
-      `ident_${crypto.randomBytes(8).toString('hex')}`,
-      assetId,
-      observation.ip_value,
-      observation.ip_value,
-      new Date().toISOString(),
-      new Date().toISOString(),
-      new Date().toISOString()
-    );
-  }
-  
-  if (observation.hostname_raw) {
-    db.prepare(`
-      INSERT INTO cyber_asset_identifiers (id, asset_id, identifier_type, normalized_value, display_value_masked, valid_from, confidence, verification_status, created_at, updated_at)
-      VALUES (?, ?, 'HOSTNAME', ?, ?, ?, 0.8, 'CORROBORATED', ?, ?)
-    `).run(
-      `ident_${crypto.randomBytes(8).toString('hex')}`,
-      assetId,
-      observation.hostname_raw.toLowerCase(),
-      observation.hostname_raw,
-      new Date().toISOString(),
-      new Date().toISOString(),
-      new Date().toISOString()
-    );
-  }
-  
-  // Update observation with link info
-  db.prepare('UPDATE cyber_asset_observations SET updated_at = ? WHERE id = ?').run(new Date().toISOString(), observation.id);
-  
-  return {
-    success: true,
-    assetId,
-    message: 'Observación promovida a activo canónico exitosamente',
-  };
+  // Nota libre del humano que promueve (decisión del usuario 2026-09-16: "este equipo lo
+  // instalé recientemente para nuestro servidor openvas de prueba piloto").
+  const note = cleanNote(body.note);
+
+  saveDecision(decisionsDb, {
+    observationId: observation.id, assetId, decision: 'PROMOTED',
+    canonicalName, assetClass, criticality,
+    macValue: observation.mac_value, ipValue: observation.ip_value, hostnameRaw: observation.hostname_raw,
+    note, decidedBy: actorId,
+  });
+
+  return { success: true, assetId, message: 'Observación promovida a activo canónico exitosamente' };
 }
 
-function markObservationAsConflict(db, candidateKey, body, actorId) {
-  const match = candidateKey.match(/^(candidate|canonical|segment)\s+(.+)$/);
-  if (!match) throw new Error('INVALID_CANDIDATE_KEY');
-  
-  const kind = match[1].toUpperCase();
-  const key = match[2];
-  
-  if (kind !== 'CANDIDATE') {
-    throw new Error('ONLY_OBSERVATIONS_CAN_BE_MARKED_AS_CONFLICT');
-  }
-  
-  const observation = db.prepare('SELECT * FROM cyber_asset_observations WHERE id = ?').get(key);
-  if (!observation) throw new Error('OBSERVATION_NOT_FOUND');
-  
-  // Update the analysis with conflict action
-  const now = new Date().toISOString();
-  const analysisRunId = `analysis_${crypto.randomBytes(8).toString('hex')}`;
-  
-  // Create analysis run if not exists
-  const existingRun = db.prepare('SELECT id FROM cyber_inventory_analysis_runs WHERE snapshot_id = (SELECT snapshot_id FROM cyber_asset_observations WHERE id = ?) AND completed_at = (SELECT MAX(completed_at) FROM cyber_inventory_analysis_runs WHERE snapshot_id = (SELECT snapshot_id FROM cyber_asset_observations WHERE id = ?))').get(observation.id, observation.id);
-  
-  let runId = existingRun?.id;
-  if (!runId) {
-    runId = `analysis_${crypto.randomBytes(8).toString('hex')}`;
-    db.prepare(`
-      INSERT INTO cyber_inventory_analysis_runs (id, snapshot_id, policy_version, completed_at, status)
-      VALUES (?, (SELECT snapshot_id FROM cyber_asset_observations WHERE id = ?), 'inventory-confidence-v2', ?, 'COMPLETED')
-    `).run(runId, observation.id, new Date().toISOString());
-  }
-  
-  // Insert or update analysis item
-  db.prepare(`
-    INSERT INTO cyber_inventory_analysis_items (id, analysis_run_id, observation_id, provisional_asset_class, identity_strength, proposed_action, confidence, reason_codes_json)
-    VALUES (?, ?, ?, 'OTHER', 'LOW', 'CONFLICT_REVIEW', 0.5, '["MANUAL_CONFLICT"]')
-    ON CONFLICT(analysis_run_id, observation_id) DO UPDATE SET
-      proposed_action = 'CONFLICT_REVIEW',
-      identity_strength = 'LOW',
-      confidence = 0.5,
-      reason_codes_json = '["MANUAL_CONFLICT"]'
-  `).run(`item_${crypto.randomBytes(8).toString('hex')}`, runId, observation.id);
-  
-  // Update observation
-  db.prepare('UPDATE cyber_asset_observations SET updated_at = ? WHERE id = ?').run(new Date().toISOString(), observation.id);
-  
-  return {
-    success: true,
-    message: 'Observación marcada como conflicto para revisión',
-  };
+function markObservationAsConflict(db, decisionsDb, candidateKey, body, actorId) {
+  const observation = requireObservation(db, candidateKey);
+  const note = cleanNote(body?.note);
+
+  saveDecision(decisionsDb, {
+    observationId: observation.id, assetId: `decision_${crypto.randomBytes(8).toString('hex')}`, decision: 'CONFLICT',
+    macValue: observation.mac_value, ipValue: observation.ip_value, hostnameRaw: observation.hostname_raw,
+    note, decidedBy: actorId || 'verified-superadmin',
+  });
+
+  return { success: true, message: 'Observación marcada como conflicto para revisión' };
 }
 
-function markObservationAsProtected(db, candidateKey, body, actorId) {
-  const match = candidateKey.match(/^(candidate|canonical|segment)\s+(.+)$/);
-  if (!match) throw new Error('INVALID_CANDIDATE_KEY');
-  
-  const kind = match[1].toUpperCase();
-  const key = match[2];
-  
-  if (kind !== 'CANDIDATE') {
-    throw new Error('ONLY_OBSERVATIONS_CAN_BE_PROTECTED');
-  }
-  
-  const observation = db.prepare('SELECT * FROM cyber_asset_observations WHERE id = ?').get(key);
-  if (!observation) throw new Error('OBSERVATION_NOT_FOUND');
-  
-  // Create a protected target asset
+function markObservationAsProtected(db, decisionsDb, candidateKey, body, actorId) {
+  const observation = requireObservation(db, candidateKey);
+  if (getDecisionByObservationId(decisionsDb, observation.id)) throw new Error('OBSERVATION_ALREADY_LINKED');
+
   const assetId = `asset_${crypto.randomBytes(8).toString('hex')}`;
-  const now = new Date().toISOString();
-  const canonicalName = `Objetivo protegido ${observation.id.slice(-8).toUpperCase()}`;
-  
-  db.prepare(`
-    INSERT INTO cyber_assets (id, canonical_name, asset_class, criticality, lifecycle_status, reconciliation_status, created_at, updated_at)
-    VALUES (?, ?, 'OTHER', 'HIGH', 'CONFIRMED_ACTIVE', 'HUMAN_VERIFIED', ?, ?)
-  `).run(
-    assetId,
-    canonicalName,
-    now,
-    now
-  );
-  
-  // Link observation to protected asset
-  db.prepare(`
-    INSERT INTO cyber_asset_observation_links (observation_id, asset_id, link_method, confidence, decision_status, decided_at, decided_by, reason)
-    VALUES (?, ?, 'HUMAN_DECISION', 1.0, 'ACCEPTED', ?, ?, ?)
-  `).run(observation.id, assetId, new Date().toISOString(), actorId, 'Marcado como objetivo protegido');
-  
-  // Update observation
-  db.prepare('UPDATE cyber_asset_observations SET updated_at = ? WHERE id = ?').run(new Date().toISOString(), observation.id);
-  
-  return {
-    success: true,
-    assetId,
-    message: 'Observación marcada como objetivo protegido',
-  };
+  const canonicalName = body?.canonicalName || `Objetivo protegido ${observation.id.slice(-8).toUpperCase()}`;
+  const note = cleanNote(body?.note);
+
+  saveDecision(decisionsDb, {
+    observationId: observation.id, assetId, decision: 'PROTECTED',
+    canonicalName, assetClass: 'OTHER', criticality: 'HIGH',
+    macValue: observation.mac_value, ipValue: observation.ip_value, hostnameRaw: observation.hostname_raw,
+    note, decidedBy: actorId,
+  });
+
+  return { success: true, assetId, message: 'Observación marcada como objetivo protegido' };
 }
 
-function getObservationDetail(db, candidateKey) {
-  const match = candidateKey.match(/^(candidate|canonical|segment)\s+(.+)$/);
-  if (!match) return null;
-  
-  const kind = match[1].toUpperCase();
-  const key = match[2];
-  
-  if (kind === 'CANONICAL') {
-    const asset = db.prepare('SELECT * FROM cyber_assets WHERE id = ?').get(key);
-    if (!asset) return null;
-    return {
-      kind: 'CANONICAL',
-      id: asset.id,
-      label: `Activo canónico ${asset.id.slice(-8).toUpperCase()}`,
-      canonicalName: asset.canonical_name,
-      assetClass: asset.asset_class,
-      criticality: asset.criticality,
-      lifecycleStatus: asset.lifecycle_status,
-      reconciliationStatus: asset.reconciliation_status,
-      createdAt: asset.created_at,
-      updatedAt: asset.updated_at,
-      reviewedAt: asset.reviewed_at,
-      reviewedBy: asset.reviewed_by,
-      reviewReason: asset.review_reason,
-    };
+// Pedido del usuario 2026-09-16: "podemos ignorar los identificados de las redes wifi y
+// agregar un botón de ignorar para otros activos irrelevantes" -- la exclusión de WiFi es
+// automática (ver onWifiSegment en listInventoryCandidates), esto cubre el resto: un humano
+// descarta a mano un falso positivo de "Requiere atención" sin tener que promoverlo/protegerlo.
+// Igual que promote/protect, no se puede ignorar algo ya promovido/protegido por accidente
+// (saveDecision hace upsert, así que sin este guard se perdería la decisión anterior).
+function markObservationAsIgnored(db, decisionsDb, candidateKey, body, actorId) {
+  const observation = requireObservation(db, candidateKey);
+  const existing = getDecisionByObservationId(decisionsDb, observation.id);
+  if (existing && (existing.decision === 'PROMOTED' || existing.decision === 'PROTECTED')) {
+    throw new Error('OBSERVATION_ALREADY_LINKED');
   }
-  
-  if (kind === 'CANDIDATE') {
-    const observation = db.prepare('SELECT * FROM cyber_asset_observations WHERE id = ?').get(key);
-    if (!observation) return null;
-    
-    const analysis = db.prepare(`
-      SELECT item.* FROM cyber_inventory_analysis_items item
-      JOIN cyber_inventory_analysis_runs run ON run.id = item.analysis_run_id
-      WHERE item.observation_id = ?
-      ORDER BY run.completed_at DESC LIMIT 1
-    `).get(observation.id);
-    
-    return {
-      kind: 'OBSERVATION',
-      id: observation.id,
-      label: `Activo observado ${observation.id.slice(-8).toUpperCase()}`,
-      source: observation.source_system_id ? 'FORTIGATE' : 'UNKNOWN',
-      observedAt: observation.observed_at,
-      ingestedAt: observation.ingested_at,
-      segmentId: observation.segment_id,
-      ipValue: observation.ip_value,
-      macValue: observation.mac_value,
-      hostnameRaw: observation.hostname_raw,
-      manufacturer: observation.manufacturer,
-      osFamily: observation.os_family,
-      osVersion: observation.os_version,
-      deviceClassRaw: observation.device_class_raw,
-      firstSeenSourceAt: observation.first_seen_source_at,
-      lastSeenSourceAt: observation.last_seen_source_at,
-      sourceSeenSeconds: observation.source_seen_seconds,
-      attributeConfidence: JSON.parse(observation.attribute_confidence_json || '{}'),
-      qualityFlags: JSON.parse(observation.quality_flags_json || '[]'),
-      sanitizedAttributes: JSON.parse(observation.sanitized_attributes_json || '{}'),
-      analysis: analysis ? {
-        provisionalAssetClass: analysis.provisional_asset_class,
-        identityStrength: analysis.identity_strength,
-        proposedAction: analysis.proposed_action,
-        confidence: analysis.confidence,
-        reasonCodes: JSON.parse(analysis.reason_codes_json || '[]'),
-      } : null,
-    };
-  }
-  
-  return null;
+  const note = cleanNote(body?.note);
+
+  saveDecision(decisionsDb, {
+    observationId: observation.id, assetId: `decision_${crypto.randomBytes(8).toString('hex')}`, decision: 'IGNORED',
+    macValue: observation.mac_value, ipValue: observation.ip_value, hostnameRaw: observation.hostname_raw,
+    note, decidedBy: actorId || 'verified-superadmin',
+  });
+
+  return { success: true, message: 'Observación marcada como irrelevante e ignorada' };
 }
 
 module.exports = {
   promoteObservationToAsset,
   markObservationAsConflict,
+  markObservationAsIgnored,
   markObservationAsProtected,
   getObservationDetail,
 };

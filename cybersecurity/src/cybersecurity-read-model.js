@@ -1,5 +1,9 @@
 const crypto = require('node:crypto');
 const { assessInventoryCandidate } = require('./inventory-confidence-policy');
+const { computeReliabilityScore, detectAntivirusGap, detectDeviceGroups } = require('./inventory-reliability');
+const { listDecisions } = require('./inventory-decision-store');
+const { listPolicies } = require('./network-policy-store');
+const { ipv4ToNumber } = require('./network-math');
 
 const CLOSED_STATUSES = new Set(['VERIFIED', 'CLOSED']);
 const ALLOWED_PRIORITIES = new Set(['P1', 'P2', 'P3', 'P4']);
@@ -10,11 +14,65 @@ const ALLOWED_STATUSES = new Set([
 const ALLOWED_INVENTORY_SOURCES = new Set(['FORTIGATE', 'KASPERSKY', 'GREENBONE', 'CANONICAL']);
 const ALLOWED_INVENTORY_STATES = new Set([
   'NEW_ASSET_REVIEW', 'EPHEMERAL_REVIEW', 'CONFLICT_REVIEW',
-  'INSUFFICIENT_EVIDENCE', 'PROTECTED_TARGET', 'CANONICAL',
+  'INSUFFICIENT_EVIDENCE', 'PROTECTED_TARGET', 'CANONICAL', 'IGNORED',
 ]);
+// Segmentos ya clasificados en Subredes como WiFi corporativo/invitados (network-policy-store.js,
+// networkFunction) -- pedido del usuario 2026-09-16: "podemos ignorar los identificados de las
+// redes wifi" en "Requiere atención" (ruido DHCP/MAC aleatoria ya despriorizado 2026-09-15).
+const WIFI_NETWORK_FUNCTIONS = new Set(['CORPORATE_WIFI', 'GUEST_WIFI']);
 
 function safeJson(value, fallback) {
   try { return JSON.parse(value); } catch { return fallback; }
+}
+
+// Hallazgo del usuario 2026-09-17: dos impresoras de la red administrativa (10.2.2.x) aparecían
+// clasificadas en VLAN_Auditoria/VLAN_Comercial -- redes con un CIDR completamente distinto
+// (10.2.14.0/26 y 10.2.12.0/26). Causa raíz en fortigate-importer.js: cuando la IP observada de
+// un dispositivo no coincide con NINGUNA ruta de la interfaz que reportó, el importador igual le
+// asignaba el segmento de esa interfaz con tal de que tuviera una sola ruta conocida -- en vez
+// de dejarlo sin segmento. Verificado contra los datos reales: **187 de 826 observaciones de
+// FortiGate (22.6%) tenían un segment_id cuyo CIDR real NO contiene su propia IP.** Las
+// observaciones son append-only (no se pueden corregir en la tabla, ver inventory-actions.js),
+// así que se valida y corrige en el momento de leer: se busca entre TODOS los segmentos
+// conocidos cuál CIDR realmente contiene la IP, en vez de confiar ciegamente en segment_id.
+// canonical_name es la única columna con el CIDR en texto plano ("<interfaz> · <cidr>",
+// fortigate-importer.js) -- cidr_encrypted/cidr_fingerprint no son reversibles por diseño.
+function parseCidrFromSegmentName(canonicalName) {
+  const match = String(canonicalName || '').match(/([\d.]+)\/(\d{1,2})$/);
+  if (!match) return null;
+  const network = ipv4ToNumber(match[1]);
+  const prefixLength = Number(match[2]);
+  if (network === null || prefixLength < 0 || prefixLength > 32) return null;
+  return { network, prefixLength };
+}
+
+function cidrContainsIp(parsed, ip) {
+  if (!parsed) return false;
+  const address = ipv4ToNumber(ip);
+  if (address === null) return false;
+  const mask = parsed.prefixLength === 0 ? 0 : (0xffffffff << (32 - parsed.prefixLength)) >>> 0;
+  return (parsed.network & mask) === (address & mask);
+}
+
+function buildSegmentCidrIndex(db) {
+  return db.prepare('SELECT id, canonical_name FROM cyber_network_segments').all()
+    .map((row) => ({ id: row.id, parsed: parseCidrFromSegmentName(row.canonical_name) }))
+    .filter((row) => row.parsed);
+}
+
+// Devuelve { segmentId, corrected } -- corrected=true cuando el segment_id guardado en la
+// observación no coincidía con su propia IP y se reemplazó por el segmento correcto encontrado
+// (o null si ninguno coincide). Sin IP no hay forma de validar/corregir nada: se respeta lo
+// guardado tal cual.
+function resolveTrueSegmentId(segmentCidrIndex, storedSegmentId, ip) {
+  if (!ip) return { segmentId: storedSegmentId, corrected: false };
+  const stored = storedSegmentId ? segmentCidrIndex.find((row) => row.id === storedSegmentId) : null;
+  if (stored && cidrContainsIp(stored.parsed, ip)) return { segmentId: storedSegmentId, corrected: false };
+  let best = null;
+  for (const row of segmentCidrIndex) {
+    if (cidrContainsIp(row.parsed, ip) && (!best || row.parsed.prefixLength > best.parsed.prefixLength)) best = row;
+  }
+  return { segmentId: best ? best.id : null, corrected: (best?.id || null) !== storedSegmentId };
 }
 
 function assetAlias(row) {
@@ -28,7 +86,34 @@ function protectedAlias(prefix, value) {
   return `${prefix} ${suffix}`;
 }
 
-function getInventoryOverview(db) {
+// `protectedAlias` es de un solo sentido (SHA-256 truncado a 8 hex): no hay forma de
+// decodificar el id real algebraicamente. inventory-actions.js necesitaba el id real detrás
+// de un alias de "candidate"/"canonical" (para ver detalle, promover, marcar conflicto o
+// protegido) y lo intentaba extraer con una regex sobre el propio alias -- nunca funcionó,
+// porque el alias solo contiene el hash, no el id original. La única forma correcta es
+// recorrer el universo correspondiente y volver a calcular el alias hasta encontrar el que
+// coincide (barato: unos pocos miles de filas como mucho).
+function resolveProtectedAlias(db, alias) {
+  const match = String(alias || '').match(/^(candidate|canonical)\s+([A-F0-9]{8})$/i);
+  if (!match) return null;
+  const kind = match[1].toLowerCase();
+  const target = `${kind} ${match[2].toUpperCase()}`;
+  if (kind === 'canonical') {
+    const row = db.prepare('SELECT id FROM cyber_assets').all()
+      .find((r) => protectedAlias('canonical', r.id) === target);
+    return row ? { kind: 'CANONICAL', id: row.id } : null;
+  }
+  const observation = db.prepare('SELECT id FROM cyber_asset_observations').all()
+    .find((r) => protectedAlias('candidate', r.id) === target);
+  if (observation) return { kind: 'CANDIDATE', id: observation.id };
+  // Objetivo protegido (Greenbone): el id de "candidato" sale de target_key, no de una
+  // observación -- ver el UNION ALL de listInventoryCandidates más abajo.
+  const finding = db.prepare('SELECT DISTINCT target_key FROM cyber_vulnerability_findings').all()
+    .find((r) => protectedAlias('candidate', r.target_key) === target);
+  return finding ? { kind: 'PROTECTED_TARGET', id: finding.target_key } : null;
+}
+
+function getInventoryOverview(db, decisionsDb = null) {
   const canonical = db.prepare('SELECT count(*) count FROM cyber_assets').get().count;
   const observations = db.prepare(`
     WITH latest AS (
@@ -52,12 +137,41 @@ function getInventoryOverview(db) {
     FROM cyber_vulnerability_findings f
     JOIN cyber_source_snapshots s ON s.id = f.snapshot_id
   `).get();
-  const review = db.prepare(`
-    SELECT count(*) total,
-      COALESCE(sum(CASE WHEN proposed_action = 'CONFLICT_REVIEW' THEN 1 ELSE 0 END), 0) conflicts,
-      COALESCE(sum(CASE WHEN identity_strength = 'INSUFFICIENT' THEN 1 ELSE 0 END), 0) insufficient
-    FROM cyber_inventory_analysis_items
-  `).get();
+  // Contar sobre TODA cyber_inventory_analysis_items (sin filtrar por snapshot) sumaba también
+  // los análisis de capturas de FortiGate/Kaspersky ya superadas por una reimportación más
+  // reciente -- invisible mientras solo existió un snapshot por fuente; con la segunda
+  // reimportación de FortiGate (2026-09-15) los conflictos aparecían duplicados (417 de la
+  // captura vieja + 404 de la nueva = 821). Se limita a las observaciones del snapshot más
+  // reciente por fuente, igual que ya hacen listInventoryCandidates/listNetworkSegments.
+  const analysisRows = db.prepare(`
+    WITH latest AS (
+      SELECT source_system_id, max(captured_at) captured_at
+      FROM cyber_source_snapshots WHERE processing_status = 'SUCCESS'
+      GROUP BY source_system_id
+    )
+    SELECT item.observation_id observationId, item.proposed_action proposedAction,
+      item.identity_strength identityStrength
+    FROM cyber_inventory_analysis_items item
+    JOIN cyber_asset_observations o ON o.id = item.observation_id
+    JOIN cyber_source_snapshots s ON s.id = o.snapshot_id
+    JOIN latest l ON l.source_system_id = s.source_system_id AND l.captured_at = s.captured_at
+  `).all();
+  // canonicalAssets/pendingReview/conflicts contaban solo lo que vive en cyber-inventory.db
+  // (de solo lectura -- ver inventory-decision-store.js) y nunca se movían al promover/marcar
+  // conflicto desde decisionsDb. Un candidato promovido o protegido ya no es "pendiente" y sí
+  // es un activo canónico; uno marcado en conflicto a mano cuenta como conflicto aunque el
+  // análisis automático original no lo hubiera detectado, y uno ya promovido dejó de serlo.
+  const decisions = listDecisions(decisionsDb);
+  const promotedOrProtectedIds = new Set(
+    decisions.filter((d) => d.decision === 'PROMOTED' || d.decision === 'PROTECTED').map((d) => d.observation_id),
+  );
+  const conflictObservationIds = new Set(analysisRows.filter((r) => r.proposedAction === 'CONFLICT_REVIEW').map((r) => r.observationId));
+  decisions.filter((d) => d.decision === 'CONFLICT').forEach((d) => conflictObservationIds.add(d.observation_id));
+  promotedOrProtectedIds.forEach((id) => conflictObservationIds.delete(id));
+  const review = {
+    conflicts: conflictObservationIds.size,
+    insufficient: analysisRows.filter((r) => r.identityStrength === 'INSUFFICIENT').length,
+  };
   const sourceCoverage = observations.map((row) => ({
     source: row.source, candidates: row.candidates, capturedAt: row.capturedAt, status: row.status,
   }));
@@ -66,14 +180,14 @@ function getInventoryOverview(db) {
     capturedAt: greenbone.capturedAt, status: greenbone.status,
   });
   const observedCandidates = observations.reduce((sum, row) => sum + row.candidates, 0);
-  const assessed = listInventoryCandidates(db, { limit: 1 }).assessmentSummary;
+  const assessed = listInventoryCandidates(db, { limit: 1 }, decisionsDb).assessmentSummary;
   return {
     generatedAt: new Date().toISOString(),
     totals: {
       observedCandidates,
       protectedTargets: greenbone.candidates,
-      canonicalAssets: canonical,
-      pendingReview: observedCandidates + greenbone.candidates,
+      canonicalAssets: canonical + promotedOrProtectedIds.size,
+      pendingReview: observedCandidates + greenbone.candidates - promotedOrProtectedIds.size,
       conflicts: review.conflicts,
       insufficientEvidence: review.insufficient,
       findings: greenbone.findings,
@@ -87,7 +201,7 @@ function getInventoryOverview(db) {
   };
 }
 
-function listInventoryCandidates(db, filters = {}) {
+function listInventoryCandidates(db, filters = {}, decisionsDb = null, policyDb = null) {
   if (filters.source && !ALLOWED_INVENTORY_SOURCES.has(filters.source)) {
     throw new Error('INVALID_INVENTORY_SOURCE_FILTER');
   }
@@ -119,7 +233,9 @@ function listInventoryCandidates(db, filters = {}) {
            COALESCE(a.proposed_action, 'NEW_ASSET_REVIEW') state,
            COALESCE(a.identity_strength, 'INSUFFICIENT') identityStrength,
            COALESCE(a.confidence, 0) confidence, o.quality_flags_json qualityFlags,
-           COALESCE(a.reason_codes_json, '[]') reasonCodes, 0 findingCount, 0 maxSeverity
+           COALESCE(a.reason_codes_json, '[]') reasonCodes, 0 findingCount, 0 maxSeverity,
+           o.source_seen_seconds sourceSeenSeconds, o.hostname_raw hostnameRaw,
+           o.mac_value macValue, o.ip_value ipValue, o.segment_id segmentId
     FROM cyber_asset_observations o
     JOIN cyber_source_snapshots s ON s.id = o.snapshot_id
     JOIN cyber_source_systems source ON source.id = s.source_system_id
@@ -131,35 +247,131 @@ function listInventoryCandidates(db, filters = {}) {
            NULL, NULL, NULL, 'OTHER', 'PROTECTED_TARGET',
            CASE WHEN min(f.qod) >= 70 THEN 'MEDIUM' ELSE 'LOW' END,
            CASE WHEN min(f.qod) >= 70 THEN 0.70 ELSE 0.40 END,
-           '[]', '[]', count(*), max(f.severity)
+           '[]', '[]', count(*), max(f.severity), NULL, NULL, NULL, NULL, NULL
     FROM cyber_vulnerability_findings f GROUP BY f.target_key
     UNION ALL
     SELECT 'CANONICAL', a.id, 'CANONICAL', a.updated_at, NULL, NULL, NULL, NULL,
            a.asset_class, 'CANONICAL', 'MEDIUM', 1.0, '[]', '[]',
            (SELECT count(*) FROM cyber_vulnerability_findings f WHERE f.asset_id = a.id),
-           COALESCE((SELECT max(f.severity) FROM cyber_vulnerability_findings f WHERE f.asset_id = a.id), 0)
+           COALESCE((SELECT max(f.severity) FROM cyber_vulnerability_findings f WHERE f.asset_id = a.id), 0),
+           NULL, NULL, NULL, NULL, NULL
     FROM cyber_assets a
   `).all();
-  const filtered = rows.filter((row) => (!filters.source || row.source === filters.source)
+  // Promover/proteger/marcar conflicto ya no escriben en cyber-inventory.db (es de solo lectura
+  // en producción -- ver hallazgo en inventory-decision-store.js); las decisiones humanas viven
+  // en decisionsDb y se superponen aquí sobre la observación original ANTES de filtrar por
+  // estado, para que "state=CANONICAL" encuentre los promovidos/protegidos igual que si de
+  // verdad vivieran en cyber_assets. El id se mantiene con el prefijo "candidate" (no
+  // "canonical") a propósito: es el mismo alias que ya usa getObservationDetail para estas
+  // decisiones, y cambiarlo rompería el enlace lista -> detalle.
+  const decisionsByObservationId = new Map(
+    listDecisions(decisionsDb).map((decision) => [decision.observation_id, decision]),
+  );
+  // Segmentos WiFi ya clasificados en Subredes (networkFunction CORPORATE_WIFI/GUEST_WIFI) --
+  // se resuelve una sola vez por request (39 segmentos, ~50 políticas: barato) en vez de por
+  // candidato. El id de política se calcula igual que en /admin/network-segments
+  // (protectedAlias('segment', segment.id)) para poder cruzarlo contra listPolicies().
+  const policiesBySegmentAlias = new Map(listPolicies(policyDb).map((policy) => [policy.id, policy]));
+  const networkSegmentIds = db.prepare('SELECT id FROM cyber_network_segments').all().map((segment) => segment.id);
+  const wifiSegmentIds = new Set(
+    networkSegmentIds.filter((segmentId) => WIFI_NETWORK_FUNCTIONS.has(policiesBySegmentAlias.get(protectedAlias('segment', segmentId))?.networkFunction)),
+  );
+  // Un segmento con política ya aplicada en Subredes no "requiere clasificación" -- pero
+  // assessInventoryCandidate() no sabe nada de Subredes, así que siempre agregaba
+  // NETWORK_SEGMENT_REQUIRES_CLASSIFICATION y networkProfile=SEGMENT_POLICY_REQUIRED para
+  // CUALQUIER observación de FortiGate, incluso una ya clasificada (ej. VLAN_Informatica, IP
+  // 10.2.2.70) -- hallazgo del usuario 2026-09-17 al ver ese aviso junto al nombre real de la
+  // subred en el mismo panel. Se corrige después del cálculo, con la misma info de políticas
+  // que ya se resuelve arriba para el filtro de WiFi.
+  const classifiedSegmentIds = new Set(
+    networkSegmentIds.filter((segmentId) => policiesBySegmentAlias.has(protectedAlias('segment', segmentId))),
+  );
+  // Corrige segment_id contra la IP real de cada observación antes de cualquier otro cálculo
+  // (WiFi, clasificación) -- ver hallazgo 2026-09-17 en parseCidrFromSegmentName/
+  // resolveTrueSegmentId arriba: 187 de 826 observaciones de FortiGate (22.6%) tenían un
+  // segment_id cuyo CIDR real no contenía su propia IP.
+  const segmentCidrIndex = buildSegmentCidrIndex(db);
+  const rowsWithCorrectSegment = rows.map((row) => {
+    if (row.kind !== 'OBSERVATION' || row.source !== 'FORTIGATE') return row;
+    const { segmentId, corrected } = resolveTrueSegmentId(segmentCidrIndex, row.segmentId, row.ipValue);
+    return corrected ? { ...row, segmentId, segmentCorrected: true } : row;
+  });
+  const rowsWithWifiFlag = rowsWithCorrectSegment.map((row) => ({ ...row, onWifiSegment: wifiSegmentIds.has(row.segmentId) }));
+  const overlaidRows = rowsWithWifiFlag.map((row) => {
+    if (row.kind !== 'OBSERVATION') return row;
+    const decision = decisionsByObservationId.get(row.candidateKey);
+    if (!decision) return row;
+    if (decision.decision === 'PROMOTED' || decision.decision === 'PROTECTED') {
+      return {
+        ...row,
+        kind: 'CANONICAL',
+        aliasPrefix: 'candidate',
+        state: 'CANONICAL',
+        assetClass: decision.asset_class || row.assetClass,
+        canonicalName: decision.canonical_name,
+        reviewedAt: decision.decided_at,
+        reviewedBy: decision.decided_by,
+        reviewReason: decision.note,
+      };
+    }
+    if (decision.decision === 'CONFLICT') {
+      return { ...row, state: 'CONFLICT_REVIEW', decisionNote: decision.note };
+    }
+    // Ignorado a mano (botón "Ignorar", pedido del usuario 2026-09-16): sale de "Requiere
+    // atención" aunque el análisis automático original lo hubiera marcado.
+    if (decision.decision === 'IGNORED') {
+      return { ...row, state: 'IGNORED', decisionNote: decision.note };
+    }
+    return row;
+  });
+  const filtered = overlaidRows.filter((row) => (!filters.source || row.source === filters.source)
     && (!filters.state || row.state === filters.state));
-  const assessed = filtered.map((row) => assessInventoryCandidate({
-    ...row,
-    qualityFlags: safeJson(row.qualityFlags, []),
-    reasonCodes: safeJson(row.reasonCodes, []),
-  }));
+  const assessed = filtered.map((row) => {
+    const result = assessInventoryCandidate({
+      ...row,
+      qualityFlags: safeJson(row.qualityFlags, []),
+      reasonCodes: safeJson(row.reasonCodes, []),
+    });
+    if (row.segmentId && classifiedSegmentIds.has(row.segmentId)) {
+      return {
+        ...result,
+        networkProfile: result.networkProfile === 'SEGMENT_POLICY_REQUIRED' ? 'SEGMENT_CLASSIFIED' : result.networkProfile,
+        reasonCodes: result.reasonCodes.filter((code) => code !== 'NETWORK_SEGMENT_REQUIRES_CLASSIFICATION'),
+      };
+    }
+    return result;
+  });
   const assessmentSummary = assessed.reduce((summary, row) => {
     summary[row.lifecycleStatus] = (summary[row.lifecycleStatus] || 0) + 1;
     summary[row.networkProfile] = (summary[row.networkProfile] || 0) + 1;
     return summary;
   }, {});
+  // Índice de confiabilidad (ver src/inventory-reliability.js): solo tiene sentido para
+  // observaciones reales (FortiGate/Kaspersky), no para hallazgos de Greenbone ni activos ya
+  // canónicos. Se calcula sobre TODO el conjunto filtrado (no solo la página visible) para que
+  // "mismo equipo, varias tarjetas de red" agrupe aunque sus observaciones caigan en páginas
+  // distintas.
+  const observationRows = assessed.filter((row) => row.kind === 'OBSERVATION');
+  const deviceGroups = detectDeviceGroups(observationRows.map((row) => ({ id: row.candidateKey, hostnameRaw: row.hostnameRaw, macValue: row.macValue, ipValue: row.ipValue })));
+  const crossMatched = getCrossSourceMatchedObservationIds(db);
+  const withReliability = assessed.map((row) => {
+    if (row.kind !== 'OBSERVATION') return row;
+    const hasCrossSourceMatch = crossMatched.has(row.candidateKey);
+    return {
+      ...row,
+      reliability: computeReliabilityScore(row, { hasCrossSourceMatch, deviceGroup: deviceGroups.get(row.candidateKey) || null }),
+      antivirusGapSuspected: detectAntivirusGap(row, { hasCrossSourceMatch }),
+    };
+  });
+  const antivirusGapCount = withReliability.filter((row) => row.antivirusGapSuspected).length;
   return {
     total: filtered.length,
-    assessmentSummary,
-    items: assessed.slice(offset, offset + limit).map(({ candidateKey, ...row }) => ({
+    assessmentSummary: { ...assessmentSummary, ANTIVIRUS_GAP_SUSPECTED: antivirusGapCount },
+    items: withReliability.slice(offset, offset + limit).map(({ candidateKey, segmentId, ...row }) => ({
       ...row,
-      id: protectedAlias(row.kind === 'CANONICAL' ? 'canonical' : 'candidate', candidateKey),
+      id: protectedAlias(row.aliasPrefix || (row.kind === 'CANONICAL' ? 'canonical' : 'candidate'), candidateKey),
       label: row.kind === 'CANONICAL'
-        ? protectedAlias('Activo canónico', candidateKey)
+        ? (row.canonicalName || protectedAlias('Activo canónico', candidateKey))
         : row.kind === 'PROTECTED_TARGET'
           ? protectedAlias('Objetivo protegido', candidateKey)
           : protectedAlias('Activo observado', candidateKey),
@@ -167,58 +379,181 @@ function listInventoryCandidates(db, filters = {}) {
   };
 }
 
-function listNetworkSegments(db, options = {}) {
-  const observations = db.prepare(`
+// Un match calculado contra un snapshot de FortiGate ya superado por una reimportación más
+// reciente queda "huérfano": el left_observation_id ya no corresponde a nada que
+// listInventoryCandidates/listNetworkSegments muestren hoy (ambos se limitan al snapshot más
+// reciente por fuente, igual que el fix de conflictos duplicados de 2026-09-15). Se limita cada
+// corrida de match a los pares de snapshots que SIGUEN siendo los más recientes de su fuente —
+// hallazgo 2026-09-16 al retomar el cruce FortiGate↔Kaspersky calculado el 29-ago: seguía
+// apuntando al FortiGate viejo tras la reimportación del 15-sep (56 coincidencias del run viejo
+// vs 49 del run fresco contra los 870 observados hoy).
+function getCurrentCrossMatchRunIds(db) {
+  return db.prepare(`
     WITH latest AS (
       SELECT source_system_id, max(captured_at) captured_at
       FROM cyber_source_snapshots WHERE processing_status = 'SUCCESS'
       GROUP BY source_system_id
     )
-    SELECT o.id observationId, o.segment_id segmentKey, segment.canonical_name interfaceName,
+    SELECT run.id
+    FROM cyber_cross_source_match_runs run
+    JOIN cyber_source_snapshots ls ON ls.id = run.left_snapshot_id
+    JOIN latest ll ON ll.source_system_id = ls.source_system_id AND ll.captured_at = ls.captured_at
+    JOIN cyber_source_snapshots rs ON rs.id = run.right_snapshot_id
+    JOIN latest rl ON rl.source_system_id = rs.source_system_id AND rl.captured_at = rs.captured_at
+  `).all().map((row) => row.id);
+}
+
+// Observaciones (de cualquier fuente) que ya se corroboraron contra otra fuente distinta —
+// cyber_cross_source_matches se calculaba (scripts/match-fortigate-ksc.js) pero nunca se leía
+// en ningún punto de la aplicación; ver hallazgo 2026-09-15.
+function getCrossSourceMatchedObservationIds(db) {
+  const runIds = getCurrentCrossMatchRunIds(db);
+  if (runIds.length === 0) return new Set();
+  const placeholders = runIds.map(() => '?').join(',');
+  const rows = db.prepare(`
+    SELECT left_observation_id id FROM cyber_cross_source_matches WHERE match_status = 'PROPOSED' AND match_run_id IN (${placeholders})
+    UNION
+    SELECT right_observation_id id FROM cyber_cross_source_matches WHERE match_status = 'PROPOSED' AND match_run_id IN (${placeholders})
+  `).all(...runIds, ...runIds);
+  return new Set(rows.map((row) => row.id));
+}
+
+// Un equipo Kaspersky nunca trae IP (el .ps1 que sube el inventario diario no lee esa columna
+// -- ver ciberseguridad-modulo.md, "falta validar si trae IP") así que jamás puede clasificarse
+// en una subred por sí solo. Si ya se corroboró contra un equipo FortiGate (PROPOSED, hostname
+// exacto + SO compatible), hereda la subred de su par -- decisión del usuario 2026-09-16:
+// "aplicar el cruce FortiGate↔Kaspersky ya calculado" para que dejen de verse sueltos sin red.
+function getKasperskyInheritedSegments(db) {
+  const runIds = getCurrentCrossMatchRunIds(db);
+  if (runIds.length === 0) return new Map();
+  const placeholders = runIds.map(() => '?').join(',');
+  const rows = db.prepare(`
+    SELECT m.right_observation_id kasperskyId, fo.segment_id segmentId, fo.ip_value ipValue
+    FROM cyber_cross_source_matches m
+    JOIN cyber_asset_observations fo ON fo.id = m.left_observation_id
+    WHERE m.match_status = 'PROPOSED' AND m.match_run_id IN (${placeholders})
+  `).all(...runIds);
+  // La observación de FortiGate corroborante puede tener el mismo segment_id mal asignado que
+  // el hallazgo del usuario 2026-09-17 (ver resolveTrueSegmentId) -- se corrige antes de que el
+  // equipo Kaspersky lo herede, si no heredaría la subred equivocada igual.
+  const segmentCidrIndex = buildSegmentCidrIndex(db);
+  const result = new Map();
+  for (const row of rows) {
+    const { segmentId } = resolveTrueSegmentId(segmentCidrIndex, row.segmentId, row.ipValue);
+    if (segmentId) result.set(row.kasperskyId, segmentId);
+  }
+  return result;
+}
+
+function listNetworkSegments(db, options = {}) {
+  // segment_id se lee tal cual llegó del import pero se corrige contra la IP real antes de
+  // agrupar (ver resolveTrueSegmentId, hallazgo 2026-09-17) -- por eso ya no se exige
+  // `o.segment_id IS NOT NULL` ni se hace JOIN directo contra cyber_network_segments: un
+  // segment_id nulo (interfaz sin ruta conocida al importar) o equivocado puede corregirse por
+  // IP y de todas formas encontrar su subred real.
+  const rawObservations = db.prepare(`
+    WITH latest AS (
+      SELECT source_system_id, max(captured_at) captured_at
+      FROM cyber_source_snapshots WHERE processing_status = 'SUCCESS'
+      GROUP BY source_system_id
+    )
+    SELECT o.id observationId, o.segment_id segmentKey,
            o.ip_value ipValue, o.observed_at lastSeenAt,
            o.last_seen_source_at lastSeenSourceAt, o.quality_flags_json qualityFlags
     FROM cyber_asset_observations o
-    JOIN cyber_network_segments segment ON segment.id = o.segment_id
     JOIN cyber_source_snapshots s ON s.id = o.snapshot_id
     JOIN cyber_source_systems source ON source.id = s.source_system_id
     JOIN latest l ON l.source_system_id = s.source_system_id AND l.captured_at = s.captured_at
-    WHERE source.source_type = 'FORTIGATE' AND o.segment_id IS NOT NULL
+    WHERE source.source_type = 'FORTIGATE' AND o.ip_value IS NOT NULL
   `).all();
+  const segmentCidrIndex = buildSegmentCidrIndex(db);
+  const segmentNameById = new Map(db.prepare('SELECT id, canonical_name FROM cyber_network_segments').all().map((row) => [row.id, row.canonical_name]));
+  const observations = rawObservations
+    .map((observation) => {
+      const { segmentId } = resolveTrueSegmentId(segmentCidrIndex, observation.segmentKey, observation.ipValue);
+      return segmentId ? { ...observation, segmentKey: segmentId, interfaceName: segmentNameById.get(segmentId) } : null;
+    })
+    .filter(Boolean);
   const segments = new Map();
+  // Kaspersky nunca trae IP (ver getKasperskyInheritedSegments) así que no puede clasificarse
+  // por sí solo -- si ya se corroboró contra un equipo FortiGate en este mismo segmento, se
+  // agrega a la misma subred como miembro "heredado" en vez de quedar suelto sin red (decisión
+  // del usuario 2026-09-16: aplicar el cruce ya calculado).
+  const inheritedSegmentByKasperskyId = getKasperskyInheritedSegments(db);
+  const kasperskyObservations = inheritedSegmentByKasperskyId.size === 0 ? [] : db.prepare(`
+    WITH latest AS (
+      SELECT source_system_id, max(captured_at) captured_at
+      FROM cyber_source_snapshots WHERE processing_status = 'SUCCESS'
+      GROUP BY source_system_id
+    )
+    SELECT o.id observationId, o.observed_at lastSeenAt, o.last_seen_source_at lastSeenSourceAt,
+           o.quality_flags_json qualityFlags
+    FROM cyber_asset_observations o
+    JOIN cyber_source_snapshots s ON s.id = o.snapshot_id
+    JOIN cyber_source_systems source ON source.id = s.source_system_id
+    JOIN latest l ON l.source_system_id = s.source_system_id AND l.captured_at = s.captured_at
+    WHERE source.source_type = 'KASPERSKY'
+      AND o.id IN (${[...inheritedSegmentByKasperskyId.keys()].map(() => '?').join(',')})
+  `).all(...inheritedSegmentByKasperskyId.keys());
+
+  const addMember = (segmentKey, interfaceName, member) => {
+    const item = segments.get(segmentKey) || {
+      segmentKey, interfaceName,
+      observations: 0, active: 0, intermittent: 0,
+      inactive: 0, staleReview: 0, ephemeralMacs: 0, inheritedKasperskyCount: 0, lastActivityAt: null,
+      referenceIps: new Set(),
+      knownIps: new Set(),
+      members: [],
+    };
+    item.observations += 1;
+    if (member.source === 'KASPERSKY') item.inheritedKasperskyCount += 1;
+    if (member.ip) {
+      item.knownIps.add(member.ip);
+      if (item.referenceIps.size < 3) item.referenceIps.add(member.ip);
+    }
+    item.members.push(member);
+    if (member.lifecycleStatus === 'ACTIVE') item.active += 1;
+    if (member.lifecycleStatus === 'INTERMITTENT') item.intermittent += 1;
+    if (member.lifecycleStatus === 'INACTIVE') item.inactive += 1;
+    if (member.lifecycleStatus === 'STALE_REVIEW') item.staleReview += 1;
+    if (member.ephemeralMac) item.ephemeralMacs += 1;
+    if (member.lastActivityAt && (!item.lastActivityAt || member.lastActivityAt > item.lastActivityAt)) item.lastActivityAt = member.lastActivityAt;
+    segments.set(segmentKey, item);
+  };
+
   for (const observation of observations) {
     const assessed = assessInventoryCandidate({
       source: 'FORTIGATE', lastSeenAt: observation.lastSeenAt,
       lastSeenSourceAt: observation.lastSeenSourceAt,
       qualityFlags: safeJson(observation.qualityFlags, []), reasonCodes: [], confidence: 0.5,
     });
-    const item = segments.get(observation.segmentKey) || {
-      segmentKey: observation.segmentKey, interfaceName: observation.interfaceName,
-      observations: 0, active: 0, intermittent: 0,
-      inactive: 0, staleReview: 0, ephemeralMacs: 0, lastActivityAt: null,
-      referenceIps: new Set(),
-      knownIps: new Set(),
-      members: [],
-    };
-    item.observations += 1;
-    if (observation.ipValue) {
-      item.knownIps.add(observation.ipValue);
-      if (item.referenceIps.size < 3) item.referenceIps.add(observation.ipValue);
-    }
-    item.members.push({
+    addMember(observation.segmentKey, observation.interfaceName, {
       id: observation.observationId,
       ip: observation.ipValue,
+      source: 'FORTIGATE',
       lifecycleStatus: assessed.lifecycleStatus,
       ephemeralMac: assessed.qualityFlags.includes('LOCALLY_ADMINISTERED_MAC'),
       lastActivityAt: observation.lastSeenSourceAt || observation.lastSeenAt || null,
     });
-    if (assessed.lifecycleStatus === 'ACTIVE') item.active += 1;
-    if (assessed.lifecycleStatus === 'INTERMITTENT') item.intermittent += 1;
-    if (assessed.lifecycleStatus === 'INACTIVE') item.inactive += 1;
-    if (assessed.lifecycleStatus === 'STALE_REVIEW') item.staleReview += 1;
-    if (assessed.qualityFlags.includes('LOCALLY_ADMINISTERED_MAC')) item.ephemeralMacs += 1;
-    const seen = observation.lastSeenSourceAt || observation.lastSeenAt;
-    if (seen && (!item.lastActivityAt || seen > item.lastActivityAt)) item.lastActivityAt = seen;
-    segments.set(observation.segmentKey, item);
+  }
+  for (const observation of kasperskyObservations) {
+    const segmentKey = inheritedSegmentByKasperskyId.get(observation.observationId);
+    const existing = segments.get(segmentKey);
+    if (!existing) continue; // el FortiGate que corroboró este segmento ya debió agregarlo arriba
+    const assessed = assessInventoryCandidate({
+      source: 'KASPERSKY', lastSeenAt: observation.lastSeenAt,
+      lastSeenSourceAt: observation.lastSeenSourceAt,
+      qualityFlags: safeJson(observation.qualityFlags, []), reasonCodes: [], confidence: 0.5,
+    });
+    addMember(segmentKey, existing.interfaceName, {
+      id: observation.observationId,
+      ip: null,
+      source: 'KASPERSKY',
+      inheritedFromFortiGate: true,
+      lifecycleStatus: assessed.lifecycleStatus,
+      ephemeralMac: false,
+      lastActivityAt: observation.lastSeenSourceAt || observation.lastSeenAt || null,
+    });
   }
   return {
     total: segments.size,
@@ -353,5 +688,8 @@ function getRemediationCase(db, id) {
 
 module.exports = {
   getCybersecurityOverview, getInventoryOverview, getRemediationCase,
+  getCrossSourceMatchedObservationIds, getKasperskyInheritedSegments,
+  buildSegmentCidrIndex, resolveTrueSegmentId, parseCidrFromSegmentName, cidrContainsIp,
   listInventoryCandidates, listNetworkSegments, listRemediationCases,
+  protectedAlias, resolveProtectedAlias,
 };

@@ -5,6 +5,7 @@ const { DatabaseSync } = require('node:sqlite');
 const { createCybersecurityApi } = require('../src/cybersecurity-api');
 const { createSupabaseAdminAuthorizer } = require('../src/supabase-admin-auth');
 const { openNetworkPolicyStore } = require('../src/network-policy-store');
+const { openInventoryDecisionStore } = require('../src/inventory-decision-store');
 const { createOperationsPointsCatalog } = require('../src/operations-points-catalog');
 
 function argument(name, fallback) {
@@ -33,15 +34,18 @@ const authorizeAdmin = createSupabaseAdminAuthorizer({
   key: process.env.SUPABASE_KEY,
 });
 const policyDb = process.env.CYBER_POLICY_DB ? openNetworkPolicyStore(process.env.CYBER_POLICY_DB) : null;
+// cyber-inventory.db (arriba) es siempre readOnly -- promover/marcar conflicto/proteger
+// guardan la decisión humana aparte, en este almacén escribible (ver inventory-decision-store.js).
+const decisionsDb = process.env.CYBER_DECISIONS_DB ? openInventoryDecisionStore(process.env.CYBER_DECISIONS_DB) : null;
 const getExpectedNetworks = createOperationsPointsCatalog({ url: process.env.SUPABASE_URL, key: process.env.SUPABASE_KEY });
-const server = createCybersecurityApi({ db, policyDb, authorizeAdmin, getExpectedNetworks });
+const server = createCybersecurityApi({ db, policyDb, decisionsDb, authorizeAdmin, getExpectedNetworks });
 server.listen(port, host, () => {
   process.stdout.write(`${JSON.stringify({
     status: 'READY', host, port, mode: immutable ? 'read-only-immutable' : 'read-only',
   })}\n`);
 });
 function shutdown() {
-  server.close(() => { db.close(); policyDb?.close(); process.exit(0); });
+  server.close(() => { db.close(); policyDb?.close(); decisionsDb?.close(); process.exit(0); });
 }
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);

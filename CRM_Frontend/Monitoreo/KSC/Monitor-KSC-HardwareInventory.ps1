@@ -10,6 +10,15 @@
     - clasificacion por "visible por ultima vez"
     - uso de bases de datos de virus/antivirus cuando el informe existe
 
+    Tambien lee el "Informe del estado de la proteccion" (si existe en la
+    misma carpeta) para enriquecer cada dispositivo con su Direccion IP real
+    -- el Informe de hardware nunca trajo esa columna. La IP viaja en texto
+    plano por el mismo canal (no protegido) que ya usa el hostname hoy; el
+    canal HMAC hacia el scanner de Ciberseguridad (Export-CyberHardwareInventory
+    / Send-KSC-CyberExport.ps1) no se toca -- esta deliberadamente disenado
+    para nunca llevar identificadores en claro (rechaza cualquier patron de
+    MAC sin proteger), y una IP en claro no encaja ahi.
+
     No recolecta metricas de hardware detalladas; el foco es inventario
     y frescura de visibilidad de los dispositivos.
 .USAGE
@@ -390,6 +399,9 @@ function Parse-HardwareInventory {
             LastSeen          = if ($lastSeen) { $lastSeen.ToString("yyyy-MM-dd HH:mm:ss") } else { $null }
             LastSeenDays      = if ($lastSeen) { [math]::Round(((Get-Date) - $lastSeen).TotalDays, 2) } else { $null }
             VisibilityBucket  = Get-VisibilityBucket -LastSeen $lastSeen
+            IPAddress         = $null
+            NetbiosName       = $null
+            ProtectionState   = $null
         }
     }
 
@@ -576,6 +588,146 @@ function Parse-VirusDatabaseUsage {
     }
 }
 
+function Parse-ProtectionStatus {
+    <#
+    .SYNOPSIS
+        Lee "Informe del estado de la proteccion" -- el unico informe de KSC
+        confirmado como una fila POR DISPOSITIVO (no por evento/CVE) que trae
+        Direccion IP. Ver docs/modulos/ciberseguridad/NOTA-KSC-DIRECCION-IP.md
+        en el repo Skylab para el detalle de por que se descartaron los
+        informes de Vulnerabilidades/Amenazas para este proposito (cobertura
+        de 7 y 2 equipos de 157, respectivamente, contra este que cubre todos
+        los dispositivos administrados sin truncar).
+    .NOTES
+        La llave de deduplicacion es el campo "Dispositivo" completo, NUNCA
+        "Nombre NetBIOS" -- se confirmo contra un export real que dos equipos
+        distintos pueden compartir el mismo NetBIOS (uno renombrado sin
+        actualizar su registro), y usar NetBIOS como llave descartaria un
+        dispositivo real silenciosamente.
+    #>
+    $file = Get-LatestReportByPrefixes -Prefixes @(
+        "Informe del estado de la protección",
+        "Informe del estado de la proteccion"
+    )
+
+    if (-not $file) {
+        return @{
+            Status         = "SIN INFORME"
+            SourceFile     = $null
+            SourcePath     = $null
+            ParsedAt       = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+            TotalDevices   = 0
+            WithIp         = 0
+            WithoutIp      = 0
+            DuplicateNames = 0
+            Devices        = @()
+        }
+    }
+
+    $rows = Get-HtmlTableRows -FilePath $file
+    $header = $null
+    $devices = @()
+
+    foreach ($row in $rows) {
+        if (-not $header -and ($row -contains "Dispositivo") -and ($row -contains "Dirección IP:") -and ($row -contains "Nombre NetBIOS")) {
+            $header = $row
+            continue
+        }
+
+        if (-not $header) { continue }
+        if ($row.Count -lt $header.Count) { continue }
+
+        $record = @{}
+        for ($i = 0; $i -lt $header.Count; $i++) { $record[$header[$i]] = $row[$i] }
+
+        $name = Get-FirstRecordValue -Record $record -Keys @("Dispositivo")
+        if ([string]::IsNullOrWhiteSpace($name) -or $name -eq "Dispositivo") { continue }
+
+        $ipAddress = Get-FirstRecordValue -Record $record -Keys @("Dirección IP:", "Direccion IP:", "Dirección IP", "Direccion IP")
+        if ($ipAddress -eq "N/D") { $ipAddress = "" }
+
+        $devices += [pscustomobject]@{
+            Name            = $name
+            IPAddress       = $ipAddress
+            NetbiosName     = Get-FirstRecordValue -Record $record -Keys @("Nombre NetBIOS")
+            WindowsDomain   = Get-FirstRecordValue -Record $record -Keys @("Dominio de Windows")
+            DnsDomain       = Get-FirstRecordValue -Record $record -Keys @("Dominio DNS")
+            DnsName         = Get-FirstRecordValue -Record $record -Keys @("Nombre DNS")
+            State           = Get-FirstRecordValue -Record $record -Keys @("Estado")
+            StateReason     = Get-FirstRecordValue -Record $record -Keys @("Motivo:", "Motivo")
+            OperatingSystem = Get-FirstRecordValue -Record $record -Keys @("Sistema operativo")
+        }
+    }
+
+    # Deduplicar por Dispositivo completo (ver nota arriba). Si el mismo
+    # Dispositivo aparece mas de una vez en el export (no deberia, pero no se
+    # asume), se conserva el primero y se cuenta el resto como duplicado en
+    # vez de sobrescribir en silencio.
+    $seen = @{}
+    $uniqueDevices = @()
+    $duplicateCount = 0
+    foreach ($device in $devices) {
+        $key = $device.Name.Trim().ToUpperInvariant()
+        if ($seen.ContainsKey($key)) {
+            $duplicateCount++
+            continue
+        }
+        $seen[$key] = $true
+        $uniqueDevices += $device
+    }
+
+    $withIp = @($uniqueDevices | Where-Object { -not [string]::IsNullOrWhiteSpace($_.IPAddress) }).Count
+
+    return @{
+        Status         = "OK"
+        SourceFile     = Split-Path -Path $file -Leaf
+        SourcePath     = $file
+        ParsedAt       = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        TotalDevices   = $uniqueDevices.Count
+        WithIp         = $withIp
+        WithoutIp      = $uniqueDevices.Count - $withIp
+        DuplicateNames = $duplicateCount
+        Devices        = @($uniqueDevices | Sort-Object Name)
+    }
+}
+
+function Merge-ProtectionStatusIntoInventory {
+    <#
+    .SYNOPSIS
+        Enriquece $Inventory.Devices (armado desde el Informe de hardware,
+        nunca trajo IP) con IPAddress/NetbiosName/ProtectionState del Informe
+        del estado de la proteccion, uniendo por el campo Dispositivo/Nombre
+        completo -- NO por NetBIOS (ver nota en Parse-ProtectionStatus).
+    #>
+    param($Inventory, $ProtectionStatus)
+
+    $lookup = @{}
+    foreach ($device in $ProtectionStatus.Devices) {
+        $key = $device.Name.Trim().ToUpperInvariant()
+        if (-not $lookup.ContainsKey($key)) { $lookup[$key] = $device }
+    }
+
+    $matched = 0
+    foreach ($device in $Inventory.Devices) {
+        $key = $device.Name.Trim().ToUpperInvariant()
+        $status = $lookup[$key]
+
+        if ($status) {
+            $device.IPAddress       = $status.IPAddress
+            $device.NetbiosName     = $status.NetbiosName
+            $device.ProtectionState = $status.State
+            $matched++
+            $lookup.Remove($key)
+        }
+    }
+
+    return @{
+        MatchedDevices       = $matched
+        UnmatchedInHardware  = @($lookup.Count)
+        UnmatchedNames       = @($lookup.Values | Select-Object -ExpandProperty Name | Sort-Object)
+    }
+}
+
 function New-HardwareInventoryHtml {
     param($Data)
 
@@ -584,6 +736,8 @@ function New-HardwareInventoryHtml {
     $os = $inv.OperatingSystems
     $vm = $inv.Virtualization
     $db = $Data.Kaspersky.VirusDatabaseUsage
+    $ips = $Data.Kaspersky.ProtectionStatus
+    $ipMerge = $Data.Kaspersky.IPMergeSummary
     $generated = $Data.ReportDate
 
     return @"
@@ -627,6 +781,12 @@ function New-HardwareInventoryHtml {
     <tr><th>Vigentes</th><th>Al dia</th><th>Ultimas 24h</th><th>Ultimos 3 dias</th><th>Ultimos 7 dias</th><th>Mas de una semana</th><th>Sin datos</th></tr>
     <tr><td>$($db.Vigentes)</td><td>$($db.AlDia)</td><td>$($db.Ultimas24h)</td><td>$($db.Ultimos3Dias)</td><td>$($db.Ultimos7Dias)</td><td>$($db.MasDeUnaSemana)</td><td>$($db.SinDatos)</td></tr>
   </table>
+  <h2>Cobertura de direccion IP (Informe del estado de la proteccion)</h2>
+  <div class="muted">Fuente: $($ips.SourceFile) · Estado: $($ips.Status)</div>
+  <table>
+    <tr><th>Total dispositivos en el reporte</th><th>Con IP</th><th>Sin IP</th><th>Emparejados en inventario de hardware</th></tr>
+    <tr><td>$($ips.TotalDevices)</td><td>$($ips.WithIp)</td><td>$($ips.WithoutIp)</td><td>$($ipMerge.MatchedDevices) de $($inv.TotalDevices)</td></tr>
+  </table>
 </body>
 </html>
 "@
@@ -644,6 +804,9 @@ $inventory = Parse-HardwareInventory -FilePath $hardwareReport
 $virusDatabaseUsage = Parse-VirusDatabaseUsage
 $inventory["Versions"] = $virusDatabaseUsage.Versions
 
+$protectionStatus = Parse-ProtectionStatus
+$ipMergeSummary = Merge-ProtectionStatusIntoInventory -Inventory $inventory -ProtectionStatus $protectionStatus
+
 $reportData = @{
     Node       = $NodeName
     Role       = "Kaspersky Security Center Hardware Inventory"
@@ -651,6 +814,8 @@ $reportData = @{
     Kaspersky  = @{
         HardwareInventory  = $inventory
         VirusDatabaseUsage = $virusDatabaseUsage
+        ProtectionStatus   = $protectionStatus
+        IPMergeSummary     = $ipMergeSummary
     }
 }
 
@@ -695,6 +860,23 @@ Write-Host "BD virus > 1 sem   : $($virusDatabaseUsage.MasDeUnaSemana)" -Foregro
 $topKasperskyVersion = @($virusDatabaseUsage.Versions.KasperskyVersions | Select-Object -First 1)
 if ($topKasperskyVersion.Count -gt 0) {
     Write-Host "Version mayoritaria: $($topKasperskyVersion[0].Version) ($($topKasperskyVersion[0].Count))" -ForegroundColor Gray
+}
+
+Write-Host "--- Direccion IP (Informe del estado de la proteccion) ---" -ForegroundColor Cyan
+if ($protectionStatus.Status -eq "SIN INFORME") {
+    Write-Host "[ADVERTENCIA] No se encontro 'Informe del estado de la proteccion*.html' en $KasperskyReportsPath -- ningun dispositivo tendra IP en este envio." -ForegroundColor Yellow
+} else {
+    Write-Host "IP fuente          : $($protectionStatus.SourceFile)" -ForegroundColor Gray
+    Write-Host "Total en reporte   : $($protectionStatus.TotalDevices)" -ForegroundColor Gray
+    Write-Host "Con IP             : $($protectionStatus.WithIp)" -ForegroundColor Gray
+    Write-Host "Sin IP             : $($protectionStatus.WithoutIp)" -ForegroundColor Gray
+    if ($protectionStatus.DuplicateNames -gt 0) {
+        Write-Host "Dispositivo duplicado en el export: $($protectionStatus.DuplicateNames) (se conservo solo el primero)" -ForegroundColor Yellow
+    }
+    Write-Host "Emparejados en inventario de hardware : $($ipMergeSummary.MatchedDevices) de $($inventory.TotalDevices)" -ForegroundColor Gray
+    if ($ipMergeSummary.UnmatchedInHardware -gt 0) {
+        Write-Host "Sin match en inventario de hardware   : $($ipMergeSummary.UnmatchedInHardware) (quedan solo en Kaspersky.ProtectionStatus.Devices, no se inventan filas nuevas en Devices)" -ForegroundColor Yellow
+    }
 }
 
 if ($SkipUpload) {
