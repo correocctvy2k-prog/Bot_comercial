@@ -1,8 +1,10 @@
 # Nota tecnica - IP en los reportes de Kaspersky Security Center
 
-- Estado: confirmado en la consola de KSC — el "Informe de vulnerabilidades" sí puede traer
-  IP; falta escribir el parseo (nadie lo lee hoy, ver actualización 2026-09-17 más abajo)
-- Fecha: 2026-09-17 (actualizada el mismo día tras la confirmación del usuario)
+- Estado: la columna de IP existe y ya se exportó dos veces, pero **ninguno de los dos
+  exports reales cubre a los 157 equipos** — ver "Actualización 2026-09-17 (segunda parte)"
+  más abajo. Pendiente: el usuario va a revisar en la consola de KSC si existe un tipo de
+  reporte "por dispositivo" (una fila por equipo administrado, no por evento/CVE).
+- Fecha: 2026-09-17 (actualizada el mismo día, dos veces, tras exports reales del usuario)
 
 ## Por que importa
 
@@ -122,6 +124,48 @@ nuevo, con el mismo patrón (genérico, por encabezado) que ya usa el parser de 
 activados) para construirlo contra la estructura HTML real, en vez de adivinarla, siguiendo la
 misma disciplina de "verificar contra datos reales antes de escribir código" del resto de esta
 sesión.
+
+## Actualización 2026-09-17 (segunda parte) — dos exports reales analizados: cobertura insuficiente
+
+El usuario generó y compartió dos exports reales con los campos de IP ya activados:
+`Informe de vulnerabilidades (17-9-2026 14-36-35).html` y
+`Informe de amenazas (17-9-2026 14-46-05).html` (ambos guardados en Descargas). Se procesaron
+con un script Node de un solo uso (no se guarda en el repo — solo sirvió para contar filas y
+dispositivos distintos, no para extraer datos reales de la organización).
+
+**Confirmado, con datos reales**: ambos reportes sí traen una tabla de detalle fila-por-evento
+con columna `Dirección IP:` (con dos puntos al final — quirk real de la exportación de KSC),
+`Nombre NetBIOS` y `Dominio DNS`/`Dominio de Windows`. La hipótesis de la actualización anterior
+era correcta.
+
+**Pero ninguno de los dos sirve como fuente general de IP para los 157 equipos, en la forma en
+que se exportan hoy:**
+
+- **Informe de vulnerabilidades**: el título de la sección dice "Detalles (1000 de 16124)" — el
+  export HTML de KSC **trunca a las primeras 1000 filas** de las 16.124 totales. Como el reporte
+  viene ordenado por severidad/ID de vulnerabilidad (no por equipo), esas 1000 filas quedan
+  dominadas por un puñado de equipos con muchísimos CVEs acumulados (ej. un Chrome desactualizado
+  genera decenas de CVEs por sí solo). Resultado real medido: **1000 filas → solo 7 equipos
+  distintos** de 157 (`14503-BCP2`, `12923-ADMAMAIME`, `020960-SUPERTI`, `MERCADEO-COMERC`,
+  `AUXFINAN-019697`, `FABIANSAAVEDRA`, `PFINANCIERO`).
+- **Informe de amenazas**: por diseño solo incluye equipos con una amenaza detectada en el
+  período — **63 filas → solo 2 equipos** (`20106-DIRTESORE`, `POPERACIONES`).
+
+Ninguno de los dos es "un reporte por dispositivo" — son reportes por evento (una fila por
+CVE o por detección de amenaza), y el de vulnerabilidades además viene truncado a 1000 filas
+en la exportación HTML sin importar cuántas haya en total.
+
+### Pendiente (el usuario lo revisa directamente en la consola de KSC)
+
+Revisar si KSC ofrece un tipo de reporte distinto que liste **cada equipo administrado una sola
+vez** (p. ej. algo como "Lista de dispositivos administrados" o un reporte de inventario de red)
+— ese sí tendría las 157 filas completas con IP, sin el problema de truncamiento por evento.
+Alternativa si no existe: reexportar el Informe de vulnerabilidades **ordenado por Dispositivo**
+en vez de por Vulnerabilidad, para que las primeras 1000 filas cubran muchos más equipos
+distintos (sin garantía de llegar a los 157, pero mejor que 7).
+
+Sigue sin escribirse el parseo real — no tiene sentido construirlo contra una fuente que ya se
+sabe que no cubre la población completa.
 
 ## Enlaces
 
