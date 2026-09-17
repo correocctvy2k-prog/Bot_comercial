@@ -282,9 +282,7 @@ disparar `Get-LatestHardwareReport`.
 
 ### Pendiente
 
-1. **Desplegar en `SERV-KSC`**: la tarea programada ya existe y ya corre el script a diario — solo
-   falta que el usuario copie la versión editada al servidor real. Sin desplegar, el próximo run
-   automático seguirá subiendo el inventario sin IP.
+1. ~~Desplegar en `SERV-KSC`~~ **hecho** — ver "Actualización 2026-09-17 (quinta parte)" abajo.
 2. `cybersecurity/src/ksc-importer.js`: sigue forzando `MISSING_IP` para todo equipo Kaspersky —
    no tocado en esta ronda (fuera del alcance de "crear/editar el .ps1"; es el lado de lectura,
    trabajo aparte). Cuando se retome: dejar de forzar esa bandera cuando `IPAddress` venga
@@ -292,6 +290,28 @@ disparar `Get-LatestHardwareReport`.
 3. Una vez que `ksc-importer.js` lea la IP real, revisar si conviene mantener el cruce por
    hostname (`getKasperskyInheritedSegments`) como señal de corroboración adicional en vez de
    única fuente de ubicación — la IP directa ya no dependería de ese cruce.
+
+## Actualización 2026-09-17 (quinta parte) — desplegado y corrido en producción: 157/157 emparejados
+
+El usuario copió el script editado a `C:\Monitoreo\KSC\Monitor-KSC-HardwareInventory.ps1` en el
+servidor real y lo corrió a mano (fuera de la tarea programada, como prueba) contra los datos
+reales de producción: `F:\Informes KSC\Informe de hardware (05-30-15 09-17-26).html` (157
+dispositivos) y `Informe del estado de la protección (17-9-2026 14-52-35).html` (el mismo export
+ya analizado, 173 dispositivos).
+
+**Resultado real, mejor que lo estimado**: **157 de 157 dispositivos del inventario de hardware
+emparejaron con IP — 100%**, no solo los que se habían verificado con datos sintéticos. Los 16
+dispositivos restantes del reporte de protección (173 − 157) quedan correctamente solo en
+`Kaspersky.ProtectionStatus.Devices`, sin fabricar filas nuevas en `Devices` (equipos que KSC ve
+en protección pero que el inventario de hardware, por lo que sea, no capturó — no es un error del
+merge, es el comportamiento documentado). El POST real a `http://192.168.8.65:3001/api/monitoring/
+upload` se completó con éxito: `[OK] Inventario KSC-HARDWARE enviado correctamente`, archivo
+`report_2026-09-17T21-14-14-917Z.json` guardado con `hasHtml: true`.
+
+**Este era el último paso de despliegue pendiente** — la tarea programada existente en `SERV-KSC`
+recogerá esta misma versión en su próxima corrida diaria, sin que el usuario tenga que hacer nada
+más ahí. El siguiente paso que queda es enteramente del lado de lectura: `ksc-importer.js` (ítem 2
+arriba), para que la IP que ya llega a Monitoreo IT se persista en `cyber_asset_observations`.
 
 ## Enlaces
 
