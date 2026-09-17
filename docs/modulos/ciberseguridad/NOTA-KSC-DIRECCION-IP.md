@@ -1,10 +1,11 @@
 # Nota tecnica - IP en los reportes de Kaspersky Security Center
 
-- Estado: la columna de IP existe y ya se exportó dos veces, pero **ninguno de los dos
-  exports reales cubre a los 157 equipos** — ver "Actualización 2026-09-17 (segunda parte)"
-  más abajo. Pendiente: el usuario va a revisar en la consola de KSC si existe un tipo de
-  reporte "por dispositivo" (una fila por equipo administrado, no por evento/CVE).
-- Fecha: 2026-09-17 (actualizada el mismo día, dos veces, tras exports reales del usuario)
+- Estado: **resuelto** — el "Informe del estado de la protección" es un reporte real por
+  dispositivo (173 de 173, sin truncar) y trae IP para 172 de 173 equipos. Ver "Actualización
+  2026-09-17 (tercera parte)" más abajo. Este es el reporte a usar como fuente de IP; los otros
+  dos (Vulnerabilidades, Amenazas) quedan descartados para este propósito por cobertura
+  insuficiente.
+- Fecha: 2026-09-17 (actualizada el mismo día, tres veces, tras exports reales del usuario)
 
 ## Por que importa
 
@@ -166,6 +167,56 @@ distintos (sin garantía de llegar a los 157, pero mejor que 7).
 
 Sigue sin escribirse el parseo real — no tiene sentido construirlo contra una fuente que ya se
 sabe que no cubre la población completa.
+
+## Actualización 2026-09-17 (tercera parte) — resuelto: "Informe del estado de la protección" sí es por dispositivo
+
+El usuario compartió un tercer export real: `Informe del estado de la protección
+(17-9-2026 14-52-35).html`. Analizado con el mismo script de un solo uso.
+
+**Este reporte sí es lo que se necesitaba**: una fila por dispositivo administrado, no por
+evento. El título de la sección de detalle dice "Detalles (173 de 173)" — sin truncar — y el
+resumen confirma "Número de dispositivos: 173". Encabezados de la tabla de detalle:
+`Estado, Servidor de administración virtual, Grupo, Dispositivo, Última conexión con el
+Servidor de administración, Motivo:, Estado del dispositivo definido por la aplicación,
+Dirección IP:, Visible por última vez, Dominio de Windows, Nombre NetBIOS, Nombre DNS,
+Dominio DNS, Sistema operativo, Base de datos antivirus lanzada el, Último análisis completo`.
+
+Medido: **173 filas → 172 dispositivos distintos, los 172 con IP** (la fila 173 probablemente
+duplica un NetBIOS entre dos dispositivos distintos con el mismo nombre de equipo, ej.
+`PDIR-COMERCIAL` aparece dos veces en el export con IPs distintas — 10.50.3.43 y 10.50.3.29 — a
+confirmar si son dos equipos reales o un caso de renombrado sin depurar; no bloquea el uso del
+reporte, solo hay que deduplicar por MAC o por el hostname completo del campo `Dispositivo`, no
+solo por `Nombre NetBIOS`, al escribir el parser).
+
+También trae, además de IP: Estado de protección (Aceptar/Advertencia/Crítico) y su motivo,
+Sistema operativo, fecha de última actualización de firmas y de último análisis completo — todos
+datos que hoy no se capturan de ninguna fuente y podrían enriquecer la observación Kaspersky más
+allá de solo IP.
+
+**Este es el reporte a usar.** Los otros dos (Vulnerabilidades, Amenazas) quedan descartados
+para el propósito de "IP por equipo" — siguen siendo útiles para lo que ya hacían (CVEs,
+detecciones), pero no como fuente de ubicación de red.
+
+### Qué falta ahora
+
+1. Escribir la función de parseo nueva (mismo patrón `Get-HtmlTableRows` genérico por encabezado
+   que ya prueba su solidez en `Monitor-KSC-HardwareInventory.ps1`) para
+   `Informe del estado de la protección`, extrayendo al menos Dispositivo/NetBIOS/Dirección
+   IP/Dominio DNS — y evaluando si conviene capturar también Estado/Sistema operativo/fechas de
+   análisis ya que están en la misma tabla.
+2. Confirmar el caso `PDIR-COMERCIAL` duplicado antes de asumir que el emparejamiento por
+   NetBIOS es único — usar MAC (si el reporte la trajera) o el campo `Dispositivo` completo como
+   llave, no `Nombre NetBIOS` solo.
+3. Decidir si este reporte reemplaza o complementa al "Informe de hardware" que hoy procesa
+   `Monitor-KSC-HardwareInventory.ps1` — probablemente conviene un importador nuevo dedicado en
+   vez de fusionar los dos parseos, ya que traen columnas distintas (MAC/serie/placa madre en
+   hardware; IP/estado/SO aquí).
+4. `cybersecurity/src/ksc-importer.js`: dejar de forzar `MISSING_IP` para los equipos que sí
+   traigan IP por esta vía nueva, y persistir `ip_value` en `cyber_asset_observations`.
+5. El script vive y corre en `.65` — el cambio se escribe aquí, el despliegue lo hace el usuario
+   allá.
+
+No se ha escrito el parser todavía en este commit — se documenta el hallazgo primero.
 
 ## Enlaces
 
