@@ -1,11 +1,13 @@
 # Nota tecnica - IP en los reportes de Kaspersky Security Center
 
-- Estado: **resuelto** — el "Informe del estado de la protección" es un reporte real por
-  dispositivo (173 de 173, sin truncar) y trae IP para 172 de 173 equipos. Ver "Actualización
-  2026-09-17 (tercera parte)" más abajo. Este es el reporte a usar como fuente de IP; los otros
-  dos (Vulnerabilidades, Amenazas) quedan descartados para este propósito por cobertura
-  insuficiente.
-- Fecha: 2026-09-17 (actualizada el mismo día, tres veces, tras exports reales del usuario)
+- Estado: **resuelto y con parser real escrito**. El "Informe del estado de la protección" es un
+  reporte por dispositivo (173 de 173, sin truncar) y trae IP para los **173 de 173** equipos
+  (corregido — ver "Actualización 2026-09-17 (cuarta parte)"). El usuario ya incluyó este reporte
+  en la tarea de entrega diaria de KSC; `Monitor-KSC-HardwareInventory.ps1` (rama de trabajo
+  local, aún sin desplegar a `SERV-KSC`) ya lee ambos reportes y enriquece el inventario de
+  hardware con la IP real. Los otros dos reportes (Vulnerabilidades, Amenazas) quedan
+  descartados para este propósito por cobertura insuficiente.
+- Fecha: 2026-09-17 (actualizada el mismo día, cuatro veces, tras exports reales del usuario)
 
 ## Por que importa
 
@@ -181,12 +183,9 @@ Servidor de administración, Motivo:, Estado del dispositivo definido por la apl
 Dirección IP:, Visible por última vez, Dominio de Windows, Nombre NetBIOS, Nombre DNS,
 Dominio DNS, Sistema operativo, Base de datos antivirus lanzada el, Último análisis completo`.
 
-Medido: **173 filas → 172 dispositivos distintos, los 172 con IP** (la fila 173 probablemente
-duplica un NetBIOS entre dos dispositivos distintos con el mismo nombre de equipo, ej.
-`PDIR-COMERCIAL` aparece dos veces en el export con IPs distintas — 10.50.3.43 y 10.50.3.29 — a
-confirmar si son dos equipos reales o un caso de renombrado sin depurar; no bloquea el uso del
-reporte, solo hay que deduplicar por MAC o por el hostname completo del campo `Dispositivo`, no
-solo por `Nombre NetBIOS`, al escribir el parser).
+Medido en ese momento con un script que usaba `Nombre NetBIOS` como llave: **173 filas → 172
+"dispositivos" distintos** — corregido en la cuarta actualización más abajo: no era un duplicado
+real, era dos equipos distintos compartiendo NetBIOS.
 
 También trae, además de IP: Estado de protección (Aceptar/Advertencia/Crítico) y su motivo,
 Sistema operativo, fecha de última actualización de firmas y de último análisis completo — todos
@@ -217,6 +216,82 @@ detecciones), pero no como fuente de ubicación de red.
    allá.
 
 No se ha escrito el parser todavía en este commit — se documenta el hallazgo primero.
+
+## Actualización 2026-09-17 (cuarta parte) — parser escrito y verificado; corrección del "duplicado"
+
+El usuario confirmó: ya incluyó "Informe del estado de la protección" en la tarea de entrega
+diaria de reportes de KSC, y **ya existe una tarea programada en SERV-KSC** que corre
+`Monitor-KSC-HardwareInventory.ps1` a diario (coincide con que `pull-ksc-from-monitoring.js`
+encontró un reporte `KSC-HARDWARE` capturado el mismo día). Con eso resuelto, la decisión fue:
+**editar ese script** (no crear una tarea nueva) y **enviar la IP por el mismo canal sin
+proteger** que ya usa Monitoreo IT hoy para el hostname (`BackendUrl`/servicio `KSC-HARDWARE`),
+**no** por el canal HMAC hacia el scanner de Ciberseguridad (`Export-CyberHardwareInventory` /
+`Send-KSC-CyberExport.ps1`) — ese canal está deliberadamente diseñado para nunca llevar
+identificadores en claro (su propio validador rechaza cualquier patrón de MAC sin proteger) y
+una IP en claro no encaja ahí sin romper esa garantía.
+
+**Corrección importante antes de escribir el parser**: al revisar de nuevo el caso "duplicado"
+de la actualización anterior, `PCOMERCIAL` y `PDIR-COMERCIAL` **son dos equipos reales
+distintos** (campo `Dispositivo` diferente) que comparten el mismo `Nombre NetBIOS`
+("PDIR-COMERCIAL", probablemente uno se renombró sin actualizar su registro NetBIOS/DNS) —
+verificado con un script de una sola vez que dedupica por `Dispositivo` en vez de `Nombre
+NetBIOS`: **173 filas → 173 dispositivos distintos, sin ningún duplicado real, los 173 con IP**.
+El "172" de la actualización anterior fue un artefacto de haber usado NetBIOS como llave;
+confirma por qué la nota anterior ya advertía usar `Dispositivo` completo como llave de
+deduplicación, no NetBIOS.
+
+**Cambios en `CRM_Frontend/Monitoreo/KSC/Monitor-KSC-HardwareInventory.ps1`** (rama de trabajo
+local — la carpeta `Monitoreo/` local se había borrado, restaurado solo este archivo desde el
+historial de git para editarlo, el resto de la carpeta sigue eliminada tal como la dejó el
+usuario):
+
+1. `Parse-ProtectionStatus` (nueva): mismo patrón `Get-HtmlTableRows`/`Get-FirstRecordValue` que
+   ya usan las demás funciones del script. Busca `Informe del estado de la protección*.html` (con
+   y sin tilde) en `$KasperskyReportsPath`, detecta el encabezado de la tabla de detalle por la
+   combinación `Dispositivo` + `Dirección IP:` + `Nombre NetBIOS` (única a esa tabla, no choca con
+   la tabla de resumen que no trae `Dispositivo`), y extrae Nombre/IP/NetBIOS/Dominio
+   Windows/Dominio DNS/Nombre DNS/Estado/Motivo/Sistema operativo por fila. Deduplica por
+   `Dispositivo` completo (no NetBIOS), contando duplicados reales aparte en vez de
+   sobrescribirlos en silencio. Degrada a `Status: "SIN INFORME"` sin fallar si el archivo no
+   está presente todavía en la carpeta.
+2. `Merge-ProtectionStatusIntoInventory` (nueva): enriquece cada dispositivo ya armado por
+   `Parse-HardwareInventory` (que nunca trajo IP) con `IPAddress`/`NetbiosName`/`ProtectionState`,
+   uniendo por el mismo campo `Dispositivo`/`Nombre` (case-insensitive). Un dispositivo del
+   inventario de hardware sin match en el reporte de protección queda con esos campos en `$null`
+   — no se inventa nada. Un dispositivo del reporte de protección sin match en el inventario de
+   hardware se cuenta en `UnmatchedInHardware` pero no se agrega como fila nueva a `Devices` (para
+   no cambiar el conteo/semántica de `KSC-HARDWARE` que ya consume `ksc-importer.js`).
+3. El flujo principal llama a ambas, agrega `Kaspersky.ProtectionStatus` y
+   `Kaspersky.IPMergeSummary` al payload que ya se sube a Monitoreo IT, imprime un resumen por
+   consola (total/con IP/sin IP/duplicados/emparejados), y agrega una tabla de cobertura de IP al
+   dashboard HTML existente (`New-HardwareInventoryHtml`). El canal HMAC
+   (`Export-CyberHardwareInventory`) no se tocó.
+
+**Verificado, no solo escrito**: sintaxis validada con el parser de PowerShell
+(`[System.Management.Automation.Language.Parser]::ParseFile`, sin errores). `Parse-ProtectionStatus`
+probado de forma aislada contra el export real del usuario en Descargas: 173 dispositivos, 173
+con IP, 0 duplicados. `Merge-ProtectionStatusIntoInventory` probado con un inventario sintético de
+4 dispositivos (incluyendo un caso con distinto uso de mayúsculas y uno sin match) contra el mismo
+export real: empareja correctamente `PCOMERCIAL`→`10.50.3.43` y `PDIR-COMERCIAL`→`10.50.3.29` por
+separado (confirma que la corrección de la llave de deduplicación era necesaria), respeta
+mayúsculas/minúsculas, y no inventa IP para el dispositivo sin match. También se probó el caso
+"no existe el reporte de protección" (carpeta vacía) — degrada a `SIN INFORME` sin excepciones.
+**No se pudo probar el flujo completo del script** (extremo a extremo, incluido el POST real a
+Monitoreo IT) porque no hay un "Informe de hardware" real disponible en esta sesión para
+disparar `Get-LatestHardwareReport`.
+
+### Pendiente
+
+1. **Desplegar en `SERV-KSC`**: la tarea programada ya existe y ya corre el script a diario — solo
+   falta que el usuario copie la versión editada al servidor real. Sin desplegar, el próximo run
+   automático seguirá subiendo el inventario sin IP.
+2. `cybersecurity/src/ksc-importer.js`: sigue forzando `MISSING_IP` para todo equipo Kaspersky —
+   no tocado en esta ronda (fuera del alcance de "crear/editar el .ps1"; es el lado de lectura,
+   trabajo aparte). Cuando se retome: dejar de forzar esa bandera cuando `IPAddress` venga
+   presente en el payload `KSC-HARDWARE`, y persistir `ip_value` en `cyber_asset_observations`.
+3. Una vez que `ksc-importer.js` lea la IP real, revisar si conviene mantener el cruce por
+   hostname (`getKasperskyInheritedSegments`) como señal de corroboración adicional en vez de
+   única fuente de ubicación — la IP directa ya no dependería de ese cruce.
 
 ## Enlaces
 
