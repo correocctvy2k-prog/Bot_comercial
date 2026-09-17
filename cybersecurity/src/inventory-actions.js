@@ -1,6 +1,9 @@
 const crypto = require('node:crypto');
 const { openCyberDatabase } = require('../db/open-database');
-const { resolveProtectedAlias, getCrossSourceMatchedObservationIds, getKasperskyInheritedSegments, protectedAlias } = require('./cybersecurity-read-model');
+const {
+  resolveProtectedAlias, getCrossSourceMatchedObservationIds, getKasperskyInheritedSegments,
+  buildSegmentCidrIndex, resolveTrueSegmentId, protectedAlias,
+} = require('./cybersecurity-read-model');
 const { computeReliabilityScore, detectAntivirusGap, detectDeviceGroups } = require('./inventory-reliability');
 const { assessInventoryCandidate } = require('./inventory-confidence-policy');
 const { getDecisionByObservationId, saveDecision } = require('./inventory-decision-store');
@@ -31,10 +34,18 @@ function cleanNote(value) {
 // hostname exacto + SO compatible, ver cross-source-matcher.js), hereda la subred de su par en
 // vez de mostrarse sin red (decisión del usuario 2026-09-16: "aplicar el cruce FortiGate↔
 // Kaspersky ya calculado").
+//
+// Hallazgo del usuario 2026-09-17: 2 impresoras de la red administrativa (10.2.2.x) aparecían
+// clasificadas en VLAN_Auditoria/VLAN_Comercial -- CIDR completamente distinto. El importador
+// asignaba segment_id por la interfaz que reportó el dispositivo, sin verificar que su IP real
+// perteneciera a esa interfaz (187 de 826 observaciones de FortiGate, 22.6%, tenían el mismo
+// problema). Como las observaciones son append-only, se corrige aquí, en el momento de leer.
 function resolveObservationSegment(db, policyDb, observation) {
   let segmentId = observation.segment_id;
   let inherited = false;
-  if (!segmentId && observation.sourceType === 'KASPERSKY') {
+  if (observation.sourceType === 'FORTIGATE') {
+    segmentId = resolveTrueSegmentId(buildSegmentCidrIndex(db), segmentId, observation.ip_value).segmentId;
+  } else if (!segmentId && observation.sourceType === 'KASPERSKY') {
     segmentId = getKasperskyInheritedSegments(db).get(observation.id) || null;
     inherited = Boolean(segmentId);
   }

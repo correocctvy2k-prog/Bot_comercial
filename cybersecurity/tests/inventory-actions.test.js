@@ -243,7 +243,7 @@ test('un candidato sin segmento asignado no rompe getObservationDetail (segment 
 // nunca trae IP, así que getObservationDetail debe mostrar la subred heredada del equipo
 // FortiGate corroborado (mismo hostname, SO compatible) en vez de "Sin segmento".
 test('getObservationDetail hereda la subred de un equipo Kaspersky corroborado contra FortiGate', () => withDatabase((db, decisionsDb) => {
-  const segmentId = seedSegment(db, { canonicalName: 'VLAN_Finanzas' });
+  const segmentId = seedSegment(db, { canonicalName: 'VLAN_Finanzas · 10.2.13.0/26' });
   seedObservation(db, {
     id: 'observation-forti-finanzas', segmentId, ip: '10.2.13.20',
     hostname: 'PC-FINANZAS-01', hostnameKey: 'pc-finanzas-01',
@@ -253,7 +253,7 @@ test('getObservationDetail hereda la subred de un equipo Kaspersky corroborado c
 
   const alias = protectedAlias('candidate', kscId);
   const detail = getObservationDetail(db, decisionsDb, null, alias);
-  assert.equal(detail.segment.name, 'VLAN_Finanzas');
+  assert.equal(detail.segment.name, 'VLAN_Finanzas · 10.2.13.0/26');
   assert.equal(detail.segment.inherited, true);
 }));
 

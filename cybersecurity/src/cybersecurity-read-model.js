@@ -3,6 +3,7 @@ const { assessInventoryCandidate } = require('./inventory-confidence-policy');
 const { computeReliabilityScore, detectAntivirusGap, detectDeviceGroups } = require('./inventory-reliability');
 const { listDecisions } = require('./inventory-decision-store');
 const { listPolicies } = require('./network-policy-store');
+const { ipv4ToNumber } = require('./network-math');
 
 const CLOSED_STATUSES = new Set(['VERIFIED', 'CLOSED']);
 const ALLOWED_PRIORITIES = new Set(['P1', 'P2', 'P3', 'P4']);
@@ -22,6 +23,56 @@ const WIFI_NETWORK_FUNCTIONS = new Set(['CORPORATE_WIFI', 'GUEST_WIFI']);
 
 function safeJson(value, fallback) {
   try { return JSON.parse(value); } catch { return fallback; }
+}
+
+// Hallazgo del usuario 2026-09-17: dos impresoras de la red administrativa (10.2.2.x) aparecían
+// clasificadas en VLAN_Auditoria/VLAN_Comercial -- redes con un CIDR completamente distinto
+// (10.2.14.0/26 y 10.2.12.0/26). Causa raíz en fortigate-importer.js: cuando la IP observada de
+// un dispositivo no coincide con NINGUNA ruta de la interfaz que reportó, el importador igual le
+// asignaba el segmento de esa interfaz con tal de que tuviera una sola ruta conocida -- en vez
+// de dejarlo sin segmento. Verificado contra los datos reales: **187 de 826 observaciones de
+// FortiGate (22.6%) tenían un segment_id cuyo CIDR real NO contiene su propia IP.** Las
+// observaciones son append-only (no se pueden corregir en la tabla, ver inventory-actions.js),
+// así que se valida y corrige en el momento de leer: se busca entre TODOS los segmentos
+// conocidos cuál CIDR realmente contiene la IP, en vez de confiar ciegamente en segment_id.
+// canonical_name es la única columna con el CIDR en texto plano ("<interfaz> · <cidr>",
+// fortigate-importer.js) -- cidr_encrypted/cidr_fingerprint no son reversibles por diseño.
+function parseCidrFromSegmentName(canonicalName) {
+  const match = String(canonicalName || '').match(/([\d.]+)\/(\d{1,2})$/);
+  if (!match) return null;
+  const network = ipv4ToNumber(match[1]);
+  const prefixLength = Number(match[2]);
+  if (network === null || prefixLength < 0 || prefixLength > 32) return null;
+  return { network, prefixLength };
+}
+
+function cidrContainsIp(parsed, ip) {
+  if (!parsed) return false;
+  const address = ipv4ToNumber(ip);
+  if (address === null) return false;
+  const mask = parsed.prefixLength === 0 ? 0 : (0xffffffff << (32 - parsed.prefixLength)) >>> 0;
+  return (parsed.network & mask) === (address & mask);
+}
+
+function buildSegmentCidrIndex(db) {
+  return db.prepare('SELECT id, canonical_name FROM cyber_network_segments').all()
+    .map((row) => ({ id: row.id, parsed: parseCidrFromSegmentName(row.canonical_name) }))
+    .filter((row) => row.parsed);
+}
+
+// Devuelve { segmentId, corrected } -- corrected=true cuando el segment_id guardado en la
+// observación no coincidía con su propia IP y se reemplazó por el segmento correcto encontrado
+// (o null si ninguno coincide). Sin IP no hay forma de validar/corregir nada: se respeta lo
+// guardado tal cual.
+function resolveTrueSegmentId(segmentCidrIndex, storedSegmentId, ip) {
+  if (!ip) return { segmentId: storedSegmentId, corrected: false };
+  const stored = storedSegmentId ? segmentCidrIndex.find((row) => row.id === storedSegmentId) : null;
+  if (stored && cidrContainsIp(stored.parsed, ip)) return { segmentId: storedSegmentId, corrected: false };
+  let best = null;
+  for (const row of segmentCidrIndex) {
+    if (cidrContainsIp(row.parsed, ip) && (!best || row.parsed.prefixLength > best.parsed.prefixLength)) best = row;
+  }
+  return { segmentId: best ? best.id : null, corrected: (best?.id || null) !== storedSegmentId };
 }
 
 function assetAlias(row) {
@@ -235,7 +286,17 @@ function listInventoryCandidates(db, filters = {}, decisionsDb = null, policyDb 
   const classifiedSegmentIds = new Set(
     networkSegmentIds.filter((segmentId) => policiesBySegmentAlias.has(protectedAlias('segment', segmentId))),
   );
-  const rowsWithWifiFlag = rows.map((row) => ({ ...row, onWifiSegment: wifiSegmentIds.has(row.segmentId) }));
+  // Corrige segment_id contra la IP real de cada observación antes de cualquier otro cálculo
+  // (WiFi, clasificación) -- ver hallazgo 2026-09-17 en parseCidrFromSegmentName/
+  // resolveTrueSegmentId arriba: 187 de 826 observaciones de FortiGate (22.6%) tenían un
+  // segment_id cuyo CIDR real no contenía su propia IP.
+  const segmentCidrIndex = buildSegmentCidrIndex(db);
+  const rowsWithCorrectSegment = rows.map((row) => {
+    if (row.kind !== 'OBSERVATION' || row.source !== 'FORTIGATE') return row;
+    const { segmentId, corrected } = resolveTrueSegmentId(segmentCidrIndex, row.segmentId, row.ipValue);
+    return corrected ? { ...row, segmentId, segmentCorrected: true } : row;
+  });
+  const rowsWithWifiFlag = rowsWithCorrectSegment.map((row) => ({ ...row, onWifiSegment: wifiSegmentIds.has(row.segmentId) }));
   const overlaidRows = rowsWithWifiFlag.map((row) => {
     if (row.kind !== 'OBSERVATION') return row;
     const decision = decisionsByObservationId.get(row.candidateKey);
@@ -367,31 +428,52 @@ function getKasperskyInheritedSegments(db) {
   if (runIds.length === 0) return new Map();
   const placeholders = runIds.map(() => '?').join(',');
   const rows = db.prepare(`
-    SELECT m.right_observation_id kasperskyId, fo.segment_id segmentId
+    SELECT m.right_observation_id kasperskyId, fo.segment_id segmentId, fo.ip_value ipValue
     FROM cyber_cross_source_matches m
     JOIN cyber_asset_observations fo ON fo.id = m.left_observation_id
-    WHERE m.match_status = 'PROPOSED' AND m.match_run_id IN (${placeholders}) AND fo.segment_id IS NOT NULL
+    WHERE m.match_status = 'PROPOSED' AND m.match_run_id IN (${placeholders})
   `).all(...runIds);
-  return new Map(rows.map((row) => [row.kasperskyId, row.segmentId]));
+  // La observación de FortiGate corroborante puede tener el mismo segment_id mal asignado que
+  // el hallazgo del usuario 2026-09-17 (ver resolveTrueSegmentId) -- se corrige antes de que el
+  // equipo Kaspersky lo herede, si no heredaría la subred equivocada igual.
+  const segmentCidrIndex = buildSegmentCidrIndex(db);
+  const result = new Map();
+  for (const row of rows) {
+    const { segmentId } = resolveTrueSegmentId(segmentCidrIndex, row.segmentId, row.ipValue);
+    if (segmentId) result.set(row.kasperskyId, segmentId);
+  }
+  return result;
 }
 
 function listNetworkSegments(db, options = {}) {
-  const observations = db.prepare(`
+  // segment_id se lee tal cual llegó del import pero se corrige contra la IP real antes de
+  // agrupar (ver resolveTrueSegmentId, hallazgo 2026-09-17) -- por eso ya no se exige
+  // `o.segment_id IS NOT NULL` ni se hace JOIN directo contra cyber_network_segments: un
+  // segment_id nulo (interfaz sin ruta conocida al importar) o equivocado puede corregirse por
+  // IP y de todas formas encontrar su subred real.
+  const rawObservations = db.prepare(`
     WITH latest AS (
       SELECT source_system_id, max(captured_at) captured_at
       FROM cyber_source_snapshots WHERE processing_status = 'SUCCESS'
       GROUP BY source_system_id
     )
-    SELECT o.id observationId, o.segment_id segmentKey, segment.canonical_name interfaceName,
+    SELECT o.id observationId, o.segment_id segmentKey,
            o.ip_value ipValue, o.observed_at lastSeenAt,
            o.last_seen_source_at lastSeenSourceAt, o.quality_flags_json qualityFlags
     FROM cyber_asset_observations o
-    JOIN cyber_network_segments segment ON segment.id = o.segment_id
     JOIN cyber_source_snapshots s ON s.id = o.snapshot_id
     JOIN cyber_source_systems source ON source.id = s.source_system_id
     JOIN latest l ON l.source_system_id = s.source_system_id AND l.captured_at = s.captured_at
-    WHERE source.source_type = 'FORTIGATE' AND o.segment_id IS NOT NULL
+    WHERE source.source_type = 'FORTIGATE' AND o.ip_value IS NOT NULL
   `).all();
+  const segmentCidrIndex = buildSegmentCidrIndex(db);
+  const segmentNameById = new Map(db.prepare('SELECT id, canonical_name FROM cyber_network_segments').all().map((row) => [row.id, row.canonical_name]));
+  const observations = rawObservations
+    .map((observation) => {
+      const { segmentId } = resolveTrueSegmentId(segmentCidrIndex, observation.segmentKey, observation.ipValue);
+      return segmentId ? { ...observation, segmentKey: segmentId, interfaceName: segmentNameById.get(segmentId) } : null;
+    })
+    .filter(Boolean);
   const segments = new Map();
   // Kaspersky nunca trae IP (ver getKasperskyInheritedSegments) así que no puede clasificarse
   // por sí solo -- si ya se corroboró contra un equipo FortiGate en este mismo segmento, se
@@ -607,6 +689,7 @@ function getRemediationCase(db, id) {
 module.exports = {
   getCybersecurityOverview, getInventoryOverview, getRemediationCase,
   getCrossSourceMatchedObservationIds, getKasperskyInheritedSegments,
+  buildSegmentCidrIndex, resolveTrueSegmentId, parseCidrFromSegmentName, cidrContainsIp,
   listInventoryCandidates, listNetworkSegments, listRemediationCases,
   protectedAlias, resolveProtectedAlias,
 };

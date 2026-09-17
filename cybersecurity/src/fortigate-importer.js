@@ -150,9 +150,19 @@ function importFortiGateInventory({
       const interfaceRoutes = segmentByInterface.get(device.interfaceName) || [];
       const observedIp = device.ipObservations[0]?.value || null;
       const matchingRoutes = observedIp ? interfaceRoutes.filter((route) => cidrContains(route.cidr, observedIp)) : [];
+      // Hallazgo del usuario 2026-09-17: el "single route" de abajo se aplicaba SIEMPRE que la
+      // interfaz tuviera una sola ruta conocida, incluso cuando la IP observada del dispositivo
+      // NO pertenecía a esa ruta -- verificado contra datos reales: 187 de 826 observaciones de
+      // FortiGate (22.6%) terminaban en un segmento cuyo CIDR no contenía su propia IP (ej. dos
+      // impresoras de la red administrativa 10.2.2.x asignadas a VLAN_Auditoria/VLAN_Comercial).
+      // Ese fallback débil solo tiene sentido cuando NO hay IP observada del todo (sin evidencia
+      // que lo contradiga); si hay IP y no coincide con ninguna ruta de su propia interfaz, es
+      // mejor dejarlo sin segmento (UNMAPPED_INTERFACE) que asignar uno confiadamente equivocado
+      // -- cybersecurity-read-model.js igual busca la subred real por IP al leer (las
+      // observaciones ya importadas son append-only, no se pueden corregir aquí).
       const segmentId = matchingRoutes.length === 1
         ? matchingRoutes[0].segmentId
-        : interfaceRoutes.length === 1 ? interfaceRoutes[0].segmentId : null;
+        : (!observedIp && interfaceRoutes.length === 1) ? interfaceRoutes[0].segmentId : null;
       if (!segmentId && device.interfaceName) qualityFlags.push('UNMAPPED_INTERFACE');
 
       const attributeConfidence = {};

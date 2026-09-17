@@ -102,3 +102,72 @@ test('asigna una IP al CIDR correspondiente sin usar solo la interfaz', () => {
   assert.equal(cidrContains('192.0.2.0/25', '192.0.2.127'), true);
   assert.equal(cidrContains('192.0.2.0/25', '192.0.2.128'), false);
 });
+
+// Regresión real 2026-09-17 (encontrada por el usuario en el navegador): dos impresoras de la
+// red administrativa (10.2.2.x) aparecían clasificadas en VLAN_Auditoria/VLAN_Comercial -- CIDR
+// completamente distinto (10.2.14.0/26, 10.2.12.0/26). Causa: cuando la interfaz reportada por
+// el dispositivo tenía una sola ruta conocida, el importador se la asignaba de todas formas
+// aunque la IP observada no perteneciera a esa ruta. Verificado contra datos reales: 187 de 826
+// observaciones de FortiGate (22.6%) tenían el mismo problema. Se replica aquí con una captura
+// mínima: una interfaz con una sola ruta (10.2.14.0/26) y un dispositivo que la reporta como su
+// interfaz pero con una IP de otra red (10.2.2.110, fuera de esa ruta).
+const mismatchedInterfaceFixture = `FW-LAB $ get system status
+Version: FortiGate-LAB v7.2.0,build0000 (GA)
+Hostname: FW-LAB
+System time: Sat Aug 29 11:00:00 2026
+
+FW-LAB $ get router info routing-table all
+Routing table for VRF=0
+C       10.2.14.0/26 is directly connected, VLAN-Auditoria
+
+FW-LAB $ diagnose user device list
+  00:17:c8:cc:b3:04  gen 100 req 0
+    created 86400s  gen 90  seen 10s  VLAN-Auditoria  gen 99
+    ip 10.2.2.110  src arp
+    hardware vendor 'Kyocera'  src mac  id 1  weight 128
+    type 'Printer'  src dhcp  id 2  weight 200
+    host 'KMCCB304'  src dhcp
+`;
+
+test('un dispositivo con IP fuera de todas las rutas de su interfaz queda sin segmento, no en el equivocado', () => withDatabase((db) => {
+  const result = importFortiGateInventory({
+    db, text: mismatchedInterfaceFixture,
+    capturedAt: '2026-08-29T16:00:00.000Z', importedAt: '2026-08-29T16:05:00.000Z',
+    custodyReference: 'restricted://fixture/mismatch',
+  });
+  assert.equal(result.status, 'SUCCESS');
+  const observation = db.prepare('SELECT segment_id segmentId, quality_flags_json qualityFlags FROM cyber_asset_observations WHERE ip_value = ?').get('10.2.2.110');
+  assert.equal(observation.segmentId, null, 'no debe forzar el segmento de la interfaz cuando la IP no le pertenece');
+  assert.match(observation.qualityFlags, /UNMAPPED_INTERFACE/);
+}));
+
+// El fallback débil (interfaz con una sola ruta conocida) sigue siendo razonable cuando el
+// dispositivo NO reportó ninguna IP -- no hay evidencia que lo contradiga, a diferencia del caso
+// de arriba.
+const noIpFixture = `FW-LAB $ get system status
+Version: FortiGate-LAB v7.2.0,build0000 (GA)
+Hostname: FW-LAB
+System time: Sat Aug 29 11:00:00 2026
+
+FW-LAB $ get router info routing-table all
+Routing table for VRF=0
+C       10.2.14.0/26 is directly connected, VLAN-Auditoria
+
+FW-LAB $ diagnose user device list
+  00:17:c8:cc:b3:05  gen 100 req 0
+    created 86400s  gen 90  seen 10s  VLAN-Auditoria  gen 99
+    hardware vendor 'Kyocera'  src mac  id 1  weight 128
+    type 'Printer'  src dhcp  id 2  weight 200
+    host 'KMCCB305'  src dhcp
+`;
+
+test('un dispositivo sin ninguna IP observada sí usa la única ruta conocida de su interfaz', () => withDatabase((db) => {
+  const result = importFortiGateInventory({
+    db, text: noIpFixture,
+    capturedAt: '2026-08-29T16:00:00.000Z', importedAt: '2026-08-29T16:05:00.000Z',
+    custodyReference: 'restricted://fixture/no-ip',
+  });
+  assert.equal(result.status, 'SUCCESS');
+  const observation = db.prepare('SELECT segment_id segmentId FROM cyber_asset_observations WHERE hostname_raw = ?').get('KMCCB305');
+  assert.notEqual(observation.segmentId, null, 'sin IP que lo contradiga, se mantiene el fallback débil de una sola ruta');
+}));

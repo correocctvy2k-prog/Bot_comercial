@@ -5,7 +5,7 @@ const path = require('node:path');
 const { openCyberDatabase } = require('../db/open-database');
 const { createCybersecurityApi } = require('../src/cybersecurity-api');
 const { openInventoryDecisionStore, getDecisionByObservationId } = require('../src/inventory-decision-store');
-const { promoteObservationToAsset, markObservationAsConflict, markObservationAsIgnored } = require('../src/inventory-actions');
+const { promoteObservationToAsset, markObservationAsConflict, markObservationAsIgnored, getObservationDetail } = require('../src/inventory-actions');
 const { openNetworkPolicyStore, savePolicy } = require('../src/network-policy-store');
 const { importGreenboneProtectedResults } = require('../src/greenbone-protected-importer');
 const { importFortiGateInventory } = require('../src/fortigate-importer');
@@ -300,8 +300,8 @@ test('listInventoryCandidates marca onWifiSegment usando la política ya aplicad
   const db = seededDatabase();
   const policyDb = openNetworkPolicyStore(':memory:');
   try {
-    const wifiSegmentId = seedSegment(db, { id: 'segment-wifi', canonicalName: 'AP1PisoSSO' });
-    const lanSegmentId = seedSegment(db, { id: 'segment-lan', canonicalName: 'VLAN_Comercial' });
+    const wifiSegmentId = seedSegment(db, { id: 'segment-wifi', canonicalName: 'AP1PisoSSO · 10.50.1.0/24' });
+    const lanSegmentId = seedSegment(db, { id: 'segment-lan', canonicalName: 'VLAN_Comercial · 10.2.12.0/24' });
     const wifiObservationId = seedCandidateObservation(db, { id: 'observation-wifi', segmentId: wifiSegmentId, ip: '10.50.1.20' });
     const lanObservationId = seedCandidateObservation(db, { id: 'observation-lan', segmentId: lanSegmentId, ip: '10.2.12.20', mac: '02:00:00:aa:bb:ee', hostname: 'host-lan' });
 
@@ -333,8 +333,8 @@ test('listInventoryCandidates no marca "requiere clasificación" para un segment
   const db = seededDatabase();
   const policyDb = openNetworkPolicyStore(':memory:');
   try {
-    const classifiedSegmentId = seedSegment(db, { id: 'segment-informatica', canonicalName: 'VLANInformatica' });
-    const unclassifiedSegmentId = seedSegment(db, { id: 'segment-sin-clasificar', canonicalName: 'port9' });
+    const classifiedSegmentId = seedSegment(db, { id: 'segment-informatica', canonicalName: 'VLANInformatica · 10.2.2.0/24' });
+    const unclassifiedSegmentId = seedSegment(db, { id: 'segment-sin-clasificar', canonicalName: 'port9 · 172.19.26.0/24' });
     const classifiedObservationId = seedCandidateObservation(db, { id: 'observation-clasificado', segmentId: classifiedSegmentId, ip: '10.2.2.70' });
     const unclassifiedObservationId = seedCandidateObservation(db, { id: 'observation-sin-clasificar', segmentId: unclassifiedSegmentId, ip: '172.19.26.5', mac: '02:00:00:aa:bb:ff', hostname: 'host-sin-clasificar' });
 
@@ -400,7 +400,7 @@ test('listNetworkSegments agrupa un equipo Kaspersky corroborado en la subred re
   try {
     const now = '2026-09-01T12:00:00.000Z';
     db.prepare(`INSERT INTO cyber_network_segments(id, canonical_name, security_zone, created_at, updated_at)
-      VALUES ('segment-finanzas', 'VLAN_Finanzas', 'RESTRICTED', ?, ?)`).run(now, now);
+      VALUES ('segment-finanzas', 'VLAN_Finanzas · 10.2.13.0/26', 'RESTRICTED', ?, ?)`).run(now, now);
     seedCandidateObservation(db, {
       id: 'observation-forti-finanzas', segmentId: 'segment-finanzas', ip: '10.2.13.20',
       hostname: 'PC-FINANZAS-01', hostnameKey: 'pc-finanzas-01',
@@ -458,5 +458,65 @@ test('un match calculado contra un snapshot de FortiGate ya superado no hereda s
     const segments = listNetworkSegments(db, { includeSensitive: true });
     assert.equal(segments.items.every((item) => item.inheritedKasperskyCount === 0), true, 'el match huérfano no debe heredar subred');
     void kscId;
+  } finally { db.close(); }
+});
+
+// Regresión real 2026-09-17 (el usuario la encontró en el navegador con capturas de pantalla):
+// dos impresoras de la red administrativa (10.2.2.x) aparecían clasificadas en VLAN_Auditoria/
+// VLAN_Comercial -- redes con un CIDR completamente distinto. El importador ya no debería
+// repetir esto (ver fortigate-importer.test.js), pero las 187 observaciones ya importadas con
+// el segmento equivocado no se pueden corregir en la tabla (append-only) -- se corrigen al leer.
+test('listInventoryCandidates corrige el segmento cuando la IP real no coincide con el guardado', () => {
+  const db = seededDatabase();
+  try {
+    const wrongSegmentId = seedSegment(db, { id: 'segment-auditoria', canonicalName: 'VLAN_Auditoria · 10.2.14.0/26' });
+    seedSegment(db, { id: 'segment-administrativa', canonicalName: 'RED_Administrativa · 10.2.2.0/24' });
+    const observationId = seedCandidateObservation(db, {
+      id: 'observation-impresora', segmentId: wrongSegmentId, ip: '10.2.2.110', hostname: 'KMCCB304',
+    });
+
+    const list = listInventoryCandidates(db, {});
+    const item = list.items.find((candidate) => candidate.id === protectedAlias('candidate', observationId));
+    assert.equal(item.segmentCorrected, true);
+
+    const detail = getObservationDetail(db, null, null, item.id);
+    assert.equal(detail.segment.name, 'RED_Administrativa · 10.2.2.0/24', 'debe mostrar la subred cuyo CIDR sí contiene la IP real, no la guardada');
+  } finally { db.close(); }
+});
+
+test('listNetworkSegments agrupa el activo en su subred real, no en la guardada por error', () => {
+  const db = seededDatabase();
+  try {
+    const wrongSegmentId = seedSegment(db, { id: 'segment-comercial', canonicalName: 'VLAN_Comercial · 10.2.12.0/26' });
+    const correctSegmentId = seedSegment(db, { id: 'segment-administrativa', canonicalName: 'RED_Administrativa · 10.2.2.0/24' });
+    seedCandidateObservation(db, {
+      id: 'observation-impresora-2', segmentId: wrongSegmentId, ip: '10.2.2.64', hostname: 'NPI437C34',
+    });
+
+    const segments = listNetworkSegments(db, { includeSensitive: true });
+    const correctSegment = segments.items.find((item) => item.id === protectedAlias('segment', correctSegmentId));
+    const wrongSegment = segments.items.find((item) => item.id === protectedAlias('segment', wrongSegmentId));
+    assert.ok(correctSegment, 'la subred administrativa (la real) debe existir con este miembro');
+    assert.equal(correctSegment.observations, 1);
+    assert.equal(wrongSegment, undefined, 'VLAN_Comercial no debe tener miembros -- la única observación pertenecía a otra red');
+  } finally { db.close(); }
+});
+
+// Sin IP no hay forma de validar/corregir nada -- se respeta el segment_id guardado tal cual
+// (mismo comportamiento de siempre para observaciones sin IP, ninguna regresión).
+test('sin IP observada, se respeta el segment_id guardado sin intentar corregirlo', () => {
+  const db = seededDatabase();
+  try {
+    const segmentId = seedSegment(db, { id: 'segment-sin-ip-valida', canonicalName: 'VLAN_X · 10.9.9.0/24' });
+    const now = '2026-09-01T12:00:00.000Z';
+    // seedCandidateObservation no puede forzar ip_value NULL (overrides.ip || default) -- se
+    // inserta directo para probar justo ese caso.
+    seedCandidateObservation(db); // crea source-forti/snapshot-1
+    const observationId = 'observation-sin-ip';
+    db.prepare(`INSERT INTO cyber_asset_observations(id, snapshot_id, source_record_key, observed_at, ingested_at, segment_id, ip_value, hostname_raw)
+      VALUES (?, 'snapshot-1', 'rec-sin-ip', ?, ?, ?, NULL, 'host-sin-ip')`).run(observationId, now, now, segmentId);
+
+    const detail = getObservationDetail(db, null, null, protectedAlias('candidate', observationId));
+    assert.equal(detail.segment.name, 'VLAN_X · 10.9.9.0/24');
   } finally { db.close(); }
 });
