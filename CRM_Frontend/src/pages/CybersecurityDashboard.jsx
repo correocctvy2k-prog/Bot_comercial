@@ -2,7 +2,7 @@ import { createElement, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle, ArrowRight, CheckCircle2, ChevronRight, Clock3,
-  Boxes, Database, EyeOff, FileSearch, Fingerprint, History, ListChecks, MapPin, Network, Radar, RefreshCw,
+  Boxes, Database, EyeOff, FileSearch, Fingerprint, History, Layers, ListChecks, Loader2, MapPin, Network, Radar, RefreshCw,
   Search, ShieldAlert, ShieldCheck, SlidersHorizontal, X,
 } from 'lucide-react';
 import { cybersecurityService } from '../services/cybersecurity.service';
@@ -492,6 +492,121 @@ function CandidateDetailPane({ query, onChanged }) {
   );
 }
 
+// Resolución de conflictos en bloque (pedido del usuario 2026-09-17: "resolver los conflictos,
+// tener nuestras subredes bien identificadas y los activos agrupados correctamente"). Muchos de
+// los candidatos en CONFLICT_REVIEW comparten la misma IP entre varios equipos distintos vistos
+// en momentos diferentes de la captura -- la organización reasigna/reemplaza equipos sin
+// actualizar FortiGate/Kaspersky (decisión del usuario 2026-09-15, ver inventory-reliability.js).
+// Revisarlos uno por uno en el maestro-detalle es lento; este panel los agrupa por IP y separa
+// primero los que el índice de confiabilidad YA sabe explicar (needsManualReview=false, ej.
+// mismo equipo con varias tarjetas de red) de los que de verdad necesitan criterio humano.
+// No hay una ruta de backend nueva para el "ignorar en bloque": reutiliza
+// markInventoryCandidateAsIgnored candidato por candidato (misma acción que el botón individual
+// del detalle), una petición a la vez para poder reportar cuáles fallaron sin perder las que sí
+// funcionaron.
+function ConflictResolutionPanel({ conflicts, onClose, onResolved }) {
+  const [note, setNote] = useState('Revisado en bloque: misma IP reasignada entre varios equipos en la ventana de captura.');
+  const [busyKey, setBusyKey] = useState(null);
+  const [results, setResults] = useState({});
+
+  const groups = new Map();
+  for (const item of conflicts) {
+    const key = item.ipValue || 'SIN_IP';
+    const bucket = groups.get(key) || [];
+    bucket.push(item);
+    groups.set(key, bucket);
+  }
+  const sortedGroups = [...groups.entries()].sort((a, b) => {
+    const aExplained = a[1].every((item) => !item.reliability?.needsManualReview);
+    const bExplained = b[1].every((item) => !item.reliability?.needsManualReview);
+    if (aExplained !== bExplained) return aExplained ? 1 : -1;
+    return b[1].length - a[1].length;
+  });
+
+  const runIgnore = async (key, items) => {
+    setBusyKey(key);
+    let done = 0; const errors = [];
+    for (const item of items) {
+      try {
+        await cybersecurityService.markInventoryCandidateAsIgnored(item.id, { note });
+        done += 1;
+      } catch (error) {
+        errors.push(ACTION_ERROR_LABEL[error.message] || error.message);
+      }
+    }
+    setResults((current) => ({ ...current, [key]: { done, failed: errors.length, errors } }));
+    setBusyKey(null);
+    await onResolved?.();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/55 backdrop-blur-sm" onMouseDown={onClose}>
+      <aside className="h-full w-full max-w-3xl overflow-y-auto border-l border-border bg-background p-7 shadow-2xl" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">Resolución en bloque</p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight">Conflictos por dirección IP</h2>
+            <p className="mt-1.5 text-sm text-muted-foreground">{conflicts.length} candidatos en {groups.size} direcciones. La organización reasigna equipos sin actualizar el registro — muchos de estos no son conflictos reales entre dos equipos, sino la misma IP vista en momentos distintos.</p>
+          </div>
+          <button onClick={onClose} className="shrink-0 rounded-xl border border-border p-2 hover:bg-muted" aria-label="Cerrar"><X size={18} /></button>
+        </div>
+
+        <label className="mt-5 block">
+          <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Nota que se guardará al ignorar (se usa en todas las acciones de este panel)</span>
+          <textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} rows={2} className="mt-1.5 w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500/50" />
+        </label>
+
+        <div className="mt-6 space-y-4">
+          {sortedGroups.map(([key, items]) => {
+            const explained = items.every((item) => !item.reliability?.needsManualReview);
+            // Los que sí se ignoraron desaparecen solos: onResolved() refresca `conflicts` desde
+            // el padre, y un candidato ya ignorado deja de tener state=CONFLICT_REVIEW, así que
+            // el siguiente render ya no lo incluye en `items` (no hace falta filtrarlo aquí).
+            const groupResult = results[key];
+            return (
+              <div key={key} className={`rounded-2xl border p-4 ${explained ? 'border-emerald-500/20 bg-emerald-500/[0.04]' : 'border-amber-500/25 bg-amber-500/[0.05]'}`}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-mono text-sm font-black">{key === 'SIN_IP' ? 'Sin IP en común' : key}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{items.length} candidatos · <span className={`font-bold ${explained ? 'text-emerald-400' : 'text-amber-400'}`}>{explained ? 'Ya explicado por el índice de confiabilidad' : 'Requiere revisión'}</span></p>
+                  </div>
+                  <button onClick={() => runIgnore(key, items)} disabled={busyKey === key} className="flex shrink-0 items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-xs font-black uppercase hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50">
+                    {busyKey === key ? <Loader2 size={14} className="animate-spin" /> : <EyeOff size={14} />}
+                    Ignorar todo el grupo
+                  </button>
+                </div>
+                {groupResult && (
+                  <p className={`mt-2 text-xs font-bold ${groupResult.failed ? 'text-rose-300' : 'text-emerald-300'}`}>
+                    {groupResult.done} ignorado(s){groupResult.failed ? `, ${groupResult.failed} fallaron: ${groupResult.errors.join('; ')}` : ''}
+                  </p>
+                )}
+                <div className="mt-3 space-y-1.5">
+                  {items.map((item) => {
+                    const itemResult = results[item.id];
+                    return (
+                      <div key={item.id} className="rounded-lg border border-border/60 bg-background/40 px-3 py-2 text-xs">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate font-bold">{item.hostnameRaw || 'sin hostname'} <span className="font-mono font-normal text-muted-foreground">{item.macValue}</span></p>
+                            <p className="mt-0.5 truncate text-[11px] text-muted-foreground"><SourceTag source={item.source} size={11} /> · {ASSET_CLASS_LABEL[item.assetClass] || item.assetClass}{item.reliability ? ` · confiabilidad ${item.reliability.score}%` : ''}</p>
+                          </div>
+                          <button onClick={() => runIgnore(item.id, [item])} disabled={busyKey === item.id} className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-[11px] font-bold uppercase hover:bg-muted disabled:opacity-50">{busyKey === item.id ? '…' : 'Ignorar'}</button>
+                        </div>
+                        {itemResult?.failed > 0 && <p className="mt-1.5 text-[11px] font-bold text-rose-300">{itemResult.errors.join('; ')}</p>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+          {sortedGroups.length === 0 && <p className="text-center text-sm text-muted-foreground">No hay conflictos pendientes.</p>}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 // spec: pestaña Inventario madura, mismo patrón maestro-detalle que Subredes
 // (SubnetsView) — búsqueda + filtros a la izquierda sobre el conjunto COMPLETO de
 // candidatos (antes: primeros 100 de 1046, sin paginación; `candidates` ahora se
@@ -500,9 +615,14 @@ function InventoryView({ overview, candidates, source, state, onSourceChange, on
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState(null);
   const [expandedGroups, setExpandedGroups] = useState(() => new Set(['ATTENTION']));
+  const [showConflictResolution, setShowConflictResolution] = useState(false);
   const data = overview.data;
   if (overview.isError || candidates.isError) return <EmptyState error onRetry={onRetry} />;
   const allRows = candidates.data?.items || [];
+  // Pedido del usuario 2026-09-17: "resolver los conflictos ... en cada una de ellas" -- revisar
+  // los ~365 candidatos en CONFLICT_REVIEW uno por uno es lento. Se cuentan aparte para ofrecer
+  // el panel de resolución en bloque (ConflictResolutionPanel, abajo).
+  const conflictRows = allRows.filter((item) => item.state === 'CONFLICT_REVIEW');
   const needle = search.trim().toLowerCase();
   const rows = allRows.filter((item) => !needle || [item.label, item.manufacturer, item.osFamily, item.assetClass, item.hostnameRaw, ...(item.referenceIps || [])].some((value) => String(value || '').toLowerCase().includes(needle)));
   const selected = rows.find((item) => item.id === selectedId) || rows[0] || null;
@@ -568,6 +688,24 @@ function InventoryView({ overview, candidates, source, state, onSourceChange, on
         </div>
       </section>
 
+      {/* Pedido del usuario 2026-09-17: "resolver los conflictos ... en cada una de ellas" --
+          revisar cada conflicto por separado es lento cuando la organización reasigna equipos
+          sin actualizar el registro (misma IP, varios equipos distintos en la ventana de
+          captura, decisión del usuario 2026-09-15). Este panel los agrupa por IP y prioriza
+          los que el propio índice de confiabilidad ya sabe explicar. */}
+      {conflictRows.length > 0 && (
+        <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-400"><Layers size={20} /></span>
+            <div>
+              <p className="text-sm font-bold">{conflictRows.length} candidatos en conflicto</p>
+              <p className="text-xs text-muted-foreground">Muchos comparten la misma IP entre varios equipos vistos en distintos momentos — revísalos agrupados en vez de uno por uno.</p>
+            </div>
+          </div>
+          <button onClick={() => setShowConflictResolution(true)} className="shrink-0 rounded-xl border border-amber-500/30 bg-amber-500/15 px-4 py-2.5 text-xs font-black uppercase text-amber-300 hover:bg-amber-500/25">Resolver en bloque</button>
+        </section>
+      )}
+
       <section className="grid min-h-[650px] overflow-hidden rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xl xl:grid-cols-[390px_1fr]">
         <aside className="border-b border-border xl:border-b-0 xl:border-r">
           <div className="border-b border-border p-4">
@@ -624,6 +762,13 @@ function InventoryView({ overview, candidates, source, state, onSourceChange, on
           {!selected ? <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Selecciona un candidato para ver su detalle.</div> : <CandidateDetailPane query={detail} onChanged={async () => { await Promise.all([onRetry(), detail.refetch()]); }} />}
         </div>
       </section>
+      {showConflictResolution && (
+        <ConflictResolutionPanel
+          conflicts={conflictRows}
+          onClose={() => setShowConflictResolution(false)}
+          onResolved={onRetry}
+        />
+      )}
     </>
   );
 }
