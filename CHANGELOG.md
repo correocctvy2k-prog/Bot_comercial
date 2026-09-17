@@ -50,6 +50,22 @@ a una versión fechada.
   Esquema de BD y contrato de `GET /api/cctv/maintenance` sin cambios; frontend sin cambios.
   Nuevas vars: `TRELLO_MAINTENANCE_BOARD_ID`, `TRELLO_MAINTENANCE_LIST_NAME` (opcional).
 
+### Ciberseguridad — Investigación: dirección IP en los reportes de Kaspersky Security Center
+`docs/modulos/ciberseguridad/NOTA-KSC-DIRECCION-IP.md`
+- **Contexto:** los 157 equipos que llegan por Kaspersky nunca traen IP (`ip_value` queda
+  `NULL`, bandera `MISSING_IP`) — solo se ubican en una subred cuando se corroboran por
+  hostname exacto contra un equipo de FortiGate (`getKasperskyInheritedSegments`).
+- **Investigado antes de asumir nada:** se recuperó del historial de git el código de
+  `Monitor-KSC-HardwareInventory.ps1` y `Monitor-SERV-KSC.ps1` (la carpeta local
+  `CRM_Frontend/Monitoreo/` ya no existe). Ambos parsean sus tablas HTML de forma genérica
+  (capturan todas las columnas) pero ninguno extrae ni referencia una columna de IP en ningún
+  punto — a diferencia de MAC, que sí manejan con variantes con/sin tilde.
+  **Conclusión con la evidencia disponible por código:** los reportes de KSC usados hoy
+  (Informe de hardware, Amenazas, Vulnerabilidades) no parecen incluir IP.
+- **Pendiente:** el usuario va a confirmar directamente en la consola de KSC si existe algún
+  otro tipo de reporte con columna de IP disponible para exportar. La nota documenta qué
+  cambiaría en `Monitor-KSC-HardwareInventory.ps1`/`ksc-importer.js` si la respuesta es sí.
+
 ## [2026-09-11] — specs 0010 y 0011 a producción
 
 Merge de los PR #4 (`857f83f`) y #5 (`4004cce`, `main` actual) y rebuild de `cctv-api` +
