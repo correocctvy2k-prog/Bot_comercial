@@ -378,6 +378,31 @@ conocida — spec 0003).
 aditiva más, mismo patrón que la existente, condicionada a un contador nuevo; queda pendiente la
 vuelta visual real con datos de producción cuando el usuario levante el stack.
 
+## Actualización 2026-09-18 (octava parte) — verificado contra datos reales: 108/157 se autoubican
+
+A pedido del usuario ("verificar en local primero" antes de pushear), se aplicó el snapshot KSC
+fresco a la base local (respaldo previo: `data/cyber-inventory.pre-ksc-ip-verify-20260918.db`):
+`node scripts/pull-ksc-from-monitoring.js --monitoring-url http://192.168.8.65:3001 --db
+data/cyber-inventory.db --custody-ref "restricted://monitoring-it/ksc-hardware/2026-09-18-ip-verify"
+--apply --save-raw ./raw/ksc-monitoring` → 157/157 importados con IP.
+
+**Resultado real, midiendo directamente `listNetworkSegments`/`resolveTrueSegmentId` contra la base
+ya actualizada**: **108 de 157 equipos Kaspersky se autoubicaron por su propia IP en 16 subredes
+reales** — en esta misma captura, 0 estaban corroborados por hostname contra FortiGate, así que
+antes de este cambio los 108 habrían quedado sin subred. Los 49 restantes tienen IP en rangos
+`192.168.x.x` (ej. `192.168.21.173`, `192.168.36.41`) que no coinciden con ningún CIDR que
+FortiGate haya reportado tráfico — comportamiento correcto, no se inventa ubicación, quedan sin
+segmento (probablemente redes que FortiGate no ve, no un error del código).
+
+No se corrió `match-fortigate-ksc.js` de nuevo (no hacía falta para esta verificación, es el
+camino de herencia, que queda como respaldo sin cambios). Datos locales actualizados, gitignored,
+no viajan por git — el respaldo previo a esta importación queda en el filesystem local por si
+hace falta revertir.
+
+**Aún pendiente**: vuelta visual real en `http://127.0.0.1:3003/` (Docker local) — no se levantó
+el stack completo en esta ronda, solo se ejercitaron las funciones del read-model directamente
+contra la base real.
+
 ## Enlaces
 
 - `cybersecurity/scripts/pull-ksc-from-monitoring.js`

@@ -76,9 +76,15 @@ a una versión fechada.
   `listNetworkSegments` suma un campo `selfLocatedKasperskyCount` (nueva tarjeta "Kaspersky por
   IP propia" en `SubnetsView`, junto a "Kaspersky corroborados"); `listInventoryCandidates`
   también resuelve el segmento de Kaspersky por su IP en vez de dejarlo siempre `null`. 148/148
-  tests (4 nuevos), `npm run build` de `CRM_Frontend` en verde. **No verificado a mano en el
-  navegador (Docker local)** — solo con tests y build; el cambio de UI es aditivo (una tarjeta más,
-  mismo patrón que la existente) y de bajo riesgo, pero falta la vuelta visual.
+  tests (4 nuevos), `npm run build` de `CRM_Frontend` en verde.
+- **Verificado contra datos reales, no solo tests**: `pull-ksc-from-monitoring.js --apply` sobre
+  la base local (respaldo previo) importó el snapshot fresco del 2026-09-18 (157/157 con IP) —
+  **108 de 157 equipos Kaspersky se autoubicaron en 16 subredes reales** solo por su propia IP,
+  antes solo 0 estaban corroborados por hostname en esta captura. Los 49 restantes tienen IP en
+  rangos `192.168.x.x` que no coinciden con ningún CIDR que FortiGate haya reportado — no es un
+  error, quedan correctamente sin segmento (comportamiento documentado, no se inventa nada). **No
+  verificado a mano en el navegador (Docker local)** — la tarjeta nueva es aditiva y de bajo
+  riesgo, pero falta la vuelta visual.
 
 ## [2026-09-11] — specs 0010 y 0011 a producción
 
