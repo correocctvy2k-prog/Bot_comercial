@@ -10,6 +10,40 @@ a una versión fechada.
 
 ## [No publicado]
 
+### Ciberseguridad — Torres reales: hAP lite + NVR por punto (fase 1)
+`specs/0013-inventario-torres-haplite-nvr/`
+- **Problema:** el módulo Inventario no tenía ningún concepto de punto de venta ni
+  torre — un MikroTik hAP lite y su grabador Dahua aparecían como dos candidatos
+  sueltos, aunque comparten IP (la del hAP lite, por NAT) y "pertenecen" al mismo punto.
+- **Datos semilla reales** (`cyber_towers`/`cyber_tower_points`, nuevo): 14 torres reales
+  con nombre y gateway/CIDR + 1 celda explícitamente marcada "no es una torre" (Edificio
+  Ppal), entregadas por el usuario. **Verificado que el campo `organization` de
+  `dss_device_registry` no es un proxy confiable de torre** (mezcla varias torres reales
+  en 2 de 13 zonas) — la torre real de un punto se toma de esta lista, nunca de DSS.
+- **Nueva fuente `DSS`** (`cybersecurity/src/dss-importer.js`): trae `dss_device_registry`
+  (`cctv-automation-final`, servicio aparte) de solo lectura, mismo patrón que
+  `ksc-importer.js`. `cybersecurity/scripts/pull-dss-devices.js` (auditoría por defecto,
+  `--apply` explícito) y `cybersecurity/scripts/seed-towers.js` para la semilla.
+- **`getTowerPoints(db)`** agrupa por IP compartida (semilla + DSS), con FortiGate como
+  corroboración opcional (solo 7 de 96 IPs de hAP lite conocidas aparecen en FortiGate —
+  no es el mecanismo principal). Nueva ruta `GET /api/cybersecurity/towers` y pestaña
+  "Torres" en el frontend (`CybersecurityDashboard.jsx`).
+- **Migración real encontrada al implementar:** una base ya existente (incl. `.65`) tiene
+  `cyber_source_systems.source_type` con un `CHECK` sin `'DSS'` — SQLite no soporta
+  `ALTER` de un `CHECK`. `db/open-database.js` automigra al abrir. Un primer intento de
+  migración (renombrar la tabla vieja) resultó incorrecto: `ALTER TABLE RENAME` reescribe
+  las FK de las tablas hijas al nuevo nombre, dejando `cyber_source_snapshots` con
+  referencias huérfanas — detectado con `PRAGMA foreign_key_check` contra la base local
+  real, corregido (crear la tabla nueva bajo nombre temporal, nunca renombrar la
+  original), con test de regresión que replica el escenario exacto.
+- **Verificado contra datos reales, en Docker local** (no solo tests): 15 torres, 96
+  puntos con hAP lite conocido, 93 con dispositivo DSS identificado —
+  `GET /api/cybersecurity/towers` a través de `http://127.0.0.1:3003/` con el stack real
+  reconstruido. 160/160 tests, `npm run build` de `CRM_Frontend` en verde.
+- **Fuera de alcance de esta fase** (spec 0013 §4): modelo completo de torre
+  (enlaces/celdas/router principal/UPS), monitoreo en vivo, vulnerabilidades de
+  firmware, jerarquía Zona → Sitio → Punto (documentada como info para más adelante).
+
 ### CCTV — Sincronización Operación de Puntos ↔ Seguridad Electrónica
 `specs/0012-sync-puntos-cctv/`
 - **Problema:** "Operación de Puntos" (Supabase `puntos_venta`) y "Seguridad Electrónica"

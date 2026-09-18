@@ -22,3 +22,4 @@ Qué no: lo que ya está en la doc de un módulo o en un ADR.
 | [LL-0002](LL-0002-cadena-de-ramas-sin-merge.md) | Cadena larga de ramas sin fusionar a `main` | Infra/Docs | 2026-09-08 |
 | [LL-0003](LL-0003-resolver-telefono-enmascarado.md) | Resolver un teléfono enmascarado sin exponer el crudo ni cambiar el modelo | chatbot-analytics | 2026-09-08 |
 | [LL-0004](LL-0004-fuente-unica-por-vista.md) | Dos vistas del mismo dato, dos fuentes: una viva, otra muerta | cctv-automation-final | 2026-09-09 |
+| [LL-0007](LL-0007-alter-table-rename-reescribe-fk.md) | `ALTER TABLE ... RENAME TO` en SQLite reescribe las FK de las tablas hijas | cybersecurity | 2026-09-18 |

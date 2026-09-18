@@ -2,7 +2,7 @@ const http = require('node:http');
 const { URL } = require('node:url');
 const {
   getCybersecurityOverview, getInventoryOverview, getRemediationCase,
-  listInventoryCandidates, listNetworkSegments, listRemediationCases,
+  listInventoryCandidates, listNetworkSegments, listRemediationCases, getTowerPoints,
 } = require('./cybersecurity-read-model');
 const { listAudit, listDispositions, listPolicies, saveDisposition, savePolicy } = require('./network-policy-store');
 const { mergeExpectedNetworks } = require('./operations-points-catalog');
@@ -129,6 +129,9 @@ function createCybersecurityApi({ db, policyDb = null, decisionsDb = null, autho
       }
       if (url.pathname === '/api/cybersecurity/network-segments') {
         return sendJson(response, 200, listNetworkSegments(db));
+      }
+      if (url.pathname === '/api/cybersecurity/towers') {
+        return sendJson(response, 200, getTowerPoints(db));
       }
       if (url.pathname === '/api/cybersecurity/admin/network-segments') {
         if (!(await authorizeAdmin(request))) return sendJson(response, 403, { error: 'SUPERADMIN_REQUIRED' });

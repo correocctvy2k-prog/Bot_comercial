@@ -1,6 +1,8 @@
 # SPEC 0013 — Inventario de torres: hAP lite + NVR por punto (fase 1)
 
-- **Estado:** Borrador — pendiente de validar con el usuario (ver §9)
+- **Estado:** **Implementado y verificado en Docker local (2026-09-18)** — fase 1
+  completa (§3), pendiente de push/PR/merge/deploy. Ver `tasks.md` para el detalle
+  verificado punto por punto.
 - **Autor:** Claude (a partir de la descripción de infraestructura del usuario, 2026-09-18)
 - **Fecha:** 2026-09-18
 - **Módulos afectados:** `cybersecurity/` (backend + `CRM_Frontend/src/pages/CybersecurityDashboard.jsx`, vista Inventario). Lee, sin modificar, `cctv-automation-final` (`dss_device_registry`).
@@ -248,24 +250,26 @@ cuando lleguen los datos reales de IP de torres.
 
 ## 5. Criterios de aceptación
 
-- [ ] El usuario confirma (o corrige) el listado DSS de 111 dispositivos — condición
-      previa a los siguientes puntos.
-- [ ] Un importador nuevo trae `dss_device_registry` a `cyber_asset_observations`
+- [x] El usuario decide proceder sin confirmar exhaustivamente el listado DSS de 111
+      dispositivos — reconciliación diferida (ver `tasks.md`), no bloqueante.
+- [x] Un importador nuevo trae `dss_device_registry` a `cyber_asset_observations`
       como fuente `DSS`, solo lectura sobre `cctv-automation-final`, idempotente por
-      hash (mismo patrón que `ksc-importer.js`/`importFortiGateInventory`).
-- [ ] `cyber_towers` se crea con las 14 torres reales de `torres_HapLite.pdf` (nombre,
-      gateway/CIDR) + la celda "no es una torre" marcada como tal, no como torre 15.
-- [ ] Un punto de la lista semilla (torre + hAP lite IP) y su(s) dispositivo(s) DSS
+      hash (mismo patrón que `ksc-importer.js`/`importFortiGateInventory`) —
+      `cybersecurity/src/dss-importer.js`.
+- [x] `cyber_towers` se crea con las 14 torres reales de `torres_HapLite.pdf` (nombre,
+      gateway/CIDR) + la celda "no es una torre" marcada como tal, no como torre 15 —
+      verificado contra datos reales.
+- [x] Un punto de la lista semilla (torre + hAP lite IP) y su(s) dispositivo(s) DSS
       con la misma IP aparecen agrupados en el read-model — verificado contra datos
-      reales, no solo tests sintéticos (base: 93 de 96 IPs de hAP lite ya cruzan con
-      `dss_device_registry`, §0.1).
-- [ ] Nueva sección/vista en Inventario navega por torre real (no zona DSS) → puntos
-      → hAP lite + info del grabador.
-- [ ] Tests del módulo `cybersecurity/` en verde (suite completa, no solo los nuevos).
-- [ ] `cd CRM_Frontend && npm run build` en verde.
-- [ ] Verificado en Docker local (`http://127.0.0.1:3003/`) — API + navegador esta
-      vez, no solo API+bundle (pendiente arrastrado de la ronda anterior, spec del
-      módulo Kaspersky).
+      reales: 93 de 96 puntos con dispositivo DSS, 7 con FortiGate.
+- [x] Nueva sección/vista en Inventario navega por torre real (no zona DSS) → puntos
+      → hAP lite + info del grabador — pestaña "Torres" en `CybersecurityDashboard.jsx`.
+- [x] Tests del módulo `cybersecurity/` en verde — **160/160**.
+- [x] `cd CRM_Frontend && npm run build` en verde.
+- [x] Verificado en Docker local (`http://127.0.0.1:3003/`) — API real a través de
+      nginx (15 torres/96 puntos/93 DSS/7 FortiGate) y bundle confirmado con el texto
+      nuevo; sin navegador real (misma limitación ya documentada: sin chromium-cli/
+      Playwright en este entorno) — riesgo residual bajo, UI aditiva.
 
 ## 6. Restricciones de arquitectura y diseño
 

@@ -60,6 +60,7 @@ export const cybersecurityService = {
     return { total, assessmentSummary, items };
   },
   getNetworkSegments: () => request('/network-segments'),
+  getTowers: () => request('/towers'),
   getAdminNetworkSegments: async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) throw new Error('Se requiere una sesión administrativa activa');

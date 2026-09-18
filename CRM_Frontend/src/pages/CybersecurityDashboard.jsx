@@ -2,8 +2,8 @@ import { createElement, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle, ArrowRight, CheckCircle2, ChevronRight, Clock3,
-  Boxes, Database, EyeOff, FileSearch, Fingerprint, History, Layers, ListChecks, Loader2, MapPin, Network, Radar, RefreshCw,
-  Search, ShieldAlert, ShieldCheck, SlidersHorizontal, X,
+  Boxes, Database, EyeOff, FileSearch, Fingerprint, History, Layers, ListChecks, Loader2, MapPin, Network, Radar, RadioTower, RefreshCw,
+  Router, Search, ShieldAlert, ShieldCheck, SlidersHorizontal, Video, X,
 } from 'lucide-react';
 import { cybersecurityService } from '../services/cybersecurity.service';
 import PageHeader from '../components/PageHeader';
@@ -992,6 +992,117 @@ function SubnetsView({ query, drafts, onDraftChange, onRetry, onSave, onDisposit
   );
 }
 
+// Badge por tipo de dispositivo DSS (spec 0013) -- mismo esquema de color que
+// SourceTag/SourceBadge pero para los tipos que trae dss_device_registry
+// (NVR/IPC/DVR-XVR/Alarma/ANPR), no las fuentes de red ya existentes.
+const DEVICE_TYPE_STYLE = {
+  NVR: 'bg-sky-500/10 text-sky-300',
+  IPC: 'bg-violet-500/10 text-violet-300',
+  'DVR/XVR': 'bg-amber-500/10 text-amber-300',
+  'Alarm Controller': 'bg-rose-500/10 text-rose-300',
+  'Access ANPR Camera': 'bg-indigo-500/10 text-indigo-300',
+};
+function DeviceTypeBadge({ deviceType }) {
+  return <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-black uppercase ${DEVICE_TYPE_STYLE[deviceType] || 'bg-muted/40 text-muted-foreground'}`}>{deviceType || 'Desconocido'}</span>;
+}
+
+// Torres reales (spec 0013, fase 1): navegación torre -> puntos -> hAP lite + su(s)
+// dispositivo(s) DSS. La lista es explícitamente parcial (solo puntos con CCTV ya
+// conocido cuando se cargó la semilla, ver spec 0013 SS0.1) -- no se muestra como si
+// fuera el censo completo de cada torre. FortiGate corrobora muy pocas IPs de hAP lite
+// (7 de 96 medidas 2026-09-18) -- se muestra como señal opcional, nunca como requisito.
+function TowersView({ query, onRetry }) {
+  const [search, setSearch] = useState('');
+  const [selectedId, setSelectedId] = useState(null);
+  if (query.isError) return <EmptyState error onRetry={onRetry} />;
+  const towers = query.data?.towers || [];
+  const realTowers = towers.filter((tower) => tower.isTower);
+  const totalPoints = towers.reduce((sum, tower) => sum + tower.pointCount, 0);
+  const pointsWithoutDss = towers.reduce((sum, tower) => sum + tower.pointsWithoutDssCount, 0);
+  const pointsWithFortigate = towers.reduce((sum, tower) => sum + tower.points.filter((point) => point.haplite.observedByFortigate).length, 0);
+  const needle = search.trim().toLowerCase();
+  const visibleTowers = towers.filter((tower) => !needle
+    || tower.name.toLowerCase().includes(needle)
+    || tower.points.some((point) => point.names.some((name) => name.toLowerCase().includes(needle)) || point.haplite.ip.includes(needle)));
+  const selected = visibleTowers.find((tower) => tower.id === selectedId) || visibleTowers[0] || null;
+
+  return (
+    <>
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Torres reales" value={realTowers.length} detail={`${towers.length - realTowers.length} celda sin torre (Edificio Ppal)`} icon={RadioTower} tone="blue" />
+        <MetricCard label="Puntos con hAP lite" value={totalPoints} detail="lista parcial: solo puntos con CCTV ya conocido" icon={Router} tone="emerald" />
+        <MetricCard label="Con grabador identificado" value={totalPoints - pointsWithoutDss} detail={`${pointsWithoutDss} sin dispositivo DSS todavía`} icon={Video} tone="amber" />
+        <MetricCard label="Corroborados por FortiGate" value={pointsWithFortigate} detail="señal opcional · la mayoría de la red de torres no es visible para FortiGate" icon={Network} tone="rose" />
+      </section>
+      <section className="grid min-h-[650px] overflow-hidden rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xl xl:grid-cols-[360px_1fr]">
+        <aside className="border-b border-border xl:border-b-0 xl:border-r">
+          <div className="border-b border-border p-4">
+            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar torre, punto o IP" className="w-full rounded-xl border border-border bg-background py-2.5 pl-9 pr-3 text-xs outline-none focus:border-blue-500/50" /></div>
+          </div>
+          <div className="max-h-[570px] divide-y divide-border/60 overflow-y-auto">
+            {visibleTowers.map((tower) => {
+              const active = selected?.id === tower.id;
+              return (
+                <button key={tower.id} onClick={() => setSelectedId(tower.id)} className={`w-full p-4 text-left transition-colors ${active ? 'bg-blue-500/10 shadow-[inset_3px_0_0_#3b82f6]' : 'hover:bg-muted/35'}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold">{tower.name}</p>
+                      <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground">{tower.gatewayCidr || 'sin gateway registrado'}</p>
+                    </div>
+                    {!tower.isTower && <span className="shrink-0 rounded-full bg-slate-500/10 px-2 py-1 text-[9px] font-black uppercase text-slate-300">Celda</span>}
+                  </div>
+                  <div className="mt-3 flex gap-3 text-[10px] text-muted-foreground"><span>{tower.pointCount} puntos</span><span>•</span><span>{tower.pointsWithoutDssCount} sin grabador</span></div>
+                </button>
+              );
+            })}
+            {visibleTowers.length === 0 && <div className="p-8 text-center text-xs text-muted-foreground">No hay torres que coincidan con la búsqueda.</div>}
+          </div>
+        </aside>
+        <div className="p-5 lg:p-7">
+          {!selected ? <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Selecciona una torre para ver sus puntos.</div> : (
+            <>
+              <div className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-blue-400"><RadioTower size={14} /> {selected.isTower ? 'Torre de telecomunicaciones' : 'Celda (no es una torre)'}</div>
+                  <h2 className="mt-2 text-2xl font-black">{selected.name}</h2>
+                  <p className="mt-1 font-mono text-xs text-muted-foreground">{selected.gatewayCidr || 'sin gateway registrado'}</p>
+                </div>
+                <span className="w-fit rounded-lg border border-border px-3 py-2 text-[10px] font-black text-muted-foreground">{selected.pointCount} puntos conocidos</span>
+              </div>
+              <ol className="mt-5 space-y-3">
+                {selected.points.map((point) => (
+                  <li key={point.haplite.ip} className="rounded-xl border border-border/70 bg-background/25 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold">{point.names.join(' · ')}</p>
+                        <p className="mt-1 flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground"><Router size={12} /> {point.haplite.ip}</p>
+                      </div>
+                      {point.haplite.observedByFortigate && <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[9px] font-black uppercase text-emerald-300">FortiGate en línea</span>}
+                    </div>
+                    {point.dssDevices.length > 0 ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {point.dssDevices.map((device) => (
+                          <span key={device.id} className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card/60 px-2.5 py-1.5 text-[11px]">
+                            <DeviceTypeBadge deviceType={device.deviceType} />
+                            <span className="font-semibold">{device.name}</span>
+                            {device.model && <span className="text-muted-foreground">· {device.model}</span>}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-[11px] text-amber-300">Sin dispositivo DSS identificado todavía en esta IP.</p>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </>
+          )}
+        </div>
+      </section>
+    </>
+  );
+}
+
 export default function CybersecurityDashboard() {
   const [activeView, setActiveView] = useState('posture');
   const [priority, setPriority] = useState('');
@@ -1014,9 +1125,11 @@ export default function CybersecurityDashboard() {
     queryFn: () => cybersecurityService.getInventoryCandidates({ source: inventorySource, state: inventoryState, all: true }),
   });
   const networkSegments = useQuery({ queryKey: ['cybersecurity-admin-network-segments'], queryFn: cybersecurityService.getAdminNetworkSegments });
+  const towers = useQuery({ queryKey: ['cybersecurity-towers'], queryFn: cybersecurityService.getTowers });
   const refresh = () => {
     if (activeView === 'inventory') { inventoryOverview.refetch(); inventoryCandidates.refetch(); }
     else if (activeView === 'subnets') networkSegments.refetch();
+    else if (activeView === 'towers') towers.refetch();
     else { overview.refetch(); cases.refetch(); }
   };
   const data = overview.data;
@@ -1030,10 +1143,10 @@ export default function CybersecurityDashboard() {
               <ShieldCheck size={24} />
             </div>
           }
-          title={activeView === 'inventory' ? 'Inventario de activos' : activeView === 'subnets' ? 'Clasificación de subredes' : 'Postura y remediación'}
-          subtitle={activeView === 'inventory' ? 'Observaciones, candidatos y activos canónicos conciliados sin convertir direcciones temporales en identidad.' : activeView === 'subnets' ? 'Define el contexto operativo de cada segmento protegido y revisa su impacto antes de aplicar políticas.' : 'Hallazgos normalizados, agrupados por causa técnica y priorizados sin exponer identificadores sensibles.'}
+          title={activeView === 'inventory' ? 'Inventario de activos' : activeView === 'subnets' ? 'Clasificación de subredes' : activeView === 'towers' ? 'Torres y puntos' : 'Postura y remediación'}
+          subtitle={activeView === 'inventory' ? 'Observaciones, candidatos y activos canónicos conciliados sin convertir direcciones temporales en identidad.' : activeView === 'subnets' ? 'Define el contexto operativo de cada segmento protegido y revisa su impacto antes de aplicar políticas.' : activeView === 'towers' ? 'Torres reales con sus puntos de venta conocidos, cada uno con su hAP lite y el grabador DSS asociado.' : 'Hallazgos normalizados, agrupados por causa técnica y priorizados sin exponer identificadores sensibles.'}
           actions={
-            <button onClick={refresh} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider hover:bg-muted"><RefreshCw size={15} className={(overview.isFetching || cases.isFetching || inventoryOverview.isFetching || inventoryCandidates.isFetching) ? 'animate-spin' : ''} /> Actualizar</button>
+            <button onClick={refresh} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider hover:bg-muted"><RefreshCw size={15} className={(overview.isFetching || cases.isFetching || inventoryOverview.isFetching || inventoryCandidates.isFetching || towers.isFetching) ? 'animate-spin' : ''} /> Actualizar</button>
           }
         />
 
@@ -1041,10 +1154,13 @@ export default function CybersecurityDashboard() {
           <button onClick={() => setActiveView('posture')} className={`rounded-lg px-4 py-2 text-xs font-bold transition-colors ${activeView === 'posture' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>Postura y remediación</button>
           <button onClick={() => setActiveView('inventory')} className={`rounded-lg px-4 py-2 text-xs font-bold transition-colors ${activeView === 'inventory' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>Inventario</button>
           <button onClick={() => setActiveView('subnets')} className={`rounded-lg px-4 py-2 text-xs font-bold transition-colors ${activeView === 'subnets' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>Subredes</button>
+          <button onClick={() => setActiveView('towers')} className={`rounded-lg px-4 py-2 text-xs font-bold transition-colors ${activeView === 'towers' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>Torres</button>
         </nav>
 
         {activeView === 'inventory' ? (
           <InventoryView overview={inventoryOverview} candidates={inventoryCandidates} source={inventorySource} state={inventoryState} onSourceChange={setInventorySource} onStateChange={setInventoryState} onRetry={refresh} />
+        ) : activeView === 'towers' ? (
+          <TowersView query={towers} onRetry={refresh} />
         ) : activeView === 'subnets' ? (
           <SubnetsView query={networkSegments} drafts={segmentDrafts} onDraftChange={(id, value) => setSegmentDrafts((current) => ({ ...current, [id]: value }))} onRetry={refresh} onSave={async (id, policy) => { await cybersecurityService.saveNetworkSegmentPolicy(id, policy); setSegmentDrafts((current) => { const next = { ...current }; delete next[id]; return next; }); await networkSegments.refetch(); }} onDisposition={async (id, status) => { await cybersecurityService.saveNetworkSegmentDisposition(id, { status }); setSegmentDrafts((current) => { const next = { ...current }; delete next[id]; return next; }); await networkSegments.refetch(); }} />
         ) : <>
