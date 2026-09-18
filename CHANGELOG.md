@@ -67,11 +67,18 @@ a una versión fechada.
 - **`cybersecurity/src/ksc-importer.js`** ya no fuerza `MISSING_IP`: persiste `ip_value` desde
   `device.IPAddress` cuando el contrato `KSC-HARDWARE` lo trae, la bandera solo se agrega cuando
   de verdad falta. Verificado contra el payload real de `.65:3001` (157/157 con IP, no solo el
-  fixture) y 144/144 tests del módulo en verde. **Fuera de alcance de este cambio:** el
-  emparejamiento de subred de un equipo Kaspersky (`cybersecurity-read-model.js`) sigue usando
-  solo el cruce por hostname heredado de FortiGate (`getKasperskyInheritedSegments`), sin
-  aprovechar todavía la IP propia recién persistida — próximo paso natural, no hecho en esta
-  ronda.
+  fixture) y 144/144 tests del módulo en verde.
+- **`cybersecurity-read-model.js`/`inventory-actions.js`**: un equipo Kaspersky ahora se ubica
+  primero por su propia IP (mismo mecanismo `resolveTrueSegmentId` que ya usaba FortiGate) —
+  antes solo se ubicaba por herencia desde su par corroborado de FortiGate (`hostname` exacto).
+  La herencia sigue como respaldo cuando falta IP propia o no cae en ningún CIDR conocido; la IP
+  directa tiene prioridad y no cuenta dos veces cuando ambas señales coinciden.
+  `listNetworkSegments` suma un campo `selfLocatedKasperskyCount` (nueva tarjeta "Kaspersky por
+  IP propia" en `SubnetsView`, junto a "Kaspersky corroborados"); `listInventoryCandidates`
+  también resuelve el segmento de Kaspersky por su IP en vez de dejarlo siempre `null`. 148/148
+  tests (4 nuevos), `npm run build` de `CRM_Frontend` en verde. **No verificado a mano en el
+  navegador (Docker local)** — solo con tests y build; el cambio de UI es aditivo (una tarjeta más,
+  mismo patrón que la existente) y de bajo riesgo, pero falta la vuelta visual.
 
 ## [2026-09-11] — specs 0010 y 0011 a producción
 

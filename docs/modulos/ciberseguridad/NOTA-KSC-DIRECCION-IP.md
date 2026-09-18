@@ -341,6 +341,43 @@ uno su propio caso especial por fuente (`FORTIGATE` vs `KASPERSKY`) — extender
 también se autoubique por IP (con la herencia como respaldo cuando falte IP) queda como el siguiente
 paso natural, pendiente de decisión del usuario sobre si retomarlo ahora o en otra ronda.
 
+## Actualización 2026-09-18 (séptima parte) — Kaspersky ya se autoubica por su propia IP
+
+Retomado en la misma ronda ("extender subred por IP propia de Kaspersky", elegido entre 3 opciones
+que se le ofrecieron al usuario tras cerrar la sexta parte). Cerraba el pendiente que dejó esa
+actualización.
+
+**`cybersecurity-read-model.js`**: `listInventoryCandidates` y `listNetworkSegments` ya no tratan a
+`KASPERSKY` como un caso sin IP — ambos aplican `resolveTrueSegmentId` (el mismo mecanismo que ya
+usaba FortiGate) contra el `ip_value` propio de cada observación Kaspersky. `listNetworkSegments`
+agrega los equipos autoubicados como miembros nuevos (incluso en una subred donde ningún FortiGate
+reportó tráfico todavía) y suma un contador aparte `selfLocatedKasperskyCount`, distinto de
+`inheritedKasperskyCount` — la herencia por hostname (`getKasperskyInheritedSegments`) sigue
+existiendo, pero solo como respaldo para un equipo sin IP propia o cuya IP no cae en ningún CIDR
+conocido; cuando ambas señales existen para el mismo equipo, la IP directa gana y no se cuenta dos
+veces (verificado con test: un equipo con IP propia Y corroborado por hostname en la misma subred
+suma 1 sola observación, no 2).
+
+**`inventory-actions.js`** (`resolveObservationSegment`, usada por `getObservationDetail`): mismo
+cambio de precedencia — IP propia primero, herencia como respaldo. `detail.segment.inherited` ahora
+sale `false` para un equipo Kaspersky ubicado por su propia IP (antes siempre `true` cuando tenía
+subred, porque la única vía era la herencia).
+
+**Frontend** (`CybersecurityDashboard.jsx`, `SubnetsView`): nueva tarjeta "Kaspersky por IP propia"
+junto a la ya existente "Kaspersky corroborados", cada una visible solo cuando su contador es mayor
+a 0.
+
+**Verificado**: 148/148 tests del módulo (4 nuevos: ubicación por IP propia sin corroboración, y
+precedencia de IP propia sobre herencia sin duplicar conteo, en `listNetworkSegments` y en
+`getObservationDetail`). `cd CRM_Frontend && npm run build` en verde. `npx eslint
+src/pages/CybersecurityDashboard.jsx` solo muestra los 2 errores preexistentes de
+`react-hooks/rules-of-hooks` (líneas 629/888, ninguno relacionado con este cambio, deuda de lint ya
+conocida — spec 0003).
+
+**No verificado en `http://127.0.0.1:3003/` (Docker local)** — el cambio de UI es una tarjeta
+aditiva más, mismo patrón que la existente, condicionada a un contador nuevo; queda pendiente la
+vuelta visual real con datos de producción cuando el usuario levante el stack.
+
 ## Enlaces
 
 - `cybersecurity/scripts/pull-ksc-from-monitoring.js`

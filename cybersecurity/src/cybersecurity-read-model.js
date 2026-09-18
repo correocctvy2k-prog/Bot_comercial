@@ -292,9 +292,20 @@ function listInventoryCandidates(db, filters = {}, decisionsDb = null, policyDb 
   // segment_id cuyo CIDR real no contenía su propia IP.
   const segmentCidrIndex = buildSegmentCidrIndex(db);
   const rowsWithCorrectSegment = rows.map((row) => {
-    if (row.kind !== 'OBSERVATION' || row.source !== 'FORTIGATE') return row;
-    const { segmentId, corrected } = resolveTrueSegmentId(segmentCidrIndex, row.segmentId, row.ipValue);
-    return corrected ? { ...row, segmentId, segmentCorrected: true } : row;
+    if (row.kind !== 'OBSERVATION') return row;
+    if (row.source === 'FORTIGATE') {
+      const { segmentId, corrected } = resolveTrueSegmentId(segmentCidrIndex, row.segmentId, row.ipValue);
+      return corrected ? { ...row, segmentId, segmentCorrected: true } : row;
+    }
+    // Kaspersky no traía IP hasta 2026-09-18 (ksc-importer.js forzaba MISSING_IP) -- ahora que
+    // sí la persiste, se ubica por su propia IP con el mismo mecanismo que FortiGate. `segmentId`
+    // nunca viene guardado (el importador de KSC no lo calcula), así que aquí siempre es una
+    // resolución nueva, no una "corrección" de un valor previo -- no se marca segmentCorrected.
+    if (row.source === 'KASPERSKY' && row.ipValue) {
+      const { segmentId } = resolveTrueSegmentId(segmentCidrIndex, row.segmentId, row.ipValue);
+      return segmentId ? { ...row, segmentId } : row;
+    }
+    return row;
   });
   const rowsWithWifiFlag = rowsWithCorrectSegment.map((row) => ({ ...row, onWifiSegment: wifiSegmentIds.has(row.segmentId) }));
   const overlaidRows = rowsWithWifiFlag.map((row) => {
@@ -475,10 +486,33 @@ function listNetworkSegments(db, options = {}) {
     })
     .filter(Boolean);
   const segments = new Map();
-  // Kaspersky nunca trae IP (ver getKasperskyInheritedSegments) así que no puede clasificarse
-  // por sí solo -- si ya se corroboró contra un equipo FortiGate en este mismo segmento, se
-  // agrega a la misma subred como miembro "heredado" en vez de quedar suelto sin red (decisión
-  // del usuario 2026-09-16: aplicar el cruce ya calculado).
+  // Kaspersky ya persiste su propia IP desde 2026-09-18 (ksc-importer.js) -- se ubica primero por
+  // su propia IP, igual que FortiGate (resolveTrueSegmentId contra el mismo índice de CIDR).
+  const kasperskySelfLocated = db.prepare(`
+    WITH latest AS (
+      SELECT source_system_id, max(captured_at) captured_at
+      FROM cyber_source_snapshots WHERE processing_status = 'SUCCESS'
+      GROUP BY source_system_id
+    )
+    SELECT o.id observationId, o.ip_value ipValue, o.observed_at lastSeenAt,
+           o.last_seen_source_at lastSeenSourceAt, o.quality_flags_json qualityFlags
+    FROM cyber_asset_observations o
+    JOIN cyber_source_snapshots s ON s.id = o.snapshot_id
+    JOIN cyber_source_systems source ON source.id = s.source_system_id
+    JOIN latest l ON l.source_system_id = s.source_system_id AND l.captured_at = s.captured_at
+    WHERE source.source_type = 'KASPERSKY' AND o.ip_value IS NOT NULL
+  `).all();
+  const selfLocatedByKasperskyId = new Map();
+  for (const observation of kasperskySelfLocated) {
+    const { segmentId } = resolveTrueSegmentId(segmentCidrIndex, null, observation.ipValue);
+    if (segmentId) selfLocatedByKasperskyId.set(observation.observationId, { segmentId, observation });
+  }
+  // Un equipo Kaspersky sin IP propia (o cuya IP no cae en ningún CIDR conocido) no puede
+  // ubicarse por sí solo -- si ya se corroboró contra un equipo FortiGate en este mismo segmento,
+  // se agrega a la misma subred como miembro "heredado" en vez de quedar suelto sin red (decisión
+  // del usuario 2026-09-16: aplicar el cruce ya calculado). La IP propia, cuando existe, es
+  // evidencia directa y tiene prioridad sobre la corroboración por hostname -- ver el filtro
+  // `!selfLocatedByKasperskyId.has(...)` más abajo.
   const inheritedSegmentByKasperskyId = getKasperskyInheritedSegments(db);
   const kasperskyObservations = inheritedSegmentByKasperskyId.size === 0 ? [] : db.prepare(`
     WITH latest AS (
@@ -500,13 +534,17 @@ function listNetworkSegments(db, options = {}) {
     const item = segments.get(segmentKey) || {
       segmentKey, interfaceName,
       observations: 0, active: 0, intermittent: 0,
-      inactive: 0, staleReview: 0, ephemeralMacs: 0, inheritedKasperskyCount: 0, lastActivityAt: null,
+      inactive: 0, staleReview: 0, ephemeralMacs: 0, inheritedKasperskyCount: 0,
+      selfLocatedKasperskyCount: 0, lastActivityAt: null,
       referenceIps: new Set(),
       knownIps: new Set(),
       members: [],
     };
     item.observations += 1;
-    if (member.source === 'KASPERSKY') item.inheritedKasperskyCount += 1;
+    if (member.source === 'KASPERSKY') {
+      if (member.inheritedFromFortiGate) item.inheritedKasperskyCount += 1;
+      else item.selfLocatedKasperskyCount += 1;
+    }
     if (member.ip) {
       item.knownIps.add(member.ip);
       if (item.referenceIps.size < 3) item.referenceIps.add(member.ip);
@@ -536,7 +574,24 @@ function listNetworkSegments(db, options = {}) {
       lastActivityAt: observation.lastSeenSourceAt || observation.lastSeenAt || null,
     });
   }
+  for (const { segmentId, observation } of selfLocatedByKasperskyId.values()) {
+    const assessed = assessInventoryCandidate({
+      source: 'KASPERSKY', lastSeenAt: observation.lastSeenAt,
+      lastSeenSourceAt: observation.lastSeenSourceAt,
+      qualityFlags: safeJson(observation.qualityFlags, []), reasonCodes: [], confidence: 0.5,
+    });
+    addMember(segmentId, segmentNameById.get(segmentId), {
+      id: observation.observationId,
+      ip: observation.ipValue,
+      source: 'KASPERSKY',
+      inheritedFromFortiGate: false,
+      lifecycleStatus: assessed.lifecycleStatus,
+      ephemeralMac: false,
+      lastActivityAt: observation.lastSeenSourceAt || observation.lastSeenAt || null,
+    });
+  }
   for (const observation of kasperskyObservations) {
+    if (selfLocatedByKasperskyId.has(observation.observationId)) continue; // ya ubicado por su propia IP, no por herencia
     const segmentKey = inheritedSegmentByKasperskyId.get(observation.observationId);
     const existing = segments.get(segmentKey);
     if (!existing) continue; // el FortiGate que corroboró este segmento ya debió agregarlo arriba
