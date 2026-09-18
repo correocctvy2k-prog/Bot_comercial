@@ -30,6 +30,69 @@ Descrito por el usuario el 2026-09-18, verbatim resumido:
 - Los datos reales de IP de torres y sus equipos **llegarán más adelante**. Mientras
   tanto: **empezar por lo que ya se tiene — hAP lite y NVR**.
 
+### 0.1 Actualización 2026-09-18 (misma jornada) — el usuario entregó la lista real de torres
+
+El usuario compartió `torres_HapLite.pdf`. Transcrita a
+`cybersecurity/raw/torres/torres-haplite-real-20260918.json` (104 filas) —
+**gitignored a propósito** (`raw/` completo, mismo patrón que el resto de capturas
+reales de este módulo: nunca viaja por git, son IPs y nombres reales de la red de
+seguridad de la empresa), disponible localmente para cuando se implemente §3.3/§3.6.
+
+**14 torres reales, con nombre propio**
+(`Cafetero Palmira`, `Sharon Palmira`, `Zamorano Palmira`, `Oriente Palmira`,
+`Florida`, `Pradera`, `Villagorgona`, `Amaime`, `Palmaseca`, `Rozo`, `Candelaria`,
+`Juanchito`, `Bolo`, `Quisquina`), cada una con su **gateway** (CIDR real, ej.
+`192.168.44.1/23` para Cafetero Palmira) y la lista de **hAP lite por punto** (nombre
+del punto + IP). Una fila adicional, **explícitamente marcada "No es una torre"**
+(`192.168.36.1/24`): el usuario aclaró que es **una celda ubicada en el Edificio
+Principal de Palmira que sirve a algunos puntos cercanos**, no una torre — coincide
+con la exclusión de `EDIFICIO PPAL` ya acordada en §9.1, y confirma que una celda
+puede estar alojada en un sitio que no es torre.
+
+Dos aclaraciones más del usuario, importantes para no sobre-interpretar esta lista:
+- **Incompleta a propósito**: "los puntos aquí relacionados solo son los que tienen
+  sistema CCTV de cada zona, obviamente hay muchos más puntos conectados a cada
+  torre" — esta lista NO es el censo completo de puntos por torre, solo los que ya
+  tienen CCTV.
+- **Sistema operativo por rol**: "los puntos de venta solo tienen equipos con Ubuntu,
+  los equipos Windows son usados para el personal administrativo y las cajas en las
+  diferentes oficinas" — dato útil para una futura heurística de clasificación (un
+  Windows detectado en un segmento de punto de venta sería una anomalía, no el
+  equipo normal de atención), no se actúa sobre esto en esta fase.
+
+**Verificado cruzando esta lista contra los datos reales que ya se tenían** (104 filas
+del PDF, 96 IPs de hAP lite únicas, 15 grupos incl. el "no es una torre"):
+
+- **Contra `dss_device_registry` (111 dispositivos)**: 93 de las 96 IPs de hAP lite
+  tienen al menos un dispositivo DSS en esa misma IP — confirma la tesis central del
+  usuario (IP observada = hAP lite) con evidencia cruzada, no solo su palabra. **3 IPs
+  sin ningún dispositivo DSS todavía** (`192.168.14.69` "La Discordia Palmira",
+  `192.168.32.46` "La Victoria Florida", `192.168.24.202` "Parque Pradera") — puntos
+  con hAP lite conocido pero sin CCTV reconciliado en DSS aún, o reconciliado con otro
+  nombre; no se investigó más en esta ronda.
+- **Hallazgo importante — la zona/`organization` de DSS NO es un proxy confiable de
+  torre real**, contrario a lo que parecía en la respuesta inicial del usuario a
+  §9.1 (que fue una aproximación de memoria, no contra este dato). Verificado por
+  cruce de IP: la zona DSS `CANDELARIA` en realidad mezcla **3 torres reales
+  distintas** (Candelaria, Juanchito, Villagorgona); la zona DSS `OCCIDENTE` es un
+  **cajón de sastre que mezcla 5 torres reales** (Bolo, Oriente Palmira, Palmaseca,
+  Quisquina, Zamorano Palmira). El resto de zonas DSS sí corresponden 1:1 a una sola
+  torre real (`RED 14`→Zamorano Palmira, `RED 20`→Sharon Palmira, `RED 34`→Oriente
+  Palmira, `RED 36`→la celda "no es una torre" del Edificio Ppal, `RED 44`→Cafetero
+  Palmira, `AMAIME`→Amaime, `FLORIDA`→Florida, `PRADERA`→Pradera, `ROZO`→Rozo).
+  **Consecuencia directa para el diseño (§3, revisado más abajo): la torre de un
+  punto ya NO se infiere de `dss_device_registry.organization` — se toma de esta
+  lista real del usuario, que pasa a ser la fuente de verdad.**
+- **Contra las observaciones de FortiGate**: solo **7 de las 96 IPs de hAP lite**
+  aparecen en el inventario de FortiGate (`diagnose user device list`) — consistente
+  con el patrón ya visto con Kaspersky (spec de la ronda anterior: 49 de 157 IPs de
+  Kaspersky tampoco caían en ningún CIDR conocido por FortiGate). Conclusión: la red
+  de las 14 torres es, en su gran mayoría, **invisible para FortiGate** (probablemente
+  corre por infraestructura propia/ISP distinta a la red central que audita el
+  firewall) — la corroboración cruzada con FortiGate debe tratarse como una señal
+  **opcional y rara**, nunca como el mecanismo principal de identificación de un hAP
+  lite (revisa el punto 3 de §3, que originalmente la asumía como principal).
+
 ## 1. Problema / oportunidad
 
 El módulo Ciberseguridad hoy modela activos como una lista plana de observaciones
@@ -43,10 +106,10 @@ Aparte, ya existe un inventario real y curado de 91 NVR/DVR + 20 cámaras/alarma
 (`cctv-automation-final`, tabla `dss_device_registry`, 111 filas, reconciliado a 13
 zonas) que el módulo Ciberseguridad **nunca ha leído** — es un servicio y una base de
 datos completamente aparte. Verificado 2026-09-18: ese registro **sí trae IP y nombre
-por dispositivo**, y las zonas (`RED 14`, `RED 20`, `RED 34`, `RED 36`, `RED 44`,
-`AMAIME`, `CANDELARIA`, `FLORIDA`, `OCCIDENTE`, `PRADERA`, `ROZO`, `EDIFICIO PPAL`,
-`VPN`) ya se parecen a la agrupación por torre/sector que el usuario describe (a
-confirmar — ver §9, primera pregunta abierta).
+por dispositivo**, pero su campo `organization` (zona) **no es un proxy confiable de
+torre real** — mezcla varias torres bajo una misma zona en al menos 2 de 13 casos (ver
+§0.1). La torre real de cada punto se toma de la lista entregada por el usuario
+(`torres_HapLite.pdf`, §0.1), no de `dss_device_registry.organization`.
 
 ## 2. Objetivo
 
@@ -68,27 +131,42 @@ cuando lleguen los datos reales de IP de torres.
    corroborante (`cyber_source_systems.source_type = 'DSS'`) — nombre, tipo
    (NVR/IPC/DVR-XVR/Alarm/ANPR), modelo e IP (aclarando en metadata que esa IP es la
    del hAP lite, no la del propio NVR, por la razón de negocio del §0).
-3. **Agrupación por punto (IP compartida).** Un candidato FortiGate ya clasificado
-   `NETWORK`/`mikrotik` y una fila `DSS` con la **misma IP** son, por definición del
-   negocio, el mismo punto: el hAP lite y su grabador. Se agrupan en el read-model
-   (mismo patrón que `detectDeviceGroups` en `inventory-reliability.js`, pero por IP
-   igual en vez de "misma placa"), sin fusionar identidades ni inventar datos que no
-   estén en ninguna de las dos fuentes.
-4. **Vista nueva o sección en Inventario**: "Puntos con hAP lite + CCTV" — lista de
-   estos grupos, con zona (de `dss_device_registry.organization`), nombre del punto,
-   IP, tipo de grabador/modelo, y estado de conectividad si ya existe en FortiGate
-   (`lifecycleStatus`, igual que el resto del inventario).
-5. **Modelo de datos mínimo para "Torre"**, sin llenarlo todavía: una tabla/entidad
-   nueva `cyber_towers` (o el nombre que el usuario prefiera) con id, nombre, zona —
-   **vacía o con las 13 zonas de DSS como fila provisional** (a decidir en §9) — lista
-   para recibir los datos reales de IP de torre cuando lleguen, sin requerir otra
-   migración de esquema en ese momento.
+3. **Torre real como semilla de datos (revisado tras §0.1).** La lista entregada por
+   el usuario (`torres_HapLite.pdf`: 14 torres + 1 celda "no es una torre", 104 filas
+   torre↔hAP lite) se carga como **datos semilla reales** (no inventados, no
+   inferidos) — 15 grupos, cada uno con su nombre, gateway/CIDR, y las IPs de hAP lite
+   que ya se conocen en él. Es la fuente de verdad para "¿a qué torre pertenece este
+   punto?" — **no** `dss_device_registry.organization` (§0.1: no es confiable para
+   esto). Explícitamente parcial (solo puntos con CCTV ya conocido, el usuario avisó
+   que hay más puntos por torre sin listar aquí todavía) — no se trata como el censo
+   completo de cada torre.
+4. **Agrupación por punto (IP compartida).** Una fila semilla (torre + hAP lite IP) y
+   una fila `DSS` con la **misma IP** son, por definición del negocio, el mismo punto.
+   FortiGate puede corroborar la IP del hAP lite cuando la observa (uso opcional,
+   bonus de "en línea/fuera de línea" cuando exista) — verificado que esto ocurre en
+   **muy pocos casos** (7 de 96 IPs de hAP lite conocidas, §0.1), así que el diseño no
+   depende de FortiGate para identificar ni agrupar un punto.
+5. **Vista nueva o sección en Inventario**: "Torres y puntos con hAP lite + CCTV" —
+   navegación por torre real (nombre, no zona DSS) → puntos conocidos de esa torre →
+   hAP lite + su(s) dispositivo(s) DSS (NVR/cámara/alarma/ANPR), con estado de
+   conectividad si FortiGate llegó a observarlo (raro, ver punto 4).
+6. **`cyber_towers` con datos reales, no provisionales.** A diferencia del plan
+   original (zonas DSS como placeholder — ya descartado, §0.1): se crea con **las 14
+   torres reales** (nombre, gateway/CIDR) que el usuario ya entregó, más la celda "no
+   es una torre" marcada explícitamente como tal (no como torre 15). Ningún dato
+   inventado — lo que no está en la lista del usuario no se muestra como si existiera
+   (ej. enlaces, celdas, router principal, UPS: siguen sin datos, ver §4).
 
 ## 4. No-objetivos (fase 1 — explícitamente fuera)
 
-- **Modelo completo de Torre** con enlaces/celdas/puntos reales, IPs de router
-  principal, UPS-con-tarjeta-de-red: bloqueado por falta de datos reales (el usuario
-  los entregará más adelante). Esta spec solo prepara el terreno (§3.5).
+- **Modelo completo de Torre**: enlaces inalámbricos entre torres, celdas (salvo la
+  única ya identificada como "no es una torre"), IP del router principal, UPS con
+  tarjeta de red — la lista real de §0.1 solo da nombre+gateway+hAP lite por punto,
+  no estos otros datos; llegarán más adelante. Esta spec solo carga lo que sí llegó
+  (§3.6).
+- **Censo completo de puntos por torre**: la lista de §0.1 es explícitamente parcial
+  (solo puntos con CCTV ya conocido) — no se asume ni se muestra como si fuera el
+  listado completo de puntos de cada torre.
 - **Monitoreo en vivo** (caída, latencia, ancho de banda): requiere infraestructura de
   sondeo activo que hoy no existe en el módulo (mismo hallazgo que "Fase 2" del índice
   de confiabilidad, 2026-09-15 — necesita un probe con acceso a la LAN, no hecho
@@ -110,11 +188,14 @@ cuando lleguen los datos reales de IP de torres.
 - [ ] Un importador nuevo trae `dss_device_registry` a `cyber_asset_observations`
       como fuente `DSS`, solo lectura sobre `cctv-automation-final`, idempotente por
       hash (mismo patrón que `ksc-importer.js`/`importFortiGateInventory`).
-- [ ] Un hAP lite (FortiGate) y su NVR (DSS) con la misma IP aparecen agrupados como
-      un solo punto en el read-model — verificado contra datos reales, no solo tests
-      sintéticos.
-- [ ] Nueva sección/vista en Inventario lista esos puntos agrupados, con zona, nombre,
-      IP e info del grabador.
+- [ ] `cyber_towers` se crea con las 14 torres reales de `torres_HapLite.pdf` (nombre,
+      gateway/CIDR) + la celda "no es una torre" marcada como tal, no como torre 15.
+- [ ] Un punto de la lista semilla (torre + hAP lite IP) y su(s) dispositivo(s) DSS
+      con la misma IP aparecen agrupados en el read-model — verificado contra datos
+      reales, no solo tests sintéticos (base: 93 de 96 IPs de hAP lite ya cruzan con
+      `dss_device_registry`, §0.1).
+- [ ] Nueva sección/vista en Inventario navega por torre real (no zona DSS) → puntos
+      → hAP lite + info del grabador.
 - [ ] Tests del módulo `cybersecurity/` en verde (suite completa, no solo los nuevos).
 - [ ] `cd CRM_Frontend && npm run build` en verde.
 - [ ] Verificado en Docker local (`http://127.0.0.1:3003/`) — API + navegador esta
@@ -141,10 +222,10 @@ cuando lleguen los datos reales de IP de torres.
 | Riesgo | Impacto | Mitigación |
 |--------|---------|-----------|
 | El listado DSS tiene errores reales de mapeo (el usuario ya advirtió "algunos casos puntuales") | Agrupación hAP lite↔NVR incorrecta para esos puntos | No agrupar automáticamente sin confirmación; permitir marcar una fila como excepción (mismo patrón de decisión manual que `inventory-decision-store.js`) |
-| Compartir IP no es universal (el usuario dijo "para la mayoría", implica excepciones) | Algunos puntos no se agrupan aunque deberían, o se agrupan mal | Mostrar como "sin agrupar" en vez de adivinar; nunca inventar una IP o relación que ninguna fuente reporte |
+| La lista semilla de torres es explícitamente parcial (solo puntos con CCTV ya conocido) | Puntos reales de una torre no aparecen todavía | Mostrar solo lo que la lista trae; no inferir ni completar puntos que el usuario no entregó |
+| 3 de 96 IPs de hAP lite conocidas no tienen todavía un dispositivo DSS en esa IP (`192.168.14.69`, `192.168.32.46`, `192.168.24.202`, §0.1) | Esos 3 puntos se ven con hAP lite pero sin info de NVR/cámara | Mostrar el punto igual, con el grabador como "sin dato DSS todavía" — no bloquea el resto |
 | `cctv-automation-final` y `cybersecurity` son bases/servicios independientes, sin sincronización hoy | El importador nuevo puede quedar desactualizado si `dss_device_registry` cambia y nadie vuelve a correr el import | Mismo patrón que KSC: import manual/programado, documentado, no automático desde el día 1 |
-| Entidad `cyber_towers` vacía o con datos provisionales puede quedar "a medio construir" mucho tiempo si los datos reales tardan | Confusión sobre qué es real vs. placeholder | Marcar explícitamente en la UI cualquier fila de torre que no tenga datos reales todavía (ningún dato inventado se muestra como confirmado) |
-| No toda zona DSS es una torre (`EDIFICIO PPAL` confirmado que no lo es; `VPN` sin confirmar) | Si se asume 1:1 sin excepción, `cyber_towers` tendría una fila "torre" falsa | Excluir `EDIFICIO PPAL` explícitamente (§9.1); tratar `VPN` como pendiente de confirmar, no como torre por defecto |
+| FortiGate solo corrobora 7 de 96 IPs de hAP lite conocidas (§0.1) | Si el diseño dependiera de FortiGate para identificar un punto, casi ninguno se mostraría | La lista semilla + DSS son la fuente primaria; FortiGate es corroboración opcional, nunca requisito |
 
 ## 8. Impacto en producción
 
@@ -156,15 +237,17 @@ tablas/columnas nuevas).
 ## 9. Preguntas abiertas para validar con el usuario antes de `plan.md` final
 
 1. ~~¿Las 13 zonas de `dss_device_registry` corresponden 1:1 a las 14 torres
-   reales?~~ **Respondido por el usuario (2026-09-18): "en general sí, al final todo
-   converge en el edificio principal, que realmente no es una torre."** Es decir: 12 de
-   las 13 zonas (`RED 14/20/34/36/44`, `AMAIME`, `CANDELARIA`, `FLORIDA`, `OCCIDENTE`,
-   `PRADERA`, `ROZO`, y probablemente `VPN` — sin confirmar todavía, ver nota abajo) sí
-   son 1:1 con una torre real; **`EDIFICIO PPAL` es una excepción explícita: es la sede
-   principal, no una torre**, y no debe tratarse como una en `cyber_towers`. Queda sin
-   confirmar si `VPN` es una torre real o una categoría de conectividad sin ubicación
-   física propia (candidato a la misma excepción que `EDIFICIO PPAL`) — a validar
-   cuando se implemente, no bloqueante para seguir.
+   reales?~~ **Cerrado con datos reales (2026-09-18, §0.1): NO en general — se
+   confirma con la lista `torres_HapLite.pdf` que la zona DSS `CANDELARIA` mezcla 3
+   torres reales (Candelaria, Juanchito, Villagorgona) y `OCCIDENTE` mezcla 5 (Bolo,
+   Oriente Palmira, Palmaseca, Quisquina, Zamorano Palmira).** La respuesta inicial del
+   usuario ("en general sí") era una aproximación correcta en espíritu pero no exacta
+   en los detalles — se reemplaza: **la torre real de un punto se toma de la lista del
+   usuario, nunca de `dss_device_registry.organization`** (ver §3.3). `EDIFICIO PPAL`
+   sigue confirmado como no-torre (coincide con la celda "no es una torre" de la
+   lista). `VPN` (zona DSS sin equivalente en la lista de torres) queda sin resolver,
+   no bloqueante — probablemente tampoco es una torre, mismo patrón que `EDIFICIO
+   PPAL`.
 2. Confirmado por el usuario: la IP de cada fila DSS es la del hAP lite — ¿el POST
    original en la exportación DSS jamás trae la IP real del NVR (i.e., es
    estructuralmente imposible obtenerla de esta fuente), o solo no se exportó esta
@@ -178,10 +261,8 @@ tablas/columnas nuevas).
    lectura?~~ **Respondido por el usuario (2026-09-18): leer el SQLite directo**
    (mismo host, sin nueva dependencia de red) — ver `plan.md`, ya no es una decisión
    pendiente.
-4. La entidad `cyber_towers` del punto 3.5: ¿arrancar vacía, o con las zonas DSS como
-   fila provisional marcada "pendiente de confirmar como torre real"? **Sin respuesta
-   formal todavía.** Propuesta de default, a confirmar o corregir al implementar:
-   arrancar con las **12 zonas ya confirmadas como torre** (todas menos `EDIFICIO
-   PPAL`, y sujeto a resolver `VPN`) como filas provisionales marcadas explícitamente
-   "torre candidata, sin datos reales de IP/router/enlaces todavía" — nunca mostradas
-   como si fueran datos confirmados.
+4. ~~La entidad `cyber_towers`: ¿arrancar vacía, o con zonas DSS provisionales?~~
+   **Superado por §0.1: ya no aplica.** No hace falta arrancar con provisionales — el
+   usuario entregó las 14 torres reales con nombre y gateway. `cyber_towers` se crea
+   directamente con esos 14 registros reales (+ la celda "no es una torre" marcada
+   como tal, no como torre 15), sin ninguna fila inventada o placeholder.
