@@ -93,6 +93,66 @@ del PDF, 96 IPs de hAP lite únicas, 15 grupos incl. el "no es una torre"):
   **opcional y rara**, nunca como el mecanismo principal de identificación de un hAP
   lite (revisa el punto 3 de §3, que originalmente la asumía como principal).
 
+### 0.2 Actualización 2026-09-18 (misma jornada, 3ª ronda) — jerarquía real: Zona → Sitio → Punto
+
+El usuario aportó la agrupación **operativa** real, aclarando que difiere de lo que
+`torres_HapLite.pdf` (§0.1) sugería como plano: lo que §0.1 llamaba "torre" en varios
+casos es en realidad un **sitio dentro de una zona** más amplia, y **no todo sitio
+tiene una torre real** ("pueden haber otras veredas cercanas y no todos estos sitios
+cuentan con torre" — palabras del usuario). **Explícitamente marcado por el usuario
+como información general para uso futuro** ("eventualmente vamos a requerir para
+organizar mejor el inventario") — no cambia el alcance de la fase 1 (§3), que sigue
+usando la lista plana de §0.1 tal cual. Se registra aquí para no perderla y para que
+la fase 2 (jerarquía completa de torre, fuera de alcance por §4) parta de esto en vez
+de tener que volver a preguntar.
+
+**Zonas operativas (7), con los sitios que el usuario ya nombró dentro de cada una**:
+
+| Zona | Sitios dentro de la zona (tal como los dio el usuario) |
+|------|----------------------------------------------------------|
+| Palmira | Sharon, Cafetero, Oriente, Zamorano, Edificio Principal |
+| Occidente | Bolo, Tiendanueva/Quisquina, Palmaseca |
+| Candelaria | Villagorgona, Juanchito, Carmelo, Ciudad del Campo, Poblado Campestre, Cabuyal (+ posibles veredas cercanas sin nombrar) |
+| Florida | Tarragona, San Antonio los Caballeros |
+| Pradera | Lomitas |
+| Amaime | (zona pequeña, sin sub-sitios adicionales mencionados) |
+| Rozo | (zona pequeña, sin sub-sitios adicionales mencionados) |
+
+**Lo que ya se puede cruzar contra §0.1 sin preguntar de nuevo**: `Tiendanueva`/
+`Quisquina` (Occidente) es el mismo sitio que la fila "Quisquina" de §0.1 (punto único
+"Tienda Nueva", `192.168.22.31`) — coincide el nombre y es coherente que el usuario dé
+el nombre completo del punto como alias de la vereda.
+
+**Lo que queda genuinamente ambiguo, sin inventar una respuesta** (a preguntar cuando
+se retome la jerarquía completa, no bloqueante ahora):
+- **Candelaria**: §0.1 tenía "Villagorgona" y "Juanchito" como filas de torre
+  independientes, cada una con sus propios puntos (incl. "Oficina Carmelo", "Ofi
+  Poblado Campestre", "Ofi Cabuyal" como *puntos* dentro de la fila "Villagorgona"; "Ofi
+  Ciudad del Campo" como *punto* dentro de "Juanchito"). El usuario ahora nombra
+  Carmelo, Ciudad del Campo, Poblado Campestre y Cabuyal como **sitios** de la zona
+  Candelaria, al mismo nivel que Villagorgona y Juanchito — sin confirmar todavía si
+  son sitios propios (quizás sin torre, colgando de la red de Villagorgona/Juanchito
+  por otro medio) o si el usuario los está nombrando como referencia geográfica de
+  puntos que en realidad sí pertenecen a Villagorgona/Juanchito.
+- **Florida**: ni "Tarragona" ni "San Antonio los Caballeros" aparecen como nombre de
+  punto en la fila "Florida" de §0.1 (8 puntos, todos con sufijo "Florida" en el
+  nombre, p.ej. "La Esmeralda Florida", "Antigua Ppal Florida") — sin confirmar si son
+  sitios adicionales de la zona Florida que todavía no tienen CCTV listado (consistente
+  con "no todos estos sitios cuentan con torre"), o nombres alternativos de sitios que
+  sí están en esa lista.
+- **Pradera**: "Lomitas" tampoco aparece como nombre de punto en la fila "Pradera" de
+  §0.1 (9 puntos) — misma ambigüedad que Florida.
+
+**Mencionado de pasada, registrado pero no accionado en esta ronda**: el `dss_device_
+registry` ya reporta **115 dispositivos hoy** (111 fue la medición del §0.1, misma
+jornada) — "discrepancia menor" por instalaciones recientes, palabras del usuario. Más
+relevante: el usuario señaló que **Seguridad Electrónica tiene varios submódulos**
+(Inventario = `dss_device_registry`, Proyecto, Soporte/Trello) que deben mantenerse
+coherentes entre sí y con el inventario de Ciberseguridad — ningún cambio de código en
+esta ronda, pero es una señal de que `dss_device_registry` es un blanco móvil (se
+recomienda que el importador de §3.2 sea re-ejecutable a demanda, no una carga de una
+sola vez, ya reflejado en el diseño de `plan.md`).
+
 ## 1. Problema / oportunidad
 
 El módulo Ciberseguridad hoy modela activos como una lista plana de observaciones
