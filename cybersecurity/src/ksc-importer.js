@@ -14,6 +14,10 @@ function normalizeHostname(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+function normalizeIp(value) {
+  return String(value || '').trim() || null;
+}
+
 function validateKscPayload(payload) {
   const inventory = payload?.Kaspersky?.HardwareInventory;
   if (!inventory || !Array.isArray(inventory.Devices)) {
@@ -32,6 +36,7 @@ function summarizeKscPayload(payload) {
       virtualMachines: devices.filter((device) => device.IsVirtual === true).length,
       withLastSeen: devices.filter((device) => bogotaTimestamp(device.LastSeen)).length,
       withHostname: devices.filter((device) => normalizeHostname(device.Name)).length,
+      withIp: devices.filter((device) => normalizeIp(device.IPAddress)).length,
       staleOver30Days: devices.filter((device) => Number(device.LastSeenDays) > 30).length,
     },
   };
@@ -84,10 +89,10 @@ function importKscHardwareInventory({
   const insertObservation = db.prepare(`
     INSERT INTO cyber_asset_observations(
       id, snapshot_id, source_record_key, observed_at, ingested_at,
-      hostname_raw, hostname_key, manufacturer, os_family, device_class_raw,
+      ip_value, hostname_raw, hostname_key, manufacturer, os_family, device_class_raw,
       last_seen_source_at, attribute_confidence_json, quality_flags_json,
       sanitized_attributes_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const completeSnapshot = db.prepare(`
     UPDATE cyber_source_snapshots
@@ -122,7 +127,9 @@ function importKscHardwareInventory({
         : `missing-hostname:${inserted + 1}`;
       const observationId = deterministicId('observation', `${snapshotId}:${sourceRecordKey}`);
       const lastSeenAt = bogotaTimestamp(device.LastSeen);
-      const flags = ['KSC_REDUCED_CONTRACT', 'MISSING_IP', 'MISSING_MAC'];
+      const ipValue = normalizeIp(device.IPAddress);
+      const flags = ['KSC_REDUCED_CONTRACT', 'MISSING_MAC'];
+      if (!ipValue) flags.push('MISSING_IP');
       if (!hostnameKey) flags.push('MISSING_HOSTNAME');
       if (!lastSeenAt) flags.push('MISSING_LAST_SEEN');
       if (Number(device.LastSeenDays) > 30) flags.push('STALE_OVER_30_DAYS');
@@ -134,6 +141,7 @@ function importKscHardwareInventory({
         sourceRecordKey,
         effectiveCapturedAt,
         importedAt,
+        ipValue,
         hostname,
         hostnameKey,
         String(device.Provider || '').trim() || null,

@@ -1,13 +1,14 @@
 # Nota tecnica - IP en los reportes de Kaspersky Security Center
 
-- Estado: **resuelto y con parser real escrito**. El "Informe del estado de la protección" es un
-  reporte por dispositivo (173 de 173, sin truncar) y trae IP para los **173 de 173** equipos
-  (corregido — ver "Actualización 2026-09-17 (cuarta parte)"). El usuario ya incluyó este reporte
-  en la tarea de entrega diaria de KSC; `Monitor-KSC-HardwareInventory.ps1` (rama de trabajo
-  local, aún sin desplegar a `SERV-KSC`) ya lee ambos reportes y enriquece el inventario de
-  hardware con la IP real. Los otros dos reportes (Vulnerabilidades, Amenazas) quedan
-  descartados para este propósito por cobertura insuficiente.
-- Fecha: 2026-09-17 (actualizada el mismo día, cuatro veces, tras exports reales del usuario)
+- Estado: **completamente resuelto, de punta a punta** (ver "Actualización 2026-09-18 (sexta
+  parte)"). El "Informe del estado de la protección" es un reporte por dispositivo (173 de 173,
+  sin truncar) y trae IP para los **173 de 173** equipos. `Monitor-KSC-HardwareInventory.ps1` lee
+  ambos reportes y enriquece el inventario de hardware con la IP real — la tarea programada de
+  `SERV-KSC` ya lo corrió sola y confirmó 157/157 dispositivos con IP en Monitoreo IT.
+  `cybersecurity/src/ksc-importer.js` ya persiste esa IP en `cyber_asset_observations` en vez de
+  forzar `MISSING_IP`. Los otros dos reportes (Vulnerabilidades, Amenazas) quedan descartados
+  para este propósito por cobertura insuficiente.
+- Fecha: 2026-09-17/18 (actualizada varias veces, tras exports, despliegue y el fix del importador)
 
 ## Por que importa
 
@@ -312,6 +313,33 @@ upload` se completó con éxito: `[OK] Inventario KSC-HARDWARE enviado correctam
 recogerá esta misma versión en su próxima corrida diaria, sin que el usuario tenga que hacer nada
 más ahí. El siguiente paso que queda es enteramente del lado de lectura: `ksc-importer.js` (ítem 2
 arriba), para que la IP que ya llega a Monitoreo IT se persista en `cyber_asset_observations`.
+
+## Actualización 2026-09-18 (sexta parte) — `ksc-importer.js` ya persiste la IP real
+
+Cerrado el único pendiente que quedaba (ítem 2 de la actualización anterior). `importKscHardwareInventory`
+ya no fuerza `MISSING_IP` para todo equipo Kaspersky: lee `device.IPAddress` del contrato
+`KSC-HARDWARE` (el mismo campo que llena `Merge-ProtectionStatusIntoInventory` en el `.ps1`, ver
+cuarta parte), lo persiste como `ip_value` en `cyber_asset_observations`, y solo agrega la bandera
+`MISSING_IP` cuando el dispositivo de verdad no trae IP (nunca pasó de MAC — esa bandera se sigue
+forzando siempre, KSC no la trae por ningún canal). `summarizeKscPayload` suma un conteo `withIp`
+nuevo (mismo patrón que `withHostname`) para que el resumen de importación muestre cobertura de IP
+sin tener que abrir la base.
+
+**Verificado contra datos reales, no solo con el fixture**: `node scripts/pull-ksc-from-monitoring.js
+--monitoring-url http://192.168.8.65:3001` (modo auditoría, sin `--apply`) contra el payload real
+que hoy sube la tarea programada de `SERV-KSC` — `withIp: 157` de 157 dispositivos, 100%, igual que
+lo confirmado en la quinta parte. 144/144 tests del módulo en verde (incl. 2 nuevos que cubren
+persistencia de IP y ausencia condicional de `MISSING_IP`).
+
+**No incluido en este cambio, a propósito** (alcance acordado con el usuario para esta ronda):
+`cybersecurity-read-model.js` sigue resolviendo la subred de un equipo Kaspersky únicamente por
+herencia desde su par corroborado de FortiGate (`getKasperskyInheritedSegments`), sin usar todavía
+el `ip_value` propio que ya persiste este cambio — ver ítem 3 de la actualización anterior
+("revisar si conviene mantener el cruce por hostname... la IP directa ya no dependería de ese
+cruce"). `listInventoryCandidates`/`listNetworkSegments`/`resolveObservationSegment` tienen cada
+uno su propio caso especial por fuente (`FORTIGATE` vs `KASPERSKY`) — extenderlos para que Kaspersky
+también se autoubique por IP (con la herencia como respaldo cuando falte IP) queda como el siguiente
+paso natural, pendiente de decisión del usuario sobre si retomarlo ahora o en otra ronda.
 
 ## Enlaces
 
