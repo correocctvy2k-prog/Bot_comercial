@@ -144,6 +144,7 @@ cuando lleguen los datos reales de IP de torres.
 | Compartir IP no es universal (el usuario dijo "para la mayoría", implica excepciones) | Algunos puntos no se agrupan aunque deberían, o se agrupan mal | Mostrar como "sin agrupar" en vez de adivinar; nunca inventar una IP o relación que ninguna fuente reporte |
 | `cctv-automation-final` y `cybersecurity` son bases/servicios independientes, sin sincronización hoy | El importador nuevo puede quedar desactualizado si `dss_device_registry` cambia y nadie vuelve a correr el import | Mismo patrón que KSC: import manual/programado, documentado, no automático desde el día 1 |
 | Entidad `cyber_towers` vacía o con datos provisionales puede quedar "a medio construir" mucho tiempo si los datos reales tardan | Confusión sobre qué es real vs. placeholder | Marcar explícitamente en la UI cualquier fila de torre que no tenga datos reales todavía (ningún dato inventado se muestra como confirmado) |
+| No toda zona DSS es una torre (`EDIFICIO PPAL` confirmado que no lo es; `VPN` sin confirmar) | Si se asume 1:1 sin excepción, `cyber_towers` tendría una fila "torre" falsa | Excluir `EDIFICIO PPAL` explícitamente (§9.1); tratar `VPN` como pendiente de confirmar, no como torre por defecto |
 
 ## 8. Impacto en producción
 
@@ -154,20 +155,33 @@ tablas/columnas nuevas).
 
 ## 9. Preguntas abiertas para validar con el usuario antes de `plan.md` final
 
-1. ¿Las 13 zonas de `dss_device_registry` (`RED 14/20/34/36/44`, `AMAIME`,
-   `CANDELARIA`, `FLORIDA`, `OCCIDENTE`, `PRADERA`, `ROZO`, `EDIFICIO PPAL`, `VPN`)
-   corresponden 1:1 a las 14 torres reales, o son una agrupación distinta (más fina,
-   más gruesa, o simplemente el nombre del sector de red sin relación 1:1 con una
-   torre física)?
+1. ~~¿Las 13 zonas de `dss_device_registry` corresponden 1:1 a las 14 torres
+   reales?~~ **Respondido por el usuario (2026-09-18): "en general sí, al final todo
+   converge en el edificio principal, que realmente no es una torre."** Es decir: 12 de
+   las 13 zonas (`RED 14/20/34/36/44`, `AMAIME`, `CANDELARIA`, `FLORIDA`, `OCCIDENTE`,
+   `PRADERA`, `ROZO`, y probablemente `VPN` — sin confirmar todavía, ver nota abajo) sí
+   son 1:1 con una torre real; **`EDIFICIO PPAL` es una excepción explícita: es la sede
+   principal, no una torre**, y no debe tratarse como una en `cyber_towers`. Queda sin
+   confirmar si `VPN` es una torre real o una categoría de conectividad sin ubicación
+   física propia (candidato a la misma excepción que `EDIFICIO PPAL`) — a validar
+   cuando se implemente, no bloqueante para seguir.
 2. Confirmado por el usuario: la IP de cada fila DSS es la del hAP lite — ¿el POST
    original en la exportación DSS jamás trae la IP real del NVR (i.e., es
    estructuralmente imposible obtenerla de esta fuente), o solo no se exportó esta
-   vez?
-3. Para leer `dss_device_registry`: ¿leer el archivo SQLite de `cctv-automation-final`
-   directo (mismo host, ya se hace así en scripts de un solo uso de esta sesión), o
-   preferís que `cctv-automation-final` exponga un endpoint de solo lectura (mismo
-   patrón que Monitoreo IT → `pull-ksc-from-monitoring.js`) para desacoplar el acceso
-   directo a su archivo?
-4. La entidad `cyber_towers` del punto 3.5: ¿arrancar vacía (nadie la ve hasta que
-   lleguen datos reales) o con las 13 zonas DSS como fila provisional marcada
-   "pendiente de confirmar como torre real"?
+   vez? **Sin respuesta formal todavía**, pero consistente con el mecanismo descrito en
+   §0 (el NVR solo es alcanzable vía NAT del hAP lite): DSS probablemente nunca ve la
+   IP interna real del NVR, porque se administra a través de esa misma NAT. Se trata
+   como asunción de trabajo, no como hecho confirmado — el importador (§3.2) debe
+   documentar esta IP como "la del hAP lite" sin asumir que algún día vendrá la IP real
+   del NVR por este mismo canal.
+3. ~~¿Leer el SQLite de `cctv-automation-final` directo, o un endpoint de solo
+   lectura?~~ **Respondido por el usuario (2026-09-18): leer el SQLite directo**
+   (mismo host, sin nueva dependencia de red) — ver `plan.md`, ya no es una decisión
+   pendiente.
+4. La entidad `cyber_towers` del punto 3.5: ¿arrancar vacía, o con las zonas DSS como
+   fila provisional marcada "pendiente de confirmar como torre real"? **Sin respuesta
+   formal todavía.** Propuesta de default, a confirmar o corregir al implementar:
+   arrancar con las **12 zonas ya confirmadas como torre** (todas menos `EDIFICIO
+   PPAL`, y sujeto a resolver `VPN`) como filas provisionales marcadas explícitamente
+   "torre candidata, sin datos reales de IP/router/enlaces todavía" — nunca mostradas
+   como si fueran datos confirmados.

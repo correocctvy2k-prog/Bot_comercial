@@ -8,9 +8,13 @@ Marcar `[x]` al completar. Mantener actualizado durante toda la tarea.
 - [ ] Confirmar/corregir el listado DSS de 111 dispositivos (enviado 2026-09-18,
       `dss-listado-revision.html`) — cuáles son los "casos puntuales" que no siguen el
       patrón IP-de-hAP-lite.
-- [ ] Responder `spec.md` §9.1–§9.4 (zonas↔torres, IP del NVR estructuralmente
-      inobtenible o no exportada esta vez, acceso directo a SQLite vs. endpoint,
-      `cyber_towers` vacía vs. provisional).
+- [x] §9.1 zonas↔torres — respondido: 1:1 en general, `EDIFICIO PPAL` no es torre;
+      `VPN` sin confirmar todavía (no bloqueante).
+- [ ] §9.2 IP del NVR estructuralmente inobtenible o no exportada esta vez — sin
+      respuesta formal, se trabaja con la asunción de §0/§9.2.
+- [x] §9.3 acceso a datos DSS — respondido: SQLite directo.
+- [ ] §9.4 `cyber_towers` vacía vs. provisional — propuesta de default en `plan.md`,
+      confirmar o corregir al implementar.
 
 ## Implementación
 

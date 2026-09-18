@@ -1,7 +1,9 @@
 # PLAN 0013 — Inventario de torres: hAP lite + NVR por punto (fase 1)
 
-Referencia: `spec.md` en esta misma carpeta. **Provisional** — algunas decisiones de
-este plan dependen de las preguntas abiertas en `spec.md` §9 (marcadas abajo con ⚠️).
+Referencia: `spec.md` en esta misma carpeta. **Provisional** — el acceso a datos (§9.3)
+y la correspondencia zona↔torre (§9.1) ya están confirmados por el usuario; quedan
+§9.2 (asunción de trabajo, no bloqueante) y §9.4 (propuesta de default, a confirmar al
+implementar) como los únicos puntos todavía sin cerrar del todo.
 
 ## Enfoque técnico
 
@@ -22,22 +24,27 @@ prefiere mantenerlas separadas (mismo principio de "observaciones append-only, n
 reescriben" que ya rige el resto del módulo) y calcular la relación al leer, para poder
 corregirla sin reimportar si el usuario marca una excepción.
 
-⚠️ **Pendiente de §9.3**: este plan asume lectura directa del archivo SQLite de
-`cctv-automation-final` (mismo host, sin nueva dependencia de red) — si el usuario
-prefiere un endpoint HTTP de solo lectura, cambia el import de un `require('node:sqlite')`
-directo a un `fetch()` (mismo patrón que `pull-ksc-from-monitoring.js`), sin afectar el
-resto del diseño.
+**Confirmado por el usuario (§9.3): lectura directa del archivo SQLite** de
+`cctv-automation-final` (mismo host, sin nueva dependencia de red) — mismo mecanismo
+ya usado para consultarlo en esta sesión (`node:sqlite`, `DatabaseSync` en modo
+`readOnly`).
+
+**Confirmado por el usuario (§9.1): 12 de las 13 zonas DSS sí son 1:1 con una torre
+real. `EDIFICIO PPAL` es la excepción explícita — es la sede principal, no una torre —
+y no debe crear una fila en `cyber_towers`.** `VPN` queda pendiente de confirmar (ver
+`spec.md` §9.1), tratarla como torre candidata igual que las demás hasta que se
+resuelva.
 
 ## Archivos a tocar
 
 | Archivo | Cambio | Riesgo |
 |---------|--------|--------|
-| `cybersecurity/src/dss-importer.js` (nuevo) | Lee `dss_device_registry` (SQLite directo o HTTP, ⚠️ §9.3), inserta en `cyber_asset_observations` como fuente `DSS`, idempotente por hash | medio — primer importador que lee otro servicio directo por archivo, no por HTTP como Monitoreo IT |
+| `cybersecurity/src/dss-importer.js` (nuevo) | Lee `dss_device_registry` vía `node:sqlite` (`DatabaseSync`, `readOnly: true`) sobre el archivo de `cctv-automation-final`, inserta en `cyber_asset_observations` como fuente `DSS`, idempotente por hash | medio — primer importador que lee otro servicio directo por archivo, no por HTTP como Monitoreo IT |
 | `cybersecurity/scripts/pull-dss-devices.js` (nuevo) | CLI, mismo patrón que `pull-ksc-from-monitoring.js` (modo auditoría por defecto, `--apply` explícito) | bajo |
 | `cybersecurity/src/cybersecurity-read-model.js` | Nueva función `getHapliteDeviceGroups(db)` — agrupa por `ip_value` compartida entre `FORTIGATE`/`NETWORK` y `DSS` | medio — nueva lógica de agrupación, necesita tests con datos reales |
 | `cybersecurity/src/cybersecurity-api.js` | Nueva ruta `GET /api/cybersecurity/points` (o el nombre que se acuerde) | bajo |
 | `CRM_Frontend/src/pages/CybersecurityDashboard.jsx` | Nueva sección/pestaña "Puntos hAP lite + CCTV" en Inventario | medio — UI nueva, debe seguir `design-system.md` |
-| `cybersecurity/db/schema.sql` | Tabla `cyber_towers` (vacía o con zonas DSS provisionales, ⚠️ §9.4) — solo si el usuario confirma que se crea ya | bajo (tabla nueva, sin migración destructiva) |
+| `cybersecurity/db/schema.sql` | Tabla `cyber_towers` — por defecto (§9.4, a confirmar): una fila provisional por cada zona DSS confirmada como torre (12, o 13 si `VPN` se resuelve como torre), excluyendo `EDIFICIO PPAL`, marcadas `status='CANDIDATE'` sin datos reales de IP/router/enlaces | bajo (tabla nueva, sin migración destructiva) |
 | `docs/modulos/ciberseguridad/README.md` o nota aparte | Documentar la fuente `DSS` y el modelo de agrupación | — |
 
 ## Contratos de datos / API
