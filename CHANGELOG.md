@@ -82,9 +82,16 @@ a una versión fechada.
   **108 de 157 equipos Kaspersky se autoubicaron en 16 subredes reales** solo por su propia IP,
   antes solo 0 estaban corroborados por hostname en esta captura. Los 49 restantes tienen IP en
   rangos `192.168.x.x` que no coinciden con ningún CIDR que FortiGate haya reportado — no es un
-  error, quedan correctamente sin segmento (comportamiento documentado, no se inventa nada). **No
-  verificado a mano en el navegador (Docker local)** — la tarjeta nueva es aditiva y de bajo
-  riesgo, pero falta la vuelta visual.
+  error, quedan correctamente sin segmento (comportamiento documentado, no se inventa nada).
+- **Verificado en Docker local** (`docker compose -f docker-compose.yml -f
+  docker-compose.local.yml up -d --build cybersecurity-api crm-frontend` + `restart
+  crm-frontend`): `GET /api/cybersecurity/network-segments` a través de `http://127.0.0.1:3003/`
+  ya devuelve `selfLocatedKasperskyCount` con los mismos 16 segmentos/valores reales confirmados
+  arriba; el bundle de `crm-frontend` ya construido contiene el texto "Kaspersky por IP propia".
+  Logs de ambos contenedores limpios, sin errores. **No se tomó captura de pantalla en navegador**
+  (sin herramienta de automatización de navegador disponible en este entorno) — verificado por API
+  + bundle en vez de visualmente, riesgo residual bajo (mismo patrón JSX que la tarjeta ya
+  existente).
 
 ## [2026-09-11] — specs 0010 y 0011 a producción
 

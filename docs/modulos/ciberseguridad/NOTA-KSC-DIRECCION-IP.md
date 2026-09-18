@@ -403,6 +403,32 @@ hace falta revertir.
 el stack completo en esta ronda, solo se ejercitaron las funciones del read-model directamente
 contra la base real.
 
+## Actualización 2026-09-18 (novena parte) — verificado en Docker local (API + bundle, sin navegador)
+
+Retomado a pedido del usuario ("vamos a continuar madurando el módulo en local"), cerrando el
+pendiente de la octava parte. Se usó el skill `run` de este entorno: no existía un skill de
+proyecto para levantar la app, así que siguió el patrón "server/browser-driven" genérico.
+
+`docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build cybersecurity-api
+crm-frontend` (rebuild real, necesario: `cybersecurity-api` corría desde antes de este cambio de
+código, y `crm-frontend` empaqueta el JSX en build-time) + `docker compose restart crm-frontend`
+(nginx cachea la IP del upstream tras un rebuild, lección ya conocida LL-0004/LL-0008).
+
+**Verificado de punta a punta a través del stack real corriendo**, no solo con scripts directos:
+`curl http://127.0.0.1:3003/api/cybersecurity/network-segments` (a través del proxy nginx de
+`crm-frontend`, igual que lo haría el navegador) devuelve `selfLocatedKasperskyCount` con los
+mismos 16 segmentos/valores ya confirmados en la octava parte (ej. `segment EAF88BB1` →
+`selfLocatedKasperskyCount: 3`). `docker compose exec crm-frontend grep -l "Kaspersky por IP
+propia" /usr/share/nginx/html/assets/*.js` → encontrado — confirma que el bundle realmente
+construido y servido contiene el texto nuevo, no solo el código fuente. Logs de ambos contenedores
+limpios (`cybersecurity-api`: `{"status":"READY",...,"mode":"read-only-immutable"}`; `crm-frontend`:
+sin errores, 200 en la petición de prueba).
+
+**No se tomó captura de pantalla real en navegador** — no hay `chromium-cli` ni Playwright/
+Puppeteer instalados en este entorno (confirmado, no se intentó instalar por ser desproporcionado
+para una tarjeta aditiva de una sola línea). Riesgo residual: solo layout/CSS, no lógica — mismo
+patrón JSX y mismas clases que la tarjeta "Kaspersky corroborados" ya en producción.
+
 ## Enlaces
 
 - `cybersecurity/scripts/pull-ksc-from-monitoring.js`
