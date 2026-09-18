@@ -93,7 +93,7 @@ del PDF, 96 IPs de hAP lite únicas, 15 grupos incl. el "no es una torre"):
   **opcional y rara**, nunca como el mecanismo principal de identificación de un hAP
   lite (revisa el punto 3 de §3, que originalmente la asumía como principal).
 
-### 0.2 Actualización 2026-09-18 (misma jornada, 3ª ronda) — jerarquía real: Zona → Sitio → Punto
+### 0.2 Actualización 2026-09-18 (misma jornada, 3ª–4ª ronda) — jerarquía real: Zona → Sitio → Punto, y por qué importan los sitios sin CCTV
 
 El usuario aportó la agrupación **operativa** real, aclarando que difiere de lo que
 `torres_HapLite.pdf` (§0.1) sugería como plano: lo que §0.1 llamaba "torre" en varios
@@ -123,35 +123,40 @@ de tener que volver a preguntar.
 "Tienda Nueva", `192.168.22.31`) — coincide el nombre y es coherente que el usuario dé
 el nombre completo del punto como alias de la vereda.
 
-**Lo que queda genuinamente ambiguo, sin inventar una respuesta** (a preguntar cuando
-se retome la jerarquía completa, no bloqueante ahora):
-- **Candelaria**: §0.1 tenía "Villagorgona" y "Juanchito" como filas de torre
-  independientes, cada una con sus propios puntos (incl. "Oficina Carmelo", "Ofi
-  Poblado Campestre", "Ofi Cabuyal" como *puntos* dentro de la fila "Villagorgona"; "Ofi
-  Ciudad del Campo" como *punto* dentro de "Juanchito"). El usuario ahora nombra
-  Carmelo, Ciudad del Campo, Poblado Campestre y Cabuyal como **sitios** de la zona
-  Candelaria, al mismo nivel que Villagorgona y Juanchito — sin confirmar todavía si
-  son sitios propios (quizás sin torre, colgando de la red de Villagorgona/Juanchito
-  por otro medio) o si el usuario los está nombrando como referencia geográfica de
-  puntos que en realidad sí pertenecen a Villagorgona/Juanchito.
-- **Florida**: ni "Tarragona" ni "San Antonio los Caballeros" aparecen como nombre de
-  punto en la fila "Florida" de §0.1 (8 puntos, todos con sufijo "Florida" en el
-  nombre, p.ej. "La Esmeralda Florida", "Antigua Ppal Florida") — sin confirmar si son
-  sitios adicionales de la zona Florida que todavía no tienen CCTV listado (consistente
-  con "no todos estos sitios cuentan con torre"), o nombres alternativos de sitios que
-  sí están en esa lista.
-- **Pradera**: "Lomitas" tampoco aparece como nombre de punto en la fila "Pradera" de
-  §0.1 (9 puntos) — misma ambigüedad que Florida.
+**Resuelto por el usuario (misma jornada, 4ª ronda)**: Carmelo, Ciudad del Campo,
+Poblado Campestre, Cabuyal (Candelaria), Tarragona, San Antonio los Caballeros
+(Florida) y Lomitas (Pradera) **son sitios reales — veredas/sectores pequeños que se
+conectan a la torre más cercana de su zona** — no aparecen en `torres_HapLite.pdf`
+(§0.1) simplemente porque **no tienen CCTV todavía**, no porque no existan. Confirma
+la lectura correcta: la lista de §0.1 es un subconjunto (solo CCTV) de un universo de
+sitios más grande que sí opera y se monitorea hoy.
 
-**Mencionado de pasada, registrado pero no accionado en esta ronda**: el `dss_device_
+**Por qué importan aunque no tengan CCTV (palabras del usuario, 3 razones)**:
+1. El módulo de **seguridad perimetral monitorea apertura y cierre de todos los
+   puntos, con o sin CCTV** — coincide con el mecanismo ya construido en
+   `cctv-automation-final` (spec 0010: PING como vector primario de apertura/cierre,
+   evidencia CCTV como corroboración secundaria, no requisito) — esos sitios sin
+   cámara ya están cubiertos por ese lado, aunque este módulo (Ciberseguridad) todavía
+   no los vea.
+2. **La cobertura CCTV crece constantemente** — la lista de §0.1 quedará desactualizada
+   pronto casi por diseño; cualquier import (§3.2) debe ser re-ejecutable, no una carga
+   de una sola vez (ya reflejado en `plan.md`).
+3. **Deben sincronizarse con "Operación de Puntos"** (Supabase `puntos_venta`) — el
+   universo completo de sitios (con y sin CCTV) ya vive ahí, y **ya existe el mecanismo
+   de reconciliación**: spec 0012 (`platform/crm-points-sync.js`,
+   `matchCrmPoints`/`computeCapabilities` en `cctv-automation-final`) ya empareja
+   `cctv-automation-final` contra `puntos_venta` por código SIIS/alias, y ya corrige
+   `has_cctv`/`has_alarm` en Supabase con datos reales. **La fuente de verdad de "qué
+   sitios existen" para la jerarquía completa de torres (fase 2) no debería ser
+   `torres_HapLite.pdf` ni `dss_device_registry` por separado — debería apoyarse en
+   `puntos_venta`, igual que ya hace spec 0012 para CCTV.** No se actúa sobre esto en
+   fase 1 (sigue usando la lista plana de §0.1 tal cual), mismo motivo que el resto de
+   esta sección: alcance explícitamente diferido a cuando se retome la jerarquía
+   completa (§4).
+
+**Mencionado de pasada en la 3ª ronda, registrado sin accionar**: el `dss_device_
 registry` ya reporta **115 dispositivos hoy** (111 fue la medición del §0.1, misma
-jornada) — "discrepancia menor" por instalaciones recientes, palabras del usuario. Más
-relevante: el usuario señaló que **Seguridad Electrónica tiene varios submódulos**
-(Inventario = `dss_device_registry`, Proyecto, Soporte/Trello) que deben mantenerse
-coherentes entre sí y con el inventario de Ciberseguridad — ningún cambio de código en
-esta ronda, pero es una señal de que `dss_device_registry` es un blanco móvil (se
-recomienda que el importador de §3.2 sea re-ejecutable a demanda, no una carga de una
-sola vez, ya reflejado en el diseño de `plan.md`).
+jornada) — "discrepancia menor" por instalaciones recientes, palabras del usuario.
 
 ## 1. Problema / oportunidad
 
