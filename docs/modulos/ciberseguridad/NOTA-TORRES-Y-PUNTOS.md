@@ -70,9 +70,41 @@ torre asignada" al final de su zona.
 Verificado replicando la lógica de agrupación fuera de React, contra la API real y
 Supabase real: las 7 zonas cruzan correctamente, sin ninguna torre faltante.
 
+## Ubicación por IP/gateway: 89% de los puntos reales ya tienen torre
+
+Pedido del usuario: "en base a la IP del punto, podemos deducir su gateway y agregarlo
+a su torre". `puntos_venta.ip` ya existe (poblado por un monitor de ping externo,
+`monitor_puntos_wpp.py`) para el 100% de los puntos activos (368/368, verificado
+contra Supabase real).
+
+`cyber_tower_gateways` (nuevo): antes solo se guardaba un gateway representativo por
+torre (`cyber_towers.gateway_cidr`); varias torres reales tienen más de uno (Pradera:
+red principal + subred de oficina; Candelaria: igual) — ahora se guardan todos. Un
+punto sin hAP lite conocido, si su `ip` cae dentro de cualquier gateway real de una
+torre de su misma zona, se ubica ahí automáticamente (sin fusionarlo con el punto ya
+conocido si por coincidencia comparte esa misma IP).
+
+**Verificado contra datos reales en vivo: 326 de 368 puntos activos (89%) se ubican
+así**, sin inventar ni forzar nada — el resto (42) no cae en ningún gateway conocido y
+sigue en "Sin torre asignada". Cobertura real por zona (varía bastante, dato honesto,
+no ajustado): Pradera 33/33 (100%), Florida 45/46, Amaime 19/20, Candelaria 67/71,
+Palmira 152/154, Occidente 9/19, **Rozo solo 1/25** — la mayoría de los puntos reales
+de Rozo no caen en el único gateway de esa torre que ya conocemos, señal de que puede
+haber más infraestructura ahí sin capturar todavía.
+
+## Leyenda de colores y detalle al hacer click
+
+Pedido del usuario ("necesito entender los colores"): un solo significado por color en
+toda la vista de Torres, mostrado en una leyenda (`CubeLegend`) — verde = grabador DSS
+confirmado, ámbar = hAP lite conocido sin grabador, azul = ubicado por IP sin hAP
+lite/DSS confirmado, gris = sin torre asignada. Click en cualquier cubo abre una
+tarjeta flotante (`PointFloatingCard`) con el detalle del punto (nombre, torre, IP,
+zona, CCTV/FortiGate/grabadores).
+
 ## Pendiente (fuera de esta fase, ver spec 0013 §4)
 
 Modelo completo de torre (enlaces, celdas, router principal, UPS — hoy son secciones
 "sin datos todavía" en la tarjeta expandida, preparadas para cuando lleguen),
 monitoreo en vivo (caída/latencia/ancho de banda), detección de vulnerabilidades de
-firmware, y asignar torre específica a los puntos de "Sin torre asignada".
+firmware, y los 42 puntos reales que aún no caen en ningún gateway conocido (incluida
+la brecha real de cobertura en Rozo).

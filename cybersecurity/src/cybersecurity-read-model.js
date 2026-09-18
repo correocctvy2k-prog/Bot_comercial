@@ -700,6 +700,17 @@ function getTowerPoints(db) {
     SELECT id, name, gateway_cidr AS gatewayCidr, is_tower AS isTower
     FROM cyber_towers ORDER BY name
   `).all();
+  // Una torre puede tener más de un gateway/CIDR real (ej. Pradera, Candelaria) --
+  // se exponen todos, no solo el representativo de cyber_towers.gateway_cidr, para
+  // que el frontend pueda deducir por IP a qué torre pertenece un punto de Operación
+  // de Puntos que no está en la semilla (hallazgo del usuario 2026-09-18).
+  const gatewayRows = db.prepare('SELECT tower_id AS towerId, cidr FROM cyber_tower_gateways').all();
+  const gatewaysByTowerId = new Map();
+  for (const row of gatewayRows) {
+    const list = gatewaysByTowerId.get(row.towerId) || [];
+    list.push(row.cidr);
+    gatewaysByTowerId.set(row.towerId, list);
+  }
   const towerPoints = db.prepare(`
     SELECT id, tower_id AS towerId, point_name AS pointName, haplite_ip AS haploteIp
     FROM cyber_tower_points
@@ -781,6 +792,7 @@ function getTowerPoints(db) {
         id: protectedAlias('tower', tower.id),
         name: tower.name,
         gatewayCidr: tower.gatewayCidr,
+        gatewayCidrs: gatewaysByTowerId.get(tower.id) || (tower.gatewayCidr ? [tower.gatewayCidr] : []),
         isTower: Boolean(tower.isTower),
         points,
         pointCount: points.length,

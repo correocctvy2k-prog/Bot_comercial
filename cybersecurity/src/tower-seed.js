@@ -18,10 +18,11 @@ function validateSeedRows(rows) {
   return rows;
 }
 
-// Un torre puede tener más de un gateway/CIDR real (ej. Pradera: red principal +
-// subred de oficina) -- se guarda el primero visto como representativo, informacional
-// solamente (el modelo completo de router/segmentos por torre es no-objetivo de esta
-// fase, spec 0013 SS4).
+// Una torre puede tener más de un gateway/CIDR real (ej. Pradera: red principal +
+// subred de oficina) -- cyber_towers.gateway_cidr guarda el primero visto como
+// representativo (informacional); cyber_tower_gateways guarda TODOS los distintos,
+// necesarios para deducir por IP a qué torre pertenece un punto que no está en la
+// semilla (hallazgo del usuario 2026-09-18, ver spec 0013).
 function loadTowerSeed({ db, rows, loadedAt = new Date().toISOString() }) {
   if (!db) throw new Error('db is required');
   validateSeedRows(rows);
@@ -34,6 +35,11 @@ function loadTowerSeed({ db, rows, loadedAt = new Date().toISOString() }) {
       is_tower = excluded.is_tower,
       updated_at = excluded.updated_at
   `);
+  const upsertGateway = db.prepare(`
+    INSERT INTO cyber_tower_gateways(id, tower_id, cidr, created_at)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(tower_id, cidr) DO NOTHING
+  `);
   const upsertPoint = db.prepare(`
     INSERT INTO cyber_tower_points(id, tower_id, point_name, haplite_ip, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?)
@@ -41,8 +47,10 @@ function loadTowerSeed({ db, rows, loadedAt = new Date().toISOString() }) {
   `);
 
   const towersSeen = new Map();
+  const gatewaysSeen = new Set();
   let towersUpserted = 0;
   let pointsUpserted = 0;
+  let gatewaysUpserted = 0;
 
   db.exec('BEGIN IMMEDIATE');
   try {
@@ -57,6 +65,13 @@ function loadTowerSeed({ db, rows, loadedAt = new Date().toISOString() }) {
         );
         towersUpserted += 1;
       }
+      const gatewayKey = `${towerId}:${row.gateway}`;
+      if (!gatewaysSeen.has(gatewayKey)) {
+        gatewaysSeen.add(gatewayKey);
+        const gatewayId = deterministicId('tower-gateway', gatewayKey);
+        upsertGateway.run(gatewayId, towerId, row.gateway, loadedAt);
+        gatewaysUpserted += 1;
+      }
       const pointId = deterministicId('tower-point', `${towerId}:${row.haplite}:${row.deviceName.toLowerCase()}`);
       upsertPoint.run(pointId, towerId, row.deviceName, row.haplite, loadedAt, loadedAt);
       pointsUpserted += 1;
@@ -67,7 +82,7 @@ function loadTowerSeed({ db, rows, loadedAt = new Date().toISOString() }) {
     throw error;
   }
 
-  return { status: 'SUCCESS', towers: towersUpserted, points: pointsUpserted };
+  return { status: 'SUCCESS', towers: towersUpserted, gateways: gatewaysUpserted, points: pointsUpserted };
 }
 
 module.exports = {

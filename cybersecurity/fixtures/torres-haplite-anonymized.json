@@ -2,6 +2,7 @@
   {"torre":"Torre Ejemplo Uno","gateway":"10.10.10.1/24","deviceName":"Tienda A","haplite":"10.10.10.11","isTower":true},
   {"torre":"Torre Ejemplo Uno","gateway":"10.10.10.1/24","deviceName":"Cam SMD Tienda A","haplite":"10.10.10.11","isTower":true},
   {"torre":"Torre Ejemplo Uno","gateway":"10.10.10.1/24","deviceName":"Tienda B","haplite":"10.10.10.12","isTower":true},
+  {"torre":"Torre Ejemplo Uno","gateway":"10.10.11.1/24","deviceName":"Oficina Torre Uno","haplite":"10.10.11.5","isTower":true},
   {"torre":"Torre Ejemplo Dos","gateway":"10.10.20.1/24","deviceName":"Tienda C","haplite":"10.10.20.11","isTower":true},
   {"torre":"No es una torre (celda Edificio Ppal)","gateway":"10.10.30.1/24","deviceName":"Tienda D","haplite":"10.10.30.11","isTower":false}
 ]

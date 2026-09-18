@@ -23,7 +23,8 @@ test('carga torres y puntos reales, con isTower correcto para la celda que no es
   const result = loadTowerSeed({ db, rows: fixture });
   assert.equal(result.status, 'SUCCESS');
   assert.equal(result.towers, 3);
-  assert.equal(result.points, 5);
+  assert.equal(result.points, 6);
+  assert.equal(result.gateways, 4);
 
   const towers = db.prepare('SELECT name, gateway_cidr AS gatewayCidr, is_tower AS isTower FROM cyber_towers ORDER BY name').all().map((row) => ({ ...row }));
   assert.deepEqual(towers, [
@@ -31,6 +32,19 @@ test('carga torres y puntos reales, con isTower correcto para la celda que no es
     { name: 'Torre Ejemplo Dos', gatewayCidr: '10.10.20.1/24', isTower: 1 },
     { name: 'Torre Ejemplo Uno', gatewayCidr: '10.10.10.1/24', isTower: 1 },
   ]);
+}));
+
+test('una torre con más de un gateway real guarda todos, no solo el representativo', () => withDatabase((db) => {
+  loadTowerSeed({ db, rows: fixture });
+  const towerId = db.prepare("SELECT id FROM cyber_towers WHERE name = 'Torre Ejemplo Uno'").get().id;
+  const gateways = db.prepare('SELECT cidr FROM cyber_tower_gateways WHERE tower_id = ? ORDER BY cidr').all(towerId).map((row) => row.cidr);
+  assert.deepEqual(gateways, ['10.10.10.1/24', '10.10.11.1/24']);
+}));
+
+test('cargar la semilla dos veces no duplica gateways', () => withDatabase((db) => {
+  loadTowerSeed({ db, rows: fixture });
+  loadTowerSeed({ db, rows: fixture });
+  assert.equal(db.prepare('SELECT count(*) AS c FROM cyber_tower_gateways').get().c, 4);
 }));
 
 test('dos dispositivos con la misma IP de hAP lite (NVR + cámara) no se pisan entre sí', () => withDatabase((db) => {
@@ -55,7 +69,7 @@ test('cargar la misma semilla dos veces es idempotente (no duplica torres ni pun
   const towerCount = db.prepare('SELECT count(*) AS c FROM cyber_towers').get().c;
   const pointCount = db.prepare('SELECT count(*) AS c FROM cyber_tower_points').get().c;
   assert.equal(towerCount, 3);
-  assert.equal(pointCount, 5);
+  assert.equal(pointCount, 6);
 }));
 
 test('rechaza filas sin los campos requeridos', () => withDatabase((db) => {

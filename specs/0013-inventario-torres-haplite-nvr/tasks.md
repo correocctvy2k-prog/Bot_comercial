@@ -96,6 +96,37 @@ solo los que ya tienen hAP lite.
       texto nuevo, `/api/cybersecurity/towers` sigue respondiendo 200.
 - [x] `CHANGELOG.md` + ficha de módulo actualizados.
 
+## Incremento — ubicación por IP/gateway, leyenda y tarjeta flotante
+
+Pedido del usuario 2026-09-18, misma jornada: deducir la torre de un punto por su IP,
+tarjeta flotante al hacer click en un cubo, y una leyenda de colores.
+
+- [x] Confirmado (subagente Explore + query real): `puntos_venta.ip` existe y está
+      poblado al 100% (368/368 puntos activos), poblado por `monitor_puntos_wpp.py`
+      (monitor de ping externo, no parte de este módulo).
+- [x] `cyber_tower_gateways` (nuevo, `schema.sql`) — una torre puede tener más de un
+      gateway real (Pradera, Candelaria); `tower-seed.js` los carga todos, no solo el
+      representativo. `getTowerPoints` expone `gatewayCidrs: string[]` por torre.
+- [x] `TowersCardsView`: un punto sin hAP lite conocido, si su IP cae en un gateway
+      real de una torre de su zona, se ubica ahí (tono `sky`, distinto de los puntos
+      con grabador DSS confirmado) — verificado contra datos reales: **326 de 368
+      puntos activos (89%)** se ubican así, sin inventar nada.
+- [x] `CubeLegend` (nuevo) — un solo significado por color en toda la vista
+      (verde/ámbar/azul/gris), sin excepciones por sección.
+- [x] `PointFloatingCard` (nuevo) — detalle del punto al hacer click en un cubo, cierre
+      por X/clic afuera/Esc.
+- [x] `cybersecurity/`: `npm test` — **162/162 en verde** (5 tests nuevos: gateways
+      múltiples por torre, no duplicados al recargar, `gatewayCidrs` expuesto).
+- [x] `cd CRM_Frontend && npm run lint`/`build` — sin errores nuevos, verde.
+- [x] Verificado contra datos reales en vivo: la lógica de coincidencia por gateway se
+      replicó fuera de React contra la API real y Supabase real — 326/368 puntos
+      ubicados, desglose por zona confirmado (Pradera 100%, Rozo solo 4% — hallazgo
+      real, no ajustado).
+- [x] Docker local: `cybersecurity-api` + `crm-frontend` reconstruidos + `restart`,
+      `gatewayCidrs` confirmado en `/api/cybersecurity/towers`, bundle con el texto
+      nuevo.
+- [x] `CHANGELOG.md` + ficha de módulo actualizados.
+
 ## Cierre
 
 - [ ] PR abierto y enlazado en `spec.md`

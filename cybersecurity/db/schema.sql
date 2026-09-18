@@ -399,6 +399,21 @@ CREATE TABLE IF NOT EXISTS cyber_towers (
   updated_at TEXT NOT NULL
 );
 
+-- Una torre puede tener más de un gateway/CIDR real (ej. Pradera: red principal +
+-- subred de oficina) -- cyber_towers.gateway_cidr solo guarda uno como representativo
+-- informacional; esta tabla guarda TODOS, necesarios para deducir por IP a qué torre
+-- pertenece un punto que no está en la semilla (hallazgo del usuario 2026-09-18:
+-- 332 de 368 puntos reales de Operación de Puntos ya caen dentro de un gateway
+-- conocido, verificado contra Supabase real).
+CREATE TABLE IF NOT EXISTS cyber_tower_gateways (
+  id TEXT PRIMARY KEY,
+  tower_id TEXT NOT NULL,
+  cidr TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  UNIQUE(tower_id, cidr),
+  FOREIGN KEY(tower_id) REFERENCES cyber_towers(id)
+);
+
 -- Puntos conocidos de cada torre, con la IP de su hAP lite (NAT: es la IP que se
 -- observa, no la del NVR -- ver spec 0013 SS0). Lista explícitamente parcial (solo
 -- puntos con CCTV ya conocido cuando se cargó la semilla).
@@ -458,6 +473,8 @@ CREATE INDEX IF NOT EXISTS idx_cyber_tower_points_tower
   ON cyber_tower_points(tower_id, point_name);
 CREATE INDEX IF NOT EXISTS idx_cyber_tower_points_ip
   ON cyber_tower_points(haplite_ip);
+CREATE INDEX IF NOT EXISTS idx_cyber_tower_gateways_tower
+  ON cyber_tower_gateways(tower_id);
 CREATE INDEX IF NOT EXISTS idx_cyber_remediation_workflow
   ON cyber_remediation_cases(workflow_status, technical_priority, max_severity DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_cyber_authorization_asset_target

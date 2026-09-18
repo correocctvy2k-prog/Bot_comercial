@@ -10,6 +10,7 @@ const seedRows = [
   { torre: 'Torre Uno', gateway: '10.10.10.1/24', deviceName: 'Tienda A', haplite: '10.10.10.11', isTower: true },
   { torre: 'Torre Uno', gateway: '10.10.10.1/24', deviceName: 'Cam SMD Tienda A', haplite: '10.10.10.11', isTower: true },
   { torre: 'Torre Uno', gateway: '10.10.10.1/24', deviceName: 'Tienda B', haplite: '10.10.10.12', isTower: true },
+  { torre: 'Torre Uno', gateway: '10.10.11.1/24', deviceName: 'Oficina Torre Uno', haplite: '10.10.11.5', isTower: true },
   { torre: 'No es una torre (celda Edificio Ppal)', gateway: '10.10.30.1/24', deviceName: 'Tienda D', haplite: '10.10.30.11', isTower: false },
 ];
 
@@ -57,8 +58,9 @@ test('getTowerPoints agrupa la semilla por IP y cruza con DSS, sin depender de F
 
   const torreUno = result.towers.find((tower) => tower.name === 'Torre Uno');
   assert.equal(torreUno.isTower, true);
-  assert.equal(torreUno.pointCount, 2);
-  assert.equal(torreUno.pointsWithoutDssCount, 1, 'Tienda B no tiene dispositivo DSS todavia');
+  assert.equal(torreUno.pointCount, 3);
+  assert.equal(torreUno.pointsWithoutDssCount, 2, 'Tienda B y Oficina Torre Uno no tienen dispositivo DSS todavia');
+  assert.deepEqual([...torreUno.gatewayCidrs].sort(), ['10.10.10.1/24', '10.10.11.1/24'], 'una torre con mas de un gateway real expone todos');
 
   const puntoA = torreUno.points.find((point) => point.haplite.ip === '10.10.10.11');
   assert.deepEqual(puntoA.names.sort(), ['Cam SMD Tienda A', 'Tienda A']);

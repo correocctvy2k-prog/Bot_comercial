@@ -56,19 +56,30 @@ a una versión fechada.
   contra Supabase real: 375 puntos activos, 40 con CCTV.
 - **`TowersCardsView`** (nuevo, `CybersecurityDashboard.jsx`): una tarjeta por torre
   real, agrupadas por zona (`ZONE_TOWER_NAMES`, mapeo confirmado por el usuario),
-  cuadrícula de cubos por punto (verde = con grabador DSS, ámbar = sin grabador),
-  expandible para ver Enlaces/Celdas/Router principal — Enlaces y Celdas quedan como
-  secciones "sin datos todavía" (spec 0013 §4, preparadas para cuando lleguen esos
-  datos sin requerir otro rediseño). **Decisión del usuario**: un punto de Operación de
-  Puntos sin hAP lite conocido no se le inventa una torre específica — aparece en una
-  tarjeta aparte "Sin torre asignada" al final de su zona, con su propia cuadrícula
-  (verde = con CCTV, gris = sin CCTV).
+  cuadrícula de cubos por punto, expandible para ver Enlaces/Celdas/Router principal —
+  Enlaces y Celdas quedan como secciones "sin datos todavía" (spec 0013 §4, preparadas
+  para cuando lleguen esos datos sin requerir otro rediseño).
 - **Selector de vista** ("Tarjetas"/"Lista"): la vista de lista maestro-detalle
   original (`TowersListView`) se conserva para búsqueda puntual rápida.
-- Verificado contra datos reales en vivo (no solo el build): la lógica de agrupación
-  se replicó fuera de React contra la API real (`/api/cybersecurity/towers`) y Supabase
-  real — las 7 zonas cruzan sin ninguna torre faltante. `npm run build`/`lint` en
-  verde, bundle reconstruido en Docker local con el texto nuevo confirmado.
+- **Ubicación por IP/gateway (pedido del usuario)**: `cyber_tower_gateways` (nuevo) —
+  una torre puede tener más de un gateway real (Pradera, Candelaria); antes solo se
+  guardaba uno como representativo. Un punto de Operación de Puntos sin hAP lite
+  conocido, si su `ip` cae dentro de un gateway real de una torre de su propia zona, se
+  ubica ahí automáticamente (sin fusionarlo con el punto ya conocido si comparte IP).
+  **Verificado contra datos reales en vivo: 326 de 368 puntos activos (89%) se ubican
+  así** — el resto, sin match a ningún gateway conocido, sigue en "Sin torre asignada",
+  sin inventarles una torre.
+- **Leyenda de colores única para toda la vista** (`CubeLegend`): verde = grabador DSS
+  confirmado, ámbar = hAP lite conocido sin grabador, azul = ubicado por IP sin hAP
+  lite/DSS confirmado, gris = sin torre asignada — un solo significado por color, sin
+  excepciones por sección.
+- **Tarjeta flotante al hacer click en un cubo** (`PointFloatingCard`): nombre, torre,
+  IP, zona, CCTV/FortiGate/grabadores DSS del punto — se cierra con la X, clic afuera
+  o Esc.
+- Verificado contra datos reales en vivo (no solo el build): la lógica de agrupación y
+  de coincidencia por gateway se replicó fuera de React contra la API real
+  (`/api/cybersecurity/towers`) y Supabase real. `npm run build`/`lint` en verde,
+  bundle reconstruido en Docker local con el texto nuevo confirmado.
 
 ### CCTV — Sincronización Operación de Puntos ↔ Seguridad Electrónica
 `specs/0012-sync-puntos-cctv/`
