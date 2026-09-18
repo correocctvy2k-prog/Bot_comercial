@@ -52,9 +52,27 @@ nombre temporal y renombrar *esa* al final) tiene test de regresión
 (`tests/open-database-migration.test.js`) que replica exactamente el escenario real
 (tabla hija con una fila real, verificando `PRAGMA foreign_key_check` vacío después).
 
+## Vista gráfica + todos los puntos (con o sin CCTV)
+
+Pedido del usuario: mismo lenguaje visual que los tableros por zona de CCTV (spec
+0011) — tarjetas por torre, agrupadas por zona, con cuadrícula de cubos por punto. Y
+mostrar **todos** los puntos de cada zona, no solo los que ya tienen hAP lite.
+
+Hallazgo real: `puntos_venta` (Supabase, Operación de Puntos) ya tiene el campo
+`segment` con las 7 zonas operativas reales (`PALMIRA`, `OCCIDENTE`, `CANDELARIA`,
+`FLORIDA`, `PRADERA`, `ROZO`, `AMAIME Y EL PLACER`) y `has_cctv` ya viene sincronizado
+de verdad (spec 0012) — se reutiliza tal cual, sin pedir ni inventar un dato nuevo.
+`ZONE_TOWER_NAMES` (`CybersecurityDashboard.jsx`) mapea cada zona a sus torres
+conocidas. Un punto de Operación de Puntos sin hAP lite conocido **no se le inventa
+una torre específica** (decisión del usuario) — aparece en una tarjeta aparte "Sin
+torre asignada" al final de su zona.
+
+Verificado replicando la lógica de agrupación fuera de React, contra la API real y
+Supabase real: las 7 zonas cruzan correctamente, sin ninguna torre faltante.
+
 ## Pendiente (fuera de esta fase, ver spec 0013 §4)
 
-Modelo completo de torre (enlaces, celdas, router principal, UPS), monitoreo en vivo
-(caída/latencia/ancho de banda), detección de vulnerabilidades de firmware, y la
-jerarquía Zona → Sitio → Punto (7 zonas operativas reales, documentada en spec 0013
-§0.2 como información para cuando se retome).
+Modelo completo de torre (enlaces, celdas, router principal, UPS — hoy son secciones
+"sin datos todavía" en la tarjeta expandida, preparadas para cuando lleguen),
+monitoreo en vivo (caída/latencia/ancho de banda), detección de vulnerabilidades de
+firmware, y asignar torre específica a los puntos de "Sin torre asignada".

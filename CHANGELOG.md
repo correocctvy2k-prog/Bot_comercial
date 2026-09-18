@@ -44,6 +44,32 @@ a una versión fechada.
   (enlaces/celdas/router principal/UPS), monitoreo en vivo, vulnerabilidades de
   firmware, jerarquía Zona → Sitio → Punto (documentada como info para más adelante).
 
+### Ciberseguridad — Vista gráfica de Torres + todos los puntos (con o sin CCTV)
+`specs/0013-inventario-torres-haplite-nvr/`
+- **Pedido del usuario:** mismo lenguaje visual que los tableros por zona de CCTV
+  (tarjetas + cuadrícula de cubos) para Torres, e incluir **todos** los puntos de cada
+  zona, no solo los que ya tienen hAP lite conocido.
+- **Hallazgo real:** `puntos_venta` (Supabase, Operación de Puntos) ya tiene el campo
+  `segment` con las 7 zonas operativas reales (`PALMIRA`, `OCCIDENTE`, `CANDELARIA`,
+  `FLORIDA`, `PRADERA`, `ROZO`, `AMAIME Y EL PLACER`) y `has_cctv` ya viene sincronizado
+  de verdad (spec 0012) — no hizo falta inventar ni pedir un dato nuevo. Verificado
+  contra Supabase real: 375 puntos activos, 40 con CCTV.
+- **`TowersCardsView`** (nuevo, `CybersecurityDashboard.jsx`): una tarjeta por torre
+  real, agrupadas por zona (`ZONE_TOWER_NAMES`, mapeo confirmado por el usuario),
+  cuadrícula de cubos por punto (verde = con grabador DSS, ámbar = sin grabador),
+  expandible para ver Enlaces/Celdas/Router principal — Enlaces y Celdas quedan como
+  secciones "sin datos todavía" (spec 0013 §4, preparadas para cuando lleguen esos
+  datos sin requerir otro rediseño). **Decisión del usuario**: un punto de Operación de
+  Puntos sin hAP lite conocido no se le inventa una torre específica — aparece en una
+  tarjeta aparte "Sin torre asignada" al final de su zona, con su propia cuadrícula
+  (verde = con CCTV, gris = sin CCTV).
+- **Selector de vista** ("Tarjetas"/"Lista"): la vista de lista maestro-detalle
+  original (`TowersListView`) se conserva para búsqueda puntual rápida.
+- Verificado contra datos reales en vivo (no solo el build): la lógica de agrupación
+  se replicó fuera de React contra la API real (`/api/cybersecurity/towers`) y Supabase
+  real — las 7 zonas cruzan sin ninguna torre faltante. `npm run build`/`lint` en
+  verde, bundle reconstruido en Docker local con el texto nuevo confirmado.
+
 ### CCTV — Sincronización Operación de Puntos ↔ Seguridad Electrónica
 `specs/0012-sync-puntos-cctv/`
 - **Problema:** "Operación de Puntos" (Supabase `puntos_venta`) y "Seguridad Electrónica"

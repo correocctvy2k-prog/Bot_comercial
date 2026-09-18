@@ -73,6 +73,29 @@ Marcar `[x]` al completar. Mantener actualizado durante toda la tarea.
       DSS por SQLite directo ya estaba confirmado en §9.3 antes de implementar)
 - [x] Lección aprendida — `docs/lecciones-aprendidas/LL-0007-alter-table-rename-reescribe-fk.md`
 
+## Incremento — vista gráfica + todos los puntos (con o sin CCTV)
+
+Pedido del usuario 2026-09-18, misma jornada: mismo lenguaje visual que los tableros
+por zona de CCTV (spec 0011), e incluir todos los puntos de Operación de Puntos, no
+solo los que ya tienen hAP lite.
+
+- [x] Confirmado: `puntos_venta.segment` = las 7 zonas reales (`PALMIRA`, `OCCIDENTE`,
+      `CANDELARIA`, `FLORIDA`, `PRADERA`, `ROZO`, `AMAIME Y EL PLACER`), `has_cctv` ya
+      sincronizado — verificado con 375 puntos reales, 40 con CCTV.
+- [x] Decisión del usuario: puntos sin hAP lite conocido → tarjeta aparte "Sin torre
+      asignada" por zona, sin inventar torre específica.
+- [x] `TowersCardsView` (nuevo) + `PointCubeGrid` + `PendingSection` (Enlaces/Celdas/
+      Router principal, "sin datos todavía") + selector Tarjetas/Lista —
+      `CRM_Frontend/src/pages/CybersecurityDashboard.jsx`.
+- [x] `pointsService.getPoints()` reusado (ya existente, sin servicio nuevo).
+- [x] `cd CRM_Frontend && npm run lint` — sin errores nuevos.
+- [x] `cd CRM_Frontend && npm run build` — verde.
+- [x] Verificado contra datos reales: lógica de agrupación replicada fuera de React
+      contra la API real y Supabase real — 7 zonas, sin ninguna torre faltante.
+- [x] Docker local: `crm-frontend` reconstruido + `restart`, bundle confirmado con el
+      texto nuevo, `/api/cybersecurity/towers` sigue respondiendo 200.
+- [x] `CHANGELOG.md` + ficha de módulo actualizados.
+
 ## Cierre
 
 - [ ] PR abierto y enlazado en `spec.md`
