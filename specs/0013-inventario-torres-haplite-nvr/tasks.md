@@ -152,6 +152,26 @@ Pedido del usuario 2026-09-19, tras revisar la vista gráfica en vivo con datos 
       texto "Conectados por VPN", `/api/cybersecurity/towers` confirma gateways `/23`.
 - [x] `CHANGELOG.md` + ficha de módulo actualizados.
 
+## Incremento — match por IP ya no se restringe a la zona propia
+
+Investigación de los 8 puntos que seguían "sin torre asignada" tras el incremento
+anterior; el usuario respondió 2 preguntas (`AskUserQuestion`) sobre la máscara de Bolo
+y sobre permitir match cruzando zonas.
+
+- [x] Investigados uno por uno los 8 puntos: 2 (Bolo, `/28`) confirmados por el usuario
+      como brecha real; 6 sí tenían match real contra una torre de OTRA zona operativa.
+- [x] `TowersCardsView`: el cálculo de match por IP/gateway ya no se limita a las
+      torres de la zona propia del punto — se calcula una sola vez contra todas las
+      torres conocidas (decisión del usuario: "la red real manda sobre la etiqueta de
+      zona").
+- [x] `cd CRM_Frontend && npm run lint`/`build` — sin errores nuevos, verde.
+- [x] `cybersecurity/`: `npm test` — 162/162 en verde (sin cambios de backend).
+- [x] Verificado contra datos reales en vivo: 361 de 368 puntos activos (98%) ubicados
+      por IP (antes 355/368) — solo quedan los 2 puntos de Bolo.
+- [x] Docker local: `crm-frontend` reconstruido + `restart`, bundle nuevo confirmado
+      servido por nginx (hash de archivo distinto, timestamp del rebuild).
+- [x] `CHANGELOG.md` + ficha de módulo actualizados.
+
 ## Cierre
 
 - [ ] PR abierto y enlazado en `spec.md`

@@ -1208,6 +1208,25 @@ function TowersCardsView({ towers, crmPoints }) {
   }
   const zoneNames = [...new Set([...assignedZoneNames, ...crmByZone.keys()])];
 
+  // Un punto se ubica por IP en CUALQUIER torre real conocida, sin restringir a las
+  // torres de su propia zona operativa -- la red real manda sobre la etiqueta de zona
+  // (decisión del usuario 2026-09-19, tras encontrar 5 puntos reales que cruzan zona:
+  // p.ej. 2 puntos de Candelaria caen en la red del Edificio Principal, mapeada solo a
+  // Palmira, y 2 puntos de Palmira/Amaime caen en la red de Quisquina, mapeada a
+  // Occidente). Ya conocido (mismo hAP lite) se descarta para no duplicar el cubo que
+  // tower.points ya representa.
+  const matchedCrmIds = new Set();
+  const crmMatchesByTowerId = new Map();
+  for (const point of crmPoints) {
+    if (!point.ip || knownHapliteIps.has(point.ip)) continue;
+    const tower = towers.find((candidate) => (candidate.gatewayCidrs || []).some((cidr) => cidrContainsIp(cidr, point.ip)));
+    if (!tower) continue;
+    matchedCrmIds.add(point.id);
+    const list = crmMatchesByTowerId.get(tower.id) || [];
+    list.push(point);
+    crmMatchesByTowerId.set(tower.id, list);
+  }
+
   const onHoverPoint = (item, event) => setFloating(item ? { point: item.detail, position: { x: event.clientX, y: event.clientY } } : null);
 
   return (
@@ -1217,20 +1236,6 @@ function TowersCardsView({ towers, crmPoints }) {
         const towerNames = ZONE_TOWER_NAMES[zoneName] || [];
         const zoneTowers = towerNames.map((name) => towerByName.get(name)).filter(Boolean);
         const zoneCrmPoints = crmByZone.get(zoneName) || [];
-        // Un punto de Operación de Puntos se asigna a la primera torre de su zona cuyo
-        // gateway contenga su IP -- ya conocido (mismo hAP lite) se descarta para no
-        // duplicar el cubo que tower.points ya representa.
-        const matchedCrmIds = new Set();
-        const crmMatchesByTowerId = new Map();
-        for (const point of zoneCrmPoints) {
-          if (!point.ip || knownHapliteIps.has(point.ip)) continue;
-          const tower = zoneTowers.find((candidate) => (candidate.gatewayCidrs || []).some((cidr) => cidrContainsIp(cidr, point.ip)));
-          if (!tower) continue;
-          matchedCrmIds.add(point.id);
-          const list = crmMatchesByTowerId.get(tower.id) || [];
-          list.push(point);
-          crmMatchesByTowerId.set(tower.id, list);
-        }
         const leftoverPoints = zoneCrmPoints.filter((point) => !matchedCrmIds.has(point.id) && !knownHapliteIps.has(point.ip));
         // Conectados por VPN desde internet: no es "sin torre por falta de dato", es una
         // categoría real distinta que nunca va a tener torre (aclarado por el usuario
@@ -1259,7 +1264,7 @@ function TowersCardsView({ towers, crmPoints }) {
                   tone: 'sky',
                   title: `${point.alias || point.name} (${point.ip}) · ubicado por IP`,
                   detail: {
-                    title: point.alias || point.name, torreName: tower.name, ip: point.ip, zone: zoneName,
+                    title: point.alias || point.name, torreName: tower.name, ip: point.ip, zone: point.segment || zoneName,
                     hasCctv: Boolean(point.has_cctv), tone: 'sky',
                   },
                 }));

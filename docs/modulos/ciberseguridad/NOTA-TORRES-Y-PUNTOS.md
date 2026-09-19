@@ -107,6 +107,21 @@ genuinamente pendientes de ubicar. Se muestran en una tarjeta aparte ("Conectado
 VPN", tono violeta en `CubeLegend`). Con ambas correcciones, el total real de puntos sin
 torre asignada bajó de 42 a **8**.
 
+**Segunda corrección (mismo día): el match por IP ya no se restringe a la zona propia
+del punto.** De esos 8, se investigaron uno por uno: 2 (`LUCERNA`, `BOMBA LAURO`) caen
+justo fuera del gateway `/28` de Bolo — el usuario confirmó que esa máscara real es
+correcta, así que siguen genuinamente sin torre. Los otros 6 sí tenían un match real,
+pero contra una torre mapeada a **otra** zona operativa (2 puntos de Candelaria caen en
+la red del Edificio Principal, mapeada solo a Palmira; puntos de Palmira/Amaime caen en
+la red de Quisquina, mapeada a Occidente; un punto de Occidente cae en la red de Oriente
+Palmira, mapeada a Palmira) — el código antes solo buscaba coincidencias contra las
+torres de la propia zona del punto. El usuario decidió: **la red real manda sobre la
+etiqueta de zona** — ahora el match se calcula contra todas las torres conocidas, sin
+restringir a la zona. El punto aparece en la tarjeta de la torre real que lo contiene,
+aunque esa torre esté en la sección de otra zona. **Resultado verificado: 361 de 368
+puntos activos (98%) ubicados por IP** — solo quedan los 2 de Bolo, brecha real
+confirmada, no ajustada.
+
 ## Leyenda de colores y detalle al pasar el cursor
 
 Pedido del usuario ("necesito entender los colores"): un solo significado por color en
@@ -123,6 +138,6 @@ porque ya no hace falta.
 Modelo completo de torre (enlaces, celdas, router principal, UPS — hoy son secciones
 "sin datos todavía" en la tarjeta expandida, preparadas para cuando lleguen),
 monitoreo en vivo (caída/latencia/ancho de banda), detección de vulnerabilidades de
-firmware, y los 8 puntos reales que aún no caen en ningún gateway conocido ni son VPN
-(tras corregir las máscaras de Rozo/Palmaseca/Zamorano y separar la categoría VPN, ver
-arriba) — principalmente en Occidente (4 de 19 puntos).
+firmware, y los 2 puntos reales de Bolo (`LUCERNA`, `BOMBA LAURO`) que no caen en su
+gateway `/28` — brecha real confirmada por el usuario, no una máscara mal transcrita
+como los casos anteriores.

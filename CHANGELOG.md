@@ -108,6 +108,27 @@ a una versión fechada.
   Docker local reconstruido (`crm-frontend` + `restart`), bundle con el texto nuevo
   confirmado, `/api/cybersecurity/towers` devuelve los gateways `/23` corregidos.
 
+### Ciberseguridad — Match de punto por IP ya no se restringe a la zona propia
+`specs/0013-inventario-torres-haplite-nvr/`
+- **Investigación de los 8 puntos que seguían "sin torre asignada"** tras el fix
+  anterior: 2 (`LUCERNA`, `BOMBA LAURO`) caen justo fuera del gateway `/28` de Bolo — el
+  usuario confirmó que esa máscara real es correcta, así que siguen genuinamente sin
+  torre. Los otros 6 sí tenían match real, pero contra una torre mapeada a **otra** zona
+  operativa (p.ej. 2 puntos de Candelaria caen en la red del Edificio Principal, mapeada
+  solo a Palmira; puntos de Palmira/Amaime caen en la red de Quisquina, mapeada a
+  Occidente) — el código solo buscaba torres de la propia zona del punto.
+- **Decisión del usuario:** la red real manda sobre la etiqueta de zona — permitir que
+  un punto se ubique en cualquier torre real conocida, sin restringir a las torres de su
+  propia zona. `TowersCardsView` ahora calcula el match una sola vez contra **todas**
+  las torres (antes, una vez por zona contra solo las torres de esa zona); el punto
+  aparece en la tarjeta de la torre real que lo contiene, aunque esa torre esté en la
+  sección de otra zona.
+- **Verificado contra datos reales en vivo:** de 368 puntos activos, **361 ubicados por
+  IP (98%)** — solo quedan los 2 puntos de Bolo, confirmados como brecha real (no
+  ajustada). `cybersecurity/`: 162/162 tests (sin cambios de backend). `CRM_Frontend`:
+  `npm run lint`/`build` en verde. Docker local reconstruido (`crm-frontend` +
+  `restart`), bundle nuevo confirmado servido por nginx.
+
 ### CCTV — Sincronización Operación de Puntos ↔ Seguridad Electrónica
 `specs/0012-sync-puntos-cctv/`
 - **Problema:** "Operación de Puntos" (Supabase `puntos_venta`) y "Seguridad Electrónica"
