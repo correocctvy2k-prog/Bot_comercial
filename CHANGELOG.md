@@ -81,6 +81,33 @@ a una versión fechada.
   (`/api/cybersecurity/towers`) y Supabase real. `npm run build`/`lint` en verde,
   bundle reconstruido en Docker local con el texto nuevo confirmado.
 
+### Ciberseguridad — Corrección de máscaras reales, categoría VPN y tarjeta al pasar el cursor
+`specs/0013-inventario-torres-haplite-nvr/`
+- **Corrección de datos reales (el usuario, con conocimiento directo de la red, corrigió
+  la máscara del PDF original):** Rozo, Palmaseca y Zamorano Palmira usan `/23`, no `/24`
+  como se había transcrito. Corregido en la semilla real
+  (`cybersecurity/raw/torres/torres-haplite-real-20260918.json`, gitignored) y en la base
+  local (se borraron los 2 gateways `/24` obsoletos y se recargó `seed-towers.js`).
+  **Impacto verificado contra datos reales en vivo:** Rozo pasó de 1/25 puntos ubicados
+  por IP (4%) a **24/25 (96%)** — la brecha real que se había documentado como "hallazgo,
+  no ajustado" en la nota de módulo era, en realidad, un dato de máscara mal transcrito.
+- **Nueva categoría "Conectados por VPN"** (`isVpnConnected`, prefijo `10.100.1.`):
+  el usuario aclaró que estos puntos se conectan por VPN desde internet y
+  **estructuralmente nunca van a tener una torre** — no es lo mismo que "sin torre
+  asignada por falta de dato todavía". Se separan en su propia tarjeta (tono violeta,
+  agregado a `CubeLegend`) para no mezclar ambos significados.
+- **Tarjeta flotante al pasar el cursor, no al hacer click** (pedido del usuario): 
+  `PointCubeGrid`/`PointFloatingCard` cambian de `onClick` a `onMouseEnter`/`onMouseLeave`
+  (con `onFocus`/`onBlur` para teclado); ya no hace falta el overlay de "clic afuera" ni
+  el listener de Escape para cerrarla.
+- **Verificado contra datos reales en vivo** (lógica de agrupación replicada fuera de
+  React contra la API real y Supabase real, tras el fix): de 368 puntos activos, **355
+  ubicados por IP, 5 en la nueva categoría VPN, y solo 8 genuinamente sin torre asignada**
+  (antes: 326 ubicados, 42 sin torre asignada sin distinguir VPN). `cybersecurity/`:
+  162/162 tests. `CRM_Frontend`: `npm run lint`/`build` en verde (sin errores nuevos).
+  Docker local reconstruido (`crm-frontend` + `restart`), bundle con el texto nuevo
+  confirmado, `/api/cybersecurity/towers` devuelve los gateways `/23` corregidos.
+
 ### CCTV — Sincronización Operación de Puntos ↔ Seguridad Electrónica
 `specs/0012-sync-puntos-cctv/`
 - **Problema:** "Operación de Puntos" (Supabase `puntos_venta`) y "Seguridad Electrónica"

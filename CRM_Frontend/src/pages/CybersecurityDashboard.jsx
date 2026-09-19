@@ -1022,6 +1022,15 @@ const ZONE_TOWER_NAMES = {
   'AMAIME Y EL PLACER': ['Amaime'],
 };
 
+// Puntos conectados por VPN desde internet, sin cobertura por las redes de torre
+// (aclarado por el usuario 2026-09-19) -- no son "sin torre asignada por falta de
+// dato", es una categoría real distinta: nunca van a tener torre porque no dependen
+// de ninguna.
+const VPN_IP_PREFIXES = ['10.100.1.'];
+function isVpnConnected(ip) {
+  return VPN_IP_PREFIXES.some((prefix) => String(ip || '').startsWith(prefix));
+}
+
 // Deducir a qué torre pertenece un punto por su IP (pedido del usuario 2026-09-18):
 // una torre puede tener más de un gateway/CIDR real (cyber_towers_gateways) -- se
 // prueba contra todos. Mismo cálculo que ya usa el backend (cidrContainsIp en
@@ -1051,6 +1060,7 @@ const CUBE_TONE = {
   amber: { bg: 'bg-amber-500', label: 'hAP lite conocido, sin grabador todavía' },
   sky: { bg: 'bg-sky-500', label: 'Ubicado por IP (Operación de Puntos), sin hAP lite confirmado' },
   slate: { bg: 'bg-slate-400/60', label: 'Sin torre asignada' },
+  violet: { bg: 'bg-violet-500', label: 'Conectado por VPN (sin cobertura de red de torre)' },
 };
 function CubeLegend() {
   return (
@@ -1063,9 +1073,10 @@ function CubeLegend() {
 }
 
 // Cuadrícula de cubos (mismo lenguaje visual que los tableros por zona de CCTV,
-// spec 0011) -- cada cubo es un punto conocido, coloreado por estado. Click abre la
-// tarjeta flotante con el detalle (pedido del usuario 2026-09-18).
-function PointCubeGrid({ items, onSelect }) {
+// spec 0011) -- cada cubo es un punto conocido, coloreado por estado. La tarjeta
+// flotante aparece solo con pasar el cursor (pedido del usuario 2026-09-19; antes
+// era al hacer click).
+function PointCubeGrid({ items, onHover }) {
   if (items.length === 0) return <p className="text-[11px] text-muted-foreground">Sin puntos para mostrar.</p>;
   return (
     <div className="flex flex-wrap gap-1">
@@ -1074,7 +1085,10 @@ function PointCubeGrid({ items, onSelect }) {
           key={item.key}
           type="button"
           title={item.title}
-          onClick={(event) => onSelect?.(item, event)}
+          onMouseEnter={(event) => onHover?.(item, event)}
+          onFocus={(event) => onHover?.(item, event)}
+          onMouseLeave={() => onHover?.(null)}
+          onBlur={() => onHover?.(null)}
           className={`h-3.5 w-3.5 rounded-[3px] transition-transform hover:scale-125 ${CUBE_TONE[item.tone]?.bg || CUBE_TONE.slate.bg}`}
         />
       ))}
@@ -1082,27 +1096,18 @@ function PointCubeGrid({ items, onSelect }) {
   );
 }
 
-// Tarjeta flotante con el detalle de un punto (pedido del usuario 2026-09-18) -- se
-// posiciona junto al cubo en el que se hizo click, cerrada con la X, clic afuera o Esc.
-function PointFloatingCard({ point, position, onClose }) {
-  useEffect(() => {
-    const onKeyDown = (event) => { if (event.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+// Tarjeta flotante con el detalle de un punto -- aparece al pasar el cursor sobre un
+// cubo y se posiciona junto a él (pedido del usuario 2026-09-19). `pointer-events-none`
+// para que el mouse nunca "quede atrapado" sobre la tarjeta y la deje abierta.
+function PointFloatingCard({ point, position }) {
   if (!point) return null;
   const style = {
     left: Math.min(position.x + 12, window.innerWidth - 300),
     top: Math.min(position.y + 12, window.innerHeight - 260),
   };
   return (
-    <>
-      <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div style={style} className="fixed z-50 w-72 rounded-2xl border border-border bg-card p-4 shadow-2xl">
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-black leading-tight">{point.title}</p>
-          <button onClick={onClose} className="shrink-0 rounded-lg p-1 text-muted-foreground hover:bg-muted/60 hover:text-foreground"><X size={14} /></button>
-        </div>
+    <div style={style} className="pointer-events-none fixed z-50 w-72 rounded-2xl border border-border bg-card p-4 shadow-2xl">
+        <p className="text-sm font-black leading-tight">{point.title}</p>
         {point.torreName && <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-blue-400">{point.torreName}</p>}
         {point.ip && <p className="mt-2 flex items-center gap-1.5 font-mono text-xs text-muted-foreground"><Router size={12} /> {point.ip}</p>}
         {point.zone && <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><MapPin size={12} /> Zona {point.zone}</p>}
@@ -1119,13 +1124,14 @@ function PointFloatingCard({ point, position, onClose }) {
               </div>
             ))}
           </div>
+        ) : point.tone === 'violet' ? (
+          <p className="mt-3 text-[11px] text-violet-300">Conectado por VPN desde internet, sin cobertura de red de torre.</p>
         ) : point.tone !== 'slate' ? (
           <p className="mt-3 text-[11px] text-amber-300">Sin grabador DSS identificado todavía.</p>
         ) : (
           <p className="mt-3 text-[11px] text-muted-foreground">Torre específica pendiente de determinar (Operación de Puntos).</p>
         )}
-      </div>
-    </>
+    </div>
   );
 }
 
@@ -1202,7 +1208,7 @@ function TowersCardsView({ towers, crmPoints }) {
   }
   const zoneNames = [...new Set([...assignedZoneNames, ...crmByZone.keys()])];
 
-  const openFloating = (item, event) => setFloating({ point: item.detail, position: { x: event.clientX, y: event.clientY } });
+  const onHoverPoint = (item, event) => setFloating(item ? { point: item.detail, position: { x: event.clientX, y: event.clientY } } : null);
 
   return (
     <div className="space-y-8">
@@ -1225,8 +1231,13 @@ function TowersCardsView({ towers, crmPoints }) {
           list.push(point);
           crmMatchesByTowerId.set(tower.id, list);
         }
-        const unassignedPoints = zoneCrmPoints.filter((point) => !matchedCrmIds.has(point.id) && !knownHapliteIps.has(point.ip));
-        if (zoneTowers.length === 0 && unassignedPoints.length === 0) return null;
+        const leftoverPoints = zoneCrmPoints.filter((point) => !matchedCrmIds.has(point.id) && !knownHapliteIps.has(point.ip));
+        // Conectados por VPN desde internet: no es "sin torre por falta de dato", es una
+        // categoría real distinta que nunca va a tener torre (aclarado por el usuario
+        // 2026-09-19) -- se separan para no mezclarlos con los genuinamente pendientes.
+        const vpnPoints = leftoverPoints.filter((point) => isVpnConnected(point.ip));
+        const unassignedPoints = leftoverPoints.filter((point) => !isVpnConnected(point.ip));
+        if (zoneTowers.length === 0 && unassignedPoints.length === 0 && vpnPoints.length === 0) return null;
         return (
           <section key={zoneName}>
             <h3 className="mb-3 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground"><MapPin size={13} /> {zoneName}</h3>
@@ -1264,7 +1275,7 @@ function TowersCardsView({ towers, crmPoints }) {
                       <span className="flex shrink-0 items-center gap-1 text-[10px] font-bold text-muted-foreground">{cubeItems.length} puntos {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</span>
                     </button>
                     <p className="mt-2 text-[10px] text-muted-foreground">{tower.pointCount - tower.pointsWithoutDssCount} con grabador · {tower.pointsWithoutDssCount} sin grabador{crmMatches.length > 0 ? ` · ${crmMatches.length} ubicados por IP` : ''}</p>
-                    <div className="mt-3"><PointCubeGrid items={cubeItems} onSelect={openFloating} /></div>
+                    <div className="mt-3"><PointCubeGrid items={cubeItems} onHover={onHoverPoint} /></div>
                     {expanded && (
                       <div className="mt-4 space-y-2 border-t border-border/60 pt-4">
                         <PendingSection icon={Cable} label="Enlaces" />
@@ -1286,7 +1297,23 @@ function TowersCardsView({ towers, crmPoints }) {
                         key: point.id, tone: 'slate', title: point.alias || point.name,
                         detail: { title: point.alias || point.name, ip: point.ip, zone: zoneName, hasCctv: Boolean(point.has_cctv), tone: 'slate' },
                       }))}
-                      onSelect={openFloating}
+                      onHover={onHoverPoint}
+                    />
+                  </div>
+                </div>
+              )}
+              {vpnPoints.length > 0 && (
+                <div className="rounded-2xl border border-dashed border-violet-500/30 bg-violet-500/[0.04] p-4">
+                  <p className="text-sm font-black text-violet-300">Conectados por VPN</p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">Sin cobertura de red de torre por diseño — se conectan desde internet, no aplica asignarles una.</p>
+                  <p className="mt-2 text-[10px] text-muted-foreground">{vpnPoints.length} puntos · {vpnPoints.filter((point) => point.has_cctv).length} con CCTV</p>
+                  <div className="mt-3">
+                    <PointCubeGrid
+                      items={vpnPoints.map((point) => ({
+                        key: point.id, tone: 'violet', title: point.alias || point.name,
+                        detail: { title: point.alias || point.name, ip: point.ip, zone: zoneName, hasCctv: Boolean(point.has_cctv), tone: 'violet' },
+                      }))}
+                      onHover={onHoverPoint}
                     />
                   </div>
                 </div>
@@ -1295,7 +1322,7 @@ function TowersCardsView({ towers, crmPoints }) {
           </section>
         );
       })}
-      {floating && <PointFloatingCard point={floating.point} position={floating.position} onClose={() => setFloating(null)} />}
+      {floating && <PointFloatingCard point={floating.point} position={floating.position} />}
     </div>
   );
 }

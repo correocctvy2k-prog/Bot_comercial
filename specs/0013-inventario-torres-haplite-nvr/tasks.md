@@ -127,6 +127,31 @@ tarjeta flotante al hacer click en un cubo, y una leyenda de colores.
       nuevo.
 - [x] `CHANGELOG.md` + ficha de módulo actualizados.
 
+## Incremento — corrección de máscaras reales, categoría VPN, hover en vez de click
+
+Pedido del usuario 2026-09-19, tras revisar la vista gráfica en vivo con datos reales.
+
+- [x] Corregida la máscara real de Rozo, Palmaseca y Zamorano Palmira (`/23`, no `/24`
+      como se había transcrito del PDF) en la semilla real (gitignored) y en la base
+      local (gateways `/24` obsoletos borrados, `seed-towers.js` recargado).
+- [x] `isVpnConnected` (prefijo `10.100.1.`) — nueva categoría "Conectados por VPN"
+      (tono violeta, agregado a `CUBE_TONE`/`CubeLegend`), separada de "Sin torre
+      asignada" porque estructuralmente nunca va a tener torre.
+- [x] `PointCubeGrid`/`PointFloatingCard`: cambiado de `onClick` a
+      `onMouseEnter`/`onMouseLeave` (+ `onFocus`/`onBlur`) — la tarjeta aparece solo con
+      pasar el cursor, ya no hace falta overlay de "clic afuera" ni listener de Esc.
+- [x] `cybersecurity/`: `npm test` — 162/162 en verde (sin cambios de backend en este
+      incremento, solo re-verificado).
+- [x] `cd CRM_Frontend && npm run lint`/`build` — sin errores nuevos, verde.
+- [x] Verificado contra datos reales en vivo (lógica de agrupación replicada fuera de
+      React contra la API real y Supabase real, tras el fix): Rozo pasó de 1/25 (4%) a
+      24/25 (96%) puntos ubicados por IP; de 368 puntos activos, 355 ubicados por IP, 5
+      en la categoría VPN, 8 genuinamente sin torre asignada (antes: 326/42 sin
+      distinguir VPN).
+- [x] Docker local: `crm-frontend` reconstruido + `restart`, bundle confirmado con el
+      texto "Conectados por VPN", `/api/cybersecurity/towers` confirma gateways `/23`.
+- [x] `CHANGELOG.md` + ficha de módulo actualizados.
+
 ## Cierre
 
 - [ ] PR abierto y enlazado en `spec.md`

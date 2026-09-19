@@ -92,19 +92,37 @@ Palmira 152/154, Occidente 9/19, **Rozo solo 1/25** — la mayoría de los punto
 de Rozo no caen en el único gateway de esa torre que ya conocemos, señal de que puede
 haber más infraestructura ahí sin capturar todavía.
 
-## Leyenda de colores y detalle al hacer click
+**Corrección posterior (2026-09-19):** la brecha de Rozo de arriba **no era un hallazgo
+de infraestructura — era un dato de máscara mal transcrito.** El usuario, con
+conocimiento directo de la red, confirmó que Rozo, Palmaseca y Zamorano Palmira usan
+`/23`, no `/24` como se había transcrito del PDF original. Corregido en la semilla real
+y recargado: Rozo pasó de 1/25 (4%) a **24/25 (96%)**. Lección: un dato transcrito de un
+documento entregado por el usuario sigue siendo una hipótesis hasta que el usuario lo
+confirma contra la config real — no una fuente de verdad definitiva por sí sola.
+
+Además, se identificó que 5 de los puntos "sin torre asignada" en realidad son
+**puntos conectados por VPN desde internet** (prefijo de IP `10.100.1.`) — no tienen
+cobertura de red de torre por diseño, nunca la van a tener, y no deben mezclarse con los
+genuinamente pendientes de ubicar. Se muestran en una tarjeta aparte ("Conectados por
+VPN", tono violeta en `CubeLegend`). Con ambas correcciones, el total real de puntos sin
+torre asignada bajó de 42 a **8**.
+
+## Leyenda de colores y detalle al pasar el cursor
 
 Pedido del usuario ("necesito entender los colores"): un solo significado por color en
 toda la vista de Torres, mostrado en una leyenda (`CubeLegend`) — verde = grabador DSS
 confirmado, ámbar = hAP lite conocido sin grabador, azul = ubicado por IP sin hAP
-lite/DSS confirmado, gris = sin torre asignada. Click en cualquier cubo abre una
-tarjeta flotante (`PointFloatingCard`) con el detalle del punto (nombre, torre, IP,
-zona, CCTV/FortiGate/grabadores).
+lite/DSS confirmado, gris = sin torre asignada, violeta = conectado por VPN.
+Pasar el cursor sobre cualquier cubo abre una tarjeta flotante (`PointFloatingCard`) con
+el detalle del punto (nombre, torre, IP, zona, CCTV/FortiGate/grabadores) — cambiado de
+click a hover el 2026-09-19 (pedido del usuario), sin overlay de "clic afuera" ni Esc
+porque ya no hace falta.
 
 ## Pendiente (fuera de esta fase, ver spec 0013 §4)
 
 Modelo completo de torre (enlaces, celdas, router principal, UPS — hoy son secciones
 "sin datos todavía" en la tarjeta expandida, preparadas para cuando lleguen),
 monitoreo en vivo (caída/latencia/ancho de banda), detección de vulnerabilidades de
-firmware, y los 42 puntos reales que aún no caen en ningún gateway conocido (incluida
-la brecha real de cobertura en Rozo).
+firmware, y los 8 puntos reales que aún no caen en ningún gateway conocido ni son VPN
+(tras corregir las máscaras de Rozo/Palmaseca/Zamorano y separar la categoría VPN, ver
+arriba) — principalmente en Occidente (4 de 19 puntos).
