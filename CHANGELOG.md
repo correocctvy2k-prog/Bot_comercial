@@ -301,10 +301,16 @@ a una versión fechada.
   falla de forma controlada y se degrada a lista vacía, sin romper la vista. `npm run
   lint`/`build` en verde. Docker local reconstruido, bundle confirmado con el texto
   nuevo.
-- **Pendiente del usuario, en orden**: (1) correr
-  `0013-create-known-haplites-table.sql` en Supabase; (2) correr
-  `sync-known-haplites-to-supabase.js --db <ruta> --apply`; (3) disparar un monitoreo
-  (comando de WhatsApp) para que se pueble el estado vivo por primera vez.
+- **Actualización (mismo día, tras que el usuario corrió la migración)**: se ejecutó
+  `sync-known-haplites-to-supabase.js --apply` — **96 IPs reales sincronizadas**,
+  confirmado consultando con la clave `service_role` (ej. "Amaime I" →
+  `192.168.12.58`, coincide con la semilla). **Hallazgo real**: la tabla nueva tenía
+  RLS activado por defecto (comportamiento estándar de tablas nuevas en Supabase) sin
+  ninguna policy — la escritura con `service_role` funcionaba, pero el frontend (clave
+  `anon`) veía 0 filas. Nuevo `cybersecurity/sql/0013-allow-public-read-known-
+  haplites.sql` (policy de `SELECT` público). **Pendiente del usuario, en orden**: (1)
+  correr esa policy nueva en Supabase; (2) disparar un monitoreo (comando de
+  WhatsApp) para poblar el estado vivo por primera vez.
 
 ### CCTV — Sincronización Operación de Puntos ↔ Seguridad Electrónica
 `specs/0012-sync-puntos-cctv/`

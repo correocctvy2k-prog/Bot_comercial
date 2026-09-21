@@ -299,8 +299,18 @@ Supabase, en vez de dejarlo como estaba o explorar otra idea.
 - [x] `cd CRM_Frontend && npm run lint`/`build` — sin errores nuevos, verde.
 - [x] Docker local: `crm-frontend` reconstruido + `restart`, bundle confirmado.
 - [x] `CHANGELOG.md` actualizado.
-- [ ] **Pendiente del usuario, en orden**: (1) correr la migración SQL nueva; (2)
-      correr `sync-known-haplites-to-supabase.js --apply`; (3) disparar un monitoreo
+- [x] El usuario corrió `0013-create-known-haplites-table.sql` — confirmado por Claude
+      (tabla existe, 0 filas).
+- [x] Corrido `sync-known-haplites-to-supabase.js --apply` — 96 IPs reales
+      sincronizadas, confirmadas con la clave service_role (ej. "Amaime I" ->
+      `192.168.12.58`, coincide con la semilla).
+- [x] **Hallazgo real**: `cyber_known_haplites` tenía RLS activado por defecto (Supabase
+      lo hace en tablas nuevas), sin policy de lectura -- la escritura con service_role
+      funcionaba, pero el frontend (clave anon) veía 0 filas. Nuevo archivo
+      `0013-allow-public-read-known-haplites.sql` (policy de SELECT público, mismo
+      patrón de tabla que ya debe tener `puntos_venta`).
+- [ ] **Pendiente del usuario, en orden**: (1) correr
+      `0013-allow-public-read-known-haplites.sql`; (2) disparar un monitoreo
       (WhatsApp) para poblar el estado vivo por primera vez.
 
 ## Cierre
