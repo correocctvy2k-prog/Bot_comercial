@@ -339,6 +339,23 @@ a una versión fechada.
   Claude lo ejecutó manualmente desde la máquina de desarrollo, con autorización del
   usuario). Al desplegar, el flujo normal ya lo hace solo.
 
+### Ciberseguridad — Corrige máscara de Bolo (/28 → /24): "Sin torre asignada" queda en 0
+`specs/0013-inventario-torres-haplite-nvr/`
+- **Reporte del usuario**, mirando la tarjeta "Sin torre asignada": los 2 puntos ahí
+  (`LUCERNA`, `BOMBA LAURO`) son reales de la torre Bolo.
+- **Evidencia que resuelve la contradicción con la confirmación anterior** ("Bolo es
+  `/28`", 2026-09-19): el propio hAP lite ya conocido de Bolo ("Oficina Bolo Alaska",
+  `192.168.46.100`) tampoco cae dentro de `192.168.46.1/28` (que solo cubre `.0`–`.15`)
+  — señal directa de que la máscara real es más amplia. El usuario confirmó `/24`.
+- **Corregido**: `192.168.46.1/28` → `192.168.46.1/24` en la semilla real
+  (gitignored) y recargada (gateway obsoleto borrado antes de recargar, mismo patrón
+  ya usado con Rozo/Palmaseca/Zamorano).
+- **Verificado contra datos reales en vivo**: de 368 puntos activos, **363 ubicados
+  por IP (99%)**, 5 VPN, **0 puntos sin torre asignada** — la máscara más amplia
+  también capturó 2 puntos más de Bolo que no se habían mencionado (`PANADERIA
+  ALASKA`, `CLUB JAPONES`). `cybersecurity/`: 170/170 tests. Docker local
+  reconstruido (`cybersecurity-api` + `restart crm-frontend`).
+
 ### CCTV — Sincronización Operación de Puntos ↔ Seguridad Electrónica
 `specs/0012-sync-puntos-cctv/`
 - **Problema:** "Operación de Puntos" (Supabase `puntos_venta`) y "Seguridad Electrónica"

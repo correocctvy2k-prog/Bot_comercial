@@ -344,6 +344,23 @@ Supabase, en vez de dejarlo como estaba o explorar otra idea.
       cuenta (hoy solo corrió porque Claude lo ejecutó manualmente desde esta máquina
       de desarrollo). Al desplegar, el flujo normal ya lo hará solo.
 
+## Incremento — corrige máscara de Bolo (/28 → /24), 0 puntos sin torre asignada
+
+El usuario, mirando la tarjeta "Sin torre asignada", confirmó que `LUCERNA`/
+`BOMBA LAURO` sí son de Bolo — contradiciendo la confirmación anterior de `/28`.
+
+- [x] Evidencia encontrada antes de preguntar: el propio hAP lite conocido de Bolo
+      (`192.168.46.100`) tampoco caía dentro de `/28` — mismo patrón de máscara mal
+      transcrita que Rozo/Palmaseca/Zamorano.
+- [x] Usuario confirmó `/24` (`AskUserQuestion`).
+- [x] Corregida la semilla real, gateway obsoleto borrado, `seed-towers.js` recargado.
+- [x] `cybersecurity/`: `npm test` — 170/170.
+- [x] Verificado contra datos reales en vivo: **363/368 (99%) ubicados por IP, 5 VPN,
+      0 sin torre asignada** — cobertura completa. 2 puntos adicionales de Bolo
+      capturados de paso (`PANADERIA ALASKA`, `CLUB JAPONES`).
+- [x] Docker local: `cybersecurity-api` reconstruido + `restart crm-frontend`.
+- [x] `CHANGELOG.md` + ficha de módulo actualizados.
+
 ## Cierre
 
 - [ ] PR abierto y enlazado en `spec.md`

@@ -214,12 +214,20 @@ importó (la corrida más reciente vista tiene semanas — se desactualiza rápi
 como advirtió el usuario). El escaneo activo real de firmware queda como decisión de
 arquitectura aparte.
 
+## Corrección final: máscara de Bolo (/28 → /24), 0 puntos sin torre asignada
+
+El usuario, mirando la tarjeta "Sin torre asignada", confirmó que los 2 puntos ahí
+(`LUCERNA`, `BOMBA LAURO`) sí son de la torre Bolo — contradiciendo la confirmación
+anterior de que `/28` era correcta. La evidencia que resolvió la duda: el propio
+hAP lite ya conocido de Bolo (`192.168.46.100`) tampoco caía dentro de `/28` — señal
+directa de máscara mal transcrita, igual que Rozo/Palmaseca/Zamorano antes.
+Corregido a `/24`. **Resultado: de 368 puntos activos, 363 ubicados por IP (99%), 5
+VPN, 0 sin torre asignada** — cobertura completa. La máscara más amplia capturó 2
+puntos más de Bolo que no se habían mencionado (`PANADERIA ALASKA`, `CLUB JAPONES`).
+
 ## Pendiente (fuera de esta fase, ver spec 0013 §4)
 
 Modelo completo de torre (enlaces, celdas, router principal, UPS — hoy son secciones
-"sin datos todavía" en la tarjeta expandida, preparadas para cuando lleguen),
+"sin datos todavía" en la tarjeta expandida, preparadas para cuando lleguen) y
 escaneo activo real de firmware/vulnerabilidades (hoy solo hay un dato inicial sin
-verificar, ver arriba), aplicar la migración SQL pendiente de Supabase, y los 2
-puntos reales de Bolo (`LUCERNA`, `BOMBA LAURO`) que no caen en su gateway `/28` —
-brecha real confirmada por el usuario, no una máscara mal transcrita como los casos
-anteriores.
+verificar, ver arriba).
