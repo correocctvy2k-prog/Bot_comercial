@@ -219,6 +219,39 @@ script en vez de construir infraestructura nueva.
 - [ ] **Bloqueante para ver dato real**: el usuario debe correr
       `cybersecurity/sql/0013-add-nvr-port-columns.sql` en el editor SQL de Supabase.
 
+## Incremento — firmware inicial (sin verificar), base para vulnerabilidades
+
+Pedido del usuario 2026-09-21 (mismo pedido que el incremento anterior): sentar la
+base para detectar vulnerabilidades de firmware. Sin escaneo activo real disponible
+todavía (decisión de arquitectura aparte), el usuario eligió importar datos de
+firmware ya existentes en otra base como semilla inicial, marcados explícitamente
+como no verificados.
+
+- [x] `cctv-firmware-staging-importer.js` (nuevo) — lee `stg_inventory_locations` de
+      `cctv-automation-final` (solo lectura), solo la corrida de import más reciente
+      (la tabla acumula corridas viejas sin limpiarlas). Nueva fuente `CCTV_STAGING`
+      (`authority_level = 'OBSERVATIONAL'`).
+- [x] `pull-cctv-firmware-staging.js` (nuevo) — CLI en modo auditoría por defecto,
+      mismo patrón que `pull-dss-devices.js`.
+- [x] `schema.sql`/`open-database.js`: `'CCTV_STAGING'` agregado al `CHECK` de
+      `source_type` — migración de LL-0007 generalizada (revisa cualquier valor
+      requerido, no solo `'DSS'`), con test de regresión para el caso real de upgrade
+      parcial (`.65` ya tiene `'DSS'`, no tendrá `'CCTV_STAGING'` todavía).
+- [x] `getTowerPoints` expone `point.firmware` (cruce por IP), solo para los puntos
+      con hAP lite ya conocido.
+- [x] `CybersecurityDashboard.jsx`: sección de firmware en la tarjeta flotante,
+      siempre rotulada "sin verificar" + hace cuánto (import Excel, no un escaneo).
+- [x] `cybersecurity/`: `npm test` — 168/168 (7 tests nuevos).
+- [x] Import real corrido con `--apply` (respaldo previo): **79 de 96 puntos conocidos
+      (82%) con firmware**, confirmado vía `/api/cybersecurity/towers`. Idempotencia
+      confirmada (`ALREADY_IMPORTED` en la segunda corrida).
+- [x] `cd CRM_Frontend && npm run lint`/`build` — sin errores nuevos, verde.
+- [x] Docker local: `cybersecurity-api` + `crm-frontend` reconstruidos + `restart`,
+      bundle confirmado con el texto nuevo.
+- [x] `CHANGELOG.md` actualizado.
+- [ ] Fuera de alcance: escaneo activo real de firmware (decisión de arquitectura
+      aparte).
+
 ## Cierre
 
 - [ ] PR abierto y enlazado en `spec.md`

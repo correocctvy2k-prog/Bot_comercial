@@ -758,6 +758,36 @@ function getTowerPoints(db) {
   `).all();
   const fortigateByIp = new Map(fortigateObservations.map((row) => [row.ipValue, row]));
 
+  // Firmware inicial sin verificar (decisión del usuario 2026-09-21): importado de un
+  // Excel de staging de cctv-automation-final, no de un escaneo activo real -- se
+  // expone marcado explícitamente como no verificado (`CCTV_STAGING_UNVERIFIED`),
+  // nunca mezclado con las fuentes corroboradas (DSS/FortiGate).
+  const cctvStagingObservations = db.prepare(`
+    WITH latest AS (
+      SELECT source_system_id, max(captured_at) captured_at
+      FROM cyber_source_snapshots WHERE processing_status = 'SUCCESS' GROUP BY source_system_id
+    )
+    SELECT o.ip_value ipValue, o.observed_at observedAt, o.sanitized_attributes_json sanitizedAttributes,
+           o.quality_flags_json qualityFlags
+    FROM cyber_asset_observations o
+    JOIN cyber_source_snapshots s ON s.id = o.snapshot_id
+    JOIN cyber_source_systems src ON src.id = s.source_system_id
+    JOIN latest l ON l.source_system_id = s.source_system_id AND l.captured_at = s.captured_at
+    WHERE src.source_type = 'CCTV_STAGING' AND o.ip_value IS NOT NULL
+  `).all();
+  const cctvStagingByIp = new Map();
+  for (const row of cctvStagingObservations) {
+    const attrs = safeJson(row.sanitizedAttributes, {});
+    if (!attrs.firmwareRaw && !attrs.recorderModel) continue;
+    cctvStagingByIp.set(row.ipValue, {
+      firmwareRaw: attrs.firmwareRaw || null,
+      cameraFirmwareRaw: attrs.cameraFirmwareRaw || null,
+      recorderModel: attrs.recorderModel || null,
+      observedAt: row.observedAt,
+      unverified: safeJson(row.qualityFlags, []).includes('CCTV_STAGING_UNVERIFIED'),
+    });
+  }
+
   const pointsByTower = new Map();
   for (const row of towerPoints) {
     const key = `${row.towerId}:${row.haploteIp}`;
@@ -785,6 +815,7 @@ function getTowerPoints(db) {
                 : null,
             },
             dssDevices: dssByIp.get(point.ip) || [],
+            firmware: cctvStagingByIp.get(point.ip) || null,
           };
         })
         .sort((a, b) => a.names[0].localeCompare(b.names[0], 'es'));

@@ -91,6 +91,49 @@ test('abrir la misma base migrada una segunda vez no repite la migración ni dup
   }
 });
 
+// Regresión 2026-09-21: una base que YA pasó por la migración de fase 1 (tiene 'DSS'
+// en el CHECK, ej. .65 en producción) pero se creó antes del incremento de firmware
+// staging, no tiene 'CCTV_STAGING' -- debe automigrar igual, sin necesitar que 'DSS'
+// falte también (needsSourceSystemsMigration revisa cada source_type requerido por
+// separado, no solo si falta el primero que se agregó).
+function createDssOnlyDatabase(filePath) {
+  const db = new DatabaseSync(filePath);
+  db.exec(`
+    CREATE TABLE cyber_source_systems (
+      id TEXT PRIMARY KEY,
+      source_type TEXT NOT NULL CHECK(source_type IN (
+        'FORTIGATE', 'KASPERSKY', 'ACTIVE_DIRECTORY', 'GREENBONE', 'DSS', 'MANUAL', 'OTHER'
+      )),
+      display_name TEXT NOT NULL,
+      authority_level TEXT NOT NULL CHECK(authority_level IN ('AUTHORITATIVE', 'CORROBORATING', 'OBSERVATIONAL')),
+      active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0, 1)),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+  `);
+  db.prepare(`INSERT INTO cyber_source_systems(id, source_type, display_name, authority_level, created_at, updated_at)
+    VALUES ('source-dss', 'DSS', 'DSS Professional', 'CORROBORATING', '2026-09-18T00:00:00Z', '2026-09-18T00:00:00Z')`).run();
+  db.close();
+}
+
+test('una base que ya tiene DSS pero no CCTV_STAGING (upgrade parcial) también se automigra', () => {
+  const filePath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'cyber-migration-')), 'dss-only.db');
+  createDssOnlyDatabase(filePath);
+
+  const db = openCyberDatabase(filePath);
+  try {
+    assert.doesNotThrow(() => {
+      db.prepare(`INSERT INTO cyber_source_systems(id, source_type, display_name, authority_level, created_at, updated_at)
+        VALUES ('source-cctv-staging', 'CCTV_STAGING', 'Staging Excel CCTV', 'OBSERVATIONAL', '2026-09-21T00:00:00Z', '2026-09-21T00:00:00Z')`).run();
+    });
+    // el dato que ya existía antes de esta migración se conserva
+    assert.equal(db.prepare('SELECT count(*) AS c FROM cyber_source_systems').get().c, 2);
+    assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+  } finally {
+    db.close();
+  }
+});
+
 test('una base nueva (sin cyber_source_systems previo) no dispara la migración', () => {
   const db = openCyberDatabase();
   try {

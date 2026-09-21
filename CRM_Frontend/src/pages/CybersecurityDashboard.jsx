@@ -1202,6 +1202,17 @@ function PointFloatingCard({ point, position }) {
         ) : (
           <p className="mt-3 text-[11px] text-muted-foreground">Torre específica pendiente de determinar (Operación de Puntos).</p>
         )}
+        {point.firmware && (
+          <div className="mt-3 rounded-lg border border-dashed border-amber-500/30 bg-amber-500/[0.04] px-2.5 py-2">
+            <div className="flex items-center gap-1.5">
+              <Fingerprint size={12} className="shrink-0 text-amber-400" />
+              <span className="font-mono text-[10px] text-amber-200">{point.firmware.firmwareRaw || point.firmware.recorderModel}</span>
+            </div>
+            <p className="mt-1 text-[9px] leading-tight text-muted-foreground">
+              Sin verificar (import Excel{point.firmware.observedAt ? `, ${timeAgoEs(point.firmware.observedAt)}` : ''}) — no reemplaza un escaneo activo.
+            </p>
+          </div>
+        )}
     </div>
   );
 }
@@ -1344,6 +1355,7 @@ function TowersCardsView({ towers, crmPoints }) {
                       observedByFortigate: point.haplite.observedByFortigate, dssDevices: point.dssDevices, tone: point.dssDevices.length > 0 ? 'emerald' : 'amber',
                       active: live?.active ?? null, latency: live?.latency ?? null, pingCheckedAt: live?.updated_at ?? null,
                       nvrPort: live?.nvr_port ?? null, nvrCheckedAt: live?.nvr_checked_at ?? null,
+                      firmware: point.firmware,
                     },
                   };
                 });

@@ -133,11 +133,49 @@ el detalle del punto (nombre, torre, IP, zona, CCTV/FortiGate/grabadores) — ca
 click a hover el 2026-09-19 (pedido del usuario), sin overlay de "clic afuera" ni Esc
 porque ya no hace falta.
 
+## Estado vivo del hAP lite y del NVR (2026-09-21)
+
+Pedido del usuario: mostrar en la tarjeta del punto el estado del hAP lite, si el
+puerto NAT del NVR (4455/4456) responde, y la latencia. Antes de construir se
+investigó qué servicio del ecosistema ya tiene ruta de red real a las redes de torre
+(`192.168.x.x`): **`cybersecurity-api` no tiene ninguna** (contenedor
+deliberadamente bloqueado, `read_only`/`cap_drop: ALL`, nunca ha hecho una conexión
+activa a nada). El único camino probado es `monitor_puntos_wpp.py` (corre en
+`comercial-bot`, ya hace ping+latencia a los ~368 puntos activos de Operación de
+Puntos). Se extendió ese script en vez de construir infraestructura de red nueva
+(decisión del usuario): `check_nvr_port(ip)` intenta TCP a 4455 y luego 4456, solo si
+el ping al hAP lite ya fue exitoso, dentro del mismo `ThreadPoolExecutor` que ya
+paraleliza el ping. Escribe `nvr_port`/`nvr_checked_at` en `puntos_venta` junto a
+`active`/`latency` que ya escribía.
+
+**Pendiente de aplicar**: `cybersecurity/sql/0013-add-nvr-port-columns.sql` — el
+usuario debe correrlo en el editor SQL de Supabase antes de que el dato real
+aparezca (mismo patrón que `Asamblea/sql/`, nunca DDL automático contra una base de
+producción compartida). Mientras tanto, la tarjeta muestra "Sin datos todavía" en vez
+de un falso "Sin conexión". El dato nunca se presenta como "en vivo": el script corre
+bajo demanda (comando de WhatsApp), no en un intervalo fijo, así que la tarjeta
+siempre muestra hace cuánto se revisó.
+
+## Firmware inicial, sin verificar (2026-09-21)
+
+Mismo pedido del usuario, para sentar la base de detección de vulnerabilidades:
+ningún servicio del ecosistema escanea firmware activamente contra las redes de
+torre hoy (Greenbone es un relevo de archivos aislado, sin conector en vivo). Se
+encontraron versiones de firmware reales ya guardadas en `cctv-automation-final`
+(`stg_inventory_locations`, staging de un import manual de Excel) — importadas como
+dato inicial, marcado explícitamente `CCTV_STAGING_UNVERIFIED`, nunca mezclado con
+fuentes corroboradas como DSS o FortiGate. **79 de los 96 puntos conocidos (82%)** ya
+muestran firmware en la tarjeta, siempre rotulado "sin verificar" + hace cuánto se
+importó (la corrida más reciente vista tiene semanas — se desactualiza rápido, tal
+como advirtió el usuario). El escaneo activo real de firmware queda como decisión de
+arquitectura aparte.
+
 ## Pendiente (fuera de esta fase, ver spec 0013 §4)
 
 Modelo completo de torre (enlaces, celdas, router principal, UPS — hoy son secciones
 "sin datos todavía" en la tarjeta expandida, preparadas para cuando lleguen),
-monitoreo en vivo (caída/latencia/ancho de banda), detección de vulnerabilidades de
-firmware, y los 2 puntos reales de Bolo (`LUCERNA`, `BOMBA LAURO`) que no caen en su
-gateway `/28` — brecha real confirmada por el usuario, no una máscara mal transcrita
-como los casos anteriores.
+escaneo activo real de firmware/vulnerabilidades (hoy solo hay un dato inicial sin
+verificar, ver arriba), aplicar la migración SQL pendiente de Supabase, y los 2
+puntos reales de Bolo (`LUCERNA`, `BOMBA LAURO`) que no caen en su gateway `/28` —
+brecha real confirmada por el usuario, no una máscara mal transcrita como los casos
+anteriores.

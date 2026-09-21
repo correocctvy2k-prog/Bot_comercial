@@ -25,9 +25,14 @@ const NEW_SHAPE_TABLE = 'cyber_source_systems_dss_migration_new';
 // `cyber_source_snapshots.source_system_id` nunca dejó de decir literalmente
 // `REFERENCES cyber_source_systems(id)`, al reaparecer una tabla con ese nombre exacto
 // la referencia vuelve a resolver sola, sin necesidad de tocar la tabla hija.
+// Cada nuevo source_type agregado al CHECK (DSS en spec 0013 fase 1, CCTV_STAGING en
+// el incremento de firmware) reusa esta misma migración -- una base creada antes de
+// cualquiera de los dos no tiene esa cadena literal en el SQL de la tabla.
+const REQUIRED_SOURCE_TYPES = ["'DSS'", "'CCTV_STAGING'"];
+
 function needsSourceSystemsMigration(db) {
   const row = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'cyber_source_systems'").get();
-  return Boolean(row) && !row.sql.includes("'DSS'");
+  return Boolean(row) && REQUIRED_SOURCE_TYPES.some((needle) => !row.sql.includes(needle));
 }
 
 function migrateSourceSystemsCheckConstraint(db) {
@@ -38,7 +43,7 @@ function migrateSourceSystemsCheckConstraint(db) {
       CREATE TABLE ${NEW_SHAPE_TABLE} (
         id TEXT PRIMARY KEY,
         source_type TEXT NOT NULL CHECK(source_type IN (
-          'FORTIGATE', 'KASPERSKY', 'ACTIVE_DIRECTORY', 'GREENBONE', 'DSS', 'MANUAL', 'OTHER'
+          'FORTIGATE', 'KASPERSKY', 'ACTIVE_DIRECTORY', 'GREENBONE', 'DSS', 'CCTV_STAGING', 'MANUAL', 'OTHER'
         )),
         display_name TEXT NOT NULL,
         authority_level TEXT NOT NULL CHECK(authority_level IN ('AUTHORITATIVE', 'CORROBORATING', 'OBSERVATIONAL')),

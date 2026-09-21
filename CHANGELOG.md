@@ -194,6 +194,46 @@ a una versión fechada.
   verde. Docker local reconstruido (`crm-frontend` + `restart`), bundle confirmado con
   el texto nuevo ("NAT 4455/4456", "Sin datos todavía").
 
+### Ciberseguridad — Firmware inicial (sin verificar) en la tarjeta del punto
+`specs/0013-inventario-torres-haplite-nvr/`
+- **Pedido del usuario**: sentar la base para detectar vulnerabilidades de firmware.
+  Ningún servicio de este ecosistema hace hoy un escaneo activo de firmware contra las
+  redes de torre (Greenbone es un relevo de archivos aislado, sin conector en vivo ni
+  alcance documentado sobre esas redes) — construir eso es una decisión de arquitectura
+  aparte. Mientras tanto: se encontraron **versiones de firmware reales** ya guardadas
+  en otra base del ecosistema (`cctv-automation-final`, tabla de staging de un import
+  manual de Excel, 100 de 103 filas de la corrida más reciente con IP de hAP lite, 94
+  con firmware). Decisión del usuario: importar esto como dato inicial, **marcado
+  explícitamente como no verificado**, sin depender de él a largo plazo (se desactualiza
+  rápido — la corrida más reciente vista tiene semanas).
+- **`cctv-firmware-staging-importer.js`** (nuevo, mismo patrón que `dss-importer.js`):
+  lee `stg_inventory_locations` de solo la corrida de import más reciente (la tabla
+  acumula corridas viejas del mismo Excel sin limpiarlas — se descartan, no se cuentan
+  3 veces las mismas 103 ubicaciones). Nueva fuente `CCTV_STAGING`
+  (`authority_level = 'OBSERVATIONAL'`, la más baja del enum — nunca se confunde con
+  DSS/FortiGate corroborados). Cada observación se marca `CCTV_STAGING_UNVERIFIED`.
+- **`cybersecurity/db/schema.sql`/`open-database.js`**: `'CCTV_STAGING'` agregado al
+  `CHECK` de `source_type` — misma migración de LL-0007, generalizada para revisar
+  cualquier valor requerido (no solo `'DSS'`), con test de regresión nuevo para el
+  caso real de upgrade parcial (una base que ya tiene `'DSS'` pero no
+  `'CCTV_STAGING'`, como estará `.65` en producción).
+- **`getTowerPoints`**: cruza por IP con la nueva fuente y expone `point.firmware`
+  (`firmwareRaw`, `recorderModel`, `observedAt`, `unverified: true`) — solo para los
+  96 puntos con hAP lite ya conocido, no se fuerza sobre puntos ubicados solo por
+  gateway (esa reconciliación no aplica ahí).
+- **Tarjeta flotante**: nueva sección con el firmware, siempre rotulada "Sin
+  verificar (import Excel, hace X) — no reemplaza un escaneo activo".
+- **Verificado contra datos reales**: import real corrido con `--apply` (respaldo
+  previo del `.db` local) — **79 de los 96 puntos conocidos (82%) ya muestran
+  firmware**, confirmado vía `/api/cybersecurity/towers` en Docker local. Idempotencia
+  confirmada (`ALREADY_IMPORTED` en la segunda corrida). `cybersecurity/`: 168/168
+  tests (7 nuevos). `CRM_Frontend`: `npm run lint`/`build` en verde. Docker local
+  reconstruido (`cybersecurity-api` + `crm-frontend` + `restart`), bundle confirmado
+  con el texto nuevo.
+- **Fuera de alcance de este incremento**: escaneo activo real de firmware (decisión
+  de arquitectura aparte, requiere definir qué servicio escanea, con qué alcance de
+  red y credenciales sobre equipos de producción).
+
 ### CCTV — Sincronización Operación de Puntos ↔ Seguridad Electrónica
 `specs/0012-sync-puntos-cctv/`
 - **Problema:** "Operación de Puntos" (Supabase `puntos_venta`) y "Seguridad Electrónica"
