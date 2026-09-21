@@ -267,6 +267,45 @@ a una versión fechada.
   "equipo de apuestas", "Sin dato de conectividad") y sin el texto viejo ("hAP lite"
   como etiqueta de fila).
 
+### Ciberseguridad — Estado vivo REAL del hAP lite (nueva tabla, ya no `puntos_venta`)
+`specs/0013-inventario-torres-haplite-nvr/`
+- **Pedido del usuario, tras confirmar el hallazgo del incremento anterior**: sincronizar
+  la lista real de hAP lite a Supabase para que `monitor_puntos_wpp.py` pueda probarla
+  directamente, en vez de conformarse con el dato del equipo de apuestas.
+- **`cybersecurity/sql/0013-create-known-haplites-table.sql`** (nuevo, para correr a
+  mano en el editor SQL de Supabase): tabla `cyber_known_haplites` (`ip` PK, `tower_name`,
+  `point_names`, `active`, `latency`, `nvr_port`, `updated_at`, `nvr_checked_at`,
+  `synced_at`).
+- **`cybersecurity/scripts/sync-known-haplites-to-supabase.js`** (nuevo): lee la
+  semilla real local (`cyber_towers`/`cyber_tower_points`, única fuente de verdad de
+  la IP del hAP lite) y sincroniza identidad (`ip`/`tower_name`/`point_names`) a
+  Supabase — nunca toca las columnas de estado vivo, que son responsabilidad exclusiva
+  de `monitor_puntos_wpp.py` (mismo principio de separación que `dss-importer.js` vs.
+  `ksc-importer.js`). Modo auditoría por defecto, `--apply` para escribir.
+- **`monitor_puntos_wpp.py`**: nuevas funciones `scan_haplite_target`/
+  `scan_and_update_known_haplites` — escaneo aparte y más simple que el de
+  `puntos_venta` (sin lógica de unificación de grupos ni transiciones, que no aplican
+  a infraestructura de red), reusando `ping_host`/`check_nvr_port` ya existentes.
+  Corre después del escaneo principal, con su propio manejo de errores — nunca puede
+  romper el monitoreo de `puntos_venta` si la tabla nueva no existe todavía.
+- **`CybersecurityDashboard.jsx`**: nueva consulta a `cyber_known_haplites`
+  (`cybersecurityService.getKnownHapliteStatuses`, lectura directa a Supabase). Los
+  puntos con hAP lite confirmado ahora muestran su estado **real** (etiqueta "hAP lite
+  (ping)"), cruzado por la IP correcta — ya no por `puntos_venta.ip`.
+- **Verificado**: `scan_haplite_target`/`scan_haplite_targets_parallel` probados contra
+  un host real (`8.8.8.8`, activo, sin puerto NAT abierto, como se esperaba) y contra un
+  servidor TCP local real (puerto detectado correctamente). `readKnownHaplites`
+  (identidad) con 2 tests nuevos — 170/170 en `cybersecurity/`. Sync real corrido en
+  modo auditoría contra datos locales: 96 IPs de hAP lite listas para sincronizar. La
+  consulta a la tabla (todavía inexistente hasta que el usuario corra la migración)
+  falla de forma controlada y se degrada a lista vacía, sin romper la vista. `npm run
+  lint`/`build` en verde. Docker local reconstruido, bundle confirmado con el texto
+  nuevo.
+- **Pendiente del usuario, en orden**: (1) correr
+  `0013-create-known-haplites-table.sql` en Supabase; (2) correr
+  `sync-known-haplites-to-supabase.js --db <ruta> --apply`; (3) disparar un monitoreo
+  (comando de WhatsApp) para que se pueble el estado vivo por primera vez.
+
 ### CCTV — Sincronización Operación de Puntos ↔ Seguridad Electrónica
 `specs/0012-sync-puntos-cctv/`
 - **Problema:** "Operación de Puntos" (Supabase `puntos_venta`) y "Seguridad Electrónica"

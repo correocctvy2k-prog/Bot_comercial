@@ -1180,7 +1180,7 @@ function PointFloatingCard({ point, position }) {
                 )}
                 <LiveStatusRow
                   icon={point.active ? Wifi : WifiOff}
-                  label="Punto (ping)"
+                  label={point.confirmedHaplite ? 'hAP lite (ping)' : 'Punto (ping)'}
                   isUp={point.active === true ? true : point.active === false ? false : null}
                   detail={point.active && point.latency ? `${point.latency}ms` : null}
                   checkedAgo={timeAgoEs(point.pingCheckedAt)}
@@ -1193,6 +1193,10 @@ function PointFloatingCard({ point, position }) {
                   checkedAgo={timeAgoEs(point.nvrCheckedAt)}
                 />
               </>
+            ) : point.confirmedHaplite ? (
+              <p className="text-[10px] text-muted-foreground">
+                Sin dato de conectividad todavía — corre <code className="font-mono">sync-known-haplites-to-supabase.js --apply</code> y luego el monitor (comando de WhatsApp) para poblarlo.
+              </p>
             ) : (
               <p className="text-[10px] text-muted-foreground">
                 Sin dato de conectividad — este punto no tiene una fila con esta IP en Operación de Puntos (esa IP corresponde al equipo de apuestas, no al hAP lite).
@@ -1251,7 +1255,7 @@ function PendingSection({ icon, label }) {
 // se muestra aparte como "sin torre asignada" (decisión del usuario, mismo pedido).
 // FortiGate corrobora muy pocas IPs de hAP lite (7 de 96 medidas 2026-09-18) -- se
 // muestra como señal opcional, nunca como requisito.
-function TowersView({ query, pointsQuery, onRetry }) {
+function TowersView({ query, pointsQuery, haplitesQuery, onRetry }) {
   const [viewMode, setViewMode] = useState('cards');
   if (query.isError) return <EmptyState error onRetry={onRetry} />;
   const towers = query.data?.towers || [];
@@ -1285,7 +1289,7 @@ function TowersView({ query, pointsQuery, onRetry }) {
           <button onClick={() => setViewMode('list')} className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold transition-colors ${viewMode === 'list' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}><List size={13} /> Lista</button>
         </div>
       </div>
-      {viewMode === 'cards' ? <TowersCardsView towers={towers} crmPoints={allCrmPoints} /> : <TowersListView towers={towers} />}
+      {viewMode === 'cards' ? <TowersCardsView towers={towers} crmPoints={allCrmPoints} knownHaplites={haplitesQuery?.data || []} /> : <TowersListView towers={towers} />}
     </>
   );
 }
@@ -1297,15 +1301,16 @@ function TowersView({ query, pointsQuery, onRetry }) {
 // (`tower.gatewayCidrs`, hallazgo del usuario 2026-09-18: 332 de 368 puntos reales ya
 // cruzan así) -- el resto, sin match a ningún gateway conocido, va a "Sin torre
 // asignada" al final de su zona, sin inventarle una torre.
-function TowersCardsView({ towers, crmPoints }) {
+function TowersCardsView({ towers, crmPoints, knownHaplites }) {
   const [expandedId, setExpandedId] = useState(null);
   const [floating, setFloating] = useState(null); // { point, position }
   const towerByName = new Map(towers.map((tower) => [tower.name, tower]));
   const knownHapliteIps = new Set(towers.flatMap((tower) => tower.points.map((point) => point.haplite.ip)));
-  // Estado vivo (ping + puerto NAT del NVR) siempre viene de `puntos_venta`
-  // (monitor_puntos_wpp.py) -- tower.points (backend propio) no lo trae, así que se
-  // cruza por IP para los puntos que ya tienen hAP lite conocido también.
-  const crmPointByIp = new Map(crmPoints.filter((point) => point.ip).map((point) => [point.ip, point]));
+  // Estado vivo REAL del hAP lite (cyber_known_haplites, sincronizada aparte, hallazgo
+  // 2026-09-21: puntos_venta.ip nunca es la IP del hAP lite) -- cruzada directo por la
+  // IP del hAP lite, que es la clave de esta tabla nueva. tower.points (backend propio)
+  // no trae este dato.
+  const haplitesByIp = new Map(knownHaplites.filter((row) => row.ip).map((row) => [row.ip, row]));
   const assignedZoneNames = new Set(Object.keys(ZONE_TOWER_NAMES));
   const crmByZone = new Map();
   for (const point of crmPoints) {
@@ -1358,7 +1363,7 @@ function TowersCardsView({ towers, crmPoints }) {
                 const expanded = expandedId === tower.id;
                 const crmMatches = crmMatchesByTowerId.get(tower.id) || [];
                 const knownItems = tower.points.map((point) => {
-                  const live = crmPointByIp.get(point.haplite.ip);
+                  const haplite = haplitesByIp.get(point.haplite.ip);
                   return {
                     key: point.haplite.ip,
                     tone: point.dssDevices.length > 0 ? 'emerald' : 'amber',
@@ -1366,9 +1371,10 @@ function TowersCardsView({ towers, crmPoints }) {
                     detail: {
                       title: point.names.join(' · '), torreName: tower.name, ip: point.haplite.ip,
                       observedByFortigate: point.haplite.observedByFortigate, dssDevices: point.dssDevices, tone: point.dssDevices.length > 0 ? 'emerald' : 'amber',
-                      probeIp: live?.ip ?? null,
-                      active: live?.active ?? null, latency: live?.latency ?? null, pingCheckedAt: live?.updated_at ?? null,
-                      nvrPort: live?.nvr_port ?? null, nvrCheckedAt: live?.nvr_checked_at ?? null,
+                      confirmedHaplite: true,
+                      probeIp: haplite?.ip ?? null,
+                      active: haplite?.active ?? null, latency: haplite?.latency ?? null, pingCheckedAt: haplite?.updated_at ?? null,
+                      nvrPort: haplite?.nvr_port ?? null, nvrCheckedAt: haplite?.nvr_checked_at ?? null,
                       firmware: point.firmware,
                     },
                   };
@@ -1567,10 +1573,14 @@ export default function CybersecurityDashboard() {
   // conocido. Mismo servicio que ya usa el resto de CRM_Frontend, sin pasar por el
   // backend de Ciberseguridad (no es su dato).
   const crmPoints = useQuery({ queryKey: ['cybersecurity-towers-crm-points'], queryFn: pointsService.getPoints });
+  // Estado vivo REAL del hAP lite (cyber_known_haplites) -- hallazgo 2026-09-21:
+  // puntos_venta.ip nunca es la IP del hAP lite, así que esa tabla nunca sirve para
+  // esto. Tabla nueva, sincronizada aparte, poblada por monitor_puntos_wpp.py.
+  const knownHaplites = useQuery({ queryKey: ['cybersecurity-known-haplites'], queryFn: cybersecurityService.getKnownHapliteStatuses });
   const refresh = () => {
     if (activeView === 'inventory') { inventoryOverview.refetch(); inventoryCandidates.refetch(); }
     else if (activeView === 'subnets') networkSegments.refetch();
-    else if (activeView === 'towers') { towers.refetch(); crmPoints.refetch(); }
+    else if (activeView === 'towers') { towers.refetch(); crmPoints.refetch(); knownHaplites.refetch(); }
     else { overview.refetch(); cases.refetch(); }
   };
   const data = overview.data;
@@ -1601,7 +1611,7 @@ export default function CybersecurityDashboard() {
         {activeView === 'inventory' ? (
           <InventoryView overview={inventoryOverview} candidates={inventoryCandidates} source={inventorySource} state={inventoryState} onSourceChange={setInventorySource} onStateChange={setInventoryState} onRetry={refresh} />
         ) : activeView === 'towers' ? (
-          <TowersView query={towers} pointsQuery={crmPoints} onRetry={refresh} />
+          <TowersView query={towers} pointsQuery={crmPoints} haplitesQuery={knownHaplites} onRetry={refresh} />
         ) : activeView === 'subnets' ? (
           <SubnetsView query={networkSegments} drafts={segmentDrafts} onDraftChange={(id, value) => setSegmentDrafts((current) => ({ ...current, [id]: value }))} onRetry={refresh} onSave={async (id, policy) => { await cybersecurityService.saveNetworkSegmentPolicy(id, policy); setSegmentDrafts((current) => { const next = { ...current }; delete next[id]; return next; }); await networkSegments.refetch(); }} onDisposition={async (id, status) => { await cybersecurityService.saveNetworkSegmentDisposition(id, { status }); setSegmentDrafts((current) => { const next = { ...current }; delete next[id]; return next; }); await networkSegments.refetch(); }} />
         ) : <>

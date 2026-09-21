@@ -61,6 +61,17 @@ export const cybersecurityService = {
   },
   getNetworkSegments: () => request('/network-segments'),
   getTowers: () => request('/towers'),
+  // Estado vivo REAL del hAP lite (ip/active/latency/nvr_port), poblado por
+  // monitor_puntos_wpp.py aparte de puntos_venta -- hallazgo 2026-09-21:
+  // puntos_venta.ip nunca es la IP del hAP lite (0/96 coinciden). Tabla nueva
+  // (cyber_known_haplites), lectura directa a Supabase igual que pointsService.
+  // Si la migración SQL todavía no se corrió, la tabla no existe -- se devuelve
+  // vacío en vez de reventar la vista completa.
+  getKnownHapliteStatuses: async () => {
+    const { data, error } = await supabase.from('cyber_known_haplites').select('*');
+    if (error) return [];
+    return data || [];
+  },
   getAdminNetworkSegments: async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) throw new Error('Se requiere una sesión administrativa activa');

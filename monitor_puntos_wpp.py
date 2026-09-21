@@ -545,6 +545,83 @@ def scan_from_df_parallel(df_targets: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(results)
 
 # ============================================================================
+# ✅ NUEVO: hAP lite REAL (cyber_known_haplites) -- spec 0013, Ciberseguridad
+# ============================================================================
+# Hallazgo real 2026-09-21: puntos_venta.ip NUNCA es la IP del hAP lite (0 de 96
+# coinciden -- es el equipo de apuestas por WiFi, un dispositivo distinto en el mismo
+# punto físico). cyber_known_haplites (sincronizada aparte desde la semilla local de
+# cybersecurity, ver cybersecurity/scripts/sync-known-haplites-to-supabase.js) tiene
+# las IPs reales. Esto es un escaneo simple y separado del de puntos_venta -- sin la
+# lógica de negocio de apertura/cierre de puntos (unificación de grupos, transiciones,
+# permanently_closed): el hAP lite es infraestructura de red, no un punto operativo.
+def load_haplite_targets_from_supabase() -> List[Dict]:
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        raise ValueError("❌ Faltan credenciales de Supabase en .env")
+    sb = create_client(SUPABASE_URL, SUPABASE_KEY)
+    response = sb.table("cyber_known_haplites").select("ip").execute()
+    return [{"ip": str(row["ip"]).strip()} for row in (response.data or []) if row.get("ip")]
+
+def scan_haplite_target(target: Dict) -> Dict:
+    ip = target["ip"]
+    is_active, latency, _reason = ping_host(ip)
+    nvr_port = None
+    if is_active:
+        nvr_port, _nvr_reason = check_nvr_port(ip)
+    return {"ip": ip, "active": bool(is_active), "latency": latency, "nvr_port": nvr_port}
+
+def scan_haplite_targets_parallel(targets: List[Dict]) -> List[Dict]:
+    if not targets:
+        return []
+    log(f"🚀 Escaneando {len(targets)} hAP lite reales (Workers: {MAX_WORKERS})...")
+    results = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = [executor.submit(scan_haplite_target, t) for t in targets]
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                results.append(future.result())
+            except Exception as e:
+                log(f"❌ Error worker hAP lite: {e}")
+    return results
+
+def update_haplite_results_in_supabase(results: List[Dict]):
+    if not results or not SUPABASE_URL or not SUPABASE_KEY:
+        return
+    sb = create_client(SUPABASE_URL, SUPABASE_KEY)
+    now_iso = datetime.utcnow().isoformat() + "+00:00"
+    # Solo toca las columnas de estado vivo -- nunca tower_name/point_names/synced_at,
+    # que son responsabilidad exclusiva del script de sincronización de identidad.
+    records = [{
+        "ip": r["ip"],
+        "active": r["active"],
+        "latency": (0 if r["latency"] is None else int(r["latency"])),
+        "updated_at": now_iso,
+        "nvr_port": r["nvr_port"],
+        "nvr_checked_at": now_iso,
+    } for r in results]
+    chunk_size = 100
+    for i in range(0, len(records), chunk_size):
+        batch = records[i:i + chunk_size]
+        try:
+            sb.table("cyber_known_haplites").upsert(batch, on_conflict="ip").execute()
+            log(f"   ✅ hAP lite lote {i // chunk_size + 1} actualizado ({len(batch)} registros)")
+        except Exception as e:
+            log(f"   ❌ Error actualizando lote hAP lite: {e}")
+
+def scan_and_update_known_haplites():
+    """Punto de entrada único, pensado para fallar en silencio (no debe romper el
+    monitoreo principal de puntos_venta si cyber_known_haplites no existe todavía --
+    ej. el usuario no ha corrido la migración SQL)."""
+    try:
+        targets = load_haplite_targets_from_supabase()
+        if not targets:
+            log("ℹ️  cyber_known_haplites vacía o no existe todavía -- omitiendo escaneo de hAP lite reales.")
+            return
+        results = scan_haplite_targets_parallel(targets)
+        update_haplite_results_in_supabase(results)
+    except Exception as e:
+        log(f"⚠️  Escaneo de hAP lite reales omitido: {e}")
+
+# ============================================================================
 # FORMATO REPORTES (MEJORADO)
 # ============================================================================
 def build_report_text(results_df: pd.DataFrame, scan_duration: float, zona: Optional[str] = None) -> str:
@@ -701,6 +778,11 @@ def main():
         
         # Sincronizar con Supabase
         update_supabase_results(results_df)
+
+        # ✅ NUEVO: escaneo aparte de los hAP lite reales (spec 0013, Ciberseguridad) --
+        # nunca debe romper el monitoreo principal de puntos_venta, por eso va después
+        # y con su propio manejo de errores (scan_and_update_known_haplites).
+        scan_and_update_known_haplites()
 
         if JSON_MODE:
             print(json.dumps(payload, ensure_ascii=False))

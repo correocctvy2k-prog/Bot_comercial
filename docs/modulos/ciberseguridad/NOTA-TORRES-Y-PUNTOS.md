@@ -175,6 +175,25 @@ conectividad" con la explicación, en vez de un "Sin datos todavía" engañoso.
 `cybersecurity` (`cyber_tower_points`), no en Supabase — decisión de arquitectura
 nueva, no un ajuste de UI.
 
+## Estado vivo REAL del hAP lite (2026-09-21, resuelto)
+
+El usuario eligió sincronizar la lista real de hAP lite a Supabase. Nueva tabla
+`cyber_known_haplites` (migración manual, `cybersecurity/sql/0013-create-known-
+haplites-table.sql`) + script de sincronización de identidad
+(`sync-known-haplites-to-supabase.js`, lee la semilla local, nunca toca estado vivo)
++ `monitor_puntos_wpp.py` extendido con un escaneo aparte
+(`scan_and_update_known_haplites`) que prueba esas 96 IPs reales directamente (ping +
+puerto NAT 4455/4456), separado de la lógica de negocio de `puntos_venta` (sin
+unificación de grupos ni transiciones, que no aplican a infraestructura de red). La
+tarjeta de un punto confirmado ahora muestra **"hAP lite (ping)"** con datos reales de
+la IP correcta, en vez del equipo de apuestas.
+
+**Pendiente del usuario, en orden**: (1) correr la migración SQL nueva en Supabase;
+(2) correr `sync-known-haplites-to-supabase.js --db <ruta> --apply` para cargar las 96
+IPs; (3) disparar un monitoreo (comando de WhatsApp) para que se pueble el estado vivo
+por primera vez. Hasta entonces, la tarjeta explica esto mismo en vez de mostrar un
+"Sin datos todavía" genérico.
+
 ## Firmware inicial, sin verificar (2026-09-21)
 
 Mismo pedido del usuario, para sentar la base de detección de vulnerabilidades:

@@ -274,6 +274,35 @@ línea" sin tener esa tecnología confirmada.
       que `monitor_puntos_wpp.py` conozca esa lista (hoy solo en el SQLite local de
       `cybersecurity`, no en Supabase) — decisión de arquitectura nueva.
 
+## Incremento — estado vivo REAL del hAP lite (nueva tabla `cyber_known_haplites`)
+
+El usuario eligió (`AskUserQuestion`) sincronizar la lista real de hAP lite a
+Supabase, en vez de dejarlo como estaba o explorar otra idea.
+
+- [x] `cybersecurity/sql/0013-create-known-haplites-table.sql` (nuevo) — tabla
+      `cyber_known_haplites`, para correr a mano en Supabase (mismo patrón que
+      `Asamblea/sql/`).
+- [x] `cybersecurity/scripts/sync-known-haplites-to-supabase.js` (nuevo) — sincroniza
+      identidad (ip/tower_name/point_names) desde la semilla local, nunca toca estado
+      vivo. Modo auditoría por defecto.
+- [x] `monitor_puntos_wpp.py`: `scan_haplite_target`/`scan_and_update_known_haplites`
+      (nuevo) — escaneo aparte y simple (sin lógica de negocio de puntos_venta), reusa
+      `ping_host`/`check_nvr_port` ya existentes, nunca rompe el monitoreo principal.
+- [x] `CybersecurityDashboard.jsx`: nueva consulta a `cyber_known_haplites`; puntos
+      confirmados muestran su estado real ("hAP lite (ping)"), ya no el del equipo de
+      apuestas.
+- [x] Probado `scan_haplite_target`/`scan_haplite_targets_parallel` contra un host
+      real (`8.8.8.8`) y un servidor TCP local real.
+- [x] `readKnownHaplites` con 2 tests nuevos — `cybersecurity/`: 170/170.
+- [x] Sync real corrido en modo auditoría: 96 IPs listas. Consulta a la tabla
+      (inexistente hasta la migración) se degrada a lista vacía, sin romper la vista.
+- [x] `cd CRM_Frontend && npm run lint`/`build` — sin errores nuevos, verde.
+- [x] Docker local: `crm-frontend` reconstruido + `restart`, bundle confirmado.
+- [x] `CHANGELOG.md` actualizado.
+- [ ] **Pendiente del usuario, en orden**: (1) correr la migración SQL nueva; (2)
+      correr `sync-known-haplites-to-supabase.js --apply`; (3) disparar un monitoreo
+      (WhatsApp) para poblar el estado vivo por primera vez.
+
 ## Cierre
 
 - [ ] PR abierto y enlazado en `spec.md`
