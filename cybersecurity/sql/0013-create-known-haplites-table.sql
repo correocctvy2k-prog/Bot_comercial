@@ -7,12 +7,12 @@
 -- puntos_venta.active/latency/nvr_port/nvr_checked_at).
 -- Run this in the Supabase SQL Editor.
 
--- tower_name/point_names sin NOT NULL a propósito (fix real 2026-09-21, ver
+-- tower_name/point_names/synced_at sin NOT NULL a propósito (fix real 2026-09-21, ver
 -- 0013-fix-known-haplites-not-null.sql): update_haplite_results_in_supabase
 -- (monitor_puntos_wpp.py) hace upsert de solo las columnas de estado vivo, nunca de
--- estas dos -- Postgres exige que la fila candidata del INSERT satisfaga los NOT
--- NULL antes de evaluar el ON CONFLICT DO UPDATE, aunque el conflicto sí resuelva
--- con UPDATE.
+-- estas tres -- Postgres exige que la fila candidata del INSERT satisfaga TODOS los
+-- NOT NULL de la tabla antes de evaluar el ON CONFLICT DO UPDATE, aunque el conflicto
+-- sí resuelva con UPDATE.
 CREATE TABLE IF NOT EXISTS cyber_known_haplites (
   ip TEXT PRIMARY KEY,
   tower_name TEXT,
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS cyber_known_haplites (
   nvr_port INTEGER,
   updated_at TIMESTAMPTZ,
   nvr_checked_at TIMESTAMPTZ,
-  synced_at TIMESTAMPTZ NOT NULL
+  synced_at TIMESTAMPTZ
 );
 
 -- Nota: si el proyecto de Supabase tiene RLS "deny by default" en tablas nuevas, agrega
