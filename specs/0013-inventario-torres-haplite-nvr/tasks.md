@@ -309,9 +309,27 @@ Supabase, en vez de dejarlo como estaba o explorar otra idea.
       funcionaba, pero el frontend (clave anon) veía 0 filas. Nuevo archivo
       `0013-allow-public-read-known-haplites.sql` (policy de SELECT público, mismo
       patrón de tabla que ya debe tener `puntos_venta`).
-- [ ] **Pendiente del usuario, en orden**: (1) correr
-      `0013-allow-public-read-known-haplites.sql`; (2) disparar un monitoreo
-      (WhatsApp) para poblar el estado vivo por primera vez.
+- [x] El usuario corrió la policy de RLS — confirmado por Claude (96/96 filas
+      visibles con la clave `anon`).
+- [x] El usuario disparó un monitoreo real por WhatsApp — **no pobló nada**, porque
+      ese bot corre con el código de `main`/producción, que no tiene
+      `scan_and_update_known_haplites` (la rama nunca se pusheó/desplegó). Confirmado
+      con `git log origin/main -- monitor_puntos_wpp.py`.
+- [x] Corrido `python monitor_puntos_wpp.py --json` directamente desde esta máquina
+      (con el código de la rama) contra el Supabase real, con autorización explícita
+      del usuario. El monitoreo principal de `puntos_venta` funcionó normal (370
+      puntos, 280 en línea, reporte generado) — comportamiento habitual, sin cambios.
+- [x] **Bug real encontrado en el primer intento real**: el upsert de
+      `update_haplite_results_in_supabase` (solo columnas de estado vivo) violó el
+      `NOT NULL` de `tower_name`/`point_names` — Postgres exige que la fila candidata
+      del INSERT satisfaga los NOT NULL antes de evaluar el `ON CONFLICT DO UPDATE`,
+      aunque el conflicto sí resuelva con UPDATE. **Sin daño real**: la transacción se
+      revirtió completa (confirmado: 0/96 filas con `tower_name` nulo). Nuevo
+      `0013-fix-known-haplites-not-null.sql` (quita el `NOT NULL` de esas 2 columnas)
+      + corregido el `CREATE TABLE` original para instalaciones futuras.
+- [ ] **Pendiente del usuario**: correr `0013-fix-known-haplites-not-null.sql` en
+      Supabase; después, Claude vuelve a correr el escaneo de hAP lite para completar
+      la población del estado vivo por primera vez.
 
 ## Cierre
 

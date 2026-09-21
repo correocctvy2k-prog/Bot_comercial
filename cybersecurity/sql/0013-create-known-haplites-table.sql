@@ -7,10 +7,16 @@
 -- puntos_venta.active/latency/nvr_port/nvr_checked_at).
 -- Run this in the Supabase SQL Editor.
 
+-- tower_name/point_names sin NOT NULL a propósito (fix real 2026-09-21, ver
+-- 0013-fix-known-haplites-not-null.sql): update_haplite_results_in_supabase
+-- (monitor_puntos_wpp.py) hace upsert de solo las columnas de estado vivo, nunca de
+-- estas dos -- Postgres exige que la fila candidata del INSERT satisfaga los NOT
+-- NULL antes de evaluar el ON CONFLICT DO UPDATE, aunque el conflicto sí resuelva
+-- con UPDATE.
 CREATE TABLE IF NOT EXISTS cyber_known_haplites (
   ip TEXT PRIMARY KEY,
-  tower_name TEXT NOT NULL,
-  point_names TEXT NOT NULL,
+  tower_name TEXT,
+  point_names TEXT,
   active BOOLEAN,
   latency INTEGER,
   nvr_port INTEGER,

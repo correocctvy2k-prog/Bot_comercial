@@ -308,9 +308,24 @@ a una versión fechada.
   RLS activado por defecto (comportamiento estándar de tablas nuevas en Supabase) sin
   ninguna policy — la escritura con `service_role` funcionaba, pero el frontend (clave
   `anon`) veía 0 filas. Nuevo `cybersecurity/sql/0013-allow-public-read-known-
-  haplites.sql` (policy de `SELECT` público). **Pendiente del usuario, en orden**: (1)
-  correr esa policy nueva en Supabase; (2) disparar un monitoreo (comando de
-  WhatsApp) para poblar el estado vivo por primera vez.
+  haplites.sql` (policy de `SELECT` público) — corregido y confirmado (96/96 filas
+  visibles con la clave `anon`).
+- **Segunda actualización (mismo día): el primer monitoreo real disparado por
+  WhatsApp no pobló nada** — el bot de producción corre con `main`, que no tiene el
+  escaneo nuevo (la rama no se ha desplegado). Con autorización del usuario, se corrió
+  `python monitor_puntos_wpp.py --json` directamente desde la máquina de desarrollo
+  (con el código de la rama) contra el Supabase real: el monitoreo principal de
+  `puntos_venta` funcionó normal, pero el escaneo nuevo de hAP lite **encontró un bug
+  real**: `update_haplite_results_in_supabase` hace upsert de solo las columnas de
+  estado vivo (nunca `tower_name`/`point_names`, responsabilidad exclusiva del script
+  de sincronización de identidad) — Postgres exige que la fila candidata del `INSERT`
+  satisfaga los `NOT NULL` de la tabla antes de evaluar el `ON CONFLICT DO UPDATE`,
+  aunque el conflicto sí resuelva con `UPDATE`. La transacción se revirtió completa,
+  sin dañar ninguna de las 96 filas (confirmado: 0 con `tower_name` nulo). Nuevo
+  `cybersecurity/sql/0013-fix-known-haplites-not-null.sql` (quita el `NOT NULL` de
+  esas 2 columnas) + corregido el `CREATE TABLE` original para instalaciones futuras.
+  **Pendiente del usuario**: correr esa migración; luego se vuelve a correr el
+  escaneo de hAP lite para completar la población del estado vivo.
 
 ### CCTV — Sincronización Operación de Puntos ↔ Seguridad Electrónica
 `specs/0012-sync-puntos-cctv/`
