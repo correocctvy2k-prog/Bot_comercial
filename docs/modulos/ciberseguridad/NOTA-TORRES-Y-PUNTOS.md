@@ -156,6 +156,25 @@ de un falso "Sin conexión". El dato nunca se presenta como "en vivo": el script
 bajo demanda (comando de WhatsApp), no en un intervalo fijo, así que la tarjeta
 siempre muestra hace cuánto se revisó.
 
+**Corrección real tras aplicar la migración (2026-09-21)**: el usuario corrió la
+migración y reportó que los puntos confirmados (hAP lite + CCTV) no mostraban ningún
+estado, y los puntos azules ("ubicado por IP") mostraban "hAP lite: En línea" sin
+tener esa tecnología confirmada. Investigado con datos reales: **`puntos_venta.ip`
+nunca es la IP del hAP lite, ni siquiera para los puntos confirmados** — son dos
+dispositivos distintos en el mismo punto físico. Caso real: "AMAIME I" tiene hAP lite
+en `192.168.12.58` (lista real de torres/DSS) pero `puntos_venta.ip` =
+`192.168.12.41` (misma subred, otro host — casi seguro el equipo de apuestas por
+WiFi, no el hAP lite en Eth4). **0 de 96 IPs de hAP lite conocidas coinciden con
+`puntos_venta.ip`.** Corregido: la fila de ping ya nunca dice "hAP lite" — dice
+"Punto (ping)" (lo que de verdad mide: la conectividad del equipo de apuestas, ya
+monitoreado por Operación de Puntos), mostrando la IP realmente medida cuando difiere
+de la del hAP lite. Los puntos confirmados sin match muestran "Sin dato de
+conectividad" con la explicación, en vez de un "Sin datos todavía" engañoso.
+**Sigue pendiente, sin resolver**: monitorear la IP real del hAP lite requeriría que
+`monitor_puntos_wpp.py` conozca esa lista, que hoy vive solo en el SQLite local de
+`cybersecurity` (`cyber_tower_points`), no en Supabase — decisión de arquitectura
+nueva, no un ajuste de UI.
+
 ## Firmware inicial, sin verificar (2026-09-21)
 
 Mismo pedido del usuario, para sentar la base de detección de vulnerabilidades:

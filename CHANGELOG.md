@@ -234,6 +234,39 @@ a una versión fechada.
   de arquitectura aparte, requiere definir qué servicio escanea, con qué alcance de
   red y credenciales sobre equipos de producción).
 
+### Ciberseguridad — Corrige etiqueta falsa "hAP lite: En línea" en la tarjeta del punto
+`specs/0013-inventario-torres-haplite-nvr/`
+- **Reporte del usuario tras correr la migración SQL:** las tarjetas de puntos con hAP
+  lite + CCTV confirmado no mostraban ningún estado, y las tarjetas azules ("ubicado
+  por IP", sin hAP lite confirmado) mostraban "hAP lite: En línea" — tecnología que
+  esos puntos todavía no tienen confirmada.
+- **Investigado antes de corregir (no solo cosmético):** `puntos_venta.ip` (lo que
+  `monitor_puntos_wpp.py` pinguea) **nunca es la IP del hAP lite**, ni siquiera para
+  los 96 puntos con hAP lite ya confirmado por la lista real de torres — son dos
+  dispositivos distintos en el mismo punto. Verificado con un caso real: el punto
+  "AMAIME I" tiene hAP lite en `192.168.12.58` (lista real de torres/DSS) pero
+  `puntos_venta.ip` = `192.168.12.41` — misma subred, otro host, casi seguro el
+  equipo de apuestas (WiFi) y no el hAP lite (Eth4/CCTV). **0 de 96 IPs de hAP lite
+  conocidas coinciden con algún `puntos_venta.ip`.**
+- **Corregido:** la fila de ping ya no dice "hAP lite" en ningún caso — dice "Punto
+  (ping)", porque eso es lo que de verdad mide (la conectividad del equipo de
+  apuestas, ya monitoreado por Operación de Puntos). Cuando la IP mostrada arriba de
+  la tarjeta (la real del hAP lite, para puntos confirmados) difiere de la IP que se
+  está midiendo, se muestra esa segunda IP explícitamente con la aclaración "(equipo
+  de apuestas, IP distinta al hAP lite)". Para puntos confirmados sin ninguna fila
+  coincidente en `puntos_venta` (el caso típico, 0/96), se muestra "Sin dato de
+  conectividad" con la explicación, en vez de un "Sin datos todavía" que insinuaba
+  que el dato llegaría solo con el tiempo.
+- **Pendiente real, no resuelto en este fix:** monitorear la IP real del hAP lite
+  (no la del equipo de apuestas) requeriría que `monitor_puntos_wpp.py` conozca esa
+  lista — hoy vive solo en el SQLite local de `cybersecurity` (`cyber_tower_points`),
+  no en Supabase, que es lo único que ese script puede leer. Es una decisión de
+  arquitectura nueva (cómo sincronizar esa lista, o si conviene), no un ajuste de UI.
+- **Verificado:** `npm run lint`/`build` en verde. Docker local reconstruido
+  (`crm-frontend` + `restart`), bundle confirmado con el texto nuevo ("Punto (ping)",
+  "equipo de apuestas", "Sin dato de conectividad") y sin el texto viejo ("hAP lite"
+  como etiqueta de fila).
+
 ### CCTV — Sincronización Operación de Puntos ↔ Seguridad Electrónica
 `specs/0012-sync-puntos-cctv/`
 - **Problema:** "Operación de Puntos" (Supabase `puntos_venta`) y "Seguridad Electrónica"

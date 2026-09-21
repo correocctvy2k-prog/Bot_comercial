@@ -1171,20 +1171,33 @@ function PointFloatingCard({ point, position }) {
         </div>
         {point.ip && (
           <div className="mt-3 space-y-1.5 border-t border-border/60 pt-3">
-            <LiveStatusRow
-              icon={point.active ? Wifi : WifiOff}
-              label="hAP lite"
-              isUp={point.active === true ? true : point.active === false ? false : null}
-              detail={point.active && point.latency ? `${point.latency}ms` : null}
-              checkedAgo={timeAgoEs(point.pingCheckedAt)}
-            />
-            <LiveStatusRow
-              icon={PlugZap}
-              label="NVR (NAT 4455/4456)"
-              isUp={point.nvrCheckedAt ? Boolean(point.nvrPort) : null}
-              detail={point.nvrPort ? `puerto ${point.nvrPort}` : null}
-              checkedAgo={timeAgoEs(point.nvrCheckedAt)}
-            />
+            {point.probeIp ? (
+              <>
+                {point.probeIp !== point.ip && (
+                  <p className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
+                    <Router size={11} className="shrink-0" /> {point.probeIp} <span className="normal-case text-muted-foreground/70">(equipo de apuestas, IP distinta al hAP lite)</span>
+                  </p>
+                )}
+                <LiveStatusRow
+                  icon={point.active ? Wifi : WifiOff}
+                  label="Punto (ping)"
+                  isUp={point.active === true ? true : point.active === false ? false : null}
+                  detail={point.active && point.latency ? `${point.latency}ms` : null}
+                  checkedAgo={timeAgoEs(point.pingCheckedAt)}
+                />
+                <LiveStatusRow
+                  icon={PlugZap}
+                  label="NAT 4455/4456"
+                  isUp={point.nvrCheckedAt ? Boolean(point.nvrPort) : null}
+                  detail={point.nvrPort ? `puerto ${point.nvrPort}` : null}
+                  checkedAgo={timeAgoEs(point.nvrCheckedAt)}
+                />
+              </>
+            ) : (
+              <p className="text-[10px] text-muted-foreground">
+                Sin dato de conectividad — este punto no tiene una fila con esta IP en Operación de Puntos (esa IP corresponde al equipo de apuestas, no al hAP lite).
+              </p>
+            )}
           </div>
         )}
         {point.dssDevices?.length > 0 ? (
@@ -1353,6 +1366,7 @@ function TowersCardsView({ towers, crmPoints }) {
                     detail: {
                       title: point.names.join(' · '), torreName: tower.name, ip: point.haplite.ip,
                       observedByFortigate: point.haplite.observedByFortigate, dssDevices: point.dssDevices, tone: point.dssDevices.length > 0 ? 'emerald' : 'amber',
+                      probeIp: live?.ip ?? null,
                       active: live?.active ?? null, latency: live?.latency ?? null, pingCheckedAt: live?.updated_at ?? null,
                       nvrPort: live?.nvr_port ?? null, nvrCheckedAt: live?.nvr_checked_at ?? null,
                       firmware: point.firmware,
@@ -1366,6 +1380,7 @@ function TowersCardsView({ towers, crmPoints }) {
                   detail: {
                     title: point.alias || point.name, torreName: tower.name, ip: point.ip, zone: point.segment || zoneName,
                     hasCctv: Boolean(point.has_cctv), tone: 'sky',
+                    probeIp: point.ip,
                     active: point.active ?? null, latency: point.latency ?? null, pingCheckedAt: point.updated_at ?? null,
                     nvrPort: point.nvr_port ?? null, nvrCheckedAt: point.nvr_checked_at ?? null,
                   },
@@ -1404,6 +1419,7 @@ function TowersCardsView({ towers, crmPoints }) {
                         key: point.id, tone: 'slate', title: point.alias || point.name,
                         detail: {
                           title: point.alias || point.name, ip: point.ip, zone: zoneName, hasCctv: Boolean(point.has_cctv), tone: 'slate',
+                          probeIp: point.ip,
                           active: point.active ?? null, latency: point.latency ?? null, pingCheckedAt: point.updated_at ?? null,
                           nvrPort: point.nvr_port ?? null, nvrCheckedAt: point.nvr_checked_at ?? null,
                         },
@@ -1424,6 +1440,7 @@ function TowersCardsView({ towers, crmPoints }) {
                         key: point.id, tone: 'violet', title: point.alias || point.name,
                         detail: {
                           title: point.alias || point.name, ip: point.ip, zone: zoneName, hasCctv: Boolean(point.has_cctv), tone: 'violet',
+                          probeIp: point.ip,
                           active: point.active ?? null, latency: point.latency ?? null, pingCheckedAt: point.updated_at ?? null,
                           nvrPort: point.nvr_port ?? null, nvrCheckedAt: point.nvr_checked_at ?? null,
                         },

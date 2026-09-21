@@ -252,6 +252,28 @@ como no verificados.
 - [ ] Fuera de alcance: escaneo activo real de firmware (decisión de arquitectura
       aparte).
 
+## Incremento — corrige etiqueta falsa "hAP lite" en la tarjeta del punto
+
+El usuario, tras correr la migración SQL, reportó: puntos confirmados (hAP lite +
+CCTV) sin ningún estado, y puntos azules ("ubicado por IP") mostrando "hAP lite: En
+línea" sin tener esa tecnología confirmada.
+
+- [x] Investigado con datos reales: `puntos_venta.ip` nunca es la IP del hAP lite,
+      ni para los puntos confirmados — verificado con "AMAIME I" (hAP lite
+      `192.168.12.58` vs. `puntos_venta.ip` `192.168.12.41`, misma subred, otro
+      host). 0 de 96 IPs de hAP lite conocidas coinciden con `puntos_venta.ip`.
+- [x] Corregido: la fila de ping se relabeleó a "Punto (ping)" (nunca "hAP lite").
+      Se muestra la IP realmente medida cuando difiere de la del hAP lite, con
+      aclaración. Puntos confirmados sin match muestran "Sin dato de conectividad"
+      con explicación, no "Sin datos todavía".
+- [x] `cd CRM_Frontend && npm run lint`/`build` — sin errores nuevos, verde.
+- [x] Docker local: `crm-frontend` reconstruido + `restart`, bundle confirmado con
+      el texto nuevo, sin el texto viejo.
+- [x] `CHANGELOG.md` actualizado.
+- [ ] **Pendiente real, sin resolver**: monitorear la IP real del hAP lite requiere
+      que `monitor_puntos_wpp.py` conozca esa lista (hoy solo en el SQLite local de
+      `cybersecurity`, no en Supabase) — decisión de arquitectura nueva.
+
 ## Cierre
 
 - [ ] PR abierto y enlazado en `spec.md`
