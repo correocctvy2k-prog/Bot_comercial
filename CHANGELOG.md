@@ -324,8 +324,20 @@ a una versión fechada.
   sin dañar ninguna de las 96 filas (confirmado: 0 con `tower_name` nulo). Nuevo
   `cybersecurity/sql/0013-fix-known-haplites-not-null.sql` (quita el `NOT NULL` de
   esas 2 columnas) + corregido el `CREATE TABLE` original para instalaciones futuras.
-  **Pendiente del usuario**: correr esa migración; luego se vuelve a correr el
-  escaneo de hAP lite para completar la población del estado vivo.
+  **Tercera actualización (mismo día): el fix inicial estaba incompleto** — el
+  reintento seguía fallando, ahora con `synced_at` (otra columna `NOT NULL` que el
+  escritor de estado vivo tampoco toca, se había pasado en el primer fix). Corregido
+  el archivo y el `CREATE TABLE` original; el usuario corrió la migración completa.
+  **Escaneo real de hAP lite corrido con éxito** (confirmado con una prueba directa
+  antes de reintentar): **96/96 IPs revisadas, 95/96 activas, 83/96 con puerto NAT
+  4455/4456 abierto** — confirma NVR real detrás de la mayoría. Ejemplo verificado:
+  "Amaime I" (`192.168.12.58`) → en línea, 0ms, puerto 4455 abierto, visible con la
+  clave `anon` (la del navegador). **Ciclo completo validado end-to-end contra datos
+  reales**: torre real → hAP lite real → ping/NAT real → tarjeta.
+- **Pendiente real que queda**: la rama sigue sin push/PR/merge/deploy — el bot de
+  WhatsApp de producción todavía no dispara este escaneo por su cuenta (corrió porque
+  Claude lo ejecutó manualmente desde la máquina de desarrollo, con autorización del
+  usuario). Al desplegar, el flujo normal ya lo hace solo.
 
 ### CCTV — Sincronización Operación de Puntos ↔ Seguridad Electrónica
 `specs/0012-sync-puntos-cctv/`

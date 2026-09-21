@@ -327,9 +327,22 @@ Supabase, en vez de dejarlo como estaba o explorar otra idea.
       revirtió completa (confirmado: 0/96 filas con `tower_name` nulo). Nuevo
       `0013-fix-known-haplites-not-null.sql` (quita el `NOT NULL` de esas 2 columnas)
       + corregido el `CREATE TABLE` original para instalaciones futuras.
-- [ ] **Pendiente del usuario**: correr `0013-fix-known-haplites-not-null.sql` en
-      Supabase; después, Claude vuelve a correr el escaneo de hAP lite para completar
-      la población del estado vivo por primera vez.
+- [x] El usuario corrió la migración de `NOT NULL` — el primer intento seguía
+      fallando (había una tercera columna, `synced_at`, que se me había pasado en el
+      primer fix). Corregido el archivo, el usuario lo volvió a correr.
+- [x] Confirmado con una prueba directa (INSERT solo con `ip`) que las 3 columnas ya
+      aceptan `NULL` antes de reintentar.
+- [x] **Escaneo real de hAP lite corrido con éxito**: `scan_and_update_known_haplites()`
+      — **96/96 IPs revisadas, 95/96 activas (ping real), 83/96 con puerto NAT
+      4455/4456 abierto** (confirma NVR real detrás). Ejemplo verificado: "Amaime I"
+      (`192.168.12.58`) → en línea, 0ms, puerto 4455 abierto.
+- [x] Confirmado con la clave `anon` (la misma que usa el navegador) que el dato real
+      es visible — el ciclo completo (torre real → hAP lite real → ping/NAT real →
+      tarjeta) queda validado end-to-end contra datos reales.
+- [ ] **Pendiente real que queda**: la rama sigue sin push/PR/merge/deploy — el bot de
+      WhatsApp de producción todavía no dispara este escaneo automáticamente por su
+      cuenta (hoy solo corrió porque Claude lo ejecutó manualmente desde esta máquina
+      de desarrollo). Al desplegar, el flujo normal ya lo hará solo.
 
 ## Cierre
 

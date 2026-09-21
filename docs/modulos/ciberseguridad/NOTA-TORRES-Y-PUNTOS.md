@@ -188,11 +188,17 @@ unificación de grupos ni transiciones, que no aplican a infraestructura de red)
 tarjeta de un punto confirmado ahora muestra **"hAP lite (ping)"** con datos reales de
 la IP correcta, en vez del equipo de apuestas.
 
-**Pendiente del usuario, en orden**: (1) correr la migración SQL nueva en Supabase;
-(2) correr `sync-known-haplites-to-supabase.js --db <ruta> --apply` para cargar las 96
-IPs; (3) disparar un monitoreo (comando de WhatsApp) para que se pueble el estado vivo
-por primera vez. Hasta entonces, la tarjeta explica esto mismo en vez de mostrar un
-"Sin datos todavía" genérico.
+**Resuelto y validado end-to-end contra datos reales (2026-09-21)**: tras 2 rondas de
+ajuste (RLS sin policy de lectura, y 3 columnas `NOT NULL` que el escritor de estado
+vivo no toca — `tower_name`/`point_names`/`synced_at`), el escaneo real corrió con
+éxito: **96/96 IPs revisadas, 95/96 activas, 83/96 con puerto NAT 4455/4456 abierto**
+(confirma NVR real detrás). Confirmado con la clave pública (la que usa el
+navegador) que el dato es visible.
+
+**Pendiente real que queda**: el bot de WhatsApp de producción corre con el código de
+`main`, que todavía no tiene este escaneo — hoy solo funcionó porque se corrió
+manualmente desde la máquina de desarrollo. Al desplegar la rama, el monitoreo normal
+por WhatsApp ya lo disparará solo, sin intervención manual.
 
 ## Firmware inicial, sin verificar (2026-09-21)
 
