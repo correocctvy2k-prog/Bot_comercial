@@ -129,6 +129,33 @@ a una versión fechada.
   `npm run lint`/`build` en verde. Docker local reconstruido (`crm-frontend` +
   `restart`), bundle nuevo confirmado servido por nginx.
 
+### Ciberseguridad — Revisión de código: 3 correcciones (sin cambio de comportamiento hoy)
+`specs/0013-inventario-torres-haplite-nvr/`
+- **`/code-review` sobre el diff acumulado de la spec** encontró 3 defectos reales, sin
+  necesidad de datos nuevos:
+  1. La tarjeta "Puntos totales (Operación de Puntos)" mostraba "cargando…" para
+     siempre si la consulta a Supabase fallaba o traía 0 filas (`crmTotal || undefined`
+     no distinguía error/vacío/cargando). Corregido: ahora distingue los 3 estados
+     explícitamente (`pointsQuery.isError`/`isLoading`).
+  2. El match de un punto por IP/gateway cruzando zonas (incremento anterior) elegía la
+     primera torre que coincidiera, no la más específica (prefijo más largo) — el mismo
+     tipo de problema de contención de CIDR que el backend ya resuelve así
+     (`resolveTrueSegmentId`). No cambiaba el resultado hoy (ningún gateway real se
+     solapa todavía), pero era un riesgo latente justo después de ampliar Rozo/
+     Palmaseca/Zamorano a `/23`. Corregido: `findTowerByIp` replica el mismo criterio
+     de desempate que el backend.
+  3. `dss-importer.js` (`readDssDeviceRegistry`) no tenía `ORDER BY`, pero
+     `importDssDeviceRegistry` hashea `JSON.stringify(devices)` sobre ese resultado
+     para decidir si un re-import es un no-op — sin orden garantizado, un re-import de
+     los mismos datos podía producir un hash distinto y duplicar el import en vez de
+     reconocerlo como `ALREADY_IMPORTED`. Corregido: `ORDER BY dss_identifier` (clave
+     primaria real de esa tabla).
+- **Verificado**: `cybersecurity/`: 162/162 tests; re-corrido `pull-dss-devices.js
+  --apply` contra la base local, confirma `ALREADY_IMPORTED` (idempotencia intacta).
+  `CRM_Frontend`: `npm run lint`/`build` en verde. Ubicación por IP re-verificada en
+  vivo: sigue en 361/368 (98%), sin regresión. Docker local reconstruido
+  (`cybersecurity-api` + `crm-frontend` + `restart`), bundle nuevo confirmado.
+
 ### CCTV — Sincronización Operación de Puntos ↔ Seguridad Electrónica
 `specs/0012-sync-puntos-cctv/`
 - **Problema:** "Operación de Puntos" (Supabase `puntos_venta`) y "Seguridad Electrónica"

@@ -14,11 +14,16 @@ function deterministicId(prefix, value) {
 // puerto 4455/4456), no la IP interna propia del NVR -- ver spec 0013 SS0. DSS no
 // expone MAC en los campos ya revisados.
 function readDssDeviceRegistry(sourceDb) {
+  // ORDER BY es necesario, no cosmético: importDssDeviceRegistry hashea
+  // JSON.stringify(devices) para decidir si un re-import es un no-op (idempotencia por
+  // hash, mismo patrón que ksc-importer.js) -- sin un orden estable, dos lecturas de
+  // los mismos datos podrían producir hashes distintos y duplicar el import.
   return sourceDb.prepare(`
     SELECT dss_identifier AS dssIdentifier, device_name AS deviceName,
            device_type AS deviceType, model, ip_address AS ipAddress,
            organization, physical_site_id AS physicalSiteId, status, observed_at AS observedAt
     FROM dss_device_registry
+    ORDER BY dss_identifier
   `).all();
 }
 

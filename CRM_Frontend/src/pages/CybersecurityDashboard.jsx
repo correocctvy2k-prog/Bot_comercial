@@ -1050,6 +1050,24 @@ function cidrContainsIp(cidr, ip) {
   const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
   return (networkNum & mask) === (ipNum & mask);
 }
+// Si la IP cae en el gateway de más de una torre (posible ahora que Rozo/Palmaseca/
+// Zamorano se ampliaron a /23), gana la red más específica (prefijo más largo) -- mismo
+// criterio de desempate que ya usa el backend (`resolveTrueSegmentId` en
+// cybersecurity-read-model.js) para el mismo tipo de problema de contención de CIDR.
+function findTowerByIp(towers, ip) {
+  let best = null;
+  let bestPrefix = -1;
+  for (const tower of towers) {
+    for (const cidr of tower.gatewayCidrs || []) {
+      const prefix = Number(String(cidr).split('/')[1]);
+      if (Number.isInteger(prefix) && cidrContainsIp(cidr, ip) && prefix > bestPrefix) {
+        best = tower;
+        bestPrefix = prefix;
+      }
+    }
+  }
+  return best;
+}
 
 // Un solo significado por color en toda la vista de Torres (para que la leyenda
 // aplique sin excepciones): verde = grabador DSS confirmado, ámbar = hAP lite
@@ -1167,6 +1185,14 @@ function TowersView({ query, pointsQuery, onRetry }) {
   const allCrmPoints = (pointsQuery?.data || []).filter((point) => !point.is_permanently_closed);
   const crmTotal = allCrmPoints.length;
   const crmWithCctv = allCrmPoints.filter((point) => point.has_cctv).length;
+  // Distingue error/cargando/vacío -- antes `crmTotal || undefined` mostraba
+  // "cargando…" para siempre si la consulta a Supabase fallaba o traía 0 filas.
+  const crmValue = pointsQuery?.isError ? undefined : crmTotal;
+  const crmDetail = pointsQuery?.isError
+    ? 'error al cargar Operación de Puntos'
+    : pointsQuery?.isLoading
+    ? 'cargando…'
+    : `${crmWithCctv} con CCTV en todo Skylab · ${pointsWithFortigate} hAP lite corroborados por FortiGate`;
 
   return (
     <>
@@ -1174,7 +1200,7 @@ function TowersView({ query, pointsQuery, onRetry }) {
         <MetricCard label="Torres reales" value={realTowers.length} detail={`${towers.length - realTowers.length} celda sin torre (Edificio Ppal)`} icon={RadioTower} tone="blue" />
         <MetricCard label="Puntos con hAP lite" value={totalPoints} detail="lista parcial: solo puntos con CCTV ya conocido" icon={Router} tone="emerald" />
         <MetricCard label="Con grabador identificado" value={totalPoints - pointsWithoutDss} detail={`${pointsWithoutDss} sin dispositivo DSS todavía`} icon={Video} tone="amber" />
-        <MetricCard label="Puntos totales (Operación de Puntos)" value={crmTotal || undefined} detail={crmTotal ? `${crmWithCctv} con CCTV en todo Skylab · ${pointsWithFortigate} hAP lite corroborados por FortiGate` : 'cargando…'} icon={MapPin} tone="rose" />
+        <MetricCard label="Puntos totales (Operación de Puntos)" value={crmValue} detail={crmDetail} icon={MapPin} tone="rose" />
       </section>
       <div className="flex justify-end">
         <div className="inline-flex gap-1 rounded-xl border border-border bg-card/70 p-1">
@@ -1219,7 +1245,7 @@ function TowersCardsView({ towers, crmPoints }) {
   const crmMatchesByTowerId = new Map();
   for (const point of crmPoints) {
     if (!point.ip || knownHapliteIps.has(point.ip)) continue;
-    const tower = towers.find((candidate) => (candidate.gatewayCidrs || []).some((cidr) => cidrContainsIp(cidr, point.ip)));
+    const tower = findTowerByIp(towers, point.ip);
     if (!tower) continue;
     matchedCrmIds.add(point.id);
     const list = crmMatchesByTowerId.get(tower.id) || [];

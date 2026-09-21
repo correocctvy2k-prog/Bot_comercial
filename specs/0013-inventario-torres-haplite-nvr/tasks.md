@@ -172,6 +172,29 @@ y sobre permitir match cruzando zonas.
       servido por nginx (hash de archivo distinto, timestamp del rebuild).
 - [x] `CHANGELOG.md` + ficha de módulo actualizados.
 
+## Incremento — revisión de código (`/code-review`), 3 correcciones
+
+Pedido del usuario: seguir madurando en local sin subir todavía. Sin datos nuevos que
+esperar, se corrió `/code-review medium` sobre el diff acumulado de la spec.
+
+- [x] "Puntos totales" ya no muestra "cargando…" para siempre en error/vacío —
+      distingue `pointsQuery.isError`/`isLoading`/éxito.
+- [x] `findTowerByIp` (nuevo, `CybersecurityDashboard.jsx`): el match cruzando zonas
+      usa la red más específica (prefijo más largo) en vez de la primera coincidencia,
+      mismo criterio que `resolveTrueSegmentId` del backend. Sin cambio de resultado
+      hoy (no hay gateways reales solapados todavía) — corrige un riesgo latente.
+- [x] `dss-importer.js`: `ORDER BY dss_identifier` en `readDssDeviceRegistry` — sin
+      esto, el hash de idempotencia (`sourceHash`) podía variar entre re-imports de los
+      mismos datos y duplicar el import.
+- [x] `cybersecurity/`: `npm test` — 162/162. Re-corrido `pull-dss-devices.js --apply`
+      contra la base local: confirma `ALREADY_IMPORTED` (idempotencia intacta).
+- [x] `cd CRM_Frontend && npm run lint`/`build` — sin errores nuevos, verde.
+- [x] Verificado contra datos reales en vivo: 361/368 (98%) sin cambio, mismos 2 puntos
+      de Bolo sin torre — confirma que el fix de longest-prefix no altera nada hoy.
+- [x] Docker local: `cybersecurity-api` + `crm-frontend` reconstruidos + `restart`,
+      bundle nuevo confirmado, `/api/cybersecurity/towers` sigue en 15/96/93.
+- [x] `CHANGELOG.md` actualizado.
+
 ## Cierre
 
 - [ ] PR abierto y enlazado en `spec.md`
