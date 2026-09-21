@@ -53,6 +53,14 @@ PING_TIMEOUT = 2000  # ms
 PING_COUNT   = 1
 RESOLVE_DNS  = False
 
+# NAT del NVR/grabador a través del hAP lite (spec 0013, Ciberseguridad): el NVR no
+# tiene IP propia alcanzable, se administra por NAT del hAP lite en el puerto 4455 o
+# 4456. Solo se intenta si el ping al hAP lite ya fue exitoso (si el host no responde
+# ping, el puerto NAT tampoco va a responder -- evita gastar el timeout completo en
+# puntos ya caídos).
+NVR_NAT_PORTS   = (4455, 4456)
+NVR_PORT_TIMEOUT = 1.5  # segundos por puerto
+
 # Global flag
 JSON_MODE = False
 
@@ -190,6 +198,18 @@ def ping_host(ip: str) -> Tuple[bool, Optional[float], str]:
         
     return False, None, last_reason
 
+def check_nvr_port(ip: str) -> Tuple[Optional[int], str]:
+    """Intenta conectar por TCP al puerto NAT del NVR (4455 o 4456) a través del
+    hAP lite del punto -- corrobora que el grabador está alcanzable detrás del NAT,
+    no solo que el hAP lite responde ping (spec 0013, Ciberseguridad)."""
+    for port in NVR_NAT_PORTS:
+        try:
+            with socket.create_connection((ip, port), timeout=NVR_PORT_TIMEOUT):
+                return port, "connected"
+        except (socket.timeout, ConnectionRefusedError, OSError):
+            continue
+    return None, "no_port_open"
+
 def resolve_hostname(ip: str) -> Optional[str]:
     return None # Desactivado para velocidad
 
@@ -247,20 +267,27 @@ def scan_single_target(target: Dict, historical_data: Dict = None) -> Dict:
     is_active, latency, reason = ping_host(ip)
     scan_time = datetime.now()
     state_change = False
-    
+
     if historical_data and ip in historical_data:
         ip_history = historical_data[ip]
-        if ip_history.get("last_state") is not None and ip_history.get("last_state") != is_active: 
+        if ip_history.get("last_state") is not None and ip_history.get("last_state") != is_active:
             state_change = True
-            
+
+    # Solo se intenta el puerto NAT del NVR si el hAP lite ya respondió ping -- si el
+    # host no está ni siquiera activo, el puerto tampoco va a estar abierto.
+    nvr_port = None
+    if is_active:
+        nvr_port, _nvr_reason = check_nvr_port(ip)
+
     return {
-        **target, 
-        "active": bool(is_active), 
-        "excluded": False, 
-        "latency": latency, 
-        "scan_time": scan_time.isoformat(), 
-        "state_change": state_change, 
-        "ping_reason": reason
+        **target,
+        "active": bool(is_active),
+        "excluded": False,
+        "latency": latency,
+        "scan_time": scan_time.isoformat(),
+        "state_change": state_change,
+        "ping_reason": reason,
+        "nvr_port": nvr_port
     }
 
 # ============================================================================
@@ -454,11 +481,23 @@ def update_supabase_results(results_df: pd.DataFrame):
         else:
             lat = int(lat_val)
 
+        # pandas sube la columna a float64 (NaN para None) al mezclarla con enteros de
+        # otras filas -- a diferencia de latency, aquí NaN/0 no son intercambiables (0
+        # no es un puerto válido para "cerrado"), así que se mapea explícitamente a
+        # None (null en Supabase), nunca a 0.
+        nvr_port_val = row.get("nvr_port")
+        nvr_port = None if pd.isna(nvr_port_val) else int(nvr_port_val)
+
         rec = {
             "ip": row["ip"],
             "active": bool(row["active"]),
             "latency": lat,
-            "updated_at": now_iso
+            "updated_at": now_iso,
+            # Puerto NAT del NVR (4455/4456) si respondió esta corrida, None si no
+            # (host caído o puerto cerrado) -- mismo criterio que "active"/"latency":
+            # se sobreescribe en cada corrida, no se conserva un valor histórico.
+            "nvr_port": nvr_port,
+            "nvr_checked_at": now_iso
         }
         # Actualizar last_online_at solo cuando el punto está activo
         if bool(row["active"]):

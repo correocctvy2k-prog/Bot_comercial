@@ -1,9 +1,11 @@
 import { createElement, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 import {
   AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Clock3,
   Boxes, Cable, Database, EyeOff, FileSearch, Fingerprint, History, LayoutGrid, Layers, List, ListChecks, Loader2, MapPin, Network, PlugZap, Radar, RadioTower, RefreshCw,
-  Router, Search, ShieldAlert, ShieldCheck, SlidersHorizontal, Video, X,
+  Router, Search, ShieldAlert, ShieldCheck, SlidersHorizontal, Video, Wifi, WifiOff, X,
 } from 'lucide-react';
 import { cybersecurityService } from '../services/cybersecurity.service';
 import { pointsService } from '../services/points.service';
@@ -1054,6 +1056,18 @@ function cidrContainsIp(cidr, ip) {
 // Zamorano se ampliaron a /23), gana la red más específica (prefijo más largo) -- mismo
 // criterio de desempate que ya usa el backend (`resolveTrueSegmentId` en
 // cybersecurity-read-model.js) para el mismo tipo de problema de contención de CIDR.
+// `monitor_puntos_wpp.py` corre bajo demanda (comando de WhatsApp), no en un
+// intervalo fijo -- nunca se muestra el estado sin decir hace cuánto se revisó, para
+// no insinuar "en vivo" cuando puede ser de hace días.
+function timeAgoEs(iso) {
+  if (!iso) return null;
+  try {
+    return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: es });
+  } catch {
+    return null;
+  }
+}
+
 function findTowerByIp(towers, ip) {
   let best = null;
   let bestPrefix = -1;
@@ -1114,6 +1128,27 @@ function PointCubeGrid({ items, onHover }) {
   );
 }
 
+// Estado de red vivo de un punto (pedido del usuario 2026-09-21): ping al hAP lite
+// (ya lo hace `monitor_puntos_wpp.py`, aquí solo se muestra) + si el puerto NAT del
+// NVR (4455/4456) respondió en la última corrida. Nunca inventa "en vivo" -- si no
+// hay dato (columnas nuevas, migración de Supabase pendiente, o el punto nunca se
+// revisó), lo dice explícitamente en vez de mostrar un falso "sin conexión".
+function LiveStatusRow({ icon, label, isUp, detail, checkedAgo }) {
+  const Icon = icon;
+  const dotClass = isUp === true ? 'bg-emerald-400' : isUp === false ? 'bg-rose-500' : 'bg-muted-foreground/30';
+  const textClass = isUp === true ? 'text-emerald-300' : isUp === false ? 'text-rose-300' : 'text-muted-foreground';
+  const statusText = isUp === true ? 'En línea' : isUp === false ? 'Sin conexión' : 'Sin datos todavía';
+  return (
+    <div className="flex items-center gap-2 text-[11px]">
+      <span className={`h-2 w-2 shrink-0 rounded-full ${dotClass}`} />
+      <Icon size={12} className="shrink-0 text-muted-foreground" />
+      <span className="text-muted-foreground">{label}</span>
+      <span className={`ml-auto font-semibold ${textClass}`}>{statusText}{detail ? ` · ${detail}` : ''}</span>
+      {checkedAgo && <span className="shrink-0 text-[9px] text-muted-foreground/70">({checkedAgo})</span>}
+    </div>
+  );
+}
+
 // Tarjeta flotante con el detalle de un punto -- aparece al pasar el cursor sobre un
 // cubo y se posiciona junto a él (pedido del usuario 2026-09-19). `pointer-events-none`
 // para que el mouse nunca "quede atrapado" sobre la tarjeta y la deje abierta.
@@ -1134,6 +1169,24 @@ function PointFloatingCard({ point, position }) {
           {point.hasCctv === false && <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-black uppercase text-muted-foreground">Sin CCTV</span>}
           {point.observedByFortigate && <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[9px] font-black uppercase text-sky-300">FortiGate en línea</span>}
         </div>
+        {point.ip && (
+          <div className="mt-3 space-y-1.5 border-t border-border/60 pt-3">
+            <LiveStatusRow
+              icon={point.active ? Wifi : WifiOff}
+              label="hAP lite"
+              isUp={point.active === true ? true : point.active === false ? false : null}
+              detail={point.active && point.latency ? `${point.latency}ms` : null}
+              checkedAgo={timeAgoEs(point.pingCheckedAt)}
+            />
+            <LiveStatusRow
+              icon={PlugZap}
+              label="NVR (NAT 4455/4456)"
+              isUp={point.nvrCheckedAt ? Boolean(point.nvrPort) : null}
+              detail={point.nvrPort ? `puerto ${point.nvrPort}` : null}
+              checkedAgo={timeAgoEs(point.nvrCheckedAt)}
+            />
+          </div>
+        )}
         {point.dssDevices?.length > 0 ? (
           <div className="mt-3 space-y-1.5">
             {point.dssDevices.map((device) => (
@@ -1225,6 +1278,10 @@ function TowersCardsView({ towers, crmPoints }) {
   const [floating, setFloating] = useState(null); // { point, position }
   const towerByName = new Map(towers.map((tower) => [tower.name, tower]));
   const knownHapliteIps = new Set(towers.flatMap((tower) => tower.points.map((point) => point.haplite.ip)));
+  // Estado vivo (ping + puerto NAT del NVR) siempre viene de `puntos_venta`
+  // (monitor_puntos_wpp.py) -- tower.points (backend propio) no lo trae, así que se
+  // cruza por IP para los puntos que ya tienen hAP lite conocido también.
+  const crmPointByIp = new Map(crmPoints.filter((point) => point.ip).map((point) => [point.ip, point]));
   const assignedZoneNames = new Set(Object.keys(ZONE_TOWER_NAMES));
   const crmByZone = new Map();
   for (const point of crmPoints) {
@@ -1276,15 +1333,20 @@ function TowersCardsView({ towers, crmPoints }) {
               {zoneTowers.map((tower) => {
                 const expanded = expandedId === tower.id;
                 const crmMatches = crmMatchesByTowerId.get(tower.id) || [];
-                const knownItems = tower.points.map((point) => ({
-                  key: point.haplite.ip,
-                  tone: point.dssDevices.length > 0 ? 'emerald' : 'amber',
-                  title: `${point.names.join(' · ')} (${point.haplite.ip})`,
-                  detail: {
-                    title: point.names.join(' · '), torreName: tower.name, ip: point.haplite.ip,
-                    observedByFortigate: point.haplite.observedByFortigate, dssDevices: point.dssDevices, tone: point.dssDevices.length > 0 ? 'emerald' : 'amber',
-                  },
-                }));
+                const knownItems = tower.points.map((point) => {
+                  const live = crmPointByIp.get(point.haplite.ip);
+                  return {
+                    key: point.haplite.ip,
+                    tone: point.dssDevices.length > 0 ? 'emerald' : 'amber',
+                    title: `${point.names.join(' · ')} (${point.haplite.ip})`,
+                    detail: {
+                      title: point.names.join(' · '), torreName: tower.name, ip: point.haplite.ip,
+                      observedByFortigate: point.haplite.observedByFortigate, dssDevices: point.dssDevices, tone: point.dssDevices.length > 0 ? 'emerald' : 'amber',
+                      active: live?.active ?? null, latency: live?.latency ?? null, pingCheckedAt: live?.updated_at ?? null,
+                      nvrPort: live?.nvr_port ?? null, nvrCheckedAt: live?.nvr_checked_at ?? null,
+                    },
+                  };
+                });
                 const autoItems = crmMatches.map((point) => ({
                   key: `crm-${point.id}`,
                   tone: 'sky',
@@ -1292,6 +1354,8 @@ function TowersCardsView({ towers, crmPoints }) {
                   detail: {
                     title: point.alias || point.name, torreName: tower.name, ip: point.ip, zone: point.segment || zoneName,
                     hasCctv: Boolean(point.has_cctv), tone: 'sky',
+                    active: point.active ?? null, latency: point.latency ?? null, pingCheckedAt: point.updated_at ?? null,
+                    nvrPort: point.nvr_port ?? null, nvrCheckedAt: point.nvr_checked_at ?? null,
                   },
                 }));
                 const cubeItems = [...knownItems, ...autoItems];
@@ -1326,7 +1390,11 @@ function TowersCardsView({ towers, crmPoints }) {
                     <PointCubeGrid
                       items={unassignedPoints.map((point) => ({
                         key: point.id, tone: 'slate', title: point.alias || point.name,
-                        detail: { title: point.alias || point.name, ip: point.ip, zone: zoneName, hasCctv: Boolean(point.has_cctv), tone: 'slate' },
+                        detail: {
+                          title: point.alias || point.name, ip: point.ip, zone: zoneName, hasCctv: Boolean(point.has_cctv), tone: 'slate',
+                          active: point.active ?? null, latency: point.latency ?? null, pingCheckedAt: point.updated_at ?? null,
+                          nvrPort: point.nvr_port ?? null, nvrCheckedAt: point.nvr_checked_at ?? null,
+                        },
                       }))}
                       onHover={onHoverPoint}
                     />
@@ -1342,7 +1410,11 @@ function TowersCardsView({ towers, crmPoints }) {
                     <PointCubeGrid
                       items={vpnPoints.map((point) => ({
                         key: point.id, tone: 'violet', title: point.alias || point.name,
-                        detail: { title: point.alias || point.name, ip: point.ip, zone: zoneName, hasCctv: Boolean(point.has_cctv), tone: 'violet' },
+                        detail: {
+                          title: point.alias || point.name, ip: point.ip, zone: zoneName, hasCctv: Boolean(point.has_cctv), tone: 'violet',
+                          active: point.active ?? null, latency: point.latency ?? null, pingCheckedAt: point.updated_at ?? null,
+                          nvrPort: point.nvr_port ?? null, nvrCheckedAt: point.nvr_checked_at ?? null,
+                        },
                       }))}
                       onHover={onHoverPoint}
                     />

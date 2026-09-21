@@ -156,6 +156,44 @@ a una versión fechada.
   vivo: sigue en 361/368 (98%), sin regresión. Docker local reconstruido
   (`cybersecurity-api` + `crm-frontend` + `restart`), bundle nuevo confirmado.
 
+### Ciberseguridad — Estado vivo del hAP lite y del puerto NAT del NVR en la tarjeta del punto
+`specs/0013-inventario-torres-haplite-nvr/`
+- **Pedido del usuario:** mostrar el estado del hAP lite, si el puerto NAT del NVR
+  (4455/4456) responde, la latencia, y sentar la base para detectar vulnerabilidades
+  de firmware — todo en la tarjeta de cada punto.
+- **Investigación antes de construir**: `cybersecurity-api` es un contenedor
+  deliberadamente bloqueado (`read_only`, `cap_drop: ALL`) sin ruta de red probada
+  hacia las redes de torre — nunca ha hecho una conexión activa a nada. El único
+  camino con alcance real y probado a `192.168.x.x` es `monitor_puntos_wpp.py` (corre
+  en `comercial-bot`, ya hace ping + latencia a los ~368 puntos activos, sin ningún
+  chequeo TCP). Decisión del usuario: extender ese script en vez de construir
+  infraestructura de red nueva.
+- **`monitor_puntos_wpp.py`**: nuevo `check_nvr_port(ip)` — intenta TCP al puerto 4455
+  y luego 4456 (timeout 1.5s cada uno), solo si el ping al hAP lite ya fue exitoso (si
+  el host no responde, el puerto NAT tampoco va a estar abierto — evita gastar el
+  timeout completo en puntos ya caídos). Corre dentro del mismo `ThreadPoolExecutor`
+  que ya paraleliza el ping (35 workers), sin nueva infraestructura de concurrencia.
+  Escribe `nvr_port`/`nvr_checked_at` en `puntos_venta` junto a `active`/`latency`
+  (mismo upsert, mismo criterio: se sobreescribe en cada corrida).
+- **`cybersecurity/sql/0013-add-nvr-port-columns.sql`** (nuevo, para correr a mano en
+  el editor SQL de Supabase — mismo patrón ya usado en `Asamblea/sql/`): agrega
+  `nvr_port`/`nvr_checked_at` a `puntos_venta`. **Pendiente: el usuario debe correrlo
+  antes de que el dato aparezca real** — el código ya maneja su ausencia mostrando
+  "Sin datos todavía" en vez de un falso "Sin conexión".
+- **`CybersecurityDashboard.jsx`**: `LiveStatusRow` (nuevo) en `PointFloatingCard` —
+  dos filas (hAP lite, NVR/NAT) con punto de color (verde/rojo/gris), latencia o
+  puerto, y hace cuánto se revisó (`date-fns`, ya usado en otras páginas de
+  `CRM_Frontend`) — nunca dice "en vivo": `monitor_puntos_wpp.py` corre bajo demanda
+  (comando de WhatsApp), no en un intervalo fijo, así que la antigüedad del dato
+  importa y se muestra siempre. Cruce por IP (`crmPointByIp`) para que los puntos con
+  hAP lite ya conocido (no solo los ubicados por IP) también muestren su estado —
+  `tower.points` (backend propio) no trae este dato, solo `puntos_venta`.
+- **Verificado**: `check_nvr_port` probado contra un puerto TCP real abierto y uno
+  cerrado en `localhost` (puerto abierto detectado correctamente, cerrado devuelve
+  `None`, no una excepción sin manejar). `cd CRM_Frontend && npm run lint`/`build` en
+  verde. Docker local reconstruido (`crm-frontend` + `restart`), bundle confirmado con
+  el texto nuevo ("NAT 4455/4456", "Sin datos todavía").
+
 ### CCTV — Sincronización Operación de Puntos ↔ Seguridad Electrónica
 `specs/0012-sync-puntos-cctv/`
 - **Problema:** "Operación de Puntos" (Supabase `puntos_venta`) y "Seguridad Electrónica"

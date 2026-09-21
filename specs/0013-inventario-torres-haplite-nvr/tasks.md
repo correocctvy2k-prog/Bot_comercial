@@ -195,6 +195,30 @@ esperar, se corrió `/code-review medium` sobre el diff acumulado de la spec.
       bundle nuevo confirmado, `/api/cybersecurity/towers` sigue en 15/96/93.
 - [x] `CHANGELOG.md` actualizado.
 
+## Incremento — estado vivo del hAP lite y puerto NAT del NVR
+
+Pedido del usuario 2026-09-21: mostrar estado del hAP lite, Eth4/NVR (propone TCP a
+4455-4456), latencia, y sentar base para firmware. Investigado primero con un
+subagente Explore: `cybersecurity-api` no tiene ruta de red probada a las torres;
+`monitor_puntos_wpp.py` sí (ping+latencia ya activos). Usuario eligió extender ese
+script en vez de construir infraestructura nueva.
+
+- [x] `monitor_puntos_wpp.py`: `check_nvr_port(ip)` (TCP 4455→4456, 1.5s c/u, solo si
+      el ping ya fue exitoso), corre dentro del `ThreadPoolExecutor` ya existente.
+- [x] `cybersecurity/sql/0013-add-nvr-port-columns.sql` (nuevo) — migración manual de
+      Supabase, mismo patrón que `Asamblea/sql/`. **Pendiente que el usuario la corra.**
+- [x] `CybersecurityDashboard.jsx`: `LiveStatusRow` en `PointFloatingCard` (hAP
+      lite + NVR/NAT), con "hace cuánto se revisó" siempre visible (el script corre
+      bajo demanda, no en intervalo fijo). `crmPointByIp` para cruzar también los
+      puntos con hAP lite ya conocido, no solo los ubicados por IP.
+- [x] Probado `check_nvr_port` contra un puerto TCP real abierto/cerrado en localhost.
+- [x] `cd CRM_Frontend && npm run lint`/`build` — sin errores nuevos, verde.
+- [x] Docker local: `crm-frontend` reconstruido + `restart`, bundle confirmado con el
+      texto nuevo.
+- [x] `CHANGELOG.md` actualizado.
+- [ ] **Bloqueante para ver dato real**: el usuario debe correr
+      `cybersecurity/sql/0013-add-nvr-port-columns.sql` en el editor SQL de Supabase.
+
 ## Cierre
 
 - [ ] PR abierto y enlazado en `spec.md`
