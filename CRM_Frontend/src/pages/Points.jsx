@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { pointsService } from '../services/points.service';
 import MapView from '../components/MapView';
 import AlertsTab from '../components/AlertsTab';
-import { Search, Monitor, Wifi, WifiOff, BarChart2, RefreshCw, BarChart3, Map, MapIcon, Activity, Clock, AlertTriangle, ShieldCheck, CheckCircle2, ChevronRight, Server, X, Video, Bell, Store, Trophy, Repeat, ChevronDown, Edit2, Save } from 'lucide-react';
+import { Search, Monitor, Wifi, WifiOff, BarChart2, RefreshCw, BarChart3, Map, MapIcon, Activity, Clock, AlertTriangle, ShieldCheck, CheckCircle2, ChevronRight, Server, X, Video, Bell, Store, Trophy, Repeat, ChevronDown, Edit2, Save, HelpCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -100,24 +100,34 @@ const NodeCard = ({ point, behavior, onUpdate }) => {
                         </div>
                     </div>
                     <div className="flex flex-col items-end gap-1.5">
-                        <div className="flex items-center gap-3">
-                            {/* SIISS Indicator */}
-                            <div className="flex items-center gap-1" title={`SIISS: ${isSiissOnline ? 'Online' : isSiissOnline === false ? 'Offline' : 'Sin Datos'}`}>
-                                <span className="text-[9px] font-bold text-muted-foreground/60 uppercase">SIISS</span>
-                                <span className={`relative inline-flex rounded-full h-2 w-2 ${isSiissOnline ? 'bg-purple-500 shadow-[0_0_5px_rgba(168,85,247,0.5)]' : isSiissOnline === false ? 'bg-red-500/50' : 'bg-slate-700'}`}></span>
-                            </div>
+                        <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-3">
+                                {/* SIISS Indicator */}
+                                <div className="flex items-center gap-1" title={`SIISS: ${isSiissOnline ? 'Online' : isSiissOnline === false ? 'Offline' : 'Sin Datos'}`}>
+                                    <span className="text-[9px] font-bold text-muted-foreground/60 uppercase">SIISS</span>
+                                    <span className={`relative inline-flex rounded-full h-2 w-2 ${isSiissOnline ? 'bg-purple-500 shadow-[0_0_5px_rgba(168,85,247,0.5)]' : isSiissOnline === false ? 'bg-red-500/50' : 'bg-slate-700'}`}></span>
+                                </div>
 
-                            {/* Bot Ping Indicator */}
-                            <div className="flex items-center gap-1.5" title={`Bot: ${isOnline ? 'Online' : 'Offline'}`}>
-                                <span className="text-[9px] font-bold text-muted-foreground/60 uppercase">Bot</span>
-                                <span className="relative flex h-2.5 w-2.5">
-                                    {isOnline && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
-                                    <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isOnline ? 'bg-green-500' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]'}`}></span>
-                                </span>
+                                {/* Bot Ping Indicator */}
+                                <div className="flex items-center gap-1.5" title={`Bot: ${isOnline ? 'Online' : 'Offline'}`}>
+                                    <span className="text-[9px] font-bold text-muted-foreground/60 uppercase">Bot</span>
+                                    <span className="relative flex h-2.5 w-2.5">
+                                        {isOnline && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
+                                        <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isOnline ? 'bg-green-500' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]'}`}></span>
+                                    </span>
+                                </div>
                             </div>
+                            {/* spec 0014: leyenda de qué significa cada indicador y qué revisar ante discordancia */}
+                            <HelpCircle
+                                className="w-3 h-3 text-muted-foreground/40 hover:text-muted-foreground cursor-help shrink-0"
+                                title={'SIISS = estado de ping reportado por el sistema SIISS de la empresa. Se actualiza al presionar "Sync SIISS".\n\nBOT = ping directo a la IP registrada en este punto. Solo se actualiza cuando alguien pide un reporte de puntos por WhatsApp — no es en vivo ni automático.\n\nSi no coinciden (DISCORDANCIA): confirmá que la IP de este punto es la real y vigente (puede haber cambiado), y pedí un nuevo reporte de puntos por WhatsApp para refrescar el dato del Bot.'}
+                            />
                         </div>
                         {hasDiscordance && (
-                            <div className="flex items-center gap-1 text-[9px] font-bold text-amber-500 animate-pulse bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                            <div
+                                className="flex items-center gap-1 text-[9px] font-bold text-amber-500 animate-pulse bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 cursor-help"
+                                title="SIISS y el Bot no coinciden. Confirmá que la IP registrada en este punto es la real y vigente, y pedí un nuevo reporte de puntos por WhatsApp para refrescar el dato del Bot."
+                            >
                                 <RefreshCw className="w-2.5 h-2.5" /> DISCORDANCIA
                             </div>
                         )}
