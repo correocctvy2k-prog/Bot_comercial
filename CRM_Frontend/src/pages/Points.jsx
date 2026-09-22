@@ -459,14 +459,12 @@ export default function Points() {
                     <Button variant="outline" size="sm" onClick={() => refetch()} className="border-border/50 bg-card/50 backdrop-blur-sm">
                         <RefreshCw className="h-4 w-4 mr-2" /> Actualizar Data
                     </Button>
-                    {/* Fix 3: Botón de Sincronización SIISS Manual */}
+                    {/* Fix 3: Botón de Sincronización SIISS Manual (spec 0014, vía cctv-api) */}
                     <Button variant="outline" size="sm"
                         className="border-purple-500/40 text-purple-400 hover:bg-purple-500/10 bg-card/50 backdrop-blur-sm"
                         onClick={async () => {
-                            const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
                             try {
-                                const r = await fetch(`${backendUrl}/api/siiss/sync`, { method: 'POST' });
-                                const j = await r.json();
+                                const j = await pointsService.syncSiiss();
                                 alert(`✅ SIISS Sync: ${j.matched || 0} puntos sincronizados`);
                                 refetch();
                             } catch (e) {

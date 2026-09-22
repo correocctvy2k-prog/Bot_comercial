@@ -14,6 +14,7 @@ const { isOperationalOpeningSignal, asOperationalOpeningEvidence, isOperationalO
 const { loadWindowConfig } = require('../platform/window-config');
 const { normalizeResolveInput, loadActiveResolutions, insertResolution, reopenResolutions } = require('../platform/notification-resolutions');
 const { buildZoneBoards } = require('../platform/zone-boards');
+const { syncSiissPoints } = require('../platform/siis-points-sync');
 const { runtimePaths, ensureRuntimeDirectories } = require('../config/runtime-paths');
 
 ensureRuntimeDirectories();
@@ -724,6 +725,12 @@ const server = http.createServer(async (req,res) => {
         db.exec('COMMIT');
       } catch(error){db.exec('ROLLBACK');throw error;}
       return send(res,201,{ok:true,id:installationId,locationId:body.locationId},origin);
+    }
+    // spec 0014: sincroniza siiss_active/siiss_last_sync en puntos_venta con SIIS en vivo,
+    // sin pasar por Asamblea (botón "Sync SIISS" de Operación de Puntos).
+    if(req.method==='POST'&&url.pathname==='/api/cctv/siiss/sync-points'){
+      const summary=await syncSiissPoints();
+      return send(res,200,{ok:true,...summary},origin);
     }
     send(res,404,{error:'Ruta no encontrada'},origin);
   } catch(error){console.error(error);send(res,500,{error:error.message},origin);}
