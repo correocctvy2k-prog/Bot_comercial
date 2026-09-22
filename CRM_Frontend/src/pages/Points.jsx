@@ -372,6 +372,7 @@ export default function Points() {
     });
     const [activeTab, setActiveTab] = useState("overview");
     const [focusedZone, setFocusedZone] = useState(null);
+    const [syncingSiiss, setSyncingSiiss] = useState(false);
 
     const { data: points = [], isLoading, refetch } = useQuery({
         queryKey: ['points'],
@@ -460,19 +461,22 @@ export default function Points() {
                         <RefreshCw className="h-4 w-4 mr-2" /> Actualizar Data
                     </Button>
                     {/* Fix 3: Botón de Sincronización SIISS Manual (spec 0014, vía cctv-api) */}
-                    <Button variant="outline" size="sm"
-                        className="border-purple-500/40 text-purple-400 hover:bg-purple-500/10 bg-card/50 backdrop-blur-sm"
+                    <Button variant="outline" size="sm" disabled={syncingSiiss}
+                        className="border-purple-500/40 text-purple-400 hover:bg-purple-500/10 bg-card/50 backdrop-blur-sm disabled:opacity-60"
                         onClick={async () => {
+                            setSyncingSiiss(true);
                             try {
                                 const j = await pointsService.syncSiiss();
                                 alert(`✅ SIISS Sync: ${j.matched || 0} puntos sincronizados`);
                                 refetch();
                             } catch (e) {
                                 alert('❌ Error al conectar con SIISS: ' + e.message);
+                            } finally {
+                                setSyncingSiiss(false);
                             }
                         }}
                     >
-                        <RefreshCw className="h-4 w-4 mr-2" /> Sync SIISS
+                        <RefreshCw className={`h-4 w-4 mr-2 ${syncingSiiss ? 'animate-spin' : ''}`} /> {syncingSiiss ? 'Sincronizando…' : 'Sync SIISS'}
                     </Button>
                 </div>
             </div>
