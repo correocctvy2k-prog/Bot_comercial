@@ -16,10 +16,20 @@ Marcar `[x]` al completar. Mantener actualizado durante toda la tarea.
 
 - [x] `cd cctv-automation-final && npm test` — 99/99
 - [x] `node -c` sobre `run-operational-cycle.js` y `py_compile` sobre `monitor_puntos_wpp.py` — sintaxis ok
-- [ ] Docker local: `comercial-worker` arranca sin crashear — **bloqueado, Docker Desktop caído en la máquina de desarrollo desde antes de empezar esta spec**
-- [ ] Docker local: ciclo de ping corre dentro del horario, se omite fuera de él
-- [ ] Docker local: bot de WhatsApp responde igual que antes
-- [ ] `operational-cycle.jsonl`: `siissPointsSync` aparece y respeta la cadencia de 60 min
+- [x] **Verificado end-to-end con datos reales, directo en el host** (no en Docker — el build
+      de `comercial-bot`/`comercial-worker` está roto por un problema previo y ya documentado,
+      no relacionado: Debian bullseye EOL, `apt-get` 404 en `deb.debian.org/debian-security`):
+      `node src/worker.js` corrió 75s reales, `node-cron` disparó un ciclo dentro del horario
+      (17:00 Bogotá), pingueó los 370 puntos reales en 11s, `{"ok":true,"scanned":370,
+      "active":324}`, y registró 55 transiciones reales en `point_activity_log`. Confirma
+      cron + gate de horario + spawn de Python + parseo + escritura en Supabase, todo real.
+- [ ] Docker local: `comercial-worker` arranca sin crashear dentro del contenedor — **sigue
+      bloqueado** por el build roto de la imagen (independiente de esta spec, ver arriba)
+- [ ] Docker local: bot de WhatsApp responde igual que antes (no se tocó su código; sin poder
+      levantar el contenedor tampoco se pudo repetir esta prueba en Docker)
+- [ ] `operational-cycle.jsonl`: `siissPointsSync` aparece y respeta la cadencia de 60 min (no
+      se pudo correr `run-operational-cycle.js` completo — requiere IMAP/Trello configurados;
+      la lógica del paso nuevo es idéntica en forma a `crmPointsSync`, ya probado en spec 0012)
 
 ## Documentación (Definition of Done)
 
