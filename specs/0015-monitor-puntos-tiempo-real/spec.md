@@ -1,16 +1,15 @@
 # SPEC 0015 — Monitor de puntos en tiempo real (ping) + sync SIISS horario
 
-> **⚠️ Bloqueador de despliegue detectado durante la verificación (2026-09-23):** el
-> `Dockerfile` raíz (`node:20-bullseye`) no puede reconstruirse hoy — `apt-get update`
-> falla con 404 en `deb.debian.org/debian-security` porque Debian bullseye llegó a EOL y
-> esos paquetes ya no están en ese repo. Esto es previo a esta spec (documentado en memoria
-> del proyecto: "Build de comercial-bot roto (Debian bullseye EOL)"), pero ahora bloquea
-> específicamente el despliegue de `comercial-worker` (necesita reconstruirse por primera
-> vez). **Hay que arreglar el `Dockerfile` (pin a un mirror con snapshot, o mover a
-> `bullseye-backports`/otra base) antes de poder desplegar esta spec.** El código en sí ya
-> se verificó funcionando de verdad, corriéndolo directo en el host (ver `tasks.md`).
+> **✅ Bloqueador de build resuelto (2026-09-23):** el `Dockerfile` raíz (`node:20-bullseye`)
+> no podía reconstruirse — Debian bullseye llegó a EOL, `apt-get update` daba 404 en
+> `deb.debian.org/debian-security` (previo a esta spec, ya documentado en memoria del
+> proyecto). La propia imagen de Node ya trae comentadas las líneas de
+> `snapshot.debian.org` con fecha fija para este caso exacto; se activan y se apagan las
+> líneas "en vivo" (`sed` nuevo al inicio del `Dockerfile`, con `[check-valid-until=no]`
+> porque el Release firmado del snapshot expira con el tiempo). Verificado con build real:
+> `comercial-bot` y `comercial-worker` arrancan y corren sin crashear (ver `tasks.md`).
 
-- **Estado:** Borrador
+- **Estado:** Implementada y verificada en Docker local (2026-09-23), pendiente PR
 - **Autor:** Claude (a pedido de ia_gerencia@ganepalmira.com.co)
 - **Fecha:** 2026-09-23
 - **Módulos afectados:** Bot Comercial (`src/`, raíz del repo — nuevo worker
@@ -53,9 +52,11 @@ WhatsApp bajo demanda.
   invoca `monitor_puntos_wpp.py --json --tipo ping_only` (nuevo modo, ver abajo) en un proceso
   Python separado del que dispara el bot de WhatsApp.
 - **`monitor_puntos_wpp.py`**: nuevo valor `--tipo ping_only` que ejecuta únicamente
-  `load_targets_from_supabase` → `scan_from_df_parallel` → `update_supabase_results` (+
-  `scan_and_update_known_haplites`, ya no crítico), sin `build_report_text` ni gráfico. Aditivo:
-  no toca los `--tipo` que ya usa el bot de WhatsApp (`standard`/con `--zona`).
+  `load_targets_from_supabase` → `scan_from_df_parallel` → `update_supabase_results`, sin
+  `build_report_text` ni gráfico. Aditivo: no toca los `--tipo` que ya usa el bot de WhatsApp
+  (`standard`/con `--zona`). (Nota: `scan_and_update_known_haplites`, de spec 0013, no existe
+  todavía en la base de esta rama — cuando 0013 se mergee, revisar si debe sumarse también al
+  modo `ping_only`.)
 - **`src/services/businessHours.service.js`** (nuevo): ventana de horario configurable por env
   (`POINTS_OPERATIONAL_WINDOW_START`/`_END`, default `05:30`/`22:30`, America/Bogota).
 - **`cctv-automation-final/platform/business-hours.js`** (nuevo, mismo cálculo que el anterior

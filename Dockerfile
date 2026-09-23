@@ -1,6 +1,16 @@
 # Usamos una imagen base de Node.js actual (Soportada por Supabase)
 FROM node:20-bullseye
 
+# 0. Debian bullseye llegó a EOL: deb.debian.org/debian-security ya no sirve paquetes de
+# bullseye (404). La imagen ya trae comentadas las líneas de snapshot.debian.org (con fecha
+# fija) para este caso exacto — las activamos y apagamos las líneas "en vivo".
+# [check-valid-until=no] porque el Release firmado del snapshot expira con el tiempo.
+RUN sed -i \
+    -e '/^deb http:\/\/deb.debian.org/d' \
+    -e '/^deb http:\/\/security.debian.org/d' \
+    -e 's|^# deb http://snapshot.debian.org|deb [check-valid-until=no] http://snapshot.debian.org|' \
+    /etc/apt/sources.list
+
 # 1. Instalar Python 3 y pip
 RUN apt-get update && apt-get install -y \
     python3 \

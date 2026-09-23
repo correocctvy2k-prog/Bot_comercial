@@ -38,6 +38,13 @@ a una versión fechada.
 - Investigación previa confirmó que la API real de SIIS (`estacionesByPing`) **no expone
   ninguna IP** — no es posible comparar "la IP de SIISS" contra `puntos_venta.ip`
   directamente; la discordancia sigue siendo entre dos resultados de ping independientes.
+- **Bloqueador de despliegue encontrado y resuelto**: el `Dockerfile` raíz no podía
+  reconstruirse (Debian bullseye EOL, `apt-get` 404 en `deb.debian.org/debian-security`,
+  problema previo ya documentado, ahora agravado porque bloqueaba levantar
+  `comercial-worker` por primera vez). Se activaron las líneas `snapshot.debian.org` (con
+  fecha fija) que la propia imagen de Node ya trae comentadas para este caso. Verificado con
+  build real: `comercial-bot`/`comercial-worker` arrancan y corren sin crashear
+  (`{"ok":true,"scanned":370,"active":258,"duration":19}` dentro del contenedor real).
 
 ### CRM_Frontend / CCTV — Sincronización directa SIISS → Operación de Puntos
 `specs/0014-siiss-sync-directo/`

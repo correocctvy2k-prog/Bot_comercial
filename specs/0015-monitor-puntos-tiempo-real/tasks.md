@@ -23,13 +23,20 @@ Marcar `[x]` al completar. Mantener actualizado durante toda la tarea.
       (17:00 Bogotá), pingueó los 370 puntos reales en 11s, `{"ok":true,"scanned":370,
       "active":324}`, y registró 55 transiciones reales en `point_activity_log`. Confirma
       cron + gate de horario + spawn de Python + parseo + escritura en Supabase, todo real.
-- [ ] Docker local: `comercial-worker` arranca sin crashear dentro del contenedor — **sigue
-      bloqueado** por el build roto de la imagen (independiente de esta spec, ver arriba)
-- [ ] Docker local: bot de WhatsApp responde igual que antes (no se tocó su código; sin poder
-      levantar el contenedor tampoco se pudo repetir esta prueba en Docker)
-- [ ] `operational-cycle.jsonl`: `siissPointsSync` aparece y respeta la cadencia de 60 min (no
-      se pudo correr `run-operational-cycle.js` completo — requiere IMAP/Trello configurados;
-      la lógica del paso nuevo es idéntica en forma a `crmPointsSync`, ya probado en spec 0012)
+- [x] **Fix del `Dockerfile` (Debian bullseye EOL) verificado con build real**: `docker compose
+      up -d --build comercial-bot comercial-worker` construyó ambas imágenes sin error
+      (`apt-get install` completo, incluye `iputils-ping`).
+- [x] Docker local: `comercial-worker` arranca sin crashear dentro del contenedor — logs reales:
+      `[points-ping-worker] iniciado...` y, un minuto después,
+      `{"ok":true,"scanned":370,"active":258,"duration":19}` (variación de `active` vs. la
+      corrida en host es normal: pasó más tiempo, más puntos habían cerrado).
+- [x] Docker local: `comercial-bot` sigue funcionando igual — logs del heartbeat de
+      infraestructura (`ping.service.js`) corriendo normal, sin cambios de comportamiento.
+      Contenedores de prueba detenidos y eliminados después de verificar (no se dejaron
+      corriendo junto a la instancia real de WhatsApp, para no duplicar procesamiento).
+- [ ] `operational-cycle.jsonl`: `siissPointsSync` aparece y respeta la cadencia de 60 min — no
+      se pudo correr `run-operational-cycle.js` completo (requiere IMAP/Trello configurados);
+      la lógica del paso nuevo es idéntica en forma a `crmPointsSync`, ya probado en spec 0012
 
 ## Documentación (Definition of Done)
 
@@ -40,7 +47,7 @@ Marcar `[x]` al completar. Mantener actualizado durante toda la tarea.
 
 ## Cierre
 
-- [ ] Mergear primero el PR de `feat/0014-siiss-sync-directo` (spec.md §7)
+- [x] Mergear primero el PR de `feat/0014-siiss-sync-directo` (spec.md §7) — mergeado 2026-09-23 (PR #10)
 - [ ] PR de esta spec abierto y enlazado en `spec.md`
 - [ ] CI verde
 - [ ] Merge a `main`

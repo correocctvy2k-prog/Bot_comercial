@@ -26,6 +26,7 @@ sin dependencias, más barata que acoplar los despliegues.
 
 | Archivo | Cambio | Riesgo |
 |---------|--------|--------|
+| `Dockerfile` (raíz) | Fix de bloqueador encontrado en verificación: `apt-get` fallaba (Debian bullseye EOL). Activa las líneas `snapshot.debian.org` ya presentes (comentadas) en la imagen base | bajo — verificado con build real, mismas versiones de paquete |
 | `monitor_puntos_wpp.py` | Nuevo `if args.tipo == "ping_only":` dentro de `main()`, antes de `build_report_text` — corta temprano, sin tocar el resto | bajo (aditivo, no modifica rutas existentes) |
 | `src/services/businessHours.service.js` | Nuevo. `isWithinPointsMonitorWindow(date, env)` | bajo |
 | `src/worker.js` | Nuevo. `node-cron` cada minuto + spawn de `monitor_puntos_wpp.py --tipo ping_only`, con guard `running` anti-solape | bajo — proceso separado de `comercial-bot` |
