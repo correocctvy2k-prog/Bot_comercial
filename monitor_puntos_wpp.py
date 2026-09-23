@@ -618,7 +618,17 @@ def main():
         results_df = scan_from_df_parallel(df_targets)
         
         duration = time.time() - start_ts
-        
+
+        # spec 0015: modo dedicado para el worker de monitoreo en tiempo real (src/worker.js) --
+        # solo pinguea y sincroniza Supabase, sin reporte ni gráfico (eso es exclusivo del
+        # flujo de WhatsApp bajo demanda, que sigue usando --tipo standard/zona sin cambios).
+        if args.tipo == "ping_only":
+            update_supabase_results(results_df)
+            valid = results_df[~results_df["excluded"]]
+            summary = {"ok": True, "scanned": int(len(valid)), "active": int(valid["active"].sum()), "duration": round(duration, 1)}
+            print(json.dumps(summary, ensure_ascii=False))
+            return
+
         # REPORTE
         report_text = build_report_text(results_df, duration, zona)
         
