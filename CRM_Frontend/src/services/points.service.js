@@ -362,6 +362,15 @@ export const pointsService = {
         }
     },
 
+    // spec 0014: sincroniza siiss_active/siiss_last_sync con SIIS en vivo vía cctv-api,
+    // sin depender de Asamblea (módulo en vías de desaparecer).
+    async syncSiiss() {
+        const resp = await fetch(`${CCTV_API_BASE}/api/cctv/siiss/sync-points`, { method: 'POST' });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(json.error || 'Error al sincronizar con SIISS');
+        return json;
+    },
+
     async triggerDailyMonitor() {
         try {
             const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';

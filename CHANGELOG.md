@@ -10,6 +10,29 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CRM_Frontend / CCTV — Sincronización directa SIISS → Operación de Puntos
+`specs/0014-siiss-sync-directo/`
+- **Problema:** el botón "Sync SIISS" de Operación de Puntos (`Points.jsx`) llamaba
+  `POST localhost:3001/api/siiss/sync`, ruta que nunca existió en `comercial-bot` (404 real).
+  La lógica de cruce SIIS↔`puntos_venta` vivía sin usar en `Asamblea/src/services/siiss.service.js`
+  (con credenciales por defecto hardcodeadas, riesgo ya documentado en
+  `cctv-automation-final/docs/SIIS_INTEGRATION_MAP.md`). Decisión del usuario: no depender de
+  `Asamblea` (módulo en vías de desaparecer).
+- **`platform/siis-points-sync.js`** (con tests): `diffSiissStatus` (puro, cruce exacto
+  `estacodi`↔`siiss_id`; `siiss_active` solo se sobreescribe cuando SIIS reporta `estaping`
+  conocido, para no convertir "sin dato" en un falso inactivo) + `syncSiissPoints` (I/O:
+  reutiliza el cliente SIIS seguro ya existente `platform/siis-client.js`/`platform/siis.js`,
+  lee/escribe `puntos_venta` en Supabase igual que `scripts/sync-crm-points.js` de spec 0012).
+- **`scripts/sync-siiss-points.js`** (`--dry-run` disponible) + ruta nueva
+  `POST /api/cctv/siiss/sync-points` en `cctv-api` (puerto 3003, ya tenía
+  `SIISS_URL/USER/PASS` y `SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY` configurados).
+- `Points.jsx`/`points.service.js`: el botón ahora llama `pointsService.syncSiiss()` vía
+  `VITE_CCTV_API_BASE` en vez de `VITE_BACKEND_URL:3001`.
+- Verificado con datos reales en Docker local: **366 estaciones SIIS, 358 puntos con
+  `siiss_id`, 351 coincidencias, 351 actualizados en Supabase, 0 errores** (~64s por los
+  `PATCH` secuenciales — aceptable para un botón manual, no automático).
+- `cctv-automation-final`: `npm test` **96/96**.
+
 ### CCTV — Sincronización Operación de Puntos ↔ Seguridad Electrónica
 `specs/0012-sync-puntos-cctv/`
 - **Problema:** "Operación de Puntos" (Supabase `puntos_venta`) y "Seguridad Electrónica"
