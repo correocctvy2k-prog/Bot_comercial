@@ -15,6 +15,7 @@ const { loadWindowConfig } = require('../platform/window-config');
 const { normalizeResolveInput, loadActiveResolutions, insertResolution, reopenResolutions } = require('../platform/notification-resolutions');
 const { buildZoneBoards } = require('../platform/zone-boards');
 const { syncSiissPoints } = require('../platform/siis-points-sync');
+const { getExcelLockStatus } = require('../platform/excel-lock-status');
 const { runtimePaths, ensureRuntimeDirectories } = require('../config/runtime-paths');
 
 ensureRuntimeDirectories();
@@ -29,6 +30,9 @@ db.exec(`CREATE TABLE IF NOT EXISTS cctv_location_overrides(
 )`);
 const host = process.env.CCTV_API_HOST || '127.0.0.1';
 const port = Number(process.env.CCTV_API_PORT || 3003);
+// spec 0016: ruta de red (montada vía CIFS en el host) del Excel de mantenimiento. Si no está
+// configurada, la pestaña Mantenimiento simplemente no muestra el panel de sincronización.
+const MAINTENANCE_EXCEL_PATH = process.env.MAINTENANCE_EXCEL_PATH || null;
 const allowedOrigins = new Set(['http://127.0.0.1:5174', 'http://localhost:5174', 'http://127.0.0.1:5173', 'http://localhost:5173']);
 function isAllowedOrigin(origin) {
   if (!origin) return false;
@@ -539,6 +543,33 @@ function syncStatusData(){
   return {generatedAt:new Date().toISOString(),overall:sources.some(x=>x.status==='ERROR')?'ERROR':sources.some(x=>x.status==='STALE'||x.status==='NO_DATA')?'ATTENTION':'HEALTHY',cycleStatus:cycle?.status||'NO_DATA',sources};
 }
 
+// spec 0016: estado del Excel de mantenimiento (¿configurado?, ¿accesible?, ¿bloqueado por
+// alguien ahora mismo?) para el panel nuevo de la pestaña Mantenimiento.
+async function excelMaintenanceStatusData(){
+  if(!MAINTENANCE_EXCEL_PATH) return {configured:false};
+  const lastSync=db.prepare("SELECT action,occurred_at,after_json FROM audit_log WHERE entity_type='EXCEL_MAINTENANCE_CELL' ORDER BY occurred_at DESC LIMIT 1").get();
+  let accessible=true,accessError=null;
+  try{ await fs.promises.access(MAINTENANCE_EXCEL_PATH, fs.constants.R_OK|fs.constants.W_OK); }
+  catch(error){ accessible=false; accessError=error.code||error.message; }
+  let lockStatus={locked:false,lockedBy:null};
+  if(accessible){ try{ lockStatus=await getExcelLockStatus(MAINTENANCE_EXCEL_PATH); }catch{} }
+  return {
+    configured:true,
+    path:MAINTENANCE_EXCEL_PATH,
+    accessible,
+    accessError,
+    locked:lockStatus.locked,
+    lockedBy:lockStatus.lockedBy,
+    lastSyncAt:lastSync?.occurred_at||null,
+    lastSyncStatus:lastSync?.action||null,
+  };
+}
+
+function excelMaintenanceHistoryData(limit=50){
+  const rows=db.prepare("SELECT id,action,occurred_at,before_json,after_json FROM audit_log WHERE entity_type='EXCEL_MAINTENANCE_CELL' ORDER BY occurred_at DESC LIMIT ?").all(Math.max(1,Math.min(200,Number(limit)||50)));
+  return {items:rows.map(row=>{let detail={};try{detail=JSON.parse(row.action==='SYNCED'?row.after_json:row.after_json)||{}}catch{}return {id:row.id,action:row.action,occurredAt:row.occurred_at,...detail};})};
+}
+
 const server = http.createServer(async (req,res) => {
   const origin=req.headers.origin;
   if(req.method==='OPTIONS') return send(res,204,{},origin);
@@ -572,6 +603,8 @@ const server = http.createServer(async (req,res) => {
     const projectScopeMatch=url.pathname.match(/^\/api\/cctv\/project-scope\/([^/]+)\/decision$/);
     if(req.method==='POST'&&projectScopeMatch){const scopeItemId=decodeURIComponent(projectScopeMatch[1]),body=await readBody(req),actor=req.headers['x-actor']||'local-operator',decision=String(body.decision||''),notes=String(body.notes||'').slice(0,500)||null,allowed=new Set(['INCLUDED','DUPLICATE','NOT_APPLICABLE']);if(!allowed.has(decision))return send(res,400,{error:'Decisión de alcance inválida'},origin);const item=projectData().scopeItems.find(row=>row.scopeItemId===scopeItemId);if(!item)return send(res,404,{error:'Intervención de proyecto no encontrada'},origin);const previous=db.prepare('SELECT * FROM project_scope_decisions WHERE scope_item_id=?').get(scopeItemId)||null,now=new Date().toISOString(),correlationId=crypto.randomUUID();db.exec('BEGIN IMMEDIATE');try{db.prepare(`INSERT INTO project_scope_decisions(scope_item_id,decision,decided_by,decided_at,notes) VALUES(?,?,?,?,?) ON CONFLICT(scope_item_id) DO UPDATE SET decision=excluded.decision,decided_by=excluded.decided_by,decided_at=excluded.decided_at,notes=excluded.notes`).run(scopeItemId,decision,actor,now,notes);db.prepare(`INSERT INTO audit_log(id,entity_type,entity_id,action,actor,occurred_at,source_system,before_json,after_json,correlation_id) VALUES(?,?,?,?,?,?,?,?,?,?)`).run(crypto.randomUUID(),'PROJECT_SCOPE_ITEM',scopeItemId,'PROJECT_SCOPE_DECIDED',actor,now,'SKYLAB_CCTV',JSON.stringify(previous),JSON.stringify({decision,notes,target:item.target,sourceCell:item.sourceCell}),correlationId);db.exec('COMMIT');}catch(error){db.exec('ROLLBACK');throw error;}return send(res,200,{ok:true,scopeItemId,decision,adjustedScope:projectData().summary.adjustedScope,remainingVariance:projectData().summary.remainingVariance},origin);}
     if(req.method==='GET'&&url.pathname==='/api/cctv/maintenance') return send(res,200,trelloMaintenanceData(),origin);
+    if(req.method==='GET'&&url.pathname==='/api/cctv/maintenance/excel-status') return send(res,200,await excelMaintenanceStatusData(),origin);
+    if(req.method==='GET'&&url.pathname==='/api/cctv/maintenance/excel-history') return send(res,200,excelMaintenanceHistoryData(url.searchParams.get('limit')),origin);
     const supportImageMatch=url.pathname.match(/^\/api\/cctv\/support\/([^/]+)\/image$/);
     if(req.method==='GET'&&supportImageMatch){const sourceCardId=decodeURIComponent(supportImageMatch[1]);if(!/^[a-f0-9]{20,40}$/i.test(sourceCardId))return send(res,400,{error:'Identificador inválido'},origin);const row=db.prepare("SELECT payload_json FROM support_cards WHERE source_system='TRELLO_SUPPORT' AND source_card_id=? AND active=1").get(sourceCardId);if(!row)return send(res,404,{error:'Tarjeta no encontrada'},origin);let payload={};try{payload=JSON.parse(row.payload_json||'{}')}catch{}const image=payload.cachedImage,fileName=path.basename(String(image?.fileName||''));if(!fileName||fileName!==image.fileName)return send(res,404,{error:'La tarjeta no tiene imagen cacheada'},origin);const filePath=path.join(supportImageDir,fileName);if(!fs.existsSync(filePath))return send(res,404,{error:'Imagen no disponible'},origin);return sendImage(res,filePath,image.mimeType||'image/jpeg',origin);}
     if(req.method==='GET'&&url.pathname==='/api/cctv/support') return send(res,200,supportData(),origin);

@@ -10,6 +10,37 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CCTV — Sincronización Trello → Excel de mantenimiento
+`specs/0016-mantenimiento-excel-sync/`
+- **Problema:** el Excel de seguimiento de mantenimiento nunca se actualizaba, pese a que la
+  pestaña "Mantenimiento" del CRM sí refleja los cambios de Trello casi en tiempo real.
+  Investigación: existían **dos integraciones de Trello desconectadas** — la UI real lee de
+  `cctv-automation-final` (spec 0008, sondeo directo cada ~1 min), mientras que la lógica de
+  escritura a Excel vivía en un proyecto aparte (`CRM_Frontend/Table Trello/backend/`, con su
+  propio Kanban) que dependía de un webhook nunca confirmado activo. Ver `LL-0005`.
+- **`platform/excel-maintenance-sync.js`** (con tests): puerto funcional de la lógica ya
+  probada de `Table Trello/backend` (matching difuso de puntos, recálculo de fórmulas vía
+  manipulación directa del XML del `.xlsx` con JSZip, detección de bloqueo `EBUSY`/`EPERM`),
+  sin acoplar a esa base SQLite — reutiliza en cambio el `audit_log` de `cctv-automation-final`.
+- **`platform/excel-lock-status.js`** (con tests): detecta si el archivo está abierto (archivo
+  `~$<nombre>.xlsx` que crea Excel) y, mejor esfuerzo, quién lo tiene abierto. Solo informa —
+  nunca fuerza el cierre remoto (podría corromper ediciones en curso).
+- **`import-trello-maintenance.js`**: al detectar que un ítem cambió de estado
+  (completado ↔ pendiente) con `location_id` ya resuelto, sincroniza la celda en Excel usando
+  el nombre/zona **canónicos** de `locations` (más confiable que el nombre crudo de Trello del
+  sistema viejo). No crítico: si falla, se registra en `audit_log` y el ciclo de Trello sigue.
+- Nuevas rutas `GET /api/cctv/maintenance/excel-status` y `.../excel-history`.
+- `CctvModule.jsx` (pestaña Mantenimiento): panel con la ruta de red + "copiar ruta" + aviso de
+  bloqueo ("Abierto por FULANO — ciérralo para que el bot pueda sincronizar").
+- `schema.sql`: se movió aquí la definición de `audit_log` (antes solo existía vía un script de
+  migración de una sola corrida — una base fresca nunca la tenía).
+- `cctv-automation-final`: `npm test` **111/111** (12 nuevos). Verificado con build y datos
+  reales en Docker local (263 ítems de Trello, sin errores).
+- **Pendiente para producción:** montar el recurso de red (CIFS) en `.65` — runbook en
+  `docs/operacion/montaje-cifs-excel-mantenimiento.md`. Sin ese montaje,
+  `MAINTENANCE_EXCEL_PATH` queda vacía y la sincronización a Excel se omite en silencio (el
+  resto del pipeline de Trello sigue igual).
+
 ### Bot Comercial / CCTV — Monitor de puntos en tiempo real + sync SIISS horario
 `specs/0015-monitor-puntos-tiempo-real/`
 - **Problema:** el estado "BOT" de cada punto (`puntos_venta.active`/`latency`/
