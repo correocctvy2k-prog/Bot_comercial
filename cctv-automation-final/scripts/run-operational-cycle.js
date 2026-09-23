@@ -7,6 +7,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { DatabaseSync } = require('node:sqlite');
 const { runtimePaths } = require('../config/runtime-paths');
+const { isWithinOperationalWindow } = require('../platform/business-hours');
 
 const root = path.resolve(__dirname, '..');
 const runtimeDir = runtimePaths.logDir;
@@ -147,9 +148,17 @@ try {
   const crmPointsSync = crmPointsSyncSchedule.due
     ? run(path.join('scripts', 'sync-crm-points.js'), 60000)
     : { script: 'scripts/sync-crm-points.js', status: 0, skipped: true, ...crmPointsSyncSchedule };
+  // spec 0015: mantiene puntos_venta.siiss_active/siiss_last_sync frescos sin depender del
+  // botón manual (spec 0014). No crítico, y solo corre en horario de operación para no
+  // gastar la API de SIIS fuera de él (a diferencia de crmPointsSync, que sí es 24/7).
+  const siissPointsSyncSchedule = operationalSourceDue('siissPointsSync', Number(process.env.SIISS_POINTS_SYNC_INTERVAL_MINUTES) || 60);
+  const withinWindow = isWithinOperationalWindow();
+  const siissPointsSync = siissPointsSyncSchedule.due && withinWindow
+    ? run(path.join('scripts', 'sync-siiss-points.js'), 60000)
+    : { script: 'scripts/sync-siiss-points.js', status: 0, skipped: true, ...siissPointsSyncSchedule, outsideWindow: !withinWindow };
   const criticalOk = email.status === 0 && siis.status === 0;
-  const status = !criticalOk ? 'PARTIAL_FAILURE' : maintenance.status === 0 && support.status === 0 && visitors.status === 0 && closure.status === 0 && crmPointsSync.status === 0 ? 'SUCCESS' : 'SUCCESS_WITH_WARNINGS';
-  audit({ status, email, visitors, siis, maintenance, support, closure, crmPointsSync });
+  const status = !criticalOk ? 'PARTIAL_FAILURE' : maintenance.status === 0 && support.status === 0 && visitors.status === 0 && closure.status === 0 && crmPointsSync.status === 0 && siissPointsSync.status === 0 ? 'SUCCESS' : 'SUCCESS_WITH_WARNINGS';
+  audit({ status, email, visitors, siis, maintenance, support, closure, crmPointsSync, siissPointsSync });
   if (!criticalOk) process.exitCode = 1;
 } catch (error) {
   audit({ status: 'ERROR', error: error.message });

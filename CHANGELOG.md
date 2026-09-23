@@ -10,6 +10,35 @@ a una versión fechada.
 
 ## [No publicado]
 
+### Bot Comercial / CCTV — Monitor de puntos en tiempo real + sync SIISS horario
+`specs/0015-monitor-puntos-tiempo-real/`
+- **Problema:** el estado "BOT" de cada punto (`puntos_venta.active`/`latency`/
+  `last_online_at`) solo se actualizaba cuando alguien pedía un reporte por WhatsApp — sin
+  cron ni intervalo. Se detectó con un caso real (HELADERIA SEMBRADOR con IP desactualizada)
+  que seguía mostrando "caído" días después de corregir la IP, porque nadie había vuelto a
+  pedir un reporte. Hallazgo aparte: el contenedor `comercial-worker` (`docker-compose.yml`)
+  apuntaba a `src/worker.js`, un archivo que **nunca existió** en el repo — bug dormido.
+- **`src/worker.js`** (nuevo, resuelve el bug dormido): `node-cron` (ya era dependencia, sin
+  uso previo) cada minuto, en horario de operación (05:30-22:30 América/Bogotá,
+  configurable), dispara `monitor_puntos_wpp.py --json --tipo ping_only` — proceso 100%
+  separado del bot de WhatsApp (`comercial-bot`), con guard anti-solape si un ciclo tarda
+  más de un minuto.
+- **`monitor_puntos_wpp.py`**: nuevo modo `--tipo ping_only`, aditivo — reutiliza
+  `load_targets_from_supabase`/`scan_from_df_parallel`/`update_supabase_results` tal cual,
+  sin generar reporte ni gráfico. El flujo de WhatsApp (`--tipo standard`/zona) no cambia.
+- **`src/services/businessHours.service.js`** / **`cctv-automation-final/platform/
+  business-hours.js`**: ventana de horario, dos copias independientes (proyectos Node
+  separados, ver spec 0015 §6) — no se comparte código entre `comercial-bot` y
+  `cctv-automation-final`.
+- **`run-operational-cycle.js`**: nuevo paso `siissPointsSync` (`SIISS_POINTS_SYNC_INTERVAL_
+  MINUTES`, default 60), gateado también por horario de operación, corre
+  `scripts/sync-siiss-points.js` (spec 0014) automáticamente en vez de depender solo del
+  botón manual.
+- `cctv-automation-final`: `npm test` **99/99** (3 nuevos de `business-hours.test.js`).
+- Investigación previa confirmó que la API real de SIIS (`estacionesByPing`) **no expone
+  ninguna IP** — no es posible comparar "la IP de SIISS" contra `puntos_venta.ip`
+  directamente; la discordancia sigue siendo entre dos resultados de ping independientes.
+
 ### CRM_Frontend / CCTV — Sincronización directa SIISS → Operación de Puntos
 `specs/0014-siiss-sync-directo/`
 - **Problema:** el botón "Sync SIISS" de Operación de Puntos (`Points.jsx`) llamaba
