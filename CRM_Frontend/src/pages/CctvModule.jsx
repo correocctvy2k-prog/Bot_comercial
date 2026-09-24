@@ -3559,11 +3559,12 @@ function ExcelSyncPanel() {
         </div>
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2">
-        {status.locked
+        {/* accessible === null: este entorno no verifica el archivo (sin red hacia el
+            recurso compartido) -- solo se ofrece copiar la ruta, sin badge de estado. */}
+        {status.accessible === true && (status.locked
           ? <Badge variant="outline" className="gap-1 border-amber-500/25 text-amber-300"><Lock size={11}/> Bloqueado{status.lockedBy ? ` por ${status.lockedBy}` : ''}</Badge>
-          : status.accessible
-            ? <Badge variant="outline" className="border-emerald-500/25 text-emerald-300">Disponible para el bot</Badge>
-            : <Badge variant="outline" className="border-rose-500/25 text-rose-300">No accesible ({status.accessError || 'sin detalle'})</Badge>}
+          : <Badge variant="outline" className="border-emerald-500/25 text-emerald-300">Disponible para el bot</Badge>)}
+        {status.accessible === false && <Badge variant="outline" className="border-rose-500/25 text-rose-300">No accesible ({status.accessError || 'sin detalle'})</Badge>}
         <Button size="sm" variant="outline" onClick={copyPath}><Copy size={13} className="mr-1.5"/>{copied ? 'Copiada' : 'Copiar ruta'}</Button>
       </div>
     </div>

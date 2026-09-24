@@ -543,19 +543,26 @@ function syncStatusData(){
   return {generatedAt:new Date().toISOString(),overall:sources.some(x=>x.status==='ERROR')?'ERROR':sources.some(x=>x.status==='STALE'||x.status==='NO_DATA')?'ATTENTION':'HEALTHY',cycleStatus:cycle?.status||'NO_DATA',sources};
 }
 
-// spec 0016: estado del Excel de mantenimiento (¿configurado?, ¿accesible?, ¿bloqueado por
-// alguien ahora mismo?) para el panel nuevo de la pestaña Mantenimiento.
+// spec 0016 + fix (2026-09-24): estado del Excel de mantenimiento para el panel de la pestaña
+// Mantenimiento. `.65` no tiene ruta de red hacia el recurso SMB (subred distinta, sin firewall
+// abierto entre ellas -- fuera del alcance de esta sesión), así que el backend nunca puede
+// verificar acceso/bloqueo de verdad ahí. Se separa la ruta "solo para mostrar y copiar"
+// (MAINTENANCE_EXCEL_DISPLAY_PATH) de la ruta real de lectura/escritura (MAINTENANCE_EXCEL_PATH,
+// solo tiene sentido si algún día se monta CIFS): sin esta última, `accessible`/`locked` quedan
+// en `null` ("no verificado") en vez de intentar un `fs.access` que siempre fallaría.
 async function excelMaintenanceStatusData(){
-  if(!MAINTENANCE_EXCEL_PATH) return {configured:false};
+  const displayPath=process.env.MAINTENANCE_EXCEL_DISPLAY_PATH||MAINTENANCE_EXCEL_PATH||null;
+  if(!displayPath) return {configured:false};
   const lastSync=db.prepare("SELECT action,occurred_at,after_json FROM audit_log WHERE entity_type='EXCEL_MAINTENANCE_CELL' ORDER BY occurred_at DESC LIMIT 1").get();
-  let accessible=true,accessError=null;
-  try{ await fs.promises.access(MAINTENANCE_EXCEL_PATH, fs.constants.R_OK|fs.constants.W_OK); }
-  catch(error){ accessible=false; accessError=error.code||error.message; }
-  let lockStatus={locked:false,lockedBy:null};
-  if(accessible){ try{ lockStatus=await getExcelLockStatus(MAINTENANCE_EXCEL_PATH); }catch{} }
+  let accessible=null,accessError=null,lockStatus={locked:false,lockedBy:null};
+  if(MAINTENANCE_EXCEL_PATH){
+    try{ await fs.promises.access(MAINTENANCE_EXCEL_PATH, fs.constants.R_OK|fs.constants.W_OK); accessible=true; }
+    catch(error){ accessible=false; accessError=error.code||error.message; }
+    if(accessible){ try{ lockStatus=await getExcelLockStatus(MAINTENANCE_EXCEL_PATH); }catch{} }
+  }
   return {
     configured:true,
-    path:MAINTENANCE_EXCEL_PATH,
+    path:displayPath,
     accessible,
     accessError,
     locked:lockStatus.locked,

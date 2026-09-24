@@ -36,10 +36,16 @@ a una versión fechada.
   migración de una sola corrida — una base fresca nunca la tenía).
 - `cctv-automation-final`: `npm test` **111/111** (12 nuevos). Verificado con build y datos
   reales en Docker local (263 ítems de Trello, sin errores).
-- **Pendiente para producción:** montar el recurso de red (CIFS) en `.65` — runbook en
-  `docs/operacion/montaje-cifs-excel-mantenimiento.md`. Sin ese montaje,
-  `MAINTENANCE_EXCEL_PATH` queda vacía y la sincronización a Excel se omite en silencio (el
-  resto del pipeline de Trello sigue igual).
+- **Actualización 2026-09-24 — montaje CIFS descartado, sincronización automática diferida:**
+  `.65` no tiene ruta de red hacia la subred del archivo (`172.16.101.0/24`) — requiere abrir
+  firewall/ruta entre subredes, fuera de alcance de esta sesión y decisión del usuario de no
+  perseguirlo por ahora. `MAINTENANCE_EXCEL_PATH` queda vacía indefinidamente en `.65` (la
+  sincronización automática nunca se dispara, sin cambios de código). Se agrega
+  `MAINTENANCE_EXCEL_DISPLAY_PATH` (nueva, solo para mostrar/copiar la ruta) para que el botón
+  de la pestaña Mantenimiento siga sirviendo — abrir el archivo real a mano desde la máquina del
+  usuario, que sí tiene acceso a esa red. `excel-status` distingue `accessible:null` ("no
+  verificado") de `accessible:false` ("se intentó y falló"); el panel ya no muestra badges de
+  disponible/bloqueado cuando no hay verificación real. **Desplegado y verificado en `.65`.**
 
 ### Bot Comercial / CCTV — Monitor de puntos en tiempo real + sync SIISS horario
 `specs/0015-monitor-puntos-tiempo-real/`

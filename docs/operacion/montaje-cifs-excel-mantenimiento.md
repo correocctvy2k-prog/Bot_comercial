@@ -1,9 +1,18 @@
 # Runbook — montar el Excel de mantenimiento (CIFS) en `.65`
 
+> **⚠️ Descartado por ahora (2026-09-24):** al intentar este runbook se encontró que `.65` no
+> tiene ninguna ruta de red hacia la subred `172.16.101.0/24` donde vive el archivo (`ping` y
+> puerto 445 no alcanzables; `ip route` de `.65` solo conoce `192.168.8.0/23`). Eso no se
+> arregla desde `.65` — requiere que quien administra el router/firewall entre esas dos subredes
+> abra la ruta y el tráfico SMB. Decisión del usuario: no perseguirlo por ahora. La pestaña
+> Mantenimiento usa en cambio `MAINTENANCE_EXCEL_DISPLAY_PATH` (solo para mostrar/copiar la
+> ruta, sin que el backend la toque) — ver spec 0016, "Actualización 2026-09-24". Retomar este
+> runbook solo si esa ruta de red llega a habilitarse.
+
 Contexto: `specs/0016-mantenimiento-excel-sync/`. El Excel de seguimiento vive en un recurso
 compartido de Windows (`\\ganepalmir\dpto.informatica\Director.Informatica\...\2026 programacion
 anual CCTV.xlsx`). `.65` es Linux y hoy no tiene forma de alcanzar esa ruta. Estos pasos se
-ejecutan **en `.65` por SSH** — esta sesión de Claude no tiene acceso SSH a ese servidor.
+ejecutan **en `.65` por SSH**.
 
 ## 1. Instalar cliente CIFS
 
