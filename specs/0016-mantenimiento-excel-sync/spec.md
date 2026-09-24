@@ -1,13 +1,36 @@
 # SPEC 0016 — Sincronización Trello → Excel de mantenimiento CCTV
 
-- **Estado:** Implementada y verificada en Docker local (2026-09-23); pendiente el montaje CIFS
-  en `.65` (runbook entregado) antes de poder desplegarse con la sincronización a Excel activa
+- **Estado:** Desplegada en `.65` (2026-09-24). Sincronización automática a Excel **diferida
+  indefinidamente**: ver "Actualización 2026-09-24" abajo — el botón de la pestaña Mantenimiento
+  sí está activo (ruta + copiar).
 - **Autor:** Claude (a pedido de ia_gerencia@ganepalmira.com.co)
 - **Fecha:** 2026-09-23
 - **Módulos afectados:** `cctv-automation-final` (pipeline de mantenimiento, API), CRM_Frontend
   (`CctvModule.jsx`, pestaña Mantenimiento), infraestructura de `.65` (montaje de red)
-- **Rama:** `feat/0016-mantenimiento-excel-sync`
-- **PR:** <pendiente>
+- **Rama:** `feat/0016-mantenimiento-excel-sync` (mergeada), seguimiento en
+  `fix/0016-excel-boton-sin-monitoreo`
+- **PR:** #12 (mergeado); fix de seguimiento sin PR numerado propio
+
+## Actualización 2026-09-24 — sin montaje CIFS, solo botón
+
+Al intentar el runbook de montaje CIFS (`docs/operacion/montaje-cifs-excel-mantenimiento.md`) se
+encontró que **`.65` no tiene ninguna ruta de red hacia la subred `172.16.101.0/24`** donde vive
+el archivo (`ping`/puerto 445 no alcanzables, `ip route` solo conoce `192.168.8.0/23`) — no es
+algo que se resuelva desde `.65` ni desde esta sesión, requiere abrir la ruta/firewall entre
+subredes a nivel de red, fuera de alcance aquí.
+
+Decisión del usuario: no perseguir esa configuración de red. Se simplifica el alcance —
+`MAINTENANCE_EXCEL_PATH` (ruta real, usada para leer/escribir) queda **vacía indefinidamente** en
+`.65`, así que la sincronización automática Trello→Excel nunca se dispara ahí (el código ya la
+omite en silencio sin esa variable, sin cambios). Se agrega `MAINTENANCE_EXCEL_DISPLAY_PATH`
+(nueva, solo para mostrar/copiar la ruta en el panel — no requiere que el backend toque el
+archivo) para que el botón "copiar ruta" siga sirviendo su propósito original: abrir el archivo
+real a mano desde la máquina del usuario, que sí tiene acceso directo a esa red.
+
+`excel-status` ahora distingue `accessible: null` ("no verificado, sin ruta de red") de
+`accessible: false` ("se intentó y falló") — evita mostrarle al usuario un badge de error por
+algo que nunca se intentó. El panel del frontend deja de mostrar cualquier badge de
+disponible/bloqueado cuando no hay verificación real.
 
 ## 1. Problema / oportunidad
 
