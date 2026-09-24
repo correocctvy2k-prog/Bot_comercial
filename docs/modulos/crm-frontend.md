@@ -39,6 +39,7 @@ CRM_Frontend/
 | `CRM_Frontend/src/pages/MonitoringDashboard.jsx` | Detalles e historial de Monitoreo IT |
 | `CRM_Frontend/src/pages/Points.jsx` | Operación de Puntos (nodos, zonas, mapa, programación/alertas, analítica) |
 | `CRM_Frontend/src/services/points.service.js` | Cliente de `puntos_venta` + `syncSiiss()` (spec 0014: sincronización SIISS vía `cctv-api`, sin depender de Asamblea) |
+| `CRM_Frontend/src/pages/CctvModule.jsx` | Seguridad Electrónica / CCTV — pestaña Mantenimiento incluye `ExcelSyncPanel` (spec 0016: ruta + copiar + estado de bloqueo del Excel de seguimiento) |
 | `CRM_Frontend/src/services/` | Clientes de API |
 | `CRM_Frontend/public/` | Logos e iconos usados por la UI |
 

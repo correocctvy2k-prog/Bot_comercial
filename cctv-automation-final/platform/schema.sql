@@ -634,3 +634,23 @@ CREATE TABLE IF NOT EXISTS visitor_visits (
 CREATE INDEX IF NOT EXISTS idx_visitor_visits_date ON visitor_visits(report_date,entry_at);
 CREATE INDEX IF NOT EXISTS idx_visitor_visits_key ON visitor_visits(visitor_key,report_date);
 CREATE INDEX IF NOT EXISTS idx_visitor_visits_reason ON visitor_visits(reason,report_date);
+
+-- spec 0016: audit_log ya se usaba en todo api/server.js (y ahora en
+-- import-trello-maintenance.js), pero solo existía vía un script de migración de una sola
+-- corrida (migrate-crm-installations.js) -- una base nueva nunca la tenía. Se mueve aquí
+-- (idéntica, IF NOT EXISTS) para que cualquier base fresca la tenga desde el arranque.
+CREATE TABLE IF NOT EXISTS audit_log (
+  id TEXT PRIMARY KEY,
+  entity_type TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  action TEXT NOT NULL,
+  actor TEXT NOT NULL,
+  occurred_at TEXT NOT NULL,
+  source_system TEXT NOT NULL,
+  before_json TEXT,
+  after_json TEXT,
+  correlation_id TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_log(entity_type,entity_id);
+CREATE INDEX IF NOT EXISTS idx_audit_time ON audit_log(occurred_at);
