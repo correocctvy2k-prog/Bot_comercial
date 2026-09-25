@@ -3534,13 +3534,18 @@ function RealSupport({ support }) {
 // completo (return null) si el entorno no tiene MAINTENANCE_EXCEL_PATH configurada (ej.
 // desarrollo local sin el montaje de red de .65).
 // spec 0016 (compacto, 2026-09-25): un botón con el ícono de Excel + estado chico debajo,
-// sin recuadro ancho ni la ruta completa a la vista. El click intenta abrir el archivo real
-// directo (file://) -- confirmado bloqueado por Edge/Chrome cuando la página es http (no
-// navega, solo loguea "Not allowed to load local resource" en consola, inofensivo). Por eso
-// siempre copia la ruta al portapapeles también, como respaldo garantizado (pegar en el
-// Explorador de Windows). `navigator.clipboard` requiere HTTPS -- este sitio es http, así que
-// no existe en el navegador; se usa el método viejo (textarea oculto + execCommand) que sí
-// funciona sin HTTPS.
+// sin recuadro ancho ni la ruta completa a la vista.
+//
+// El click intenta abrir el archivo con el esquema de enlace oficial de Office
+// ("ms-excel:ofe|u|<url>", documentado por Microsoft para abrir documentos de Office desde
+// una página web) -- a diferencia de un link file:// normal, este SÍ puede activar el
+// controlador registrado de Excel en Windows/Office incluso desde una página http (confirmado
+// que file:// queda bloqueado por Edge/Chrome con "Not allowed to load local resource",
+// independiente del usuario de Windows logueado). Si el navegador no tiene el protocolo
+// registrado (Office no instalado, o el usuario cancela el aviso del navegador), no pasa nada
+// visible -- por eso SIEMPRE se copia la ruta al portapapeles también, como respaldo
+// garantizado. `navigator.clipboard` requiere HTTPS -- este sitio es http, así que se usa el
+// método viejo (textarea oculto + execCommand) que sí funciona sin HTTPS.
 function copyTextFallback(text) {
   const textarea = document.createElement('textarea');
   textarea.value = text;
@@ -3553,6 +3558,13 @@ function copyTextFallback(text) {
   try { ok = document.execCommand('copy'); } catch { /* sin soporte */ }
   document.body.removeChild(textarea);
   return ok;
+}
+
+// \\servidor\recurso\carpeta\archivo.xlsx -> file://servidor/recurso/carpeta/archivo.xlsx
+// (cada segmento percent-encoded), la forma que exige el esquema ms-excel:.
+function uncPathToFileUrl(uncPath) {
+  const segments = uncPath.replace(/^\\\\/, '').split('\\').filter(Boolean);
+  return `file://${segments.map(encodeURIComponent).join('/')}`;
 }
 
 function ExcelSyncPanel() {
@@ -3569,7 +3581,7 @@ function ExcelSyncPanel() {
   if (!status?.configured) return null;
 
   const openFile = async () => {
-    try { window.open(`file://${status.path.replace(/\\/g, '/')}`, '_blank'); } catch { /* bloqueado por el navegador, sigue con el respaldo */ }
+    try { window.location.href = `ms-excel:ofe|u|${uncPathToFileUrl(status.path)}`; } catch { /* Office no registrado, sigue con el respaldo */ }
     let ok = false;
     if (navigator.clipboard?.writeText) {
       try { await navigator.clipboard.writeText(status.path); ok = true; } catch { /* sigue con el respaldo viejo */ }
