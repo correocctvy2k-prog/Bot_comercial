@@ -25,6 +25,9 @@ a una versión fechada.
   verificación (dos llamadas de red por carga de página sobre el montaje CIFS) era además la causa
   de que el botón tardara en aparecer al refrescar — `excel-status` ahora responde al instante,
   sin tocar la red.
+- **Desplegado y verificado en `.65` el 2026-09-25** (confirmado por HTTP directo desde esta
+  máquina, sin depender de capturas de pantalla). El primer intento de deploy no tomó porque
+  apuntaba al checkout equivocado en `.65` — ver `LL-0006-deploy-65-ruta-anidada.md`.
 
 ### CCTV — Montaje CIFS confirmado + botón de Excel compacto
 `specs/0016-mantenimiento-excel-sync/`

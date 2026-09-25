@@ -1,16 +1,21 @@
 # SPEC 0016 — Sincronización Trello → Excel de mantenimiento CCTV
 
-- **Estado:** Desplegada en `.65`. Montaje CIFS finalmente resuelto (ver "Actualización
-  2026-09-25" abajo, que reemplaza la nota "sin montaje" de 2026-09-24) — la sincronización
-  automática Trello→Excel **sí está activa y verificada en producción con datos reales**. El
-  botón de la pestaña Mantenimiento se simplificó definitivamente a solo copiar la ruta de red.
+- **Estado:** **CERRADA.** Desplegada en `.65` y verificada en producción el 2026-09-25 (incluida
+  la corrección final del botón, PR #19 — confirmado por HTTP directo: `excel-status` ya solo
+  responde `{configured, path}` y el bundle en vivo ya no contiene el flujo `.url` ni las cadenas
+  viejas). Montaje CIFS finalmente resuelto (ver "Actualización 2026-09-25" abajo, que reemplaza
+  la nota "sin montaje" de 2026-09-24) — la sincronización automática Trello→Excel **sí está
+  activa y verificada en producción con datos reales**. El botón de la pestaña Mantenimiento se
+  simplificó definitivamente a solo copiar la ruta de red. Ver `LL-0006` (deploy inicial apuntó
+  al checkout equivocado en `.65`, resuelto).
 - **Autor:** Claude (a pedido de ia_gerencia@ganepalmira.com.co)
 - **Fecha:** 2026-09-23
 - **Módulos afectados:** `cctv-automation-final` (pipeline de mantenimiento, API), CRM_Frontend
   (`CctvModule.jsx`, pestaña Mantenimiento), infraestructura de `.65` (montaje de red)
 - **Rama:** `feat/0016-mantenimiento-excel-sync` (mergeada), seguimiento en
-  `fix/0016-excel-boton-sin-monitoreo` (PR #13-#17) y `fix/0016-simplificar-solo-copiar` (final)
-- **PR:** #12 (mergeado); fixes de seguimiento #13-#18 y el de cierre, sin PR numerado propio
+  `fix/0016-excel-boton-sin-monitoreo` (PR #13-#17) y `fix/0016-simplificar-solo-copiar` (PR #19,
+  final)
+- **PR:** #12, #16, #17, #18, #19 (todos mergeados)
 
 ## Actualización 2026-09-25 — CIFS montado y verificado; botón final: solo copiar ruta
 
