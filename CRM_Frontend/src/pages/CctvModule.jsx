@@ -3535,10 +3535,26 @@ function RealSupport({ support }) {
 // desarrollo local sin el montaje de red de .65).
 // spec 0016 (compacto, 2026-09-25): un botón con el ícono de Excel + estado chico debajo,
 // sin recuadro ancho ni la ruta completa a la vista. El click intenta abrir el archivo real
-// directo (file://) -- funciona en algunos entornos/configuraciones de Windows, pero los
-// navegadores modernos suelen bloquear la navegación file:// iniciada desde una página http.
-// Por eso siempre copia la ruta al portapapeles también, como respaldo garantizado (pegar en
-// el Explorador de Windows).
+// directo (file://) -- confirmado bloqueado por Edge/Chrome cuando la página es http (no
+// navega, solo loguea "Not allowed to load local resource" en consola, inofensivo). Por eso
+// siempre copia la ruta al portapapeles también, como respaldo garantizado (pegar en el
+// Explorador de Windows). `navigator.clipboard` requiere HTTPS -- este sitio es http, así que
+// no existe en el navegador; se usa el método viejo (textarea oculto + execCommand) que sí
+// funciona sin HTTPS.
+function copyTextFallback(text) {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch { /* sin soporte */ }
+  document.body.removeChild(textarea);
+  return ok;
+}
+
 function ExcelSyncPanel() {
   const [status, setStatus] = useState(null), [copied, setCopied] = useState(false);
   useEffect(() => {
@@ -3554,7 +3570,12 @@ function ExcelSyncPanel() {
 
   const openFile = async () => {
     try { window.open(`file://${status.path.replace(/\\/g, '/')}`, '_blank'); } catch { /* bloqueado por el navegador, sigue con el respaldo */ }
-    try { await navigator.clipboard.writeText(status.path); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* clipboard no disponible */ }
+    let ok = false;
+    if (navigator.clipboard?.writeText) {
+      try { await navigator.clipboard.writeText(status.path); ok = true; } catch { /* sigue con el respaldo viejo */ }
+    }
+    if (!ok) ok = copyTextFallback(status.path);
+    if (ok) { setCopied(true); setTimeout(() => setCopied(false), 2000); }
   };
 
   const statusText = status.locked
@@ -3563,7 +3584,7 @@ function ExcelSyncPanel() {
     : status.accessible === false ? 'No accesible'
     : null; // accessible === null: entorno sin verificación real, no se muestra estado
 
-  return <div className="flex flex-col items-start gap-1">
+  return <div className="flex flex-col items-center gap-1">
     <Button size="sm" variant="outline" onClick={openFile} title={status.path} className="gap-1.5">
       <img src="/excel_logo.png" alt="" className="h-4 w-4" />
       {copied ? 'Ruta copiada' : 'Abrir Excel'}
