@@ -3560,11 +3560,14 @@ function copyTextFallback(text) {
   return ok;
 }
 
-// \\servidor\recurso\carpeta\archivo.xlsx -> file://servidor/recurso/carpeta/archivo.xlsx
-// (cada segmento percent-encoded), la forma que exige el esquema ms-excel:.
+// \\servidor\recurso\carpeta\archivo.xlsx -> file://servidor/recurso/carpeta/archivo.xlsx,
+// la forma que exige el esquema ms-excel:. Solo se codifican los espacios (%20) -- confirmado
+// en producción que Windows los decodifica bien, pero NO decodifica correctamente tildes/ñ
+// codificadas como UTF-8 percent-encoded (%C3%B3 etc. quedan literales en el nombre buscado,
+// "archivo no encontrado"). Dejarlas como caracteres Unicode normales sí funciona.
 function uncPathToFileUrl(uncPath) {
   const segments = uncPath.replace(/^\\\\/, '').split('\\').filter(Boolean);
-  return `file://${segments.map(encodeURIComponent).join('/')}`;
+  return `file://${segments.map((segment) => segment.replace(/ /g, '%20')).join('/')}`;
 }
 
 function ExcelSyncPanel() {
