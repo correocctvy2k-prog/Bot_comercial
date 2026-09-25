@@ -10,6 +10,22 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CCTV — Botón de Excel: solo copiar ruta, se quita la detección de bloqueo
+`specs/0016-mantenimiento-excel-sync/`
+- **Abandonado el intento de abrir el Excel con un clic** (`ms-excel:ofe|u|<url>` y luego un
+  acceso directo `.url` descargable): ambos chocan con límites reales del navegador que no se
+  pueden evitar desde el código — Edge percent-codifica la URL al despachar el protocolo externo
+  (rompe tildes/eñe del nombre real del archivo) y un `.url` descargado exige un doble clic aparte
+  del usuario. Decisión del usuario: el botón vuelve a **copiar la ruta de red al portapapeles**
+  únicamente.
+- **Se elimina la detección de "bloqueado por [usuario]"** (`platform/excel-lock-status.js` y su
+  uso en `excel-status`): el panel seguía reportando bloqueo cuando ya no era cierto — se confirmó
+  en el share real que archivos de bloqueo (`~$...xlsx`) de años anteriores seguían presentes sin
+  que nadie tuviera esos libros abiertos, así que la señal no era confiable. Esa misma
+  verificación (dos llamadas de red por carga de página sobre el montaje CIFS) era además la causa
+  de que el botón tardara en aparecer al refrescar — `excel-status` ahora responde al instante,
+  sin tocar la red.
+
 ### CCTV — Montaje CIFS confirmado + botón de Excel compacto
 `specs/0016-mantenimiento-excel-sync/`
 - **Montaje CIFS completado en `.65` (2026-09-24/25) y sincronización automática confirmada
