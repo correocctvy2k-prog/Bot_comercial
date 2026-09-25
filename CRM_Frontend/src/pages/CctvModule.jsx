@@ -21,7 +21,6 @@ import {
   Database,
   HardDrive,
   ImageIcon,
-  Lock,
   MapPin,
   MonitorPlay,
   Radio,
@@ -3534,6 +3533,12 @@ function RealSupport({ support }) {
 // spec 0016: estado de la sincronización Trello -> Excel de mantenimiento. Se omite por
 // completo (return null) si el entorno no tiene MAINTENANCE_EXCEL_PATH configurada (ej.
 // desarrollo local sin el montaje de red de .65).
+// spec 0016 (compacto, 2026-09-25): un botón con el ícono de Excel + estado chico debajo,
+// sin recuadro ancho ni la ruta completa a la vista. El click intenta abrir el archivo real
+// directo (file://) -- funciona en algunos entornos/configuraciones de Windows, pero los
+// navegadores modernos suelen bloquear la navegación file:// iniciada desde una página http.
+// Por eso siempre copia la ruta al portapapeles también, como respaldo garantizado (pegar en
+// el Explorador de Windows).
 function ExcelSyncPanel() {
   const [status, setStatus] = useState(null), [copied, setCopied] = useState(false);
   useEffect(() => {
@@ -3546,29 +3551,28 @@ function ExcelSyncPanel() {
     return () => { active = false; clearInterval(interval); };
   }, []);
   if (!status?.configured) return null;
-  const copyPath = async () => {
+
+  const openFile = async () => {
+    try { window.open(`file://${status.path.replace(/\\/g, '/')}`, '_blank'); } catch { /* bloqueado por el navegador, sigue con el respaldo */ }
     try { await navigator.clipboard.writeText(status.path); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* clipboard no disponible */ }
   };
-  return <div className="overflow-hidden rounded-2xl border border-white/[.08] bg-slate-950/65 p-4">
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-emerald-500/15 bg-emerald-500/10 text-emerald-300"><Database size={18}/></span>
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[.14em] text-slate-500">Excel de seguimiento</p>
-          <p className="truncate font-mono text-[11px] text-slate-300" title={status.path}>{status.path}</p>
-        </div>
-      </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
-        {/* accessible === null: este entorno no verifica el archivo (sin red hacia el
-            recurso compartido) -- solo se ofrece copiar la ruta, sin badge de estado. */}
-        {status.accessible === true && (status.locked
-          ? <Badge variant="outline" className="gap-1 border-amber-500/25 text-amber-300"><Lock size={11}/> Bloqueado{status.lockedBy ? ` por ${status.lockedBy}` : ''}</Badge>
-          : <Badge variant="outline" className="border-emerald-500/25 text-emerald-300">Disponible para el bot</Badge>)}
-        {status.accessible === false && <Badge variant="outline" className="border-rose-500/25 text-rose-300">No accesible ({status.accessError || 'sin detalle'})</Badge>}
-        <Button size="sm" variant="outline" onClick={copyPath}><Copy size={13} className="mr-1.5"/>{copied ? 'Copiada' : 'Copiar ruta'}</Button>
-      </div>
-    </div>
-    {status.locked && <p className="mt-2 text-[10px] text-amber-300/80">Alguien tiene el archivo abierto en Excel — ciérralo para que el bot pueda sincronizar los próximos cambios de Trello.</p>}
+
+  const statusText = status.locked
+    ? `Bloqueado por ${status.lockedBy || 'otro usuario'}`
+    : status.accessible === true ? 'Disponible'
+    : status.accessible === false ? 'No accesible'
+    : null; // accessible === null: entorno sin verificación real, no se muestra estado
+
+  return <div className="flex flex-col items-start gap-1">
+    <Button size="sm" variant="outline" onClick={openFile} title={status.path} className="gap-1.5">
+      <img src="/excel_logo.png" alt="" className="h-4 w-4" />
+      {copied ? 'Ruta copiada' : 'Abrir Excel'}
+    </Button>
+    {statusText && (
+      <span className={`text-[10px] font-semibold ${status.locked ? 'text-amber-300' : status.accessible ? 'text-emerald-300' : 'text-rose-300'}`}>
+        {statusText}
+      </span>
+    )}
   </div>;
 }
 
@@ -3587,8 +3591,7 @@ function RealMaintenance({ maintenance, onChanged }) {
   const visibleItems=maintenance.items.filter(item=>selectedMaintenancePeriod==='ALL'||(maintenancePeriod==='DAY'?item.scheduledAt===selectedMaintenancePeriod:maintenancePeriod==='YEAR'?true:item.month===selectedMaintenancePeriod));
   const formatStamp = value => value ? new Intl.DateTimeFormat("es-CO", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Bogota" }).format(new Date(value)) : "Sin captura";
   return <div className="space-y-5 animate-in fade-in duration-500">
-    <div className="overflow-hidden rounded-2xl border border-white/[.08] bg-slate-950/65 p-5"><div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center"><div className="flex items-center gap-3"><span className="grid h-14 w-14 place-items-center rounded-xl border border-emerald-500/15 bg-emerald-500/10 text-emerald-300"><Wrench size={27}/></span><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-emerald-300">Mantenimiento CCTV · Trello</p><h2 className="text-xl font-black text-slate-100">Plan anual y ejecución técnica</h2><p className="text-[11px] text-slate-400">{maintenance.source.board} · {maintenance.source.list}</p></div></div><div className="flex flex-wrap items-center gap-2"><Badge variant="outline" className="border-emerald-500/20 text-emerald-300">Instantánea canónica · Trello protegido</Badge><span className="text-[9px] text-slate-500">Importado {formatStamp(maintenance.cacheUpdatedAt)}</span>{maintenance.source.boardUrl&&<Button asChild variant="outline" size="sm"><a href={maintenance.source.boardUrl} target="_blank" rel="noreferrer">Abrir Trello <ArrowRight size={13} className="ml-1"/></a></Button>}</div></div></div>
-    <ExcelSyncPanel/>
+    <div className="overflow-hidden rounded-2xl border border-white/[.08] bg-slate-950/65 p-5"><div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center"><div className="flex items-center gap-3"><span className="grid h-14 w-14 place-items-center rounded-xl border border-emerald-500/15 bg-emerald-500/10 text-emerald-300"><Wrench size={27}/></span><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-emerald-300">Mantenimiento CCTV · Trello</p><h2 className="text-xl font-black text-slate-100">Plan anual y ejecución técnica</h2><p className="text-[11px] text-slate-400">{maintenance.source.board} · {maintenance.source.list}</p></div></div><div className="flex flex-wrap items-center gap-2"><Badge variant="outline" className="border-emerald-500/20 text-emerald-300">Instantánea canónica · Trello protegido</Badge><span className="text-[9px] text-slate-500">Importado {formatStamp(maintenance.cacheUpdatedAt)}</span>{maintenance.source.boardUrl&&<Button asChild variant="outline" size="sm"><a href={maintenance.source.boardUrl} target="_blank" rel="noreferrer">Abrir Trello <ArrowRight size={13} className="ml-1"/></a></Button>}<ExcelSyncPanel/></div></div></div>
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[
       ["Actividades 2026", summary.total, <Database key="database" size={21}/>, "text-blue-300 bg-blue-500/10"],
       ["Realizadas", summary.completed, <CheckCircle2 key="complete" size={21}/>, "text-emerald-300 bg-emerald-500/10"],

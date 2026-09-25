@@ -10,6 +10,20 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CCTV — Montaje CIFS confirmado + botón de Excel compacto
+`specs/0016-mantenimiento-excel-sync/`
+- **Montaje CIFS completado en `.65` (2026-09-24/25) y sincronización automática confirmada
+  con datos reales**: cambio real en Trello ("Bingo la sexta", PRADERA) sincronizó la celda
+  `AV11` en el archivo real del NAS — `mtime` del archivo coincide exacto con el timestamp del
+  sync. Detección de bloqueo también confirmada real (identificó a un usuario real con el
+  archivo abierto). Detalles operativos (permiso de share vs. carpeta en el NAS, mirror apt
+  caído, etc.) en memoria del proyecto, no en este changelog.
+- **`ExcelSyncPanel` simplificado**: un solo botón compacto con ícono de Excel (antes: recuadro
+  ancho con la ruta completa visible) + estado en texto chico debajo (Disponible / Bloqueado por
+  X / No accesible). El click intenta abrir el archivo directo (`file://`, mejor esfuerzo — los
+  navegadores modernos suelen bloquear esa navegación desde una página http) y siempre copia la
+  ruta al portapapeles como respaldo garantizado.
+
 ### CCTV — Sincronización Trello → Excel de mantenimiento
 `specs/0016-mantenimiento-excel-sync/`
 - **Problema:** el Excel de seguimiento de mantenimiento nunca se actualizaba, pese a que la
