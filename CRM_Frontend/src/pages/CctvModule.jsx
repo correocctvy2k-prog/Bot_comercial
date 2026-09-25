@@ -3560,33 +3560,27 @@ function copyTextFallback(text) {
   return ok;
 }
 
+// fix (2026-09-25): se abandonó tanto ms-excel:ofe|u|<url> (Edge percent-codifica la URL al
+// despachar el protocolo externo y Excel no decodifica bien tildes/eñe ahí) como el acceso
+// directo .url descargable (requiere abrirlo con doble clic aparte, y sigue sin ser "un clic").
+// Con el frontend y `cctv-api` en máquinas distintas no hay forma de abrir el archivo real con un
+// solo clic desde el navegador -- se simplifica a copiar la ruta de red, que el usuario pega en
+// Ejecutar/Explorador. También se quitó la verificación de "bloqueado por" (ver
+// excelMaintenanceStatusData en server.js): dependía de un archivo `~$` de Excel sobre el montaje
+// de red que podía quedar huérfano y mostrar bloqueo falso, y esa misma llamada de red era la
+// causante de que el botón tardara en aparecer.
 function ExcelSyncPanel() {
   const [status, setStatus] = useState(null), [copied, setCopied] = useState(false);
   useEffect(() => {
     let active = true;
-    const load = () => fetch(`${CCTV_API_BASE}/api/cctv/maintenance/excel-status`)
+    fetch(`${CCTV_API_BASE}/api/cctv/maintenance/excel-status`)
       .then(r => r.json()).then(data => { if (active) setStatus(data); })
       .catch(() => { if (active) setStatus({ configured: false }); });
-    load();
-    const interval = setInterval(load, 30000);
-    return () => { active = false; clearInterval(interval); };
+    return () => { active = false; };
   }, []);
   if (!status?.configured) return null;
 
-  const openFile = async () => {
-    // ms-excel:ofe|u|<url> quedó descartado (2026-09-25): confirmado en producción que Edge
-    // percent-codifica la URL al despachar el protocolo externo, y Excel no decodifica bien
-    // tildes/eñe multi-byte ahí ("archivo no encontrado" con %C3%B3 literal en el nombre real).
-    // En cambio, un acceso directo .url real de Windows lo resuelve el Explorador nativo, sin
-    // pasar por la codificación de URLs del navegador -- doble clic en el archivo descargado
-    // abre el Excel real.
-    const link = document.createElement('a');
-    link.href = `${CCTV_API_BASE}/api/cctv/maintenance/excel-shortcut`;
-    link.download = 'Abrir Excel de mantenimiento.url';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
+  const copyPath = async () => {
     let ok = false;
     if (navigator.clipboard?.writeText) {
       try { await navigator.clipboard.writeText(status.path); ok = true; } catch { /* sigue con el respaldo viejo */ }
@@ -3595,23 +3589,12 @@ function ExcelSyncPanel() {
     if (ok) { setCopied(true); setTimeout(() => setCopied(false), 2000); }
   };
 
-  const statusText = status.locked
-    ? `Bloqueado por ${status.lockedBy || 'otro usuario'}`
-    : status.accessible === true ? 'Disponible'
-    : status.accessible === false ? 'No accesible'
-    : null; // accessible === null: entorno sin verificación real, no se muestra estado
-
-  return <div className="flex flex-col items-center gap-1">
-    <Button size="sm" variant="outline" onClick={openFile} title={status.path} className="gap-1.5">
+  return (
+    <Button size="sm" variant="outline" onClick={copyPath} title={status.path} className="gap-1.5">
       <img src="/excel_logo.png" alt="" className="h-4 w-4" />
-      {copied ? 'Ruta copiada' : 'Abrir Excel'}
+      {copied ? 'Ruta copiada' : 'Copiar ruta del Excel'}
     </Button>
-    {statusText && (
-      <span className={`text-[10px] font-semibold ${status.locked ? 'text-amber-300' : status.accessible ? 'text-emerald-300' : 'text-rose-300'}`}>
-        {statusText}
-      </span>
-    )}
-  </div>;
+  );
 }
 
 function RealMaintenance({ maintenance, onChanged }) {
