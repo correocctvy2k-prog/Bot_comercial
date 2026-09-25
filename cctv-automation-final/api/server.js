@@ -612,6 +612,26 @@ const server = http.createServer(async (req,res) => {
     if(req.method==='GET'&&url.pathname==='/api/cctv/maintenance') return send(res,200,trelloMaintenanceData(),origin);
     if(req.method==='GET'&&url.pathname==='/api/cctv/maintenance/excel-status') return send(res,200,await excelMaintenanceStatusData(),origin);
     if(req.method==='GET'&&url.pathname==='/api/cctv/maintenance/excel-history') return send(res,200,excelMaintenanceHistoryData(url.searchParams.get('limit')),origin);
+    // fix 2026-09-25: ms-excel:ofe|u|<file-url> quedó descartado -- confirmado en producción
+    // que Edge percent-codifica la URL al despachar el protocolo externo, y Excel no decodifica
+    // bien tildes/eñe multi-byte ahí (STATUS "archivo no encontrado" con %C3%B3 literal en el
+    // nombre). Un acceso directo .url nativo de Windows lo resuelve el Explorador directo, sin
+    // pasar por el pipeline de URLs del navegador -- el contenido va con la ruta cruda, sin
+    // percent-encoding, tal como Windows los genera él mismo.
+    if(req.method==='GET'&&url.pathname==='/api/cctv/maintenance/excel-shortcut'){
+      const displayPath=process.env.MAINTENANCE_EXCEL_DISPLAY_PATH||MAINTENANCE_EXCEL_PATH||null;
+      if(!displayPath) return send(res,404,{error:'No configurado'},origin);
+      const fileUrl=`file:${displayPath.replace(/^\\\\/,'//').replace(/\\/g,'/')}`;
+      const BOM='﻿'; // Windows necesita el BOM para leer el .url como UTF-8, si no asume ANSI
+      const buffer=Buffer.from(`${BOM}[InternetShortcut]\r\nURL=${fileUrl}\r\n`,'utf8');
+      res.writeHead(200,{
+        'Content-Type':'application/octet-stream',
+        'Content-Disposition':'attachment; filename="Abrir Excel de mantenimiento.url"',
+        'Content-Length':buffer.length,
+        ...(isAllowedOrigin(origin)?{'Access-Control-Allow-Origin':origin}:{}),
+      });
+      return res.end(buffer);
+    }
     const supportImageMatch=url.pathname.match(/^\/api\/cctv\/support\/([^/]+)\/image$/);
     if(req.method==='GET'&&supportImageMatch){const sourceCardId=decodeURIComponent(supportImageMatch[1]);if(!/^[a-f0-9]{20,40}$/i.test(sourceCardId))return send(res,400,{error:'Identificador inválido'},origin);const row=db.prepare("SELECT payload_json FROM support_cards WHERE source_system='TRELLO_SUPPORT' AND source_card_id=? AND active=1").get(sourceCardId);if(!row)return send(res,404,{error:'Tarjeta no encontrada'},origin);let payload={};try{payload=JSON.parse(row.payload_json||'{}')}catch{}const image=payload.cachedImage,fileName=path.basename(String(image?.fileName||''));if(!fileName||fileName!==image.fileName)return send(res,404,{error:'La tarjeta no tiene imagen cacheada'},origin);const filePath=path.join(supportImageDir,fileName);if(!fs.existsSync(filePath))return send(res,404,{error:'Imagen no disponible'},origin);return sendImage(res,filePath,image.mimeType||'image/jpeg',origin);}
     if(req.method==='GET'&&url.pathname==='/api/cctv/support') return send(res,200,supportData(),origin);

@@ -3560,16 +3560,6 @@ function copyTextFallback(text) {
   return ok;
 }
 
-// \\servidor\recurso\carpeta\archivo.xlsx -> file://servidor/recurso/carpeta/archivo.xlsx,
-// la forma que exige el esquema ms-excel:. Solo se codifican los espacios (%20) -- confirmado
-// en producción que Windows los decodifica bien, pero NO decodifica correctamente tildes/ñ
-// codificadas como UTF-8 percent-encoded (%C3%B3 etc. quedan literales en el nombre buscado,
-// "archivo no encontrado"). Dejarlas como caracteres Unicode normales sí funciona.
-function uncPathToFileUrl(uncPath) {
-  const segments = uncPath.replace(/^\\\\/, '').split('\\').filter(Boolean);
-  return `file://${segments.map((segment) => segment.replace(/ /g, '%20')).join('/')}`;
-}
-
 function ExcelSyncPanel() {
   const [status, setStatus] = useState(null), [copied, setCopied] = useState(false);
   useEffect(() => {
@@ -3584,7 +3574,19 @@ function ExcelSyncPanel() {
   if (!status?.configured) return null;
 
   const openFile = async () => {
-    try { window.location.href = `ms-excel:ofe|u|${uncPathToFileUrl(status.path)}`; } catch { /* Office no registrado, sigue con el respaldo */ }
+    // ms-excel:ofe|u|<url> quedó descartado (2026-09-25): confirmado en producción que Edge
+    // percent-codifica la URL al despachar el protocolo externo, y Excel no decodifica bien
+    // tildes/eñe multi-byte ahí ("archivo no encontrado" con %C3%B3 literal en el nombre real).
+    // En cambio, un acceso directo .url real de Windows lo resuelve el Explorador nativo, sin
+    // pasar por la codificación de URLs del navegador -- doble clic en el archivo descargado
+    // abre el Excel real.
+    const link = document.createElement('a');
+    link.href = `${CCTV_API_BASE}/api/cctv/maintenance/excel-shortcut`;
+    link.download = 'Abrir Excel de mantenimiento.url';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
     let ok = false;
     if (navigator.clipboard?.writeText) {
       try { await navigator.clipboard.writeText(status.path); ok = true; } catch { /* sigue con el respaldo viejo */ }
