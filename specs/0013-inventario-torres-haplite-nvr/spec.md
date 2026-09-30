@@ -1,13 +1,13 @@
 # SPEC 0013 — Inventario de torres: hAP lite + NVR por punto (fase 1)
 
-- **Estado:** **Implementado y verificado en Docker local (2026-09-18)** — fase 1
-  completa (§3), pendiente de push/PR/merge/deploy. Ver `tasks.md` para el detalle
+- **Estado:** **Mergeado a `main` (2026-09-30, PR #20)** — fase 1 completa (§3),
+  pendiente de despliegue y verificación en `.65`. Ver `tasks.md` para el detalle
   verificado punto por punto.
 - **Autor:** Claude (a partir de la descripción de infraestructura del usuario, 2026-09-18)
 - **Fecha:** 2026-09-18
 - **Módulos afectados:** `cybersecurity/` (backend + `CRM_Frontend/src/pages/CybersecurityDashboard.jsx`, vista Inventario). Lee, sin modificar, `cctv-automation-final` (`dss_device_registry`).
 - **Rama:** `feat/0013-inventario-torres-haplite-nvr`
-- **PR:** —
+- **PR:** [#20](https://github.com/correocctvy2k-prog/Bot_comercial/pull/20) — mergeado 2026-09-30
 
 ## 0. Contexto de infraestructura (para no perder el detalle del usuario)
 
