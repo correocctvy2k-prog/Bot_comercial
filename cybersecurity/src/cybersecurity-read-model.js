@@ -741,10 +741,157 @@ function getRemediationCase(db, id) {
   };
 }
 
+// Torres reales (spec 0013): cyber_towers/cyber_tower_points son datos semilla del
+// usuario (torres_HapLite.pdf, 2026-09-18), no inferidos. Un punto de la semilla se
+// identifica por (torre, IP de hAP lite) -- varias filas de la semilla pueden compartir
+// la misma IP (ej. "Tienda A" y "Cam SMD Tienda A": NVR + cámara del mismo hAP lite),
+// se agrupan aquí en un solo punto con todos los nombres que trajo la semilla.
+//
+// FortiGate corrobora muy pocas IPs de hAP lite (7 de 96 medidas 2026-09-18, ver spec
+// 0013 SS0.1) -- es una señal opcional de "en línea", nunca el mecanismo para decidir
+// si un punto existe: la semilla y DSS son las fuentes primarias.
+function getTowerPoints(db) {
+  const towers = db.prepare(`
+    SELECT id, name, gateway_cidr AS gatewayCidr, is_tower AS isTower
+    FROM cyber_towers ORDER BY name
+  `).all();
+  // Una torre puede tener más de un gateway/CIDR real (ej. Pradera, Candelaria) --
+  // se exponen todos, no solo el representativo de cyber_towers.gateway_cidr, para
+  // que el frontend pueda deducir por IP a qué torre pertenece un punto de Operación
+  // de Puntos que no está en la semilla (hallazgo del usuario 2026-09-18).
+  const gatewayRows = db.prepare('SELECT tower_id AS towerId, cidr FROM cyber_tower_gateways').all();
+  const gatewaysByTowerId = new Map();
+  for (const row of gatewayRows) {
+    const list = gatewaysByTowerId.get(row.towerId) || [];
+    list.push(row.cidr);
+    gatewaysByTowerId.set(row.towerId, list);
+  }
+  const towerPoints = db.prepare(`
+    SELECT id, tower_id AS towerId, point_name AS pointName, haplite_ip AS haploteIp
+    FROM cyber_tower_points
+  `).all();
+
+  const dssObservations = db.prepare(`
+    WITH latest AS (
+      SELECT source_system_id, max(captured_at) captured_at
+      FROM cyber_source_snapshots WHERE processing_status = 'SUCCESS' GROUP BY source_system_id
+    )
+    SELECT o.id, o.ip_value ipValue, o.hostname_raw hostnameRaw, o.device_class_raw deviceClassRaw,
+           o.sanitized_attributes_json sanitizedAttributes, o.quality_flags_json qualityFlags
+    FROM cyber_asset_observations o
+    JOIN cyber_source_snapshots s ON s.id = o.snapshot_id
+    JOIN cyber_source_systems src ON src.id = s.source_system_id
+    JOIN latest l ON l.source_system_id = s.source_system_id AND l.captured_at = s.captured_at
+    WHERE src.source_type = 'DSS' AND o.ip_value IS NOT NULL
+  `).all();
+  const dssByIp = new Map();
+  for (const row of dssObservations) {
+    const attrs = safeJson(row.sanitizedAttributes, {});
+    const list = dssByIp.get(row.ipValue) || [];
+    list.push({
+      id: protectedAlias('candidate', row.id),
+      name: row.hostnameRaw,
+      deviceType: row.deviceClassRaw,
+      model: attrs.model || null,
+      missingIp: safeJson(row.qualityFlags, []).includes('MISSING_IP'),
+    });
+    dssByIp.set(row.ipValue, list);
+  }
+
+  const fortigateObservations = db.prepare(`
+    WITH latest AS (
+      SELECT source_system_id, max(captured_at) captured_at
+      FROM cyber_source_snapshots WHERE processing_status = 'SUCCESS' GROUP BY source_system_id
+    )
+    SELECT o.id, o.ip_value ipValue, o.last_seen_source_at lastSeenSourceAt, o.observed_at lastSeenAt,
+           o.quality_flags_json qualityFlags
+    FROM cyber_asset_observations o
+    JOIN cyber_source_snapshots s ON s.id = o.snapshot_id
+    JOIN cyber_source_systems src ON src.id = s.source_system_id
+    JOIN latest l ON l.source_system_id = s.source_system_id AND l.captured_at = s.captured_at
+    WHERE src.source_type = 'FORTIGATE' AND o.ip_value IS NOT NULL
+  `).all();
+  const fortigateByIp = new Map(fortigateObservations.map((row) => [row.ipValue, row]));
+
+  // Firmware inicial sin verificar (decisión del usuario 2026-09-21): importado de un
+  // Excel de staging de cctv-automation-final, no de un escaneo activo real -- se
+  // expone marcado explícitamente como no verificado (`CCTV_STAGING_UNVERIFIED`),
+  // nunca mezclado con las fuentes corroboradas (DSS/FortiGate).
+  const cctvStagingObservations = db.prepare(`
+    WITH latest AS (
+      SELECT source_system_id, max(captured_at) captured_at
+      FROM cyber_source_snapshots WHERE processing_status = 'SUCCESS' GROUP BY source_system_id
+    )
+    SELECT o.ip_value ipValue, o.observed_at observedAt, o.sanitized_attributes_json sanitizedAttributes,
+           o.quality_flags_json qualityFlags
+    FROM cyber_asset_observations o
+    JOIN cyber_source_snapshots s ON s.id = o.snapshot_id
+    JOIN cyber_source_systems src ON src.id = s.source_system_id
+    JOIN latest l ON l.source_system_id = s.source_system_id AND l.captured_at = s.captured_at
+    WHERE src.source_type = 'CCTV_STAGING' AND o.ip_value IS NOT NULL
+  `).all();
+  const cctvStagingByIp = new Map();
+  for (const row of cctvStagingObservations) {
+    const attrs = safeJson(row.sanitizedAttributes, {});
+    if (!attrs.firmwareRaw && !attrs.recorderModel) continue;
+    cctvStagingByIp.set(row.ipValue, {
+      firmwareRaw: attrs.firmwareRaw || null,
+      cameraFirmwareRaw: attrs.cameraFirmwareRaw || null,
+      recorderModel: attrs.recorderModel || null,
+      observedAt: row.observedAt,
+      unverified: safeJson(row.qualityFlags, []).includes('CCTV_STAGING_UNVERIFIED'),
+    });
+  }
+
+  const pointsByTower = new Map();
+  for (const row of towerPoints) {
+    const key = `${row.towerId}:${row.haploteIp}`;
+    const point = pointsByTower.get(key) || { towerId: row.towerId, ip: row.haploteIp, names: [] };
+    point.names.push(row.pointName);
+    pointsByTower.set(key, point);
+  }
+
+  return {
+    towers: towers.map((tower) => {
+      const points = [...pointsByTower.values()]
+        .filter((point) => point.towerId === tower.id)
+        .map((point) => {
+          const fortigate = fortigateByIp.get(point.ip);
+          return {
+            names: point.names,
+            haplite: {
+              ip: point.ip,
+              observedByFortigate: Boolean(fortigate),
+              lifecycleStatus: fortigate
+                ? assessInventoryCandidate({
+                  source: 'FORTIGATE', lastSeenAt: fortigate.lastSeenAt, lastSeenSourceAt: fortigate.lastSeenSourceAt,
+                  qualityFlags: safeJson(fortigate.qualityFlags, []), reasonCodes: [], confidence: 0.5,
+                }).lifecycleStatus
+                : null,
+            },
+            dssDevices: dssByIp.get(point.ip) || [],
+            firmware: cctvStagingByIp.get(point.ip) || null,
+          };
+        })
+        .sort((a, b) => a.names[0].localeCompare(b.names[0], 'es'));
+      return {
+        id: protectedAlias('tower', tower.id),
+        name: tower.name,
+        gatewayCidr: tower.gatewayCidr,
+        gatewayCidrs: gatewaysByTowerId.get(tower.id) || (tower.gatewayCidr ? [tower.gatewayCidr] : []),
+        isTower: Boolean(tower.isTower),
+        points,
+        pointCount: points.length,
+        pointsWithoutDssCount: points.filter((point) => point.dssDevices.length === 0).length,
+      };
+    }),
+  };
+}
+
 module.exports = {
   getCybersecurityOverview, getInventoryOverview, getRemediationCase,
   getCrossSourceMatchedObservationIds, getKasperskyInheritedSegments,
   buildSegmentCidrIndex, resolveTrueSegmentId, parseCidrFromSegmentName, cidrContainsIp,
   listInventoryCandidates, listNetworkSegments, listRemediationCases,
-  protectedAlias, resolveProtectedAlias,
+  protectedAlias, resolveProtectedAlias, getTowerPoints,
 };

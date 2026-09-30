@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS cyber_schema_migrations (
 CREATE TABLE IF NOT EXISTS cyber_source_systems (
   id TEXT PRIMARY KEY,
   source_type TEXT NOT NULL CHECK(source_type IN (
-    'FORTIGATE', 'KASPERSKY', 'ACTIVE_DIRECTORY', 'GREENBONE', 'MANUAL', 'OTHER'
+    'FORTIGATE', 'KASPERSKY', 'ACTIVE_DIRECTORY', 'GREENBONE', 'DSS', 'CCTV_STAGING', 'MANUAL', 'OTHER'
   )),
   display_name TEXT NOT NULL,
   authority_level TEXT NOT NULL CHECK(authority_level IN ('AUTHORITATIVE', 'CORROBORATING', 'OBSERVATIONAL')),
@@ -386,6 +386,48 @@ CREATE TABLE IF NOT EXISTS cyber_remediation_case_findings (
   FOREIGN KEY(finding_id) REFERENCES cyber_vulnerability_findings(id)
 );
 
+-- Torres reales (spec 0013): datos semilla del usuario (torres_HapLite.pdf,
+-- 2026-09-18), no inferidos ni provisionales. is_tower=0 solo para la fila "no es
+-- una torre" (celda alojada en un sitio sin torre real, ej. Edificio Ppal).
+CREATE TABLE IF NOT EXISTS cyber_towers (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  gateway_cidr TEXT,
+  is_tower INTEGER NOT NULL DEFAULT 1 CHECK(is_tower IN (0, 1)),
+  source_reference TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+-- Una torre puede tener más de un gateway/CIDR real (ej. Pradera: red principal +
+-- subred de oficina) -- cyber_towers.gateway_cidr solo guarda uno como representativo
+-- informacional; esta tabla guarda TODOS, necesarios para deducir por IP a qué torre
+-- pertenece un punto que no está en la semilla (hallazgo del usuario 2026-09-18:
+-- 332 de 368 puntos reales de Operación de Puntos ya caen dentro de un gateway
+-- conocido, verificado contra Supabase real).
+CREATE TABLE IF NOT EXISTS cyber_tower_gateways (
+  id TEXT PRIMARY KEY,
+  tower_id TEXT NOT NULL,
+  cidr TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  UNIQUE(tower_id, cidr),
+  FOREIGN KEY(tower_id) REFERENCES cyber_towers(id)
+);
+
+-- Puntos conocidos de cada torre, con la IP de su hAP lite (NAT: es la IP que se
+-- observa, no la del NVR -- ver spec 0013 SS0). Lista explícitamente parcial (solo
+-- puntos con CCTV ya conocido cuando se cargó la semilla).
+CREATE TABLE IF NOT EXISTS cyber_tower_points (
+  id TEXT PRIMARY KEY,
+  tower_id TEXT NOT NULL,
+  point_name TEXT NOT NULL,
+  haplite_ip TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE(tower_id, haplite_ip, point_name),
+  FOREIGN KEY(tower_id) REFERENCES cyber_towers(id)
+);
+
 CREATE TABLE IF NOT EXISTS cyber_audit_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   occurred_at TEXT NOT NULL,
@@ -427,6 +469,12 @@ CREATE INDEX IF NOT EXISTS idx_cyber_vulnerability_target_cause
   ON cyber_vulnerability_findings(target_key, cause_key, observed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_cyber_vulnerability_severity
   ON cyber_vulnerability_findings(severity DESC, confidence_status);
+CREATE INDEX IF NOT EXISTS idx_cyber_tower_points_tower
+  ON cyber_tower_points(tower_id, point_name);
+CREATE INDEX IF NOT EXISTS idx_cyber_tower_points_ip
+  ON cyber_tower_points(haplite_ip);
+CREATE INDEX IF NOT EXISTS idx_cyber_tower_gateways_tower
+  ON cyber_tower_gateways(tower_id);
 CREATE INDEX IF NOT EXISTS idx_cyber_remediation_workflow
   ON cyber_remediation_cases(workflow_status, technical_priority, max_severity DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_cyber_authorization_asset_target

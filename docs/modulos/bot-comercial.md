@@ -17,7 +17,7 @@ docker-compose.yml
 | Contenedor | Rol |
 | --- | --- |
 | `comercial-bot` | API, webhooks, Socket.IO y servicios backend |
-| `comercial-worker` | Procesamiento de cola del bot |
+| `comercial-worker` | Monitor de puntos en tiempo real (`src/worker.js`, spec 0015) — proceso separado del bot, sin cola compartida |
 
 ## Archivos clave
 
@@ -26,7 +26,8 @@ docker-compose.yml
 | `src/app.js` | App Express, rutas y middlewares |
 | `src/index.js` | Entrada del servicio |
 | `src/services/bot.service.js` | Flujo conversacional principal |
-| `src/services/worker.js` o `src/worker.js` | Procesamiento de cola, segun implementacion actual |
+| `src/worker.js` | Worker de `comercial-worker`: ping cada minuto a `puntos_venta.ip` en horario de operación (`monitor_puntos_wpp.py --tipo ping_only`), spec 0015 |
+| `src/services/businessHours.service.js` | Ventana de horario de operación (05:30-22:30 por defecto), usada por `src/worker.js` |
 | `src/services/whatsapp.service.js` | Integracion Meta WhatsApp Cloud API |
 | `src/services/telegram.service.js` | Integracion Telegram |
 | `src/services/messaging.service.js` | Capa unificada de mensajeria |

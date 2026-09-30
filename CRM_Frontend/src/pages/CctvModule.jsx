@@ -17,6 +17,7 @@ import {
   Cctv,
   CheckCircle2,
   Clock,
+  Copy,
   Database,
   HardDrive,
   ImageIcon,
@@ -3529,6 +3530,73 @@ function RealSupport({ support }) {
   </div>;
 }
 
+// spec 0016: estado de la sincronización Trello -> Excel de mantenimiento. Se omite por
+// completo (return null) si el entorno no tiene MAINTENANCE_EXCEL_PATH configurada (ej.
+// desarrollo local sin el montaje de red de .65).
+// spec 0016 (compacto, 2026-09-25): un botón con el ícono de Excel + estado chico debajo,
+// sin recuadro ancho ni la ruta completa a la vista.
+//
+// El click intenta abrir el archivo con el esquema de enlace oficial de Office
+// ("ms-excel:ofe|u|<url>", documentado por Microsoft para abrir documentos de Office desde
+// una página web) -- a diferencia de un link file:// normal, este SÍ puede activar el
+// controlador registrado de Excel en Windows/Office incluso desde una página http (confirmado
+// que file:// queda bloqueado por Edge/Chrome con "Not allowed to load local resource",
+// independiente del usuario de Windows logueado). Si el navegador no tiene el protocolo
+// registrado (Office no instalado, o el usuario cancela el aviso del navegador), no pasa nada
+// visible -- por eso SIEMPRE se copia la ruta al portapapeles también, como respaldo
+// garantizado. `navigator.clipboard` requiere HTTPS -- este sitio es http, así que se usa el
+// método viejo (textarea oculto + execCommand) que sí funciona sin HTTPS.
+function copyTextFallback(text) {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch { /* sin soporte */ }
+  document.body.removeChild(textarea);
+  return ok;
+}
+
+// fix (2026-09-25): se abandonó tanto ms-excel:ofe|u|<url> (Edge percent-codifica la URL al
+// despachar el protocolo externo y Excel no decodifica bien tildes/eñe ahí) como el acceso
+// directo .url descargable (requiere abrirlo con doble clic aparte, y sigue sin ser "un clic").
+// Con el frontend y `cctv-api` en máquinas distintas no hay forma de abrir el archivo real con un
+// solo clic desde el navegador -- se simplifica a copiar la ruta de red, que el usuario pega en
+// Ejecutar/Explorador. También se quitó la verificación de "bloqueado por" (ver
+// excelMaintenanceStatusData en server.js): dependía de un archivo `~$` de Excel sobre el montaje
+// de red que podía quedar huérfano y mostrar bloqueo falso, y esa misma llamada de red era la
+// causante de que el botón tardara en aparecer.
+function ExcelSyncPanel() {
+  const [status, setStatus] = useState(null), [copied, setCopied] = useState(false);
+  useEffect(() => {
+    let active = true;
+    fetch(`${CCTV_API_BASE}/api/cctv/maintenance/excel-status`)
+      .then(r => r.json()).then(data => { if (active) setStatus(data); })
+      .catch(() => { if (active) setStatus({ configured: false }); });
+    return () => { active = false; };
+  }, []);
+  if (!status?.configured) return null;
+
+  const copyPath = async () => {
+    let ok = false;
+    if (navigator.clipboard?.writeText) {
+      try { await navigator.clipboard.writeText(status.path); ok = true; } catch { /* sigue con el respaldo viejo */ }
+    }
+    if (!ok) ok = copyTextFallback(status.path);
+    if (ok) { setCopied(true); setTimeout(() => setCopied(false), 2000); }
+  };
+
+  return (
+    <Button size="sm" variant="outline" onClick={copyPath} title={status.path} className="gap-1.5">
+      <img src="/excel_logo.png" alt="" className="h-4 w-4" />
+      {copied ? 'Ruta copiada' : 'Copiar ruta del Excel'}
+    </Button>
+  );
+}
+
 function RealMaintenance({ maintenance, onChanged }) {
   const [maintenancePeriod,setMaintenancePeriod]=useState("MONTH"),[selectedMaintenancePeriod,setSelectedMaintenancePeriod]=useState("ALL"),[maintenanceDayMonth,setMaintenanceDayMonth]=useState("2026-08");
   if (!maintenance)
@@ -3544,7 +3612,7 @@ function RealMaintenance({ maintenance, onChanged }) {
   const visibleItems=maintenance.items.filter(item=>selectedMaintenancePeriod==='ALL'||(maintenancePeriod==='DAY'?item.scheduledAt===selectedMaintenancePeriod:maintenancePeriod==='YEAR'?true:item.month===selectedMaintenancePeriod));
   const formatStamp = value => value ? new Intl.DateTimeFormat("es-CO", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Bogota" }).format(new Date(value)) : "Sin captura";
   return <div className="space-y-5 animate-in fade-in duration-500">
-    <div className="overflow-hidden rounded-2xl border border-white/[.08] bg-slate-950/65 p-5"><div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center"><div className="flex items-center gap-3"><span className="grid h-14 w-14 place-items-center rounded-xl border border-emerald-500/15 bg-emerald-500/10 text-emerald-300"><Wrench size={27}/></span><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-emerald-300">Mantenimiento CCTV · Trello</p><h2 className="text-xl font-black text-slate-100">Plan anual y ejecución técnica</h2><p className="text-[11px] text-slate-400">{maintenance.source.board} · {maintenance.source.list}</p></div></div><div className="flex flex-wrap items-center gap-2"><Badge variant="outline" className="border-emerald-500/20 text-emerald-300">Instantánea canónica · Trello protegido</Badge><span className="text-[9px] text-slate-500">Importado {formatStamp(maintenance.cacheUpdatedAt)}</span>{maintenance.source.boardUrl&&<Button asChild variant="outline" size="sm"><a href={maintenance.source.boardUrl} target="_blank" rel="noreferrer">Abrir Trello <ArrowRight size={13} className="ml-1"/></a></Button>}</div></div></div>
+    <div className="overflow-hidden rounded-2xl border border-white/[.08] bg-slate-950/65 p-5"><div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center"><div className="flex items-center gap-3"><span className="grid h-14 w-14 place-items-center rounded-xl border border-emerald-500/15 bg-emerald-500/10 text-emerald-300"><Wrench size={27}/></span><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-emerald-300">Mantenimiento CCTV · Trello</p><h2 className="text-xl font-black text-slate-100">Plan anual y ejecución técnica</h2><p className="text-[11px] text-slate-400">{maintenance.source.board} · {maintenance.source.list}</p></div></div><div className="flex flex-wrap items-center gap-2"><Badge variant="outline" className="border-emerald-500/20 text-emerald-300">Instantánea canónica · Trello protegido</Badge><span className="text-[9px] text-slate-500">Importado {formatStamp(maintenance.cacheUpdatedAt)}</span>{maintenance.source.boardUrl&&<Button asChild variant="outline" size="sm"><a href={maintenance.source.boardUrl} target="_blank" rel="noreferrer">Abrir Trello <ArrowRight size={13} className="ml-1"/></a></Button>}<ExcelSyncPanel/></div></div></div>
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[
       ["Actividades 2026", summary.total, <Database key="database" size={21}/>, "text-blue-300 bg-blue-500/10"],
       ["Realizadas", summary.completed, <CheckCircle2 key="complete" size={21}/>, "text-emerald-300 bg-emerald-500/10"],

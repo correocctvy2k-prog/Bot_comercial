@@ -10,6 +10,125 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CCTV — Botón de Excel: solo copiar ruta, se quita la detección de bloqueo
+`specs/0016-mantenimiento-excel-sync/`
+- **Abandonado el intento de abrir el Excel con un clic** (`ms-excel:ofe|u|<url>` y luego un
+  acceso directo `.url` descargable): ambos chocan con límites reales del navegador que no se
+  pueden evitar desde el código — Edge percent-codifica la URL al despachar el protocolo externo
+  (rompe tildes/eñe del nombre real del archivo) y un `.url` descargado exige un doble clic aparte
+  del usuario. Decisión del usuario: el botón vuelve a **copiar la ruta de red al portapapeles**
+  únicamente.
+- **Se elimina la detección de "bloqueado por [usuario]"** (`platform/excel-lock-status.js` y su
+  uso en `excel-status`): el panel seguía reportando bloqueo cuando ya no era cierto — se confirmó
+  en el share real que archivos de bloqueo (`~$...xlsx`) de años anteriores seguían presentes sin
+  que nadie tuviera esos libros abiertos, así que la señal no era confiable. Esa misma
+  verificación (dos llamadas de red por carga de página sobre el montaje CIFS) era además la causa
+  de que el botón tardara en aparecer al refrescar — `excel-status` ahora responde al instante,
+  sin tocar la red.
+
+### CCTV — Montaje CIFS confirmado + botón de Excel compacto
+`specs/0016-mantenimiento-excel-sync/`
+- **Montaje CIFS completado en `.65` (2026-09-24/25) y sincronización automática confirmada
+  con datos reales**: cambio real en Trello ("Bingo la sexta", PRADERA) sincronizó la celda
+  `AV11` en el archivo real del NAS — `mtime` del archivo coincide exacto con el timestamp del
+  sync. Detección de bloqueo también confirmada real (identificó a un usuario real con el
+  archivo abierto). Detalles operativos (permiso de share vs. carpeta en el NAS, mirror apt
+  caído, etc.) en memoria del proyecto, no en este changelog.
+- **`ExcelSyncPanel` simplificado**: un solo botón compacto con ícono de Excel (antes: recuadro
+  ancho con la ruta completa visible) + estado en texto chico debajo (Disponible / Bloqueado por
+  X / No accesible). El click intenta abrir el archivo directo (`file://`, mejor esfuerzo — los
+  navegadores modernos suelen bloquear esa navegación desde una página http) y siempre copia la
+  ruta al portapapeles como respaldo garantizado.
+
+### CCTV — Sincronización Trello → Excel de mantenimiento
+`specs/0016-mantenimiento-excel-sync/`
+- **Problema:** el Excel de seguimiento de mantenimiento nunca se actualizaba, pese a que la
+  pestaña "Mantenimiento" del CRM sí refleja los cambios de Trello casi en tiempo real.
+  Investigación: existían **dos integraciones de Trello desconectadas** — la UI real lee de
+  `cctv-automation-final` (spec 0008, sondeo directo cada ~1 min), mientras que la lógica de
+  escritura a Excel vivía en un proyecto aparte (`CRM_Frontend/Table Trello/backend/`, con su
+  propio Kanban) que dependía de un webhook nunca confirmado activo. Ver `LL-0005`.
+- **`platform/excel-maintenance-sync.js`** (con tests): puerto funcional de la lógica ya
+  probada de `Table Trello/backend` (matching difuso de puntos, recálculo de fórmulas vía
+  manipulación directa del XML del `.xlsx` con JSZip, detección de bloqueo `EBUSY`/`EPERM`),
+  sin acoplar a esa base SQLite — reutiliza en cambio el `audit_log` de `cctv-automation-final`.
+- **`platform/excel-lock-status.js`** (con tests): detecta si el archivo está abierto (archivo
+  `~$<nombre>.xlsx` que crea Excel) y, mejor esfuerzo, quién lo tiene abierto. Solo informa —
+  nunca fuerza el cierre remoto (podría corromper ediciones en curso).
+- **`import-trello-maintenance.js`**: al detectar que un ítem cambió de estado
+  (completado ↔ pendiente) con `location_id` ya resuelto, sincroniza la celda en Excel usando
+  el nombre/zona **canónicos** de `locations` (más confiable que el nombre crudo de Trello del
+  sistema viejo). No crítico: si falla, se registra en `audit_log` y el ciclo de Trello sigue.
+- Nuevas rutas `GET /api/cctv/maintenance/excel-status` y `.../excel-history`.
+- `CctvModule.jsx` (pestaña Mantenimiento): panel con la ruta de red + "copiar ruta" + aviso de
+  bloqueo ("Abierto por FULANO — ciérralo para que el bot pueda sincronizar").
+- `schema.sql`: se movió aquí la definición de `audit_log` (antes solo existía vía un script de
+  migración de una sola corrida — una base fresca nunca la tenía).
+- `cctv-automation-final`: `npm test` **111/111** (12 nuevos). Verificado con build y datos
+  reales en Docker local (263 ítems de Trello, sin errores).
+- **Actualización 2026-09-24 — montaje CIFS descartado, sincronización automática diferida:**
+  `.65` no tiene ruta de red hacia la subred del archivo (`172.16.101.0/24`) — requiere abrir
+  firewall/ruta entre subredes, fuera de alcance de esta sesión y decisión del usuario de no
+  perseguirlo por ahora. `MAINTENANCE_EXCEL_PATH` queda vacía indefinidamente en `.65` (la
+  sincronización automática nunca se dispara, sin cambios de código). Se agrega
+  `MAINTENANCE_EXCEL_DISPLAY_PATH` (nueva, solo para mostrar/copiar la ruta) para que el botón
+  de la pestaña Mantenimiento siga sirviendo — abrir el archivo real a mano desde la máquina del
+  usuario, que sí tiene acceso a esa red. `excel-status` distingue `accessible:null` ("no
+  verificado") de `accessible:false` ("se intentó y falló"); el panel ya no muestra badges de
+  disponible/bloqueado cuando no hay verificación real. **Desplegado y verificado en `.65`.**
+
+### Bot Comercial / CCTV — Monitor de puntos en tiempo real + sync SIISS horario
+`specs/0015-monitor-puntos-tiempo-real/`
+- **Problema:** el estado "BOT" de cada punto (`puntos_venta.active`/`latency`/
+  `last_online_at`) solo se actualizaba cuando alguien pedía un reporte por WhatsApp — sin
+  cron ni intervalo. Se detectó con un caso real (HELADERIA SEMBRADOR con IP desactualizada)
+  que seguía mostrando "caído" días después de corregir la IP, porque nadie había vuelto a
+  pedir un reporte. Hallazgo aparte: el contenedor `comercial-worker` (`docker-compose.yml`)
+  apuntaba a `src/worker.js`, un archivo que **nunca existió** en el repo — bug dormido.
+- **`src/worker.js`** (nuevo, resuelve el bug dormido): `node-cron` (ya era dependencia, sin
+  uso previo) cada minuto, en horario de operación (05:30-22:30 América/Bogotá,
+  configurable), dispara `monitor_puntos_wpp.py --json --tipo ping_only` — proceso 100%
+  separado del bot de WhatsApp (`comercial-bot`), con guard anti-solape si un ciclo tarda
+  más de un minuto.
+- **`monitor_puntos_wpp.py`**: nuevo modo `--tipo ping_only`, aditivo — reutiliza
+  `load_targets_from_supabase`/`scan_from_df_parallel`/`update_supabase_results` tal cual,
+  sin generar reporte ni gráfico. El flujo de WhatsApp (`--tipo standard`/zona) no cambia.
+- **`src/services/businessHours.service.js`** / **`cctv-automation-final/platform/
+  business-hours.js`**: ventana de horario, dos copias independientes (proyectos Node
+  separados, ver spec 0015 §6) — no se comparte código entre `comercial-bot` y
+  `cctv-automation-final`.
+- **`run-operational-cycle.js`**: nuevo paso `siissPointsSync` (`SIISS_POINTS_SYNC_INTERVAL_
+  MINUTES`, default 60), gateado también por horario de operación, corre
+  `scripts/sync-siiss-points.js` (spec 0014) automáticamente en vez de depender solo del
+  botón manual.
+- `cctv-automation-final`: `npm test` **99/99** (3 nuevos de `business-hours.test.js`).
+- Investigación previa confirmó que la API real de SIIS (`estacionesByPing`) **no expone
+  ninguna IP** — no es posible comparar "la IP de SIISS" contra `puntos_venta.ip`
+  directamente; la discordancia sigue siendo entre dos resultados de ping independientes.
+
+### CRM_Frontend / CCTV — Sincronización directa SIISS → Operación de Puntos
+`specs/0014-siiss-sync-directo/`
+- **Problema:** el botón "Sync SIISS" de Operación de Puntos (`Points.jsx`) llamaba
+  `POST localhost:3001/api/siiss/sync`, ruta que nunca existió en `comercial-bot` (404 real).
+  La lógica de cruce SIIS↔`puntos_venta` vivía sin usar en `Asamblea/src/services/siiss.service.js`
+  (con credenciales por defecto hardcodeadas, riesgo ya documentado en
+  `cctv-automation-final/docs/SIIS_INTEGRATION_MAP.md`). Decisión del usuario: no depender de
+  `Asamblea` (módulo en vías de desaparecer).
+- **`platform/siis-points-sync.js`** (con tests): `diffSiissStatus` (puro, cruce exacto
+  `estacodi`↔`siiss_id`; `siiss_active` solo se sobreescribe cuando SIIS reporta `estaping`
+  conocido, para no convertir "sin dato" en un falso inactivo) + `syncSiissPoints` (I/O:
+  reutiliza el cliente SIIS seguro ya existente `platform/siis-client.js`/`platform/siis.js`,
+  lee/escribe `puntos_venta` en Supabase igual que `scripts/sync-crm-points.js` de spec 0012).
+- **`scripts/sync-siiss-points.js`** (`--dry-run` disponible) + ruta nueva
+  `POST /api/cctv/siiss/sync-points` en `cctv-api` (puerto 3003, ya tenía
+  `SIISS_URL/USER/PASS` y `SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY` configurados).
+- `Points.jsx`/`points.service.js`: el botón ahora llama `pointsService.syncSiiss()` vía
+  `VITE_CCTV_API_BASE` en vez de `VITE_BACKEND_URL:3001`.
+- Verificado con datos reales en Docker local: **366 estaciones SIIS, 358 puntos con
+  `siiss_id`, 351 coincidencias, 351 actualizados en Supabase, 0 errores** (~64s por los
+  `PATCH` secuenciales — aceptable para un botón manual, no automático).
+- `cctv-automation-final`: `npm test` **96/96**.
+
 ### CCTV — Sincronización Operación de Puntos ↔ Seguridad Electrónica
 `specs/0012-sync-puntos-cctv/`
 - **Problema:** "Operación de Puntos" (Supabase `puntos_venta`) y "Seguridad Electrónica"
@@ -92,6 +211,360 @@ a una versión fechada.
   (sin herramienta de automatización de navegador disponible en este entorno) — verificado por API
   + bundle en vez de visualmente, riesgo residual bajo (mismo patrón JSX que la tarjeta ya
   existente).
+
+## [2026-09-30] — spec 0013 a producción
+
+### Ciberseguridad — Torres reales: hAP lite + NVR por punto (fase 1)
+`specs/0013-inventario-torres-haplite-nvr/`
+- **Problema:** el módulo Inventario no tenía ningún concepto de punto de venta ni
+  torre — un MikroTik hAP lite y su grabador Dahua aparecían como dos candidatos
+  sueltos, aunque comparten IP (la del hAP lite, por NAT) y "pertenecen" al mismo punto.
+- **Datos semilla reales** (`cyber_towers`/`cyber_tower_points`, nuevo): 14 torres reales
+  con nombre y gateway/CIDR + 1 celda explícitamente marcada "no es una torre" (Edificio
+  Ppal), entregadas por el usuario. **Verificado que el campo `organization` de
+  `dss_device_registry` no es un proxy confiable de torre** (mezcla varias torres reales
+  en 2 de 13 zonas) — la torre real de un punto se toma de esta lista, nunca de DSS.
+- **Nueva fuente `DSS`** (`cybersecurity/src/dss-importer.js`): trae `dss_device_registry`
+  (`cctv-automation-final`, servicio aparte) de solo lectura, mismo patrón que
+  `ksc-importer.js`. `cybersecurity/scripts/pull-dss-devices.js` (auditoría por defecto,
+  `--apply` explícito) y `cybersecurity/scripts/seed-towers.js` para la semilla.
+- **`getTowerPoints(db)`** agrupa por IP compartida (semilla + DSS), con FortiGate como
+  corroboración opcional (solo 7 de 96 IPs de hAP lite conocidas aparecen en FortiGate —
+  no es el mecanismo principal). Nueva ruta `GET /api/cybersecurity/towers` y pestaña
+  "Torres" en el frontend (`CybersecurityDashboard.jsx`).
+- **Migración real encontrada al implementar:** una base ya existente (incl. `.65`) tiene
+  `cyber_source_systems.source_type` con un `CHECK` sin `'DSS'` — SQLite no soporta
+  `ALTER` de un `CHECK`. `db/open-database.js` automigra al abrir. Un primer intento de
+  migración (renombrar la tabla vieja) resultó incorrecto: `ALTER TABLE RENAME` reescribe
+  las FK de las tablas hijas al nuevo nombre, dejando `cyber_source_snapshots` con
+  referencias huérfanas — detectado con `PRAGMA foreign_key_check` contra la base local
+  real, corregido (crear la tabla nueva bajo nombre temporal, nunca renombrar la
+  original), con test de regresión que replica el escenario exacto.
+- **Verificado contra datos reales, en Docker local** (no solo tests): 15 torres, 96
+  puntos con hAP lite conocido, 93 con dispositivo DSS identificado —
+  `GET /api/cybersecurity/towers` a través de `http://127.0.0.1:3003/` con el stack real
+  reconstruido. 160/160 tests, `npm run build` de `CRM_Frontend` en verde.
+- **Fuera de alcance de esta fase** (spec 0013 §4): modelo completo de torre
+  (enlaces/celdas/router principal/UPS), monitoreo en vivo, vulnerabilidades de
+  firmware, jerarquía Zona → Sitio → Punto (documentada como info para más adelante).
+
+### Ciberseguridad — Vista gráfica de Torres + todos los puntos (con o sin CCTV)
+`specs/0013-inventario-torres-haplite-nvr/`
+- **Pedido del usuario:** mismo lenguaje visual que los tableros por zona de CCTV
+  (tarjetas + cuadrícula de cubos) para Torres, e incluir **todos** los puntos de cada
+  zona, no solo los que ya tienen hAP lite conocido.
+- **Hallazgo real:** `puntos_venta` (Supabase, Operación de Puntos) ya tiene el campo
+  `segment` con las 7 zonas operativas reales (`PALMIRA`, `OCCIDENTE`, `CANDELARIA`,
+  `FLORIDA`, `PRADERA`, `ROZO`, `AMAIME Y EL PLACER`) y `has_cctv` ya viene sincronizado
+  de verdad (spec 0012) — no hizo falta inventar ni pedir un dato nuevo. Verificado
+  contra Supabase real: 375 puntos activos, 40 con CCTV.
+- **`TowersCardsView`** (nuevo, `CybersecurityDashboard.jsx`): una tarjeta por torre
+  real, agrupadas por zona (`ZONE_TOWER_NAMES`, mapeo confirmado por el usuario),
+  cuadrícula de cubos por punto, expandible para ver Enlaces/Celdas/Router principal —
+  Enlaces y Celdas quedan como secciones "sin datos todavía" (spec 0013 §4, preparadas
+  para cuando lleguen esos datos sin requerir otro rediseño).
+- **Selector de vista** ("Tarjetas"/"Lista"): la vista de lista maestro-detalle
+  original (`TowersListView`) se conserva para búsqueda puntual rápida.
+- **Ubicación por IP/gateway (pedido del usuario)**: `cyber_tower_gateways` (nuevo) —
+  una torre puede tener más de un gateway real (Pradera, Candelaria); antes solo se
+  guardaba uno como representativo. Un punto de Operación de Puntos sin hAP lite
+  conocido, si su `ip` cae dentro de un gateway real de una torre de su propia zona, se
+  ubica ahí automáticamente (sin fusionarlo con el punto ya conocido si comparte IP).
+  **Verificado contra datos reales en vivo: 326 de 368 puntos activos (89%) se ubican
+  así** — el resto, sin match a ningún gateway conocido, sigue en "Sin torre asignada",
+  sin inventarles una torre.
+- **Leyenda de colores única para toda la vista** (`CubeLegend`): verde = grabador DSS
+  confirmado, ámbar = hAP lite conocido sin grabador, azul = ubicado por IP sin hAP
+  lite/DSS confirmado, gris = sin torre asignada — un solo significado por color, sin
+  excepciones por sección.
+- **Tarjeta flotante al hacer click en un cubo** (`PointFloatingCard`): nombre, torre,
+  IP, zona, CCTV/FortiGate/grabadores DSS del punto — se cierra con la X, clic afuera
+  o Esc.
+- Verificado contra datos reales en vivo (no solo el build): la lógica de agrupación y
+  de coincidencia por gateway se replicó fuera de React contra la API real
+  (`/api/cybersecurity/towers`) y Supabase real. `npm run build`/`lint` en verde,
+  bundle reconstruido en Docker local con el texto nuevo confirmado.
+
+### Ciberseguridad — Corrección de máscaras reales, categoría VPN y tarjeta al pasar el cursor
+`specs/0013-inventario-torres-haplite-nvr/`
+- **Corrección de datos reales (el usuario, con conocimiento directo de la red, corrigió
+  la máscara del PDF original):** Rozo, Palmaseca y Zamorano Palmira usan `/23`, no `/24`
+  como se había transcrito. Corregido en la semilla real
+  (`cybersecurity/raw/torres/torres-haplite-real-20260918.json`, gitignored) y en la base
+  local (se borraron los 2 gateways `/24` obsoletos y se recargó `seed-towers.js`).
+  **Impacto verificado contra datos reales en vivo:** Rozo pasó de 1/25 puntos ubicados
+  por IP (4%) a **24/25 (96%)** — la brecha real que se había documentado como "hallazgo,
+  no ajustado" en la nota de módulo era, en realidad, un dato de máscara mal transcrito.
+- **Nueva categoría "Conectados por VPN"** (`isVpnConnected`, prefijo `10.100.1.`):
+  el usuario aclaró que estos puntos se conectan por VPN desde internet y
+  **estructuralmente nunca van a tener una torre** — no es lo mismo que "sin torre
+  asignada por falta de dato todavía". Se separan en su propia tarjeta (tono violeta,
+  agregado a `CubeLegend`) para no mezclar ambos significados.
+- **Tarjeta flotante al pasar el cursor, no al hacer click** (pedido del usuario): 
+  `PointCubeGrid`/`PointFloatingCard` cambian de `onClick` a `onMouseEnter`/`onMouseLeave`
+  (con `onFocus`/`onBlur` para teclado); ya no hace falta el overlay de "clic afuera" ni
+  el listener de Escape para cerrarla.
+- **Verificado contra datos reales en vivo** (lógica de agrupación replicada fuera de
+  React contra la API real y Supabase real, tras el fix): de 368 puntos activos, **355
+  ubicados por IP, 5 en la nueva categoría VPN, y solo 8 genuinamente sin torre asignada**
+  (antes: 326 ubicados, 42 sin torre asignada sin distinguir VPN). `cybersecurity/`:
+  162/162 tests. `CRM_Frontend`: `npm run lint`/`build` en verde (sin errores nuevos).
+  Docker local reconstruido (`crm-frontend` + `restart`), bundle con el texto nuevo
+  confirmado, `/api/cybersecurity/towers` devuelve los gateways `/23` corregidos.
+
+### Ciberseguridad — Match de punto por IP ya no se restringe a la zona propia
+`specs/0013-inventario-torres-haplite-nvr/`
+- **Investigación de los 8 puntos que seguían "sin torre asignada"** tras el fix
+  anterior: 2 (`LUCERNA`, `BOMBA LAURO`) caen justo fuera del gateway `/28` de Bolo — el
+  usuario confirmó que esa máscara real es correcta, así que siguen genuinamente sin
+  torre. Los otros 6 sí tenían match real, pero contra una torre mapeada a **otra** zona
+  operativa (p.ej. 2 puntos de Candelaria caen en la red del Edificio Principal, mapeada
+  solo a Palmira; puntos de Palmira/Amaime caen en la red de Quisquina, mapeada a
+  Occidente) — el código solo buscaba torres de la propia zona del punto.
+- **Decisión del usuario:** la red real manda sobre la etiqueta de zona — permitir que
+  un punto se ubique en cualquier torre real conocida, sin restringir a las torres de su
+  propia zona. `TowersCardsView` ahora calcula el match una sola vez contra **todas**
+  las torres (antes, una vez por zona contra solo las torres de esa zona); el punto
+  aparece en la tarjeta de la torre real que lo contiene, aunque esa torre esté en la
+  sección de otra zona.
+- **Verificado contra datos reales en vivo:** de 368 puntos activos, **361 ubicados por
+  IP (98%)** — solo quedan los 2 puntos de Bolo, confirmados como brecha real (no
+  ajustada). `cybersecurity/`: 162/162 tests (sin cambios de backend). `CRM_Frontend`:
+  `npm run lint`/`build` en verde. Docker local reconstruido (`crm-frontend` +
+  `restart`), bundle nuevo confirmado servido por nginx.
+
+### Ciberseguridad — Revisión de código: 3 correcciones (sin cambio de comportamiento hoy)
+`specs/0013-inventario-torres-haplite-nvr/`
+- **`/code-review` sobre el diff acumulado de la spec** encontró 3 defectos reales, sin
+  necesidad de datos nuevos:
+  1. La tarjeta "Puntos totales (Operación de Puntos)" mostraba "cargando…" para
+     siempre si la consulta a Supabase fallaba o traía 0 filas (`crmTotal || undefined`
+     no distinguía error/vacío/cargando). Corregido: ahora distingue los 3 estados
+     explícitamente (`pointsQuery.isError`/`isLoading`).
+  2. El match de un punto por IP/gateway cruzando zonas (incremento anterior) elegía la
+     primera torre que coincidiera, no la más específica (prefijo más largo) — el mismo
+     tipo de problema de contención de CIDR que el backend ya resuelve así
+     (`resolveTrueSegmentId`). No cambiaba el resultado hoy (ningún gateway real se
+     solapa todavía), pero era un riesgo latente justo después de ampliar Rozo/
+     Palmaseca/Zamorano a `/23`. Corregido: `findTowerByIp` replica el mismo criterio
+     de desempate que el backend.
+  3. `dss-importer.js` (`readDssDeviceRegistry`) no tenía `ORDER BY`, pero
+     `importDssDeviceRegistry` hashea `JSON.stringify(devices)` sobre ese resultado
+     para decidir si un re-import es un no-op — sin orden garantizado, un re-import de
+     los mismos datos podía producir un hash distinto y duplicar el import en vez de
+     reconocerlo como `ALREADY_IMPORTED`. Corregido: `ORDER BY dss_identifier` (clave
+     primaria real de esa tabla).
+- **Verificado**: `cybersecurity/`: 162/162 tests; re-corrido `pull-dss-devices.js
+  --apply` contra la base local, confirma `ALREADY_IMPORTED` (idempotencia intacta).
+  `CRM_Frontend`: `npm run lint`/`build` en verde. Ubicación por IP re-verificada en
+  vivo: sigue en 361/368 (98%), sin regresión. Docker local reconstruido
+  (`cybersecurity-api` + `crm-frontend` + `restart`), bundle nuevo confirmado.
+
+### Ciberseguridad — Estado vivo del hAP lite y del puerto NAT del NVR en la tarjeta del punto
+`specs/0013-inventario-torres-haplite-nvr/`
+- **Pedido del usuario:** mostrar el estado del hAP lite, si el puerto NAT del NVR
+  (4455/4456) responde, la latencia, y sentar la base para detectar vulnerabilidades
+  de firmware — todo en la tarjeta de cada punto.
+- **Investigación antes de construir**: `cybersecurity-api` es un contenedor
+  deliberadamente bloqueado (`read_only`, `cap_drop: ALL`) sin ruta de red probada
+  hacia las redes de torre — nunca ha hecho una conexión activa a nada. El único
+  camino con alcance real y probado a `192.168.x.x` es `monitor_puntos_wpp.py` (corre
+  en `comercial-bot`, ya hace ping + latencia a los ~368 puntos activos, sin ningún
+  chequeo TCP). Decisión del usuario: extender ese script en vez de construir
+  infraestructura de red nueva.
+- **`monitor_puntos_wpp.py`**: nuevo `check_nvr_port(ip)` — intenta TCP al puerto 4455
+  y luego 4456 (timeout 1.5s cada uno), solo si el ping al hAP lite ya fue exitoso (si
+  el host no responde, el puerto NAT tampoco va a estar abierto — evita gastar el
+  timeout completo en puntos ya caídos). Corre dentro del mismo `ThreadPoolExecutor`
+  que ya paraleliza el ping (35 workers), sin nueva infraestructura de concurrencia.
+  Escribe `nvr_port`/`nvr_checked_at` en `puntos_venta` junto a `active`/`latency`
+  (mismo upsert, mismo criterio: se sobreescribe en cada corrida).
+- **`cybersecurity/sql/0013-add-nvr-port-columns.sql`** (nuevo, para correr a mano en
+  el editor SQL de Supabase — mismo patrón ya usado en `Asamblea/sql/`): agrega
+  `nvr_port`/`nvr_checked_at` a `puntos_venta`. **Pendiente: el usuario debe correrlo
+  antes de que el dato aparezca real** — el código ya maneja su ausencia mostrando
+  "Sin datos todavía" en vez de un falso "Sin conexión".
+- **`CybersecurityDashboard.jsx`**: `LiveStatusRow` (nuevo) en `PointFloatingCard` —
+  dos filas (hAP lite, NVR/NAT) con punto de color (verde/rojo/gris), latencia o
+  puerto, y hace cuánto se revisó (`date-fns`, ya usado en otras páginas de
+  `CRM_Frontend`) — nunca dice "en vivo": `monitor_puntos_wpp.py` corre bajo demanda
+  (comando de WhatsApp), no en un intervalo fijo, así que la antigüedad del dato
+  importa y se muestra siempre. Cruce por IP (`crmPointByIp`) para que los puntos con
+  hAP lite ya conocido (no solo los ubicados por IP) también muestren su estado —
+  `tower.points` (backend propio) no trae este dato, solo `puntos_venta`.
+- **Verificado**: `check_nvr_port` probado contra un puerto TCP real abierto y uno
+  cerrado en `localhost` (puerto abierto detectado correctamente, cerrado devuelve
+  `None`, no una excepción sin manejar). `cd CRM_Frontend && npm run lint`/`build` en
+  verde. Docker local reconstruido (`crm-frontend` + `restart`), bundle confirmado con
+  el texto nuevo ("NAT 4455/4456", "Sin datos todavía").
+
+### Ciberseguridad — Firmware inicial (sin verificar) en la tarjeta del punto
+`specs/0013-inventario-torres-haplite-nvr/`
+- **Pedido del usuario**: sentar la base para detectar vulnerabilidades de firmware.
+  Ningún servicio de este ecosistema hace hoy un escaneo activo de firmware contra las
+  redes de torre (Greenbone es un relevo de archivos aislado, sin conector en vivo ni
+  alcance documentado sobre esas redes) — construir eso es una decisión de arquitectura
+  aparte. Mientras tanto: se encontraron **versiones de firmware reales** ya guardadas
+  en otra base del ecosistema (`cctv-automation-final`, tabla de staging de un import
+  manual de Excel, 100 de 103 filas de la corrida más reciente con IP de hAP lite, 94
+  con firmware). Decisión del usuario: importar esto como dato inicial, **marcado
+  explícitamente como no verificado**, sin depender de él a largo plazo (se desactualiza
+  rápido — la corrida más reciente vista tiene semanas).
+- **`cctv-firmware-staging-importer.js`** (nuevo, mismo patrón que `dss-importer.js`):
+  lee `stg_inventory_locations` de solo la corrida de import más reciente (la tabla
+  acumula corridas viejas del mismo Excel sin limpiarlas — se descartan, no se cuentan
+  3 veces las mismas 103 ubicaciones). Nueva fuente `CCTV_STAGING`
+  (`authority_level = 'OBSERVATIONAL'`, la más baja del enum — nunca se confunde con
+  DSS/FortiGate corroborados). Cada observación se marca `CCTV_STAGING_UNVERIFIED`.
+- **`cybersecurity/db/schema.sql`/`open-database.js`**: `'CCTV_STAGING'` agregado al
+  `CHECK` de `source_type` — misma migración de LL-0007, generalizada para revisar
+  cualquier valor requerido (no solo `'DSS'`), con test de regresión nuevo para el
+  caso real de upgrade parcial (una base que ya tiene `'DSS'` pero no
+  `'CCTV_STAGING'`, como estará `.65` en producción).
+- **`getTowerPoints`**: cruza por IP con la nueva fuente y expone `point.firmware`
+  (`firmwareRaw`, `recorderModel`, `observedAt`, `unverified: true`) — solo para los
+  96 puntos con hAP lite ya conocido, no se fuerza sobre puntos ubicados solo por
+  gateway (esa reconciliación no aplica ahí).
+- **Tarjeta flotante**: nueva sección con el firmware, siempre rotulada "Sin
+  verificar (import Excel, hace X) — no reemplaza un escaneo activo".
+- **Verificado contra datos reales**: import real corrido con `--apply` (respaldo
+  previo del `.db` local) — **79 de los 96 puntos conocidos (82%) ya muestran
+  firmware**, confirmado vía `/api/cybersecurity/towers` en Docker local. Idempotencia
+  confirmada (`ALREADY_IMPORTED` en la segunda corrida). `cybersecurity/`: 168/168
+  tests (7 nuevos). `CRM_Frontend`: `npm run lint`/`build` en verde. Docker local
+  reconstruido (`cybersecurity-api` + `crm-frontend` + `restart`), bundle confirmado
+  con el texto nuevo.
+- **Fuera de alcance de este incremento**: escaneo activo real de firmware (decisión
+  de arquitectura aparte, requiere definir qué servicio escanea, con qué alcance de
+  red y credenciales sobre equipos de producción).
+
+### Ciberseguridad — Corrige etiqueta falsa "hAP lite: En línea" en la tarjeta del punto
+`specs/0013-inventario-torres-haplite-nvr/`
+- **Reporte del usuario tras correr la migración SQL:** las tarjetas de puntos con hAP
+  lite + CCTV confirmado no mostraban ningún estado, y las tarjetas azules ("ubicado
+  por IP", sin hAP lite confirmado) mostraban "hAP lite: En línea" — tecnología que
+  esos puntos todavía no tienen confirmada.
+- **Investigado antes de corregir (no solo cosmético):** `puntos_venta.ip` (lo que
+  `monitor_puntos_wpp.py` pinguea) **nunca es la IP del hAP lite**, ni siquiera para
+  los 96 puntos con hAP lite ya confirmado por la lista real de torres — son dos
+  dispositivos distintos en el mismo punto. Verificado con un caso real: el punto
+  "AMAIME I" tiene hAP lite en `192.168.12.58` (lista real de torres/DSS) pero
+  `puntos_venta.ip` = `192.168.12.41` — misma subred, otro host, casi seguro el
+  equipo de apuestas (WiFi) y no el hAP lite (Eth4/CCTV). **0 de 96 IPs de hAP lite
+  conocidas coinciden con algún `puntos_venta.ip`.**
+- **Corregido:** la fila de ping ya no dice "hAP lite" en ningún caso — dice "Punto
+  (ping)", porque eso es lo que de verdad mide (la conectividad del equipo de
+  apuestas, ya monitoreado por Operación de Puntos). Cuando la IP mostrada arriba de
+  la tarjeta (la real del hAP lite, para puntos confirmados) difiere de la IP que se
+  está midiendo, se muestra esa segunda IP explícitamente con la aclaración "(equipo
+  de apuestas, IP distinta al hAP lite)". Para puntos confirmados sin ninguna fila
+  coincidente en `puntos_venta` (el caso típico, 0/96), se muestra "Sin dato de
+  conectividad" con la explicación, en vez de un "Sin datos todavía" que insinuaba
+  que el dato llegaría solo con el tiempo.
+- **Pendiente real, no resuelto en este fix:** monitorear la IP real del hAP lite
+  (no la del equipo de apuestas) requeriría que `monitor_puntos_wpp.py` conozca esa
+  lista — hoy vive solo en el SQLite local de `cybersecurity` (`cyber_tower_points`),
+  no en Supabase, que es lo único que ese script puede leer. Es una decisión de
+  arquitectura nueva (cómo sincronizar esa lista, o si conviene), no un ajuste de UI.
+- **Verificado:** `npm run lint`/`build` en verde. Docker local reconstruido
+  (`crm-frontend` + `restart`), bundle confirmado con el texto nuevo ("Punto (ping)",
+  "equipo de apuestas", "Sin dato de conectividad") y sin el texto viejo ("hAP lite"
+  como etiqueta de fila).
+
+### Ciberseguridad — Estado vivo REAL del hAP lite (nueva tabla, ya no `puntos_venta`)
+`specs/0013-inventario-torres-haplite-nvr/`
+- **Pedido del usuario, tras confirmar el hallazgo del incremento anterior**: sincronizar
+  la lista real de hAP lite a Supabase para que `monitor_puntos_wpp.py` pueda probarla
+  directamente, en vez de conformarse con el dato del equipo de apuestas.
+- **`cybersecurity/sql/0013-create-known-haplites-table.sql`** (nuevo, para correr a
+  mano en el editor SQL de Supabase): tabla `cyber_known_haplites` (`ip` PK, `tower_name`,
+  `point_names`, `active`, `latency`, `nvr_port`, `updated_at`, `nvr_checked_at`,
+  `synced_at`).
+- **`cybersecurity/scripts/sync-known-haplites-to-supabase.js`** (nuevo): lee la
+  semilla real local (`cyber_towers`/`cyber_tower_points`, única fuente de verdad de
+  la IP del hAP lite) y sincroniza identidad (`ip`/`tower_name`/`point_names`) a
+  Supabase — nunca toca las columnas de estado vivo, que son responsabilidad exclusiva
+  de `monitor_puntos_wpp.py` (mismo principio de separación que `dss-importer.js` vs.
+  `ksc-importer.js`). Modo auditoría por defecto, `--apply` para escribir.
+- **`monitor_puntos_wpp.py`**: nuevas funciones `scan_haplite_target`/
+  `scan_and_update_known_haplites` — escaneo aparte y más simple que el de
+  `puntos_venta` (sin lógica de unificación de grupos ni transiciones, que no aplican
+  a infraestructura de red), reusando `ping_host`/`check_nvr_port` ya existentes.
+  Corre después del escaneo principal, con su propio manejo de errores — nunca puede
+  romper el monitoreo de `puntos_venta` si la tabla nueva no existe todavía.
+- **`CybersecurityDashboard.jsx`**: nueva consulta a `cyber_known_haplites`
+  (`cybersecurityService.getKnownHapliteStatuses`, lectura directa a Supabase). Los
+  puntos con hAP lite confirmado ahora muestran su estado **real** (etiqueta "hAP lite
+  (ping)"), cruzado por la IP correcta — ya no por `puntos_venta.ip`.
+- **Verificado**: `scan_haplite_target`/`scan_haplite_targets_parallel` probados contra
+  un host real (`8.8.8.8`, activo, sin puerto NAT abierto, como se esperaba) y contra un
+  servidor TCP local real (puerto detectado correctamente). `readKnownHaplites`
+  (identidad) con 2 tests nuevos — 170/170 en `cybersecurity/`. Sync real corrido en
+  modo auditoría contra datos locales: 96 IPs de hAP lite listas para sincronizar. La
+  consulta a la tabla (todavía inexistente hasta que el usuario corra la migración)
+  falla de forma controlada y se degrada a lista vacía, sin romper la vista. `npm run
+  lint`/`build` en verde. Docker local reconstruido, bundle confirmado con el texto
+  nuevo.
+- **Actualización (mismo día, tras que el usuario corrió la migración)**: se ejecutó
+  `sync-known-haplites-to-supabase.js --apply` — **96 IPs reales sincronizadas**,
+  confirmado consultando con la clave `service_role` (ej. "Amaime I" →
+  `192.168.12.58`, coincide con la semilla). **Hallazgo real**: la tabla nueva tenía
+  RLS activado por defecto (comportamiento estándar de tablas nuevas en Supabase) sin
+  ninguna policy — la escritura con `service_role` funcionaba, pero el frontend (clave
+  `anon`) veía 0 filas. Nuevo `cybersecurity/sql/0013-allow-public-read-known-
+  haplites.sql` (policy de `SELECT` público) — corregido y confirmado (96/96 filas
+  visibles con la clave `anon`).
+- **Segunda actualización (mismo día): el primer monitoreo real disparado por
+  WhatsApp no pobló nada** — el bot de producción corre con `main`, que no tiene el
+  escaneo nuevo (la rama no se ha desplegado). Con autorización del usuario, se corrió
+  `python monitor_puntos_wpp.py --json` directamente desde la máquina de desarrollo
+  (con el código de la rama) contra el Supabase real: el monitoreo principal de
+  `puntos_venta` funcionó normal, pero el escaneo nuevo de hAP lite **encontró un bug
+  real**: `update_haplite_results_in_supabase` hace upsert de solo las columnas de
+  estado vivo (nunca `tower_name`/`point_names`, responsabilidad exclusiva del script
+  de sincronización de identidad) — Postgres exige que la fila candidata del `INSERT`
+  satisfaga los `NOT NULL` de la tabla antes de evaluar el `ON CONFLICT DO UPDATE`,
+  aunque el conflicto sí resuelva con `UPDATE`. La transacción se revirtió completa,
+  sin dañar ninguna de las 96 filas (confirmado: 0 con `tower_name` nulo). Nuevo
+  `cybersecurity/sql/0013-fix-known-haplites-not-null.sql` (quita el `NOT NULL` de
+  esas 2 columnas) + corregido el `CREATE TABLE` original para instalaciones futuras.
+  **Tercera actualización (mismo día): el fix inicial estaba incompleto** — el
+  reintento seguía fallando, ahora con `synced_at` (otra columna `NOT NULL` que el
+  escritor de estado vivo tampoco toca, se había pasado en el primer fix). Corregido
+  el archivo y el `CREATE TABLE` original; el usuario corrió la migración completa.
+  **Escaneo real de hAP lite corrido con éxito** (confirmado con una prueba directa
+  antes de reintentar): **96/96 IPs revisadas, 95/96 activas, 83/96 con puerto NAT
+  4455/4456 abierto** — confirma NVR real detrás de la mayoría. Ejemplo verificado:
+  "Amaime I" (`192.168.12.58`) → en línea, 0ms, puerto 4455 abierto, visible con la
+  clave `anon` (la del navegador). **Ciclo completo validado end-to-end contra datos
+  reales**: torre real → hAP lite real → ping/NAT real → tarjeta.
+- **Pendiente real que queda**: la rama sigue sin push/PR/merge/deploy — el bot de
+  WhatsApp de producción todavía no dispara este escaneo por su cuenta (corrió porque
+  Claude lo ejecutó manualmente desde la máquina de desarrollo, con autorización del
+  usuario). Al desplegar, el flujo normal ya lo hace solo.
+
+### Ciberseguridad — Corrige máscara de Bolo (/28 → /24): "Sin torre asignada" queda en 0
+`specs/0013-inventario-torres-haplite-nvr/`
+- **Reporte del usuario**, mirando la tarjeta "Sin torre asignada": los 2 puntos ahí
+  (`LUCERNA`, `BOMBA LAURO`) son reales de la torre Bolo.
+- **Evidencia que resuelve la contradicción con la confirmación anterior** ("Bolo es
+  `/28`", 2026-09-19): el propio hAP lite ya conocido de Bolo ("Oficina Bolo Alaska",
+  `192.168.46.100`) tampoco cae dentro de `192.168.46.1/28` (que solo cubre `.0`–`.15`)
+  — señal directa de que la máscara real es más amplia. El usuario confirmó `/24`.
+- **Corregido**: `192.168.46.1/28` → `192.168.46.1/24` en la semilla real
+  (gitignored) y recargada (gateway obsoleto borrado antes de recargar, mismo patrón
+  ya usado con Rozo/Palmaseca/Zamorano).
+- **Verificado contra datos reales en vivo**: de 368 puntos activos, **363 ubicados
+  por IP (99%)**, 5 VPN, **0 puntos sin torre asignada** — la máscara más amplia
+  también capturó 2 puntos más de Bolo que no se habían mencionado (`PANADERIA
+  ALASKA`, `CLUB JAPONES`). `cybersecurity/`: 170/170 tests. Docker local
+  reconstruido (`cybersecurity-api` + `restart crm-frontend`).
+
+**Desplegado y verificado en `192.168.8.65:3003` (2026-09-30):** seed real cargado
+(15 torres, 17 gateways, 104 puntos) + import DSS aplicado (111 dispositivos) contra
+`cybersecurity/data/cyber-inventory.db` de producción (con respaldo previo),
+`cybersecurity-api` reconstruido y reiniciado. `GET /api/cybersecurity/towers`
+confirma las 15 torres reales; pestaña "Torres" verificada en el navegador.
 
 ## [2026-09-11] — specs 0010 y 0011 a producción
 

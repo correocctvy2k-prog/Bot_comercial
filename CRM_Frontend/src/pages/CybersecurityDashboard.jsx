@@ -1,11 +1,14 @@
 import { createElement, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 import {
-  AlertTriangle, ArrowRight, CheckCircle2, ChevronRight, Clock3,
-  Boxes, Database, EyeOff, FileSearch, Fingerprint, History, Layers, ListChecks, Loader2, MapPin, Network, Radar, RefreshCw,
-  Search, ShieldAlert, ShieldCheck, SlidersHorizontal, X,
+  AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Clock3,
+  Boxes, Cable, Database, EyeOff, FileSearch, Fingerprint, History, LayoutGrid, Layers, List, ListChecks, Loader2, MapPin, Network, PlugZap, Radar, RadioTower, RefreshCw,
+  Router, Search, ShieldAlert, ShieldCheck, SlidersHorizontal, Video, Wifi, WifiOff, X,
 } from 'lucide-react';
 import { cybersecurityService } from '../services/cybersecurity.service';
+import { pointsService } from '../services/points.service';
 import PageHeader from '../components/PageHeader';
 
 const PRIORITY_STYLE = {
@@ -993,6 +996,556 @@ function SubnetsView({ query, drafts, onDraftChange, onRetry, onSave, onDisposit
   );
 }
 
+// Badge por tipo de dispositivo DSS (spec 0013) -- mismo esquema de color que
+// SourceTag/SourceBadge pero para los tipos que trae dss_device_registry
+// (NVR/IPC/DVR-XVR/Alarma/ANPR), no las fuentes de red ya existentes.
+const DEVICE_TYPE_STYLE = {
+  NVR: 'bg-sky-500/10 text-sky-300',
+  IPC: 'bg-violet-500/10 text-violet-300',
+  'DVR/XVR': 'bg-amber-500/10 text-amber-300',
+  'Alarm Controller': 'bg-rose-500/10 text-rose-300',
+  'Access ANPR Camera': 'bg-indigo-500/10 text-indigo-300',
+};
+function DeviceTypeBadge({ deviceType }) {
+  return <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-black uppercase ${DEVICE_TYPE_STYLE[deviceType] || 'bg-muted/40 text-muted-foreground'}`}>{deviceType || 'Desconocido'}</span>;
+}
+
+// Mapeo zona real (puntos_venta.segment, Operación de Puntos) -> torres conocidas en
+// esa zona (spec 0013 SS0.2, confirmado por el usuario 2026-09-18). Varias zonas
+// grandes (Palmira, Occidente, Candelaria) agrupan más de una torre; el resto es 1:1.
+// "AMAIME Y EL PLACER" es el valor real de segment en Supabase (verificado 2026-09-18),
+// distinto del nombre de la torre "Amaime".
+const ZONE_TOWER_NAMES = {
+  PALMIRA: ['Sharon Palmira', 'Cafetero Palmira', 'Oriente Palmira', 'Zamorano Palmira', 'No es una torre (celda Edificio Ppal)'],
+  OCCIDENTE: ['Bolo', 'Quisquina', 'Palmaseca'],
+  CANDELARIA: ['Candelaria', 'Juanchito', 'Villagorgona'],
+  FLORIDA: ['Florida'],
+  PRADERA: ['Pradera'],
+  ROZO: ['Rozo'],
+  'AMAIME Y EL PLACER': ['Amaime'],
+};
+
+// Puntos conectados por VPN desde internet, sin cobertura por las redes de torre
+// (aclarado por el usuario 2026-09-19) -- no son "sin torre asignada por falta de
+// dato", es una categoría real distinta: nunca van a tener torre porque no dependen
+// de ninguna.
+const VPN_IP_PREFIXES = ['10.100.1.'];
+function isVpnConnected(ip) {
+  return VPN_IP_PREFIXES.some((prefix) => String(ip || '').startsWith(prefix));
+}
+
+// Deducir a qué torre pertenece un punto por su IP (pedido del usuario 2026-09-18):
+// una torre puede tener más de un gateway/CIDR real (cyber_towers_gateways) -- se
+// prueba contra todos. Mismo cálculo que ya usa el backend (cidrContainsIp en
+// cybersecurity-read-model.js), reimplementado aquí en el cliente porque
+// puntos_venta vive en Supabase y se consulta directo desde el navegador.
+function ipv4ToNumber(ip) {
+  const parts = String(ip || '').split('.').map(Number);
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return null;
+  return parts.reduce((result, part) => ((result << 8) | part) >>> 0, 0);
+}
+function cidrContainsIp(cidr, ip) {
+  const [network, prefixStr] = String(cidr || '').split('/');
+  const prefix = Number(prefixStr);
+  const networkNum = ipv4ToNumber(network);
+  const ipNum = ipv4ToNumber(ip);
+  if (networkNum === null || ipNum === null || !Number.isInteger(prefix) || prefix < 0 || prefix > 32) return false;
+  const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
+  return (networkNum & mask) === (ipNum & mask);
+}
+// Si la IP cae en el gateway de más de una torre (posible ahora que Rozo/Palmaseca/
+// Zamorano se ampliaron a /23), gana la red más específica (prefijo más largo) -- mismo
+// criterio de desempate que ya usa el backend (`resolveTrueSegmentId` en
+// cybersecurity-read-model.js) para el mismo tipo de problema de contención de CIDR.
+// `monitor_puntos_wpp.py` corre bajo demanda (comando de WhatsApp), no en un
+// intervalo fijo -- nunca se muestra el estado sin decir hace cuánto se revisó, para
+// no insinuar "en vivo" cuando puede ser de hace días.
+function timeAgoEs(iso) {
+  if (!iso) return null;
+  try {
+    return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: es });
+  } catch {
+    return null;
+  }
+}
+
+function findTowerByIp(towers, ip) {
+  let best = null;
+  let bestPrefix = -1;
+  for (const tower of towers) {
+    for (const cidr of tower.gatewayCidrs || []) {
+      const prefix = Number(String(cidr).split('/')[1]);
+      if (Number.isInteger(prefix) && cidrContainsIp(cidr, ip) && prefix > bestPrefix) {
+        best = tower;
+        bestPrefix = prefix;
+      }
+    }
+  }
+  return best;
+}
+
+// Un solo significado por color en toda la vista de Torres (para que la leyenda
+// aplique sin excepciones): verde = grabador DSS confirmado, ámbar = hAP lite
+// conocido sin grabador todavía, azul = punto real (Operación de Puntos) ubicado en
+// esta torre por IP pero sin hAP lite/DSS confirmado, gris = sin torre asignada.
+const CUBE_TONE = {
+  emerald: { bg: 'bg-emerald-500', label: 'Grabador DSS confirmado' },
+  amber: { bg: 'bg-amber-500', label: 'hAP lite conocido, sin grabador todavía' },
+  sky: { bg: 'bg-sky-500', label: 'Ubicado por IP (Operación de Puntos), sin hAP lite confirmado' },
+  slate: { bg: 'bg-slate-400/60', label: 'Sin torre asignada' },
+  violet: { bg: 'bg-violet-500', label: 'Conectado por VPN (sin cobertura de red de torre)' },
+};
+function CubeLegend() {
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl border border-border/70 bg-card/40 px-3 py-2 text-[10px] text-muted-foreground">
+      {Object.values(CUBE_TONE).map((tone) => (
+        <span key={tone.label} className="inline-flex items-center gap-1.5"><span className={`h-2.5 w-2.5 rounded-[2px] ${tone.bg}`} /> {tone.label}</span>
+      ))}
+    </div>
+  );
+}
+
+// Cuadrícula de cubos (mismo lenguaje visual que los tableros por zona de CCTV,
+// spec 0011) -- cada cubo es un punto conocido, coloreado por estado. La tarjeta
+// flotante aparece solo con pasar el cursor (pedido del usuario 2026-09-19; antes
+// era al hacer click).
+function PointCubeGrid({ items, onHover }) {
+  if (items.length === 0) return <p className="text-[11px] text-muted-foreground">Sin puntos para mostrar.</p>;
+  return (
+    <div className="flex flex-wrap gap-1">
+      {items.map((item) => (
+        <button
+          key={item.key}
+          type="button"
+          title={item.title}
+          onMouseEnter={(event) => onHover?.(item, event)}
+          onFocus={(event) => onHover?.(item, event)}
+          onMouseLeave={() => onHover?.(null)}
+          onBlur={() => onHover?.(null)}
+          className={`h-3.5 w-3.5 rounded-[3px] transition-transform hover:scale-125 ${CUBE_TONE[item.tone]?.bg || CUBE_TONE.slate.bg}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Estado de red vivo de un punto (pedido del usuario 2026-09-21): ping al hAP lite
+// (ya lo hace `monitor_puntos_wpp.py`, aquí solo se muestra) + si el puerto NAT del
+// NVR (4455/4456) respondió en la última corrida. Nunca inventa "en vivo" -- si no
+// hay dato (columnas nuevas, migración de Supabase pendiente, o el punto nunca se
+// revisó), lo dice explícitamente en vez de mostrar un falso "sin conexión".
+function LiveStatusRow({ icon, label, isUp, detail, checkedAgo }) {
+  const Icon = icon;
+  const dotClass = isUp === true ? 'bg-emerald-400' : isUp === false ? 'bg-rose-500' : 'bg-muted-foreground/30';
+  const textClass = isUp === true ? 'text-emerald-300' : isUp === false ? 'text-rose-300' : 'text-muted-foreground';
+  const statusText = isUp === true ? 'En línea' : isUp === false ? 'Sin conexión' : 'Sin datos todavía';
+  return (
+    <div className="flex items-center gap-2 text-[11px]">
+      <span className={`h-2 w-2 shrink-0 rounded-full ${dotClass}`} />
+      <Icon size={12} className="shrink-0 text-muted-foreground" />
+      <span className="text-muted-foreground">{label}</span>
+      <span className={`ml-auto font-semibold ${textClass}`}>{statusText}{detail ? ` · ${detail}` : ''}</span>
+      {checkedAgo && <span className="shrink-0 text-[9px] text-muted-foreground/70">({checkedAgo})</span>}
+    </div>
+  );
+}
+
+// Tarjeta flotante con el detalle de un punto -- aparece al pasar el cursor sobre un
+// cubo y se posiciona junto a él (pedido del usuario 2026-09-19). `pointer-events-none`
+// para que el mouse nunca "quede atrapado" sobre la tarjeta y la deje abierta.
+function PointFloatingCard({ point, position }) {
+  if (!point) return null;
+  const style = {
+    left: Math.min(position.x + 12, window.innerWidth - 300),
+    top: Math.min(position.y + 12, window.innerHeight - 260),
+  };
+  return (
+    <div style={style} className="pointer-events-none fixed z-50 w-72 rounded-2xl border border-border bg-card p-4 shadow-2xl">
+        <p className="text-sm font-black leading-tight">{point.title}</p>
+        {point.torreName && <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-blue-400">{point.torreName}</p>}
+        {point.ip && <p className="mt-2 flex items-center gap-1.5 font-mono text-xs text-muted-foreground"><Router size={12} /> {point.ip}</p>}
+        {point.zone && <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><MapPin size={12} /> Zona {point.zone}</p>}
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          {point.hasCctv === true && <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-300">Con CCTV</span>}
+          {point.hasCctv === false && <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-black uppercase text-muted-foreground">Sin CCTV</span>}
+          {point.observedByFortigate && <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[9px] font-black uppercase text-sky-300">FortiGate en línea</span>}
+        </div>
+        {point.ip && (
+          <div className="mt-3 space-y-1.5 border-t border-border/60 pt-3">
+            {point.probeIp ? (
+              <>
+                {point.probeIp !== point.ip && (
+                  <p className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
+                    <Router size={11} className="shrink-0" /> {point.probeIp} <span className="normal-case text-muted-foreground/70">(equipo de apuestas, IP distinta al hAP lite)</span>
+                  </p>
+                )}
+                <LiveStatusRow
+                  icon={point.active ? Wifi : WifiOff}
+                  label={point.confirmedHaplite ? 'hAP lite (ping)' : 'Punto (ping)'}
+                  isUp={point.active === true ? true : point.active === false ? false : null}
+                  detail={point.active && point.latency ? `${point.latency}ms` : null}
+                  checkedAgo={timeAgoEs(point.pingCheckedAt)}
+                />
+                <LiveStatusRow
+                  icon={PlugZap}
+                  label="NAT 4455/4456"
+                  isUp={point.nvrCheckedAt ? Boolean(point.nvrPort) : null}
+                  detail={point.nvrPort ? `puerto ${point.nvrPort}` : null}
+                  checkedAgo={timeAgoEs(point.nvrCheckedAt)}
+                />
+              </>
+            ) : point.confirmedHaplite ? (
+              <p className="text-[10px] text-muted-foreground">
+                Sin dato de conectividad todavía — corre <code className="font-mono">sync-known-haplites-to-supabase.js --apply</code> y luego el monitor (comando de WhatsApp) para poblarlo.
+              </p>
+            ) : (
+              <p className="text-[10px] text-muted-foreground">
+                Sin dato de conectividad — este punto no tiene una fila con esta IP en Operación de Puntos (esa IP corresponde al equipo de apuestas, no al hAP lite).
+              </p>
+            )}
+          </div>
+        )}
+        {point.dssDevices?.length > 0 ? (
+          <div className="mt-3 space-y-1.5">
+            {point.dssDevices.map((device) => (
+              <div key={device.id} className="flex items-center gap-1.5 rounded-lg bg-background/50 px-2 py-1.5 text-[11px]">
+                <DeviceTypeBadge deviceType={device.deviceType} /> <span className="truncate font-semibold">{device.name}</span>
+              </div>
+            ))}
+          </div>
+        ) : point.tone === 'violet' ? (
+          <p className="mt-3 text-[11px] text-violet-300">Conectado por VPN desde internet, sin cobertura de red de torre.</p>
+        ) : point.tone !== 'slate' ? (
+          <p className="mt-3 text-[11px] text-amber-300">Sin grabador DSS identificado todavía.</p>
+        ) : (
+          <p className="mt-3 text-[11px] text-muted-foreground">Torre específica pendiente de determinar (Operación de Puntos).</p>
+        )}
+        {point.firmware && (
+          <div className="mt-3 rounded-lg border border-dashed border-amber-500/30 bg-amber-500/[0.04] px-2.5 py-2">
+            <div className="flex items-center gap-1.5">
+              <Fingerprint size={12} className="shrink-0 text-amber-400" />
+              <span className="font-mono text-[10px] text-amber-200">{point.firmware.firmwareRaw || point.firmware.recorderModel}</span>
+            </div>
+            <p className="mt-1 text-[9px] leading-tight text-muted-foreground">
+              Sin verificar (import Excel{point.firmware.observedAt ? `, ${timeAgoEs(point.firmware.observedAt)}` : ''}) — no reemplaza un escaneo activo.
+            </p>
+          </div>
+        )}
+    </div>
+  );
+}
+
+// Tarjeta con encabezado pendiente ("Enlaces", "Celdas", "Router de potencia") -- sin
+// datos todavía (spec 0013 §4, fuera de alcance de fase 1), preparada para cuando
+// lleguen sin requerir otro rediseño.
+function PendingSection({ icon, label }) {
+  const Icon = icon;
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-dashed border-border/70 px-3 py-2 text-[10px] font-bold uppercase text-muted-foreground">
+      <Icon size={13} /> {label} <span className="ml-auto normal-case text-muted-foreground/70">sin datos todavía</span>
+    </div>
+  );
+}
+
+// Torres reales (spec 0013, fase 1): navegación torre -> puntos -> hAP lite + su(s)
+// dispositivo(s) DSS. La lista de puntos con hAP lite es explícitamente parcial (solo
+// los que ya tienen CCTV conocido, ver spec 0013 SS0.1). Para "todos los puntos con o
+// sin CCTV" (pedido del usuario 2026-09-18) se cruza con Operación de Puntos
+// (`puntos_venta`, Supabase, ya usado en el resto de CRM_Frontend) por zona real
+// (`segment`) -- un punto sin hAP lite conocido no se le inventa una torre específica,
+// se muestra aparte como "sin torre asignada" (decisión del usuario, mismo pedido).
+// FortiGate corrobora muy pocas IPs de hAP lite (7 de 96 medidas 2026-09-18) -- se
+// muestra como señal opcional, nunca como requisito.
+function TowersView({ query, pointsQuery, haplitesQuery, onRetry }) {
+  const [viewMode, setViewMode] = useState('cards');
+  if (query.isError) return <EmptyState error onRetry={onRetry} />;
+  const towers = query.data?.towers || [];
+  const realTowers = towers.filter((tower) => tower.isTower);
+  const totalPoints = towers.reduce((sum, tower) => sum + tower.pointCount, 0);
+  const pointsWithoutDss = towers.reduce((sum, tower) => sum + tower.pointsWithoutDssCount, 0);
+  const pointsWithFortigate = towers.reduce((sum, tower) => sum + tower.points.filter((point) => point.haplite.observedByFortigate).length, 0);
+  const allCrmPoints = (pointsQuery?.data || []).filter((point) => !point.is_permanently_closed);
+  const crmTotal = allCrmPoints.length;
+  const crmWithCctv = allCrmPoints.filter((point) => point.has_cctv).length;
+  // Distingue error/cargando/vacío -- antes `crmTotal || undefined` mostraba
+  // "cargando…" para siempre si la consulta a Supabase fallaba o traía 0 filas.
+  const crmValue = pointsQuery?.isError ? undefined : crmTotal;
+  const crmDetail = pointsQuery?.isError
+    ? 'error al cargar Operación de Puntos'
+    : pointsQuery?.isLoading
+    ? 'cargando…'
+    : `${crmWithCctv} con CCTV en todo Skylab · ${pointsWithFortigate} hAP lite corroborados por FortiGate`;
+
+  return (
+    <>
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Torres reales" value={realTowers.length} detail={`${towers.length - realTowers.length} celda sin torre (Edificio Ppal)`} icon={RadioTower} tone="blue" />
+        <MetricCard label="Puntos con hAP lite" value={totalPoints} detail="lista parcial: solo puntos con CCTV ya conocido" icon={Router} tone="emerald" />
+        <MetricCard label="Con grabador identificado" value={totalPoints - pointsWithoutDss} detail={`${pointsWithoutDss} sin dispositivo DSS todavía`} icon={Video} tone="amber" />
+        <MetricCard label="Puntos totales (Operación de Puntos)" value={crmValue} detail={crmDetail} icon={MapPin} tone="rose" />
+      </section>
+      <div className="flex justify-end">
+        <div className="inline-flex gap-1 rounded-xl border border-border bg-card/70 p-1">
+          <button onClick={() => setViewMode('cards')} className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold transition-colors ${viewMode === 'cards' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}><LayoutGrid size={13} /> Tarjetas</button>
+          <button onClick={() => setViewMode('list')} className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold transition-colors ${viewMode === 'list' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}><List size={13} /> Lista</button>
+        </div>
+      </div>
+      {viewMode === 'cards' ? <TowersCardsView towers={towers} crmPoints={allCrmPoints} knownHaplites={haplitesQuery?.data || []} /> : <TowersListView towers={towers} />}
+    </>
+  );
+}
+
+// Vista gráfica (pedido del usuario 2026-09-18, mismo lenguaje visual que los tableros
+// por zona de CCTV): una tarjeta por torre real, agrupadas por zona operativa, con
+// cuadrícula de cubos por punto. Un punto de Operación de Puntos se ubica en su torre
+// por IP cuando su IP cae dentro de uno de los gateways reales de esa torre
+// (`tower.gatewayCidrs`, hallazgo del usuario 2026-09-18: 332 de 368 puntos reales ya
+// cruzan así) -- el resto, sin match a ningún gateway conocido, va a "Sin torre
+// asignada" al final de su zona, sin inventarle una torre.
+function TowersCardsView({ towers, crmPoints, knownHaplites }) {
+  const [expandedId, setExpandedId] = useState(null);
+  const [floating, setFloating] = useState(null); // { point, position }
+  const towerByName = new Map(towers.map((tower) => [tower.name, tower]));
+  const knownHapliteIps = new Set(towers.flatMap((tower) => tower.points.map((point) => point.haplite.ip)));
+  // Estado vivo REAL del hAP lite (cyber_known_haplites, sincronizada aparte, hallazgo
+  // 2026-09-21: puntos_venta.ip nunca es la IP del hAP lite) -- cruzada directo por la
+  // IP del hAP lite, que es la clave de esta tabla nueva. tower.points (backend propio)
+  // no trae este dato.
+  const haplitesByIp = new Map(knownHaplites.filter((row) => row.ip).map((row) => [row.ip, row]));
+  const assignedZoneNames = new Set(Object.keys(ZONE_TOWER_NAMES));
+  const crmByZone = new Map();
+  for (const point of crmPoints) {
+    const zone = point.segment || '(sin zona)';
+    if (!crmByZone.has(zone)) crmByZone.set(zone, []);
+    crmByZone.get(zone).push(point);
+  }
+  const zoneNames = [...new Set([...assignedZoneNames, ...crmByZone.keys()])];
+
+  // Un punto se ubica por IP en CUALQUIER torre real conocida, sin restringir a las
+  // torres de su propia zona operativa -- la red real manda sobre la etiqueta de zona
+  // (decisión del usuario 2026-09-19, tras encontrar 5 puntos reales que cruzan zona:
+  // p.ej. 2 puntos de Candelaria caen en la red del Edificio Principal, mapeada solo a
+  // Palmira, y 2 puntos de Palmira/Amaime caen en la red de Quisquina, mapeada a
+  // Occidente). Ya conocido (mismo hAP lite) se descarta para no duplicar el cubo que
+  // tower.points ya representa.
+  const matchedCrmIds = new Set();
+  const crmMatchesByTowerId = new Map();
+  for (const point of crmPoints) {
+    if (!point.ip || knownHapliteIps.has(point.ip)) continue;
+    const tower = findTowerByIp(towers, point.ip);
+    if (!tower) continue;
+    matchedCrmIds.add(point.id);
+    const list = crmMatchesByTowerId.get(tower.id) || [];
+    list.push(point);
+    crmMatchesByTowerId.set(tower.id, list);
+  }
+
+  const onHoverPoint = (item, event) => setFloating(item ? { point: item.detail, position: { x: event.clientX, y: event.clientY } } : null);
+
+  return (
+    <div className="space-y-8">
+      <CubeLegend />
+      {zoneNames.map((zoneName) => {
+        const towerNames = ZONE_TOWER_NAMES[zoneName] || [];
+        const zoneTowers = towerNames.map((name) => towerByName.get(name)).filter(Boolean);
+        const zoneCrmPoints = crmByZone.get(zoneName) || [];
+        const leftoverPoints = zoneCrmPoints.filter((point) => !matchedCrmIds.has(point.id) && !knownHapliteIps.has(point.ip));
+        // Conectados por VPN desde internet: no es "sin torre por falta de dato", es una
+        // categoría real distinta que nunca va a tener torre (aclarado por el usuario
+        // 2026-09-19) -- se separan para no mezclarlos con los genuinamente pendientes.
+        const vpnPoints = leftoverPoints.filter((point) => isVpnConnected(point.ip));
+        const unassignedPoints = leftoverPoints.filter((point) => !isVpnConnected(point.ip));
+        if (zoneTowers.length === 0 && unassignedPoints.length === 0 && vpnPoints.length === 0) return null;
+        return (
+          <section key={zoneName}>
+            <h3 className="mb-3 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground"><MapPin size={13} /> {zoneName}</h3>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {zoneTowers.map((tower) => {
+                const expanded = expandedId === tower.id;
+                const crmMatches = crmMatchesByTowerId.get(tower.id) || [];
+                const knownItems = tower.points.map((point) => {
+                  const haplite = haplitesByIp.get(point.haplite.ip);
+                  return {
+                    key: point.haplite.ip,
+                    tone: point.dssDevices.length > 0 ? 'emerald' : 'amber',
+                    title: `${point.names.join(' · ')} (${point.haplite.ip})`,
+                    detail: {
+                      title: point.names.join(' · '), torreName: tower.name, ip: point.haplite.ip,
+                      observedByFortigate: point.haplite.observedByFortigate, dssDevices: point.dssDevices, tone: point.dssDevices.length > 0 ? 'emerald' : 'amber',
+                      confirmedHaplite: true,
+                      probeIp: haplite?.ip ?? null,
+                      active: haplite?.active ?? null, latency: haplite?.latency ?? null, pingCheckedAt: haplite?.updated_at ?? null,
+                      nvrPort: haplite?.nvr_port ?? null, nvrCheckedAt: haplite?.nvr_checked_at ?? null,
+                      firmware: point.firmware,
+                    },
+                  };
+                });
+                const autoItems = crmMatches.map((point) => ({
+                  key: `crm-${point.id}`,
+                  tone: 'sky',
+                  title: `${point.alias || point.name} (${point.ip}) · ubicado por IP`,
+                  detail: {
+                    title: point.alias || point.name, torreName: tower.name, ip: point.ip, zone: point.segment || zoneName,
+                    hasCctv: Boolean(point.has_cctv), tone: 'sky',
+                    probeIp: point.ip,
+                    active: point.active ?? null, latency: point.latency ?? null, pingCheckedAt: point.updated_at ?? null,
+                    nvrPort: point.nvr_port ?? null, nvrCheckedAt: point.nvr_checked_at ?? null,
+                  },
+                }));
+                const cubeItems = [...knownItems, ...autoItems];
+                const gatewayList = (tower.gatewayCidrs?.length ? tower.gatewayCidrs : [tower.gatewayCidr].filter(Boolean)).join(' · ');
+                return (
+                  <div key={tower.id} className="rounded-2xl border border-border/80 bg-card/60 p-4 backdrop-blur-xl">
+                    <button onClick={() => setExpandedId(expanded ? null : tower.id)} className="flex w-full items-start justify-between gap-2 text-left">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-black">{tower.name}</p>
+                        <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">{gatewayList || 'sin gateway registrado'}</p>
+                      </div>
+                      <span className="flex shrink-0 items-center gap-1 text-[10px] font-bold text-muted-foreground">{cubeItems.length} puntos {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</span>
+                    </button>
+                    <p className="mt-2 text-[10px] text-muted-foreground">{tower.pointCount - tower.pointsWithoutDssCount} con grabador · {tower.pointsWithoutDssCount} sin grabador{crmMatches.length > 0 ? ` · ${crmMatches.length} ubicados por IP` : ''}</p>
+                    <div className="mt-3"><PointCubeGrid items={cubeItems} onHover={onHoverPoint} /></div>
+                    {expanded && (
+                      <div className="mt-4 space-y-2 border-t border-border/60 pt-4">
+                        <PendingSection icon={Cable} label="Enlaces" />
+                        <PendingSection icon={Layers} label="Celdas" />
+                        <div className="flex items-center gap-2 rounded-lg border border-border/70 px-3 py-2 text-[10px] font-bold uppercase text-muted-foreground"><PlugZap size={13} /> Router principal <span className="ml-auto font-mono normal-case text-foreground">{gatewayList || '—'}</span></div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {unassignedPoints.length > 0 && (
+                <div className="rounded-2xl border border-dashed border-border/70 bg-muted/10 p-4">
+                  <p className="text-sm font-black text-muted-foreground">Sin torre asignada</p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">Puntos reales de Operación de Puntos en esta zona, sin IP dentro de ningún gateway de torre conocido.</p>
+                  <p className="mt-2 text-[10px] text-muted-foreground">{unassignedPoints.length} puntos · {unassignedPoints.filter((point) => point.has_cctv).length} con CCTV</p>
+                  <div className="mt-3">
+                    <PointCubeGrid
+                      items={unassignedPoints.map((point) => ({
+                        key: point.id, tone: 'slate', title: point.alias || point.name,
+                        detail: {
+                          title: point.alias || point.name, ip: point.ip, zone: zoneName, hasCctv: Boolean(point.has_cctv), tone: 'slate',
+                          probeIp: point.ip,
+                          active: point.active ?? null, latency: point.latency ?? null, pingCheckedAt: point.updated_at ?? null,
+                          nvrPort: point.nvr_port ?? null, nvrCheckedAt: point.nvr_checked_at ?? null,
+                        },
+                      }))}
+                      onHover={onHoverPoint}
+                    />
+                  </div>
+                </div>
+              )}
+              {vpnPoints.length > 0 && (
+                <div className="rounded-2xl border border-dashed border-violet-500/30 bg-violet-500/[0.04] p-4">
+                  <p className="text-sm font-black text-violet-300">Conectados por VPN</p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">Sin cobertura de red de torre por diseño — se conectan desde internet, no aplica asignarles una.</p>
+                  <p className="mt-2 text-[10px] text-muted-foreground">{vpnPoints.length} puntos · {vpnPoints.filter((point) => point.has_cctv).length} con CCTV</p>
+                  <div className="mt-3">
+                    <PointCubeGrid
+                      items={vpnPoints.map((point) => ({
+                        key: point.id, tone: 'violet', title: point.alias || point.name,
+                        detail: {
+                          title: point.alias || point.name, ip: point.ip, zone: zoneName, hasCctv: Boolean(point.has_cctv), tone: 'violet',
+                          probeIp: point.ip,
+                          active: point.active ?? null, latency: point.latency ?? null, pingCheckedAt: point.updated_at ?? null,
+                          nvrPort: point.nvr_port ?? null, nvrCheckedAt: point.nvr_checked_at ?? null,
+                        },
+                      }))}
+                      onHover={onHoverPoint}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        );
+      })}
+      {floating && <PointFloatingCard point={floating.point} position={floating.position} />}
+    </div>
+  );
+}
+
+// Vista de lista (búsqueda + maestro-detalle, mismo patrón que Subredes) -- se conserva
+// como alternativa a la vista de tarjetas para buscar un punto/IP puntual rápido.
+function TowersListView({ towers }) {
+  const [search, setSearch] = useState('');
+  const [selectedId, setSelectedId] = useState(null);
+  const needle = search.trim().toLowerCase();
+  const visibleTowers = towers.filter((tower) => !needle
+    || tower.name.toLowerCase().includes(needle)
+    || tower.points.some((point) => point.names.some((name) => name.toLowerCase().includes(needle)) || point.haplite.ip.includes(needle)));
+  const selected = visibleTowers.find((tower) => tower.id === selectedId) || visibleTowers[0] || null;
+
+  return (
+      <section className="grid min-h-[650px] overflow-hidden rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xl xl:grid-cols-[360px_1fr]">
+        <aside className="border-b border-border xl:border-b-0 xl:border-r">
+          <div className="border-b border-border p-4">
+            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar torre, punto o IP" className="w-full rounded-xl border border-border bg-background py-2.5 pl-9 pr-3 text-xs outline-none focus:border-blue-500/50" /></div>
+          </div>
+          <div className="max-h-[570px] divide-y divide-border/60 overflow-y-auto">
+            {visibleTowers.map((tower) => {
+              const active = selected?.id === tower.id;
+              return (
+                <button key={tower.id} onClick={() => setSelectedId(tower.id)} className={`w-full p-4 text-left transition-colors ${active ? 'bg-blue-500/10 shadow-[inset_3px_0_0_#3b82f6]' : 'hover:bg-muted/35'}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold">{tower.name}</p>
+                      <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground">{tower.gatewayCidr || 'sin gateway registrado'}</p>
+                    </div>
+                    {!tower.isTower && <span className="shrink-0 rounded-full bg-slate-500/10 px-2 py-1 text-[9px] font-black uppercase text-slate-300">Celda</span>}
+                  </div>
+                  <div className="mt-3 flex gap-3 text-[10px] text-muted-foreground"><span>{tower.pointCount} puntos</span><span>•</span><span>{tower.pointsWithoutDssCount} sin grabador</span></div>
+                </button>
+              );
+            })}
+            {visibleTowers.length === 0 && <div className="p-8 text-center text-xs text-muted-foreground">No hay torres que coincidan con la búsqueda.</div>}
+          </div>
+        </aside>
+        <div className="p-5 lg:p-7">
+          {!selected ? <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Selecciona una torre para ver sus puntos.</div> : (
+            <>
+              <div className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-blue-400"><RadioTower size={14} /> {selected.isTower ? 'Torre de telecomunicaciones' : 'Celda (no es una torre)'}</div>
+                  <h2 className="mt-2 text-2xl font-black">{selected.name}</h2>
+                  <p className="mt-1 font-mono text-xs text-muted-foreground">{selected.gatewayCidr || 'sin gateway registrado'}</p>
+                </div>
+                <span className="w-fit rounded-lg border border-border px-3 py-2 text-[10px] font-black text-muted-foreground">{selected.pointCount} puntos conocidos</span>
+              </div>
+              <ol className="mt-5 space-y-3">
+                {selected.points.map((point) => (
+                  <li key={point.haplite.ip} className="rounded-xl border border-border/70 bg-background/25 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold">{point.names.join(' · ')}</p>
+                        <p className="mt-1 flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground"><Router size={12} /> {point.haplite.ip}</p>
+                      </div>
+                      {point.haplite.observedByFortigate && <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[9px] font-black uppercase text-emerald-300">FortiGate en línea</span>}
+                    </div>
+                    {point.dssDevices.length > 0 ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {point.dssDevices.map((device) => (
+                          <span key={device.id} className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card/60 px-2.5 py-1.5 text-[11px]">
+                            <DeviceTypeBadge deviceType={device.deviceType} />
+                            <span className="font-semibold">{device.name}</span>
+                            {device.model && <span className="text-muted-foreground">· {device.model}</span>}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-[11px] text-amber-300">Sin dispositivo DSS identificado todavía en esta IP.</p>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </>
+          )}
+        </div>
+      </section>
+  );
+}
+
 export default function CybersecurityDashboard() {
   const [activeView, setActiveView] = useState('posture');
   const [priority, setPriority] = useState('');
@@ -1015,9 +1568,20 @@ export default function CybersecurityDashboard() {
     queryFn: () => cybersecurityService.getInventoryCandidates({ source: inventorySource, state: inventoryState, all: true }),
   });
   const networkSegments = useQuery({ queryKey: ['cybersecurity-admin-network-segments'], queryFn: cybersecurityService.getAdminNetworkSegments });
+  const towers = useQuery({ queryKey: ['cybersecurity-towers'], queryFn: cybersecurityService.getTowers });
+  // Operación de Puntos (puntos_venta, Supabase) -- pedido del usuario 2026-09-18:
+  // mostrar TODOS los puntos con o sin CCTV, no solo los que ya tienen hAP lite
+  // conocido. Mismo servicio que ya usa el resto de CRM_Frontend, sin pasar por el
+  // backend de Ciberseguridad (no es su dato).
+  const crmPoints = useQuery({ queryKey: ['cybersecurity-towers-crm-points'], queryFn: pointsService.getPoints });
+  // Estado vivo REAL del hAP lite (cyber_known_haplites) -- hallazgo 2026-09-21:
+  // puntos_venta.ip nunca es la IP del hAP lite, así que esa tabla nunca sirve para
+  // esto. Tabla nueva, sincronizada aparte, poblada por monitor_puntos_wpp.py.
+  const knownHaplites = useQuery({ queryKey: ['cybersecurity-known-haplites'], queryFn: cybersecurityService.getKnownHapliteStatuses });
   const refresh = () => {
     if (activeView === 'inventory') { inventoryOverview.refetch(); inventoryCandidates.refetch(); }
     else if (activeView === 'subnets') networkSegments.refetch();
+    else if (activeView === 'towers') { towers.refetch(); crmPoints.refetch(); knownHaplites.refetch(); }
     else { overview.refetch(); cases.refetch(); }
   };
   const data = overview.data;
@@ -1031,10 +1595,10 @@ export default function CybersecurityDashboard() {
               <ShieldCheck size={24} />
             </div>
           }
-          title={activeView === 'inventory' ? 'Inventario de activos' : activeView === 'subnets' ? 'Clasificación de subredes' : 'Postura y remediación'}
-          subtitle={activeView === 'inventory' ? 'Observaciones, candidatos y activos canónicos conciliados sin convertir direcciones temporales en identidad.' : activeView === 'subnets' ? 'Define el contexto operativo de cada segmento protegido y revisa su impacto antes de aplicar políticas.' : 'Hallazgos normalizados, agrupados por causa técnica y priorizados sin exponer identificadores sensibles.'}
+          title={activeView === 'inventory' ? 'Inventario de activos' : activeView === 'subnets' ? 'Clasificación de subredes' : activeView === 'towers' ? 'Torres y puntos' : 'Postura y remediación'}
+          subtitle={activeView === 'inventory' ? 'Observaciones, candidatos y activos canónicos conciliados sin convertir direcciones temporales en identidad.' : activeView === 'subnets' ? 'Define el contexto operativo de cada segmento protegido y revisa su impacto antes de aplicar políticas.' : activeView === 'towers' ? 'Torres reales con sus puntos de venta conocidos, cada uno con su hAP lite y el grabador DSS asociado.' : 'Hallazgos normalizados, agrupados por causa técnica y priorizados sin exponer identificadores sensibles.'}
           actions={
-            <button onClick={refresh} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider hover:bg-muted"><RefreshCw size={15} className={(overview.isFetching || cases.isFetching || inventoryOverview.isFetching || inventoryCandidates.isFetching) ? 'animate-spin' : ''} /> Actualizar</button>
+            <button onClick={refresh} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider hover:bg-muted"><RefreshCw size={15} className={(overview.isFetching || cases.isFetching || inventoryOverview.isFetching || inventoryCandidates.isFetching || towers.isFetching || crmPoints.isFetching) ? 'animate-spin' : ''} /> Actualizar</button>
           }
         />
 
@@ -1042,10 +1606,13 @@ export default function CybersecurityDashboard() {
           <button onClick={() => setActiveView('posture')} className={`rounded-lg px-4 py-2 text-xs font-bold transition-colors ${activeView === 'posture' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>Postura y remediación</button>
           <button onClick={() => setActiveView('inventory')} className={`rounded-lg px-4 py-2 text-xs font-bold transition-colors ${activeView === 'inventory' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>Inventario</button>
           <button onClick={() => setActiveView('subnets')} className={`rounded-lg px-4 py-2 text-xs font-bold transition-colors ${activeView === 'subnets' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>Subredes</button>
+          <button onClick={() => setActiveView('towers')} className={`rounded-lg px-4 py-2 text-xs font-bold transition-colors ${activeView === 'towers' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>Torres</button>
         </nav>
 
         {activeView === 'inventory' ? (
           <InventoryView overview={inventoryOverview} candidates={inventoryCandidates} source={inventorySource} state={inventoryState} onSourceChange={setInventorySource} onStateChange={setInventoryState} onRetry={refresh} />
+        ) : activeView === 'towers' ? (
+          <TowersView query={towers} pointsQuery={crmPoints} haplitesQuery={knownHaplites} onRetry={refresh} />
         ) : activeView === 'subnets' ? (
           <SubnetsView query={networkSegments} drafts={segmentDrafts} onDraftChange={(id, value) => setSegmentDrafts((current) => ({ ...current, [id]: value }))} onRetry={refresh} onSave={async (id, policy) => { await cybersecurityService.saveNetworkSegmentPolicy(id, policy); setSegmentDrafts((current) => { const next = { ...current }; delete next[id]; return next; }); await networkSegments.refetch(); }} onDisposition={async (id, status) => { await cybersecurityService.saveNetworkSegmentDisposition(id, { status }); setSegmentDrafts((current) => { const next = { ...current }; delete next[id]; return next; }); await networkSegments.refetch(); }} />
         ) : <>
