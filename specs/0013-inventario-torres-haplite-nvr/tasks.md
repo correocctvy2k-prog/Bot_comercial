@@ -363,8 +363,8 @@ El usuario, mirando la tarjeta "Sin torre asignada", confirmó que `LUCERNA`/
 
 ## Cierre
 
-- [ ] PR abierto y enlazado en `spec.md`
-- [ ] Merge a `main`
+- [x] PR abierto y enlazado en `spec.md` — [#20](https://github.com/correocctvy2k-prog/Bot_comercial/pull/20)
+- [x] Merge a `main` (2026-09-30, `2eea167`)
 - [ ] Desplegado y verificado en `http://192.168.8.65:3003/` — **importante:** al
       desplegar, correr `seed-towers.js` + `pull-dss-devices.js --apply` contra el
       archivo real de `.65` (con respaldo previo) antes o junto con el rebuild del
