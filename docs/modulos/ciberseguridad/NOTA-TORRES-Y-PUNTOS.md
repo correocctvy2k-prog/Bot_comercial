@@ -1,6 +1,6 @@
 # Nota técnica — Torres y puntos (spec 0013, fase 1)
 
-Estado: **implementado y verificado en Docker local**, 2026-09-18. Detalle completo,
+Estado: **desplegado y verificado en `.65`**, 2026-09-30 (PR #20). Detalle completo,
 histórico de hallazgos y preguntas abiertas en
 [`specs/0013-inventario-torres-haplite-nvr/`](../../../specs/0013-inventario-torres-haplite-nvr/).
 

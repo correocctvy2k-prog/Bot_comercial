@@ -1,8 +1,9 @@
 # SPEC 0013 — Inventario de torres: hAP lite + NVR por punto (fase 1)
 
-- **Estado:** **Mergeado a `main` (2026-09-30, PR #20)** — fase 1 completa (§3),
-  pendiente de despliegue y verificación en `.65`. Ver `tasks.md` para el detalle
-  verificado punto por punto.
+- **Estado:** **Cerrada — desplegada y verificada en `.65` (2026-09-30, PR #20)**.
+  Ver `tasks.md` para el detalle verificado punto por punto y
+  `docs/lecciones-aprendidas/LL-0008-deploy-65-seed-antes-de-rebuild.md` para el
+  incidente real del deploy.
 - **Autor:** Claude (a partir de la descripción de infraestructura del usuario, 2026-09-18)
 - **Fecha:** 2026-09-18
 - **Módulos afectados:** `cybersecurity/` (backend + `CRM_Frontend/src/pages/CybersecurityDashboard.jsx`, vista Inventario). Lee, sin modificar, `cctv-automation-final` (`dss_device_registry`).

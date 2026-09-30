@@ -10,6 +10,183 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CCTV — Botón de Excel: solo copiar ruta, se quita la detección de bloqueo
+`specs/0016-mantenimiento-excel-sync/`
+- **Abandonado el intento de abrir el Excel con un clic** (`ms-excel:ofe|u|<url>` y luego un
+  acceso directo `.url` descargable): ambos chocan con límites reales del navegador que no se
+  pueden evitar desde el código — Edge percent-codifica la URL al despachar el protocolo externo
+  (rompe tildes/eñe del nombre real del archivo) y un `.url` descargado exige un doble clic aparte
+  del usuario. Decisión del usuario: el botón vuelve a **copiar la ruta de red al portapapeles**
+  únicamente.
+- **Se elimina la detección de "bloqueado por [usuario]"** (`platform/excel-lock-status.js` y su
+  uso en `excel-status`): el panel seguía reportando bloqueo cuando ya no era cierto — se confirmó
+  en el share real que archivos de bloqueo (`~$...xlsx`) de años anteriores seguían presentes sin
+  que nadie tuviera esos libros abiertos, así que la señal no era confiable. Esa misma
+  verificación (dos llamadas de red por carga de página sobre el montaje CIFS) era además la causa
+  de que el botón tardara en aparecer al refrescar — `excel-status` ahora responde al instante,
+  sin tocar la red.
+
+### CCTV — Montaje CIFS confirmado + botón de Excel compacto
+`specs/0016-mantenimiento-excel-sync/`
+- **Montaje CIFS completado en `.65` (2026-09-24/25) y sincronización automática confirmada
+  con datos reales**: cambio real en Trello ("Bingo la sexta", PRADERA) sincronizó la celda
+  `AV11` en el archivo real del NAS — `mtime` del archivo coincide exacto con el timestamp del
+  sync. Detección de bloqueo también confirmada real (identificó a un usuario real con el
+  archivo abierto). Detalles operativos (permiso de share vs. carpeta en el NAS, mirror apt
+  caído, etc.) en memoria del proyecto, no en este changelog.
+- **`ExcelSyncPanel` simplificado**: un solo botón compacto con ícono de Excel (antes: recuadro
+  ancho con la ruta completa visible) + estado en texto chico debajo (Disponible / Bloqueado por
+  X / No accesible). El click intenta abrir el archivo directo (`file://`, mejor esfuerzo — los
+  navegadores modernos suelen bloquear esa navegación desde una página http) y siempre copia la
+  ruta al portapapeles como respaldo garantizado.
+
+### CCTV — Sincronización Trello → Excel de mantenimiento
+`specs/0016-mantenimiento-excel-sync/`
+- **Problema:** el Excel de seguimiento de mantenimiento nunca se actualizaba, pese a que la
+  pestaña "Mantenimiento" del CRM sí refleja los cambios de Trello casi en tiempo real.
+  Investigación: existían **dos integraciones de Trello desconectadas** — la UI real lee de
+  `cctv-automation-final` (spec 0008, sondeo directo cada ~1 min), mientras que la lógica de
+  escritura a Excel vivía en un proyecto aparte (`CRM_Frontend/Table Trello/backend/`, con su
+  propio Kanban) que dependía de un webhook nunca confirmado activo. Ver `LL-0005`.
+- **`platform/excel-maintenance-sync.js`** (con tests): puerto funcional de la lógica ya
+  probada de `Table Trello/backend` (matching difuso de puntos, recálculo de fórmulas vía
+  manipulación directa del XML del `.xlsx` con JSZip, detección de bloqueo `EBUSY`/`EPERM`),
+  sin acoplar a esa base SQLite — reutiliza en cambio el `audit_log` de `cctv-automation-final`.
+- **`platform/excel-lock-status.js`** (con tests): detecta si el archivo está abierto (archivo
+  `~$<nombre>.xlsx` que crea Excel) y, mejor esfuerzo, quién lo tiene abierto. Solo informa —
+  nunca fuerza el cierre remoto (podría corromper ediciones en curso).
+- **`import-trello-maintenance.js`**: al detectar que un ítem cambió de estado
+  (completado ↔ pendiente) con `location_id` ya resuelto, sincroniza la celda en Excel usando
+  el nombre/zona **canónicos** de `locations` (más confiable que el nombre crudo de Trello del
+  sistema viejo). No crítico: si falla, se registra en `audit_log` y el ciclo de Trello sigue.
+- Nuevas rutas `GET /api/cctv/maintenance/excel-status` y `.../excel-history`.
+- `CctvModule.jsx` (pestaña Mantenimiento): panel con la ruta de red + "copiar ruta" + aviso de
+  bloqueo ("Abierto por FULANO — ciérralo para que el bot pueda sincronizar").
+- `schema.sql`: se movió aquí la definición de `audit_log` (antes solo existía vía un script de
+  migración de una sola corrida — una base fresca nunca la tenía).
+- `cctv-automation-final`: `npm test` **111/111** (12 nuevos). Verificado con build y datos
+  reales en Docker local (263 ítems de Trello, sin errores).
+- **Actualización 2026-09-24 — montaje CIFS descartado, sincronización automática diferida:**
+  `.65` no tiene ruta de red hacia la subred del archivo (`172.16.101.0/24`) — requiere abrir
+  firewall/ruta entre subredes, fuera de alcance de esta sesión y decisión del usuario de no
+  perseguirlo por ahora. `MAINTENANCE_EXCEL_PATH` queda vacía indefinidamente en `.65` (la
+  sincronización automática nunca se dispara, sin cambios de código). Se agrega
+  `MAINTENANCE_EXCEL_DISPLAY_PATH` (nueva, solo para mostrar/copiar la ruta) para que el botón
+  de la pestaña Mantenimiento siga sirviendo — abrir el archivo real a mano desde la máquina del
+  usuario, que sí tiene acceso a esa red. `excel-status` distingue `accessible:null` ("no
+  verificado") de `accessible:false` ("se intentó y falló"); el panel ya no muestra badges de
+  disponible/bloqueado cuando no hay verificación real. **Desplegado y verificado en `.65`.**
+
+### Bot Comercial / CCTV — Monitor de puntos en tiempo real + sync SIISS horario
+`specs/0015-monitor-puntos-tiempo-real/`
+- **Problema:** el estado "BOT" de cada punto (`puntos_venta.active`/`latency`/
+  `last_online_at`) solo se actualizaba cuando alguien pedía un reporte por WhatsApp — sin
+  cron ni intervalo. Se detectó con un caso real (HELADERIA SEMBRADOR con IP desactualizada)
+  que seguía mostrando "caído" días después de corregir la IP, porque nadie había vuelto a
+  pedir un reporte. Hallazgo aparte: el contenedor `comercial-worker` (`docker-compose.yml`)
+  apuntaba a `src/worker.js`, un archivo que **nunca existió** en el repo — bug dormido.
+- **`src/worker.js`** (nuevo, resuelve el bug dormido): `node-cron` (ya era dependencia, sin
+  uso previo) cada minuto, en horario de operación (05:30-22:30 América/Bogotá,
+  configurable), dispara `monitor_puntos_wpp.py --json --tipo ping_only` — proceso 100%
+  separado del bot de WhatsApp (`comercial-bot`), con guard anti-solape si un ciclo tarda
+  más de un minuto.
+- **`monitor_puntos_wpp.py`**: nuevo modo `--tipo ping_only`, aditivo — reutiliza
+  `load_targets_from_supabase`/`scan_from_df_parallel`/`update_supabase_results` tal cual,
+  sin generar reporte ni gráfico. El flujo de WhatsApp (`--tipo standard`/zona) no cambia.
+- **`src/services/businessHours.service.js`** / **`cctv-automation-final/platform/
+  business-hours.js`**: ventana de horario, dos copias independientes (proyectos Node
+  separados, ver spec 0015 §6) — no se comparte código entre `comercial-bot` y
+  `cctv-automation-final`.
+- **`run-operational-cycle.js`**: nuevo paso `siissPointsSync` (`SIISS_POINTS_SYNC_INTERVAL_
+  MINUTES`, default 60), gateado también por horario de operación, corre
+  `scripts/sync-siiss-points.js` (spec 0014) automáticamente en vez de depender solo del
+  botón manual.
+- `cctv-automation-final`: `npm test` **99/99** (3 nuevos de `business-hours.test.js`).
+- Investigación previa confirmó que la API real de SIIS (`estacionesByPing`) **no expone
+  ninguna IP** — no es posible comparar "la IP de SIISS" contra `puntos_venta.ip`
+  directamente; la discordancia sigue siendo entre dos resultados de ping independientes.
+
+### CRM_Frontend / CCTV — Sincronización directa SIISS → Operación de Puntos
+`specs/0014-siiss-sync-directo/`
+- **Problema:** el botón "Sync SIISS" de Operación de Puntos (`Points.jsx`) llamaba
+  `POST localhost:3001/api/siiss/sync`, ruta que nunca existió en `comercial-bot` (404 real).
+  La lógica de cruce SIIS↔`puntos_venta` vivía sin usar en `Asamblea/src/services/siiss.service.js`
+  (con credenciales por defecto hardcodeadas, riesgo ya documentado en
+  `cctv-automation-final/docs/SIIS_INTEGRATION_MAP.md`). Decisión del usuario: no depender de
+  `Asamblea` (módulo en vías de desaparecer).
+- **`platform/siis-points-sync.js`** (con tests): `diffSiissStatus` (puro, cruce exacto
+  `estacodi`↔`siiss_id`; `siiss_active` solo se sobreescribe cuando SIIS reporta `estaping`
+  conocido, para no convertir "sin dato" en un falso inactivo) + `syncSiissPoints` (I/O:
+  reutiliza el cliente SIIS seguro ya existente `platform/siis-client.js`/`platform/siis.js`,
+  lee/escribe `puntos_venta` en Supabase igual que `scripts/sync-crm-points.js` de spec 0012).
+- **`scripts/sync-siiss-points.js`** (`--dry-run` disponible) + ruta nueva
+  `POST /api/cctv/siiss/sync-points` en `cctv-api` (puerto 3003, ya tenía
+  `SIISS_URL/USER/PASS` y `SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY` configurados).
+- `Points.jsx`/`points.service.js`: el botón ahora llama `pointsService.syncSiiss()` vía
+  `VITE_CCTV_API_BASE` en vez de `VITE_BACKEND_URL:3001`.
+- Verificado con datos reales en Docker local: **366 estaciones SIIS, 358 puntos con
+  `siiss_id`, 351 coincidencias, 351 actualizados en Supabase, 0 errores** (~64s por los
+  `PATCH` secuenciales — aceptable para un botón manual, no automático).
+- `cctv-automation-final`: `npm test` **96/96**.
+
+### CCTV — Sincronización Operación de Puntos ↔ Seguridad Electrónica
+`specs/0012-sync-puntos-cctv/`
+- **Problema:** "Operación de Puntos" (Supabase `puntos_venta`) y "Seguridad Electrónica"
+  (`cctv-automation-final`) no se hablaban: `has_cctv`/`has_alarm` no tenían formulario que
+  los editara (quedaban desactualizados a mano) y el horario real por punto
+  (`custom_open_time`/`custom_close_time`) no llegaba a la interpretación operativa de
+  spec 0010.
+- **`platform/crm-points-sync.js`** (con tests): `matchCrmPoints` (SIIS exacto → alias →
+  sin match, misma lógica que `reconcile-crm-points.mjs`), `computeCapabilities` (real:
+  `has_cctv`=`WITH_CCTV` de spec 0010, `has_alarm`=`alarmLocationIds` de
+  `platform/alarm-coverage.js`), `diffCapabilities` (solo matches `AUTO_LINKABLE`, solo
+  cuando cambia — el dato real siempre gana), `buildScheduleCache`.
+- **`scripts/sync-crm-points.js`** (`--dry-run` disponible): corrige `has_cctv`/`has_alarm`
+  en Supabase por lote (`PATCH`, service role key) y cachea el horario real por punto en
+  `crm_point_schedules` (idempotente, `schema.sql`). Corrido contra datos reales
+  (2026-09-11): **75 correcciones** (62 `has_cctv` true→false por no notificar en 30 días,
+  7 false→true, 6 solo `has_alarm`, 13 ambos), **7 puntos** con horario real cacheado. Segundo
+  run confirma 0 cambios (idempotente).
+- **`interpretPointDay`** (spec 0010) acepta `point.customSchedule`: cuando existe, "abrió
+  tarde"/"cerró temprano" (`lateBy`) de `APERTURA_MANANA`/`CIERRE_NOCHE` se mide contra el
+  horario real del punto, no solo la ventana global.
+- **`run-operational-cycle.js`**: paso `crmPointsSync` (no crítico), cadencia
+  `CRM_POINTS_SYNC_INTERVAL_MINUTES` (default 1440 = una vez al día).
+- Credencial: `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` en `.env` (reutiliza la de
+  `ChatBotSoporte`, mismo proyecto Supabase — decisión del usuario, no versionada).
+- `cctv-automation-final`: `npm test` **89/89** (sin CI).
+
+### CCTV / Mantenimiento — "Ejecución del programa" en vivo desde la API de Trello
+`specs/0008-cctv-mantenimiento-refresco/`
+- **Bug:** la vista "Ejecución del programa" mostraba datos de hace días mientras el dashboard
+  de soporte sí se actualizaba. Causa: `import-trello-support.js` llama a la API de Trello, pero
+  `import-trello-maintenance.js` leía `skylab-tareas.db` (caché del backend de "Table Trello",
+  que no corre en el `.65` y no se puede calentar desde el contenedor `cctv-operational-worker`).
+- **Fix:** `platform/import-trello-maintenance.js` reescrito para leer la lista
+  `MANTENIMIENTO CCTV 2026` **directo de la API de Trello** (board `TRELLO_MAINTENANCE_BOARD_ID`,
+  por defecto el board "Mantenimientos"), con el mismo patrón que soporte. Se elimina
+  `scripts/refresh-trello-maintenance-cache.js` y su paso en `run-operational-cycle.js`.
+  Esquema de BD y contrato de `GET /api/cctv/maintenance` sin cambios; frontend sin cambios.
+  Nuevas vars: `TRELLO_MAINTENANCE_BOARD_ID`, `TRELLO_MAINTENANCE_LIST_NAME` (opcional).
+
+### Ciberseguridad — Investigación: dirección IP en los reportes de Kaspersky Security Center
+`docs/modulos/ciberseguridad/NOTA-KSC-DIRECCION-IP.md`
+- **Contexto:** los 157 equipos que llegan por Kaspersky nunca traen IP (`ip_value` queda
+  `NULL`, bandera `MISSING_IP`) — solo se ubican en una subred cuando se corroboran por
+  hostname exacto contra un equipo de FortiGate (`getKasperskyInheritedSegments`).
+- **Investigado antes de asumir nada:** se recuperó del historial de git el código de
+  `Monitor-KSC-HardwareInventory.ps1` y `Monitor-SERV-KSC.ps1` (la carpeta local
+  `CRM_Frontend/Monitoreo/` ya no existe). Ambos parsean sus tablas HTML de forma genérica
+  (capturan todas las columnas) pero ninguno extrae ni referencia una columna de IP en ningún
+  punto — a diferencia de MAC, que sí manejan con variantes con/sin tilde.
+  **Conclusión con la evidencia disponible por código:** los reportes de KSC usados hoy
+  (Informe de hardware, Amenazas, Vulnerabilidades) no parecen incluir IP.
+- **Pendiente:** el usuario va a confirmar directamente en la consola de KSC si existe algún
+  otro tipo de reporte con columna de IP disponible para exportar. La nota documenta qué
+  cambiaría en `Monitor-KSC-HardwareInventory.ps1`/`ksc-importer.js` si la respuesta es sí.
+
+## [2026-09-30] — spec 0013 a producción
+
 ### Ciberseguridad — Torres reales: hAP lite + NVR por punto (fase 1)
 `specs/0013-inventario-torres-haplite-nvr/`
 - **Problema:** el módulo Inventario no tenía ningún concepto de punto de venta ni
@@ -356,180 +533,11 @@ a una versión fechada.
   ALASKA`, `CLUB JAPONES`). `cybersecurity/`: 170/170 tests. Docker local
   reconstruido (`cybersecurity-api` + `restart crm-frontend`).
 
-### CCTV — Botón de Excel: solo copiar ruta, se quita la detección de bloqueo
-`specs/0016-mantenimiento-excel-sync/`
-- **Abandonado el intento de abrir el Excel con un clic** (`ms-excel:ofe|u|<url>` y luego un
-  acceso directo `.url` descargable): ambos chocan con límites reales del navegador que no se
-  pueden evitar desde el código — Edge percent-codifica la URL al despachar el protocolo externo
-  (rompe tildes/eñe del nombre real del archivo) y un `.url` descargado exige un doble clic aparte
-  del usuario. Decisión del usuario: el botón vuelve a **copiar la ruta de red al portapapeles**
-  únicamente.
-- **Se elimina la detección de "bloqueado por [usuario]"** (`platform/excel-lock-status.js` y su
-  uso en `excel-status`): el panel seguía reportando bloqueo cuando ya no era cierto — se confirmó
-  en el share real que archivos de bloqueo (`~$...xlsx`) de años anteriores seguían presentes sin
-  que nadie tuviera esos libros abiertos, así que la señal no era confiable. Esa misma
-  verificación (dos llamadas de red por carga de página sobre el montaje CIFS) era además la causa
-  de que el botón tardara en aparecer al refrescar — `excel-status` ahora responde al instante,
-  sin tocar la red.
-
-### CCTV — Montaje CIFS confirmado + botón de Excel compacto
-`specs/0016-mantenimiento-excel-sync/`
-- **Montaje CIFS completado en `.65` (2026-09-24/25) y sincronización automática confirmada
-  con datos reales**: cambio real en Trello ("Bingo la sexta", PRADERA) sincronizó la celda
-  `AV11` en el archivo real del NAS — `mtime` del archivo coincide exacto con el timestamp del
-  sync. Detección de bloqueo también confirmada real (identificó a un usuario real con el
-  archivo abierto). Detalles operativos (permiso de share vs. carpeta en el NAS, mirror apt
-  caído, etc.) en memoria del proyecto, no en este changelog.
-- **`ExcelSyncPanel` simplificado**: un solo botón compacto con ícono de Excel (antes: recuadro
-  ancho con la ruta completa visible) + estado en texto chico debajo (Disponible / Bloqueado por
-  X / No accesible). El click intenta abrir el archivo directo (`file://`, mejor esfuerzo — los
-  navegadores modernos suelen bloquear esa navegación desde una página http) y siempre copia la
-  ruta al portapapeles como respaldo garantizado.
-
-### CCTV — Sincronización Trello → Excel de mantenimiento
-`specs/0016-mantenimiento-excel-sync/`
-- **Problema:** el Excel de seguimiento de mantenimiento nunca se actualizaba, pese a que la
-  pestaña "Mantenimiento" del CRM sí refleja los cambios de Trello casi en tiempo real.
-  Investigación: existían **dos integraciones de Trello desconectadas** — la UI real lee de
-  `cctv-automation-final` (spec 0008, sondeo directo cada ~1 min), mientras que la lógica de
-  escritura a Excel vivía en un proyecto aparte (`CRM_Frontend/Table Trello/backend/`, con su
-  propio Kanban) que dependía de un webhook nunca confirmado activo. Ver `LL-0005`.
-- **`platform/excel-maintenance-sync.js`** (con tests): puerto funcional de la lógica ya
-  probada de `Table Trello/backend` (matching difuso de puntos, recálculo de fórmulas vía
-  manipulación directa del XML del `.xlsx` con JSZip, detección de bloqueo `EBUSY`/`EPERM`),
-  sin acoplar a esa base SQLite — reutiliza en cambio el `audit_log` de `cctv-automation-final`.
-- **`platform/excel-lock-status.js`** (con tests): detecta si el archivo está abierto (archivo
-  `~$<nombre>.xlsx` que crea Excel) y, mejor esfuerzo, quién lo tiene abierto. Solo informa —
-  nunca fuerza el cierre remoto (podría corromper ediciones en curso).
-- **`import-trello-maintenance.js`**: al detectar que un ítem cambió de estado
-  (completado ↔ pendiente) con `location_id` ya resuelto, sincroniza la celda en Excel usando
-  el nombre/zona **canónicos** de `locations` (más confiable que el nombre crudo de Trello del
-  sistema viejo). No crítico: si falla, se registra en `audit_log` y el ciclo de Trello sigue.
-- Nuevas rutas `GET /api/cctv/maintenance/excel-status` y `.../excel-history`.
-- `CctvModule.jsx` (pestaña Mantenimiento): panel con la ruta de red + "copiar ruta" + aviso de
-  bloqueo ("Abierto por FULANO — ciérralo para que el bot pueda sincronizar").
-- `schema.sql`: se movió aquí la definición de `audit_log` (antes solo existía vía un script de
-  migración de una sola corrida — una base fresca nunca la tenía).
-- `cctv-automation-final`: `npm test` **111/111** (12 nuevos). Verificado con build y datos
-  reales en Docker local (263 ítems de Trello, sin errores).
-- **Actualización 2026-09-24 — montaje CIFS descartado, sincronización automática diferida:**
-  `.65` no tiene ruta de red hacia la subred del archivo (`172.16.101.0/24`) — requiere abrir
-  firewall/ruta entre subredes, fuera de alcance de esta sesión y decisión del usuario de no
-  perseguirlo por ahora. `MAINTENANCE_EXCEL_PATH` queda vacía indefinidamente en `.65` (la
-  sincronización automática nunca se dispara, sin cambios de código). Se agrega
-  `MAINTENANCE_EXCEL_DISPLAY_PATH` (nueva, solo para mostrar/copiar la ruta) para que el botón
-  de la pestaña Mantenimiento siga sirviendo — abrir el archivo real a mano desde la máquina del
-  usuario, que sí tiene acceso a esa red. `excel-status` distingue `accessible:null` ("no
-  verificado") de `accessible:false` ("se intentó y falló"); el panel ya no muestra badges de
-  disponible/bloqueado cuando no hay verificación real. **Desplegado y verificado en `.65`.**
-
-### Bot Comercial / CCTV — Monitor de puntos en tiempo real + sync SIISS horario
-`specs/0015-monitor-puntos-tiempo-real/`
-- **Problema:** el estado "BOT" de cada punto (`puntos_venta.active`/`latency`/
-  `last_online_at`) solo se actualizaba cuando alguien pedía un reporte por WhatsApp — sin
-  cron ni intervalo. Se detectó con un caso real (HELADERIA SEMBRADOR con IP desactualizada)
-  que seguía mostrando "caído" días después de corregir la IP, porque nadie había vuelto a
-  pedir un reporte. Hallazgo aparte: el contenedor `comercial-worker` (`docker-compose.yml`)
-  apuntaba a `src/worker.js`, un archivo que **nunca existió** en el repo — bug dormido.
-- **`src/worker.js`** (nuevo, resuelve el bug dormido): `node-cron` (ya era dependencia, sin
-  uso previo) cada minuto, en horario de operación (05:30-22:30 América/Bogotá,
-  configurable), dispara `monitor_puntos_wpp.py --json --tipo ping_only` — proceso 100%
-  separado del bot de WhatsApp (`comercial-bot`), con guard anti-solape si un ciclo tarda
-  más de un minuto.
-- **`monitor_puntos_wpp.py`**: nuevo modo `--tipo ping_only`, aditivo — reutiliza
-  `load_targets_from_supabase`/`scan_from_df_parallel`/`update_supabase_results` tal cual,
-  sin generar reporte ni gráfico. El flujo de WhatsApp (`--tipo standard`/zona) no cambia.
-- **`src/services/businessHours.service.js`** / **`cctv-automation-final/platform/
-  business-hours.js`**: ventana de horario, dos copias independientes (proyectos Node
-  separados, ver spec 0015 §6) — no se comparte código entre `comercial-bot` y
-  `cctv-automation-final`.
-- **`run-operational-cycle.js`**: nuevo paso `siissPointsSync` (`SIISS_POINTS_SYNC_INTERVAL_
-  MINUTES`, default 60), gateado también por horario de operación, corre
-  `scripts/sync-siiss-points.js` (spec 0014) automáticamente en vez de depender solo del
-  botón manual.
-- `cctv-automation-final`: `npm test` **99/99** (3 nuevos de `business-hours.test.js`).
-- Investigación previa confirmó que la API real de SIIS (`estacionesByPing`) **no expone
-  ninguna IP** — no es posible comparar "la IP de SIISS" contra `puntos_venta.ip`
-  directamente; la discordancia sigue siendo entre dos resultados de ping independientes.
-
-### CRM_Frontend / CCTV — Sincronización directa SIISS → Operación de Puntos
-`specs/0014-siiss-sync-directo/`
-- **Problema:** el botón "Sync SIISS" de Operación de Puntos (`Points.jsx`) llamaba
-  `POST localhost:3001/api/siiss/sync`, ruta que nunca existió en `comercial-bot` (404 real).
-  La lógica de cruce SIIS↔`puntos_venta` vivía sin usar en `Asamblea/src/services/siiss.service.js`
-  (con credenciales por defecto hardcodeadas, riesgo ya documentado en
-  `cctv-automation-final/docs/SIIS_INTEGRATION_MAP.md`). Decisión del usuario: no depender de
-  `Asamblea` (módulo en vías de desaparecer).
-- **`platform/siis-points-sync.js`** (con tests): `diffSiissStatus` (puro, cruce exacto
-  `estacodi`↔`siiss_id`; `siiss_active` solo se sobreescribe cuando SIIS reporta `estaping`
-  conocido, para no convertir "sin dato" en un falso inactivo) + `syncSiissPoints` (I/O:
-  reutiliza el cliente SIIS seguro ya existente `platform/siis-client.js`/`platform/siis.js`,
-  lee/escribe `puntos_venta` en Supabase igual que `scripts/sync-crm-points.js` de spec 0012).
-- **`scripts/sync-siiss-points.js`** (`--dry-run` disponible) + ruta nueva
-  `POST /api/cctv/siiss/sync-points` en `cctv-api` (puerto 3003, ya tenía
-  `SIISS_URL/USER/PASS` y `SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY` configurados).
-- `Points.jsx`/`points.service.js`: el botón ahora llama `pointsService.syncSiiss()` vía
-  `VITE_CCTV_API_BASE` en vez de `VITE_BACKEND_URL:3001`.
-- Verificado con datos reales en Docker local: **366 estaciones SIIS, 358 puntos con
-  `siiss_id`, 351 coincidencias, 351 actualizados en Supabase, 0 errores** (~64s por los
-  `PATCH` secuenciales — aceptable para un botón manual, no automático).
-- `cctv-automation-final`: `npm test` **96/96**.
-
-### CCTV — Sincronización Operación de Puntos ↔ Seguridad Electrónica
-`specs/0012-sync-puntos-cctv/`
-- **Problema:** "Operación de Puntos" (Supabase `puntos_venta`) y "Seguridad Electrónica"
-  (`cctv-automation-final`) no se hablaban: `has_cctv`/`has_alarm` no tenían formulario que
-  los editara (quedaban desactualizados a mano) y el horario real por punto
-  (`custom_open_time`/`custom_close_time`) no llegaba a la interpretación operativa de
-  spec 0010.
-- **`platform/crm-points-sync.js`** (con tests): `matchCrmPoints` (SIIS exacto → alias →
-  sin match, misma lógica que `reconcile-crm-points.mjs`), `computeCapabilities` (real:
-  `has_cctv`=`WITH_CCTV` de spec 0010, `has_alarm`=`alarmLocationIds` de
-  `platform/alarm-coverage.js`), `diffCapabilities` (solo matches `AUTO_LINKABLE`, solo
-  cuando cambia — el dato real siempre gana), `buildScheduleCache`.
-- **`scripts/sync-crm-points.js`** (`--dry-run` disponible): corrige `has_cctv`/`has_alarm`
-  en Supabase por lote (`PATCH`, service role key) y cachea el horario real por punto en
-  `crm_point_schedules` (idempotente, `schema.sql`). Corrido contra datos reales
-  (2026-09-11): **75 correcciones** (62 `has_cctv` true→false por no notificar en 30 días,
-  7 false→true, 6 solo `has_alarm`, 13 ambos), **7 puntos** con horario real cacheado. Segundo
-  run confirma 0 cambios (idempotente).
-- **`interpretPointDay`** (spec 0010) acepta `point.customSchedule`: cuando existe, "abrió
-  tarde"/"cerró temprano" (`lateBy`) de `APERTURA_MANANA`/`CIERRE_NOCHE` se mide contra el
-  horario real del punto, no solo la ventana global.
-- **`run-operational-cycle.js`**: paso `crmPointsSync` (no crítico), cadencia
-  `CRM_POINTS_SYNC_INTERVAL_MINUTES` (default 1440 = una vez al día).
-- Credencial: `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` en `.env` (reutiliza la de
-  `ChatBotSoporte`, mismo proyecto Supabase — decisión del usuario, no versionada).
-- `cctv-automation-final`: `npm test` **89/89** (sin CI).
-
-### CCTV / Mantenimiento — "Ejecución del programa" en vivo desde la API de Trello
-`specs/0008-cctv-mantenimiento-refresco/`
-- **Bug:** la vista "Ejecución del programa" mostraba datos de hace días mientras el dashboard
-  de soporte sí se actualizaba. Causa: `import-trello-support.js` llama a la API de Trello, pero
-  `import-trello-maintenance.js` leía `skylab-tareas.db` (caché del backend de "Table Trello",
-  que no corre en el `.65` y no se puede calentar desde el contenedor `cctv-operational-worker`).
-- **Fix:** `platform/import-trello-maintenance.js` reescrito para leer la lista
-  `MANTENIMIENTO CCTV 2026` **directo de la API de Trello** (board `TRELLO_MAINTENANCE_BOARD_ID`,
-  por defecto el board "Mantenimientos"), con el mismo patrón que soporte. Se elimina
-  `scripts/refresh-trello-maintenance-cache.js` y su paso en `run-operational-cycle.js`.
-  Esquema de BD y contrato de `GET /api/cctv/maintenance` sin cambios; frontend sin cambios.
-  Nuevas vars: `TRELLO_MAINTENANCE_BOARD_ID`, `TRELLO_MAINTENANCE_LIST_NAME` (opcional).
-
-### Ciberseguridad — Investigación: dirección IP en los reportes de Kaspersky Security Center
-`docs/modulos/ciberseguridad/NOTA-KSC-DIRECCION-IP.md`
-- **Contexto:** los 157 equipos que llegan por Kaspersky nunca traen IP (`ip_value` queda
-  `NULL`, bandera `MISSING_IP`) — solo se ubican en una subred cuando se corroboran por
-  hostname exacto contra un equipo de FortiGate (`getKasperskyInheritedSegments`).
-- **Investigado antes de asumir nada:** se recuperó del historial de git el código de
-  `Monitor-KSC-HardwareInventory.ps1` y `Monitor-SERV-KSC.ps1` (la carpeta local
-  `CRM_Frontend/Monitoreo/` ya no existe). Ambos parsean sus tablas HTML de forma genérica
-  (capturan todas las columnas) pero ninguno extrae ni referencia una columna de IP en ningún
-  punto — a diferencia de MAC, que sí manejan con variantes con/sin tilde.
-  **Conclusión con la evidencia disponible por código:** los reportes de KSC usados hoy
-  (Informe de hardware, Amenazas, Vulnerabilidades) no parecen incluir IP.
-- **Pendiente:** el usuario va a confirmar directamente en la consola de KSC si existe algún
-  otro tipo de reporte con columna de IP disponible para exportar. La nota documenta qué
-  cambiaría en `Monitor-KSC-HardwareInventory.ps1`/`ksc-importer.js` si la respuesta es sí.
+**Desplegado y verificado en `192.168.8.65:3003` (2026-09-30):** seed real cargado
+(15 torres, 17 gateways, 104 puntos) + import DSS aplicado (111 dispositivos) contra
+`cybersecurity/data/cyber-inventory.db` de producción (con respaldo previo),
+`cybersecurity-api` reconstruido y reiniciado. `GET /api/cybersecurity/towers`
+confirma las 15 torres reales; pestaña "Torres" verificada en el navegador.
 
 ## [2026-09-11] — specs 0010 y 0011 a producción
 
