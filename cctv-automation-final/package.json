@@ -42,6 +42,7 @@
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
     "imapflow": "^1.7.1",
+    "jszip": "^3.10.1",
     "mailparser": "^3.9.15"
   }
 }
