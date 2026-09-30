@@ -389,9 +389,9 @@ function seedKasperskyObservation(db, overrides = {}) {
   }
   const id = overrides.id || 'observation-ksc-1';
   db.prepare(`INSERT INTO cyber_asset_observations(
-      id, snapshot_id, source_record_key, observed_at, ingested_at, hostname_raw, hostname_key, os_family
-    ) VALUES (?, 'snapshot-ksc-1', ?, ?, ?, ?, ?, ?)`)
-    .run(id, `rec-${id}`, now, now, overrides.hostname || 'PC-FINANZAS-01', overrides.hostnameKey || 'pc-finanzas-01', overrides.osFamily || 'Windows 10');
+      id, snapshot_id, source_record_key, observed_at, ingested_at, ip_value, hostname_raw, hostname_key, os_family
+    ) VALUES (?, 'snapshot-ksc-1', ?, ?, ?, ?, ?, ?, ?)`)
+    .run(id, `rec-${id}`, now, now, overrides.ip || null, overrides.hostname || 'PC-FINANZAS-01', overrides.hostnameKey || 'pc-finanzas-01', overrides.osFamily || 'Windows 10');
   return id;
 }
 
@@ -430,6 +430,58 @@ test('un equipo Kaspersky sin corroborar sigue sin subred (no se inventa una aso
     seedKasperskyObservation(db, { hostname: 'PC-SIN-PAR', hostnameKey: 'pc-sin-par' });
     const segments = listNetworkSegments(db, { includeSensitive: true });
     assert.equal(segments.items.every((item) => item.inheritedKasperskyCount === 0), true);
+  } finally { db.close(); }
+});
+
+// 2026-09-18: ksc-importer.js ya persiste ip_value (antes siempre NULL, forzaba MISSING_IP) --
+// un equipo Kaspersky ahora puede ubicarse en su subred por su propia IP, sin necesitar
+// corroboración contra ningún par de FortiGate.
+test('listNetworkSegments ubica un equipo Kaspersky por su propia IP, sin corroboración contra FortiGate', () => {
+  const db = seededDatabase();
+  try {
+    const now = '2026-09-01T12:00:00.000Z';
+    db.prepare(`INSERT INTO cyber_network_segments(id, canonical_name, security_zone, created_at, updated_at)
+      VALUES ('segment-tesoreria', 'VLAN_Tesoreria · 10.2.9.0/26', 'RESTRICTED', ?, ?)`).run(now, now);
+    const kscId = seedKasperskyObservation(db, { hostname: 'PC-TESORERIA-01', hostnameKey: 'pc-tesoreria-01', ip: '10.2.9.30' });
+
+    const segments = listNetworkSegments(db, { includeSensitive: true });
+    const segment = segments.items.find((item) => item.id === protectedAlias('segment', 'segment-tesoreria'));
+    assert.ok(segment, 'la subred debe existir aunque ningún FortiGate haya reportado tráfico ahí');
+    assert.equal(segment.observations, 1);
+    assert.equal(segment.selfLocatedKasperskyCount, 1);
+    assert.equal(segment.inheritedKasperskyCount, 0, 'no se corroboró contra ningún FortiGate, no debe contar como heredado');
+    const member = segment.members.find((item) => item.id === kscId);
+    assert.equal(member.source, 'KASPERSKY');
+    assert.equal(member.inheritedFromFortiGate, false);
+    assert.equal(member.ip, '10.2.9.30');
+  } finally { db.close(); }
+});
+
+// La IP propia es evidencia directa; la corroboración por hostname es solo un respaldo cuando no
+// hay IP. Si un equipo Kaspersky tiene ambas señales, no debe contarse dos veces (una por IP
+// propia y otra por herencia) ni sumar 2 observaciones a la subred.
+test('la IP propia de un equipo Kaspersky tiene prioridad sobre la herencia y no lo cuenta dos veces', () => {
+  const db = seededDatabase();
+  try {
+    const now = '2026-09-01T12:00:00.000Z';
+    db.prepare(`INSERT INTO cyber_network_segments(id, canonical_name, security_zone, created_at, updated_at)
+      VALUES ('segment-finanzas', 'VLAN_Finanzas · 10.2.13.0/26', 'RESTRICTED', ?, ?)`).run(now, now);
+    seedCandidateObservation(db, {
+      id: 'observation-forti-finanzas', segmentId: 'segment-finanzas', ip: '10.2.13.20',
+      hostname: 'PC-FINANZAS-01', hostnameKey: 'pc-finanzas-01',
+    });
+    const kscId = seedKasperskyObservation(db, { hostname: 'PC-FINANZAS-01', hostnameKey: 'pc-finanzas-01', ip: '10.2.13.21' });
+    const match = matchSnapshots({ db, leftSnapshotId: 'snapshot-1', rightSnapshotId: 'snapshot-ksc-1' });
+    assert.equal(match.summary.proposed, 1, 'precondición: también se corrobora por hostname');
+
+    const segments = listNetworkSegments(db, { includeSensitive: true });
+    const segment = segments.items.find((item) => item.id === protectedAlias('segment', 'segment-finanzas'));
+    assert.equal(segment.observations, 2, 'FortiGate real + Kaspersky, sin duplicar');
+    assert.equal(segment.selfLocatedKasperskyCount, 1);
+    assert.equal(segment.inheritedKasperskyCount, 0, 'ya se ubicó por su propia IP, no debe contarse también como heredado');
+    const member = segment.members.find((item) => item.id === kscId);
+    assert.equal(member.inheritedFromFortiGate, false);
+    assert.equal(member.ip, '10.2.13.21');
   } finally { db.close(); }
 });
 

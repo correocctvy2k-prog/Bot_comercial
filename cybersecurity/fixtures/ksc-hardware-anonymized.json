@@ -17,7 +17,10 @@
           "IsVirtual": false,
           "LastSeen": "2026-08-29 08:55:00",
           "LastSeenDays": 0.01,
-          "VisibilityBucket": "UltimoDia"
+          "VisibilityBucket": "UltimoDia",
+          "IPAddress": "10.2.2.70",
+          "NetbiosName": "WS-LAB-01",
+          "ProtectionState": "Protected"
         },
         {
           "Name": "VM-LAB-01",
@@ -27,7 +30,10 @@
           "IsVirtual": true,
           "LastSeen": "2026-07-01 08:00:00",
           "LastSeenDays": 59,
-          "VisibilityBucket": "MasDeUnMes"
+          "VisibilityBucket": "MasDeUnMes",
+          "IPAddress": null,
+          "NetbiosName": null,
+          "ProtectionState": null
         }
       ]
     }

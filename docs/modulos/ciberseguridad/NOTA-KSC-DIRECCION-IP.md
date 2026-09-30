@@ -1,13 +1,14 @@
 # Nota tecnica - IP en los reportes de Kaspersky Security Center
 
-- Estado: **resuelto y con parser real escrito**. El "Informe del estado de la protección" es un
-  reporte por dispositivo (173 de 173, sin truncar) y trae IP para los **173 de 173** equipos
-  (corregido — ver "Actualización 2026-09-17 (cuarta parte)"). El usuario ya incluyó este reporte
-  en la tarea de entrega diaria de KSC; `Monitor-KSC-HardwareInventory.ps1` (rama de trabajo
-  local, aún sin desplegar a `SERV-KSC`) ya lee ambos reportes y enriquece el inventario de
-  hardware con la IP real. Los otros dos reportes (Vulnerabilidades, Amenazas) quedan
-  descartados para este propósito por cobertura insuficiente.
-- Fecha: 2026-09-17 (actualizada el mismo día, cuatro veces, tras exports reales del usuario)
+- Estado: **completamente resuelto, de punta a punta** (ver "Actualización 2026-09-18 (sexta
+  parte)"). El "Informe del estado de la protección" es un reporte por dispositivo (173 de 173,
+  sin truncar) y trae IP para los **173 de 173** equipos. `Monitor-KSC-HardwareInventory.ps1` lee
+  ambos reportes y enriquece el inventario de hardware con la IP real — la tarea programada de
+  `SERV-KSC` ya lo corrió sola y confirmó 157/157 dispositivos con IP en Monitoreo IT.
+  `cybersecurity/src/ksc-importer.js` ya persiste esa IP en `cyber_asset_observations` en vez de
+  forzar `MISSING_IP`. Los otros dos reportes (Vulnerabilidades, Amenazas) quedan descartados
+  para este propósito por cobertura insuficiente.
+- Fecha: 2026-09-17/18 (actualizada varias veces, tras exports, despliegue y el fix del importador)
 
 ## Por que importa
 
@@ -312,6 +313,121 @@ upload` se completó con éxito: `[OK] Inventario KSC-HARDWARE enviado correctam
 recogerá esta misma versión en su próxima corrida diaria, sin que el usuario tenga que hacer nada
 más ahí. El siguiente paso que queda es enteramente del lado de lectura: `ksc-importer.js` (ítem 2
 arriba), para que la IP que ya llega a Monitoreo IT se persista en `cyber_asset_observations`.
+
+## Actualización 2026-09-18 (sexta parte) — `ksc-importer.js` ya persiste la IP real
+
+Cerrado el único pendiente que quedaba (ítem 2 de la actualización anterior). `importKscHardwareInventory`
+ya no fuerza `MISSING_IP` para todo equipo Kaspersky: lee `device.IPAddress` del contrato
+`KSC-HARDWARE` (el mismo campo que llena `Merge-ProtectionStatusIntoInventory` en el `.ps1`, ver
+cuarta parte), lo persiste como `ip_value` en `cyber_asset_observations`, y solo agrega la bandera
+`MISSING_IP` cuando el dispositivo de verdad no trae IP (nunca pasó de MAC — esa bandera se sigue
+forzando siempre, KSC no la trae por ningún canal). `summarizeKscPayload` suma un conteo `withIp`
+nuevo (mismo patrón que `withHostname`) para que el resumen de importación muestre cobertura de IP
+sin tener que abrir la base.
+
+**Verificado contra datos reales, no solo con el fixture**: `node scripts/pull-ksc-from-monitoring.js
+--monitoring-url http://192.168.8.65:3001` (modo auditoría, sin `--apply`) contra el payload real
+que hoy sube la tarea programada de `SERV-KSC` — `withIp: 157` de 157 dispositivos, 100%, igual que
+lo confirmado en la quinta parte. 144/144 tests del módulo en verde (incl. 2 nuevos que cubren
+persistencia de IP y ausencia condicional de `MISSING_IP`).
+
+**No incluido en este cambio, a propósito** (alcance acordado con el usuario para esta ronda):
+`cybersecurity-read-model.js` sigue resolviendo la subred de un equipo Kaspersky únicamente por
+herencia desde su par corroborado de FortiGate (`getKasperskyInheritedSegments`), sin usar todavía
+el `ip_value` propio que ya persiste este cambio — ver ítem 3 de la actualización anterior
+("revisar si conviene mantener el cruce por hostname... la IP directa ya no dependería de ese
+cruce"). `listInventoryCandidates`/`listNetworkSegments`/`resolveObservationSegment` tienen cada
+uno su propio caso especial por fuente (`FORTIGATE` vs `KASPERSKY`) — extenderlos para que Kaspersky
+también se autoubique por IP (con la herencia como respaldo cuando falte IP) queda como el siguiente
+paso natural, pendiente de decisión del usuario sobre si retomarlo ahora o en otra ronda.
+
+## Actualización 2026-09-18 (séptima parte) — Kaspersky ya se autoubica por su propia IP
+
+Retomado en la misma ronda ("extender subred por IP propia de Kaspersky", elegido entre 3 opciones
+que se le ofrecieron al usuario tras cerrar la sexta parte). Cerraba el pendiente que dejó esa
+actualización.
+
+**`cybersecurity-read-model.js`**: `listInventoryCandidates` y `listNetworkSegments` ya no tratan a
+`KASPERSKY` como un caso sin IP — ambos aplican `resolveTrueSegmentId` (el mismo mecanismo que ya
+usaba FortiGate) contra el `ip_value` propio de cada observación Kaspersky. `listNetworkSegments`
+agrega los equipos autoubicados como miembros nuevos (incluso en una subred donde ningún FortiGate
+reportó tráfico todavía) y suma un contador aparte `selfLocatedKasperskyCount`, distinto de
+`inheritedKasperskyCount` — la herencia por hostname (`getKasperskyInheritedSegments`) sigue
+existiendo, pero solo como respaldo para un equipo sin IP propia o cuya IP no cae en ningún CIDR
+conocido; cuando ambas señales existen para el mismo equipo, la IP directa gana y no se cuenta dos
+veces (verificado con test: un equipo con IP propia Y corroborado por hostname en la misma subred
+suma 1 sola observación, no 2).
+
+**`inventory-actions.js`** (`resolveObservationSegment`, usada por `getObservationDetail`): mismo
+cambio de precedencia — IP propia primero, herencia como respaldo. `detail.segment.inherited` ahora
+sale `false` para un equipo Kaspersky ubicado por su propia IP (antes siempre `true` cuando tenía
+subred, porque la única vía era la herencia).
+
+**Frontend** (`CybersecurityDashboard.jsx`, `SubnetsView`): nueva tarjeta "Kaspersky por IP propia"
+junto a la ya existente "Kaspersky corroborados", cada una visible solo cuando su contador es mayor
+a 0.
+
+**Verificado**: 148/148 tests del módulo (4 nuevos: ubicación por IP propia sin corroboración, y
+precedencia de IP propia sobre herencia sin duplicar conteo, en `listNetworkSegments` y en
+`getObservationDetail`). `cd CRM_Frontend && npm run build` en verde. `npx eslint
+src/pages/CybersecurityDashboard.jsx` solo muestra los 2 errores preexistentes de
+`react-hooks/rules-of-hooks` (líneas 629/888, ninguno relacionado con este cambio, deuda de lint ya
+conocida — spec 0003).
+
+**No verificado en `http://127.0.0.1:3003/` (Docker local)** — el cambio de UI es una tarjeta
+aditiva más, mismo patrón que la existente, condicionada a un contador nuevo; queda pendiente la
+vuelta visual real con datos de producción cuando el usuario levante el stack.
+
+## Actualización 2026-09-18 (octava parte) — verificado contra datos reales: 108/157 se autoubican
+
+A pedido del usuario ("verificar en local primero" antes de pushear), se aplicó el snapshot KSC
+fresco a la base local (respaldo previo: `data/cyber-inventory.pre-ksc-ip-verify-20260918.db`):
+`node scripts/pull-ksc-from-monitoring.js --monitoring-url http://192.168.8.65:3001 --db
+data/cyber-inventory.db --custody-ref "restricted://monitoring-it/ksc-hardware/2026-09-18-ip-verify"
+--apply --save-raw ./raw/ksc-monitoring` → 157/157 importados con IP.
+
+**Resultado real, midiendo directamente `listNetworkSegments`/`resolveTrueSegmentId` contra la base
+ya actualizada**: **108 de 157 equipos Kaspersky se autoubicaron por su propia IP en 16 subredes
+reales** — en esta misma captura, 0 estaban corroborados por hostname contra FortiGate, así que
+antes de este cambio los 108 habrían quedado sin subred. Los 49 restantes tienen IP en rangos
+`192.168.x.x` (ej. `192.168.21.173`, `192.168.36.41`) que no coinciden con ningún CIDR que
+FortiGate haya reportado tráfico — comportamiento correcto, no se inventa ubicación, quedan sin
+segmento (probablemente redes que FortiGate no ve, no un error del código).
+
+No se corrió `match-fortigate-ksc.js` de nuevo (no hacía falta para esta verificación, es el
+camino de herencia, que queda como respaldo sin cambios). Datos locales actualizados, gitignored,
+no viajan por git — el respaldo previo a esta importación queda en el filesystem local por si
+hace falta revertir.
+
+**Aún pendiente**: vuelta visual real en `http://127.0.0.1:3003/` (Docker local) — no se levantó
+el stack completo en esta ronda, solo se ejercitaron las funciones del read-model directamente
+contra la base real.
+
+## Actualización 2026-09-18 (novena parte) — verificado en Docker local (API + bundle, sin navegador)
+
+Retomado a pedido del usuario ("vamos a continuar madurando el módulo en local"), cerrando el
+pendiente de la octava parte. Se usó el skill `run` de este entorno: no existía un skill de
+proyecto para levantar la app, así que siguió el patrón "server/browser-driven" genérico.
+
+`docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build cybersecurity-api
+crm-frontend` (rebuild real, necesario: `cybersecurity-api` corría desde antes de este cambio de
+código, y `crm-frontend` empaqueta el JSX en build-time) + `docker compose restart crm-frontend`
+(nginx cachea la IP del upstream tras un rebuild, lección ya conocida LL-0004/LL-0008).
+
+**Verificado de punta a punta a través del stack real corriendo**, no solo con scripts directos:
+`curl http://127.0.0.1:3003/api/cybersecurity/network-segments` (a través del proxy nginx de
+`crm-frontend`, igual que lo haría el navegador) devuelve `selfLocatedKasperskyCount` con los
+mismos 16 segmentos/valores ya confirmados en la octava parte (ej. `segment EAF88BB1` →
+`selfLocatedKasperskyCount: 3`). `docker compose exec crm-frontend grep -l "Kaspersky por IP
+propia" /usr/share/nginx/html/assets/*.js` → encontrado — confirma que el bundle realmente
+construido y servido contiene el texto nuevo, no solo el código fuente. Logs de ambos contenedores
+limpios (`cybersecurity-api`: `{"status":"READY",...,"mode":"read-only-immutable"}`; `crm-frontend`:
+sin errores, 200 en la petición de prueba).
+
+**No se tomó captura de pantalla real en navegador** — no hay `chromium-cli` ni Playwright/
+Puppeteer instalados en este entorno (confirmado, no se intentó instalar por ser desproporcionado
+para una tarjeta aditiva de una sola línea). Riesgo residual: solo layout/CSS, no lógica — mismo
+patrón JSX y mismas clases que la tarjeta "Kaspersky corroborados" ya en producción.
 
 ## Enlaces
 

@@ -29,11 +29,12 @@ function cleanNote(value) {
 // se clasificó (decisión del usuario 2026-09-16: "se debe mostrar la subred a la que fue
 // asociado").
 //
-// Kaspersky nunca trae IP (el .ps1 que sube el inventario diario no lee esa columna) así que no
-// puede tener segment_id propio -- si ya se corroboró contra un equipo FortiGate (cruce por
-// hostname exacto + SO compatible, ver cross-source-matcher.js), hereda la subred de su par en
-// vez de mostrarse sin red (decisión del usuario 2026-09-16: "aplicar el cruce FortiGate↔
-// Kaspersky ya calculado").
+// Kaspersky no traía IP hasta 2026-09-18 (el .ps1 que sube el inventario diario no leía esa
+// columna) -- ksc-importer.js ya la persiste. Se ubica primero por su propia IP, igual que
+// FortiGate; si no la tiene o no cae en ningún CIDR conocido, hereda la subred del par FortiGate
+// con el que se corroboró (cruce por hostname exacto + SO compatible, ver
+// cross-source-matcher.js) en vez de mostrarse sin red (decisión del usuario 2026-09-16: "aplicar
+// el cruce FortiGate↔Kaspersky ya calculado").
 //
 // Hallazgo del usuario 2026-09-17: 2 impresoras de la red administrativa (10.2.2.x) aparecían
 // clasificadas en VLAN_Auditoria/VLAN_Comercial -- CIDR completamente distinto. El importador
@@ -45,9 +46,14 @@ function resolveObservationSegment(db, policyDb, observation) {
   let inherited = false;
   if (observation.sourceType === 'FORTIGATE') {
     segmentId = resolveTrueSegmentId(buildSegmentCidrIndex(db), segmentId, observation.ip_value).segmentId;
-  } else if (!segmentId && observation.sourceType === 'KASPERSKY') {
-    segmentId = getKasperskyInheritedSegments(db).get(observation.id) || null;
-    inherited = Boolean(segmentId);
+  } else if (observation.sourceType === 'KASPERSKY') {
+    const selfLocated = resolveTrueSegmentId(buildSegmentCidrIndex(db), segmentId, observation.ip_value).segmentId;
+    if (selfLocated) {
+      segmentId = selfLocated;
+    } else {
+      segmentId = getKasperskyInheritedSegments(db).get(observation.id) || null;
+      inherited = Boolean(segmentId);
+    }
   }
   if (!segmentId) return null;
   const segment = db.prepare('SELECT canonical_name FROM cyber_network_segments WHERE id = ?').get(segmentId);

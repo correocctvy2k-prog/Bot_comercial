@@ -169,21 +169,48 @@ a una versión fechada.
   Esquema de BD y contrato de `GET /api/cctv/maintenance` sin cambios; frontend sin cambios.
   Nuevas vars: `TRELLO_MAINTENANCE_BOARD_ID`, `TRELLO_MAINTENANCE_LIST_NAME` (opcional).
 
-### Ciberseguridad — Investigación: dirección IP en los reportes de Kaspersky Security Center
+### Ciberseguridad — Dirección IP de Kaspersky resuelta de punta a punta
 `docs/modulos/ciberseguridad/NOTA-KSC-DIRECCION-IP.md`
-- **Contexto:** los 157 equipos que llegan por Kaspersky nunca traen IP (`ip_value` queda
-  `NULL`, bandera `MISSING_IP`) — solo se ubican en una subred cuando se corroboran por
+- **Contexto:** los 157 equipos que llegan por Kaspersky nunca traían IP (`ip_value` quedaba
+  `NULL`, bandera `MISSING_IP`) — solo se ubicaban en una subred cuando se corroboraban por
   hostname exacto contra un equipo de FortiGate (`getKasperskyInheritedSegments`).
-- **Investigado antes de asumir nada:** se recuperó del historial de git el código de
-  `Monitor-KSC-HardwareInventory.ps1` y `Monitor-SERV-KSC.ps1` (la carpeta local
-  `CRM_Frontend/Monitoreo/` ya no existe). Ambos parsean sus tablas HTML de forma genérica
-  (capturan todas las columnas) pero ninguno extrae ni referencia una columna de IP en ningún
-  punto — a diferencia de MAC, que sí manejan con variantes con/sin tilde.
-  **Conclusión con la evidencia disponible por código:** los reportes de KSC usados hoy
-  (Informe de hardware, Amenazas, Vulnerabilidades) no parecen incluir IP.
-- **Pendiente:** el usuario va a confirmar directamente en la consola de KSC si existe algún
-  otro tipo de reporte con columna de IP disponible para exportar. La nota documenta qué
-  cambiaría en `Monitor-KSC-HardwareInventory.ps1`/`ksc-importer.js` si la respuesta es sí.
+- **Investigado con datos reales, no adivinado:** de los 3 reportes de KSC que traen columna de
+  IP (Vulnerabilidades, Amenazas, Estado de la protección), solo "Informe del estado de la
+  protección" cubre el 100% de los equipos administrados sin truncar (173/173, todos con IP) —
+  los otros dos son por evento, no por dispositivo, y quedan descartados para este propósito.
+- **`Monitor-KSC-HardwareInventory.ps1` editado y desplegado en `SERV-KSC`**: `Parse-
+  ProtectionStatus` + `Merge-ProtectionStatusIntoInventory` enriquecen el inventario de hardware
+  con IP real, uniendo por el campo `Dispositivo` completo (no `Nombre NetBIOS` — dos equipos
+  reales pueden compartir NetBIOS). Verificado en producción, dos veces (manual + tarea
+  programada): 157/157 dispositivos con IP entregados a Monitoreo IT.
+- **`cybersecurity/src/ksc-importer.js`** ya no fuerza `MISSING_IP`: persiste `ip_value` desde
+  `device.IPAddress` cuando el contrato `KSC-HARDWARE` lo trae, la bandera solo se agrega cuando
+  de verdad falta. Verificado contra el payload real de `.65:3001` (157/157 con IP, no solo el
+  fixture) y 144/144 tests del módulo en verde.
+- **`cybersecurity-read-model.js`/`inventory-actions.js`**: un equipo Kaspersky ahora se ubica
+  primero por su propia IP (mismo mecanismo `resolveTrueSegmentId` que ya usaba FortiGate) —
+  antes solo se ubicaba por herencia desde su par corroborado de FortiGate (`hostname` exacto).
+  La herencia sigue como respaldo cuando falta IP propia o no cae en ningún CIDR conocido; la IP
+  directa tiene prioridad y no cuenta dos veces cuando ambas señales coinciden.
+  `listNetworkSegments` suma un campo `selfLocatedKasperskyCount` (nueva tarjeta "Kaspersky por
+  IP propia" en `SubnetsView`, junto a "Kaspersky corroborados"); `listInventoryCandidates`
+  también resuelve el segmento de Kaspersky por su IP en vez de dejarlo siempre `null`. 148/148
+  tests (4 nuevos), `npm run build` de `CRM_Frontend` en verde.
+- **Verificado contra datos reales, no solo tests**: `pull-ksc-from-monitoring.js --apply` sobre
+  la base local (respaldo previo) importó el snapshot fresco del 2026-09-18 (157/157 con IP) —
+  **108 de 157 equipos Kaspersky se autoubicaron en 16 subredes reales** solo por su propia IP,
+  antes solo 0 estaban corroborados por hostname en esta captura. Los 49 restantes tienen IP en
+  rangos `192.168.x.x` que no coinciden con ningún CIDR que FortiGate haya reportado — no es un
+  error, quedan correctamente sin segmento (comportamiento documentado, no se inventa nada).
+- **Verificado en Docker local** (`docker compose -f docker-compose.yml -f
+  docker-compose.local.yml up -d --build cybersecurity-api crm-frontend` + `restart
+  crm-frontend`): `GET /api/cybersecurity/network-segments` a través de `http://127.0.0.1:3003/`
+  ya devuelve `selfLocatedKasperskyCount` con los mismos 16 segmentos/valores reales confirmados
+  arriba; el bundle de `crm-frontend` ya construido contiene el texto "Kaspersky por IP propia".
+  Logs de ambos contenedores limpios, sin errores. **No se tomó captura de pantalla en navegador**
+  (sin herramienta de automatización de navegador disponible en este entorno) — verificado por API
+  + bundle en vez de visualmente, riesgo residual bajo (mismo patrón JSX que la tarjeta ya
+  existente).
 
 ## [2026-09-30] — spec 0013 a producción
 

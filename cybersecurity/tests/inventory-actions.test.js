@@ -48,9 +48,9 @@ function seedKasperskyObservation(db, overrides = {}) {
   }
   const id = overrides.id || 'observation-ksc-1';
   db.prepare(`INSERT INTO cyber_asset_observations(
-      id, snapshot_id, source_record_key, observed_at, ingested_at, hostname_raw, hostname_key, os_family
-    ) VALUES (?, 'snapshot-ksc-1', ?, ?, ?, ?, ?, ?)`)
-    .run(id, `rec-${id}`, now, now, overrides.hostname || 'PC-FINANZAS-01', overrides.hostnameKey || 'pc-finanzas-01', overrides.osFamily || 'Windows 10');
+      id, snapshot_id, source_record_key, observed_at, ingested_at, ip_value, hostname_raw, hostname_key, os_family
+    ) VALUES (?, 'snapshot-ksc-1', ?, ?, ?, ?, ?, ?, ?)`)
+    .run(id, `rec-${id}`, now, now, overrides.ip || null, overrides.hostname || 'PC-FINANZAS-01', overrides.hostnameKey || 'pc-finanzas-01', overrides.osFamily || 'Windows 10');
   return id;
 }
 
@@ -262,6 +262,34 @@ test('un equipo Kaspersky sin corroborar contra FortiGate no hereda ninguna subr
   const alias = protectedAlias('candidate', kscId);
   const detail = getObservationDetail(db, decisionsDb, null, alias);
   assert.equal(detail.segment, null);
+}));
+
+// 2026-09-18: ksc-importer.js ya persiste ip_value -- un equipo Kaspersky se ubica primero por
+// su propia IP, sin necesitar corroboración contra ningún par de FortiGate.
+test('getObservationDetail ubica a un equipo Kaspersky por su propia IP, sin corroboración', () => withDatabase((db, decisionsDb) => {
+  seedSegment(db, { id: 'segment-tesoreria', canonicalName: 'VLAN_Tesoreria · 10.2.9.0/26' });
+  const kscId = seedKasperskyObservation(db, { hostname: 'PC-TESORERIA-01', hostnameKey: 'pc-tesoreria-01', ip: '10.2.9.30' });
+
+  const alias = protectedAlias('candidate', kscId);
+  const detail = getObservationDetail(db, decisionsDb, null, alias);
+  assert.equal(detail.segment.name, 'VLAN_Tesoreria · 10.2.9.0/26');
+  assert.equal(detail.segment.inherited, false, 'se ubicó por su propia IP, no por herencia');
+}));
+
+// La IP propia es evidencia directa y debe preferirse sobre la corroboración por hostname.
+test('la IP propia de un equipo Kaspersky tiene prioridad sobre la subred heredada', () => withDatabase((db, decisionsDb) => {
+  const segmentId = seedSegment(db, { canonicalName: 'VLAN_Finanzas · 10.2.13.0/26' });
+  seedObservation(db, {
+    id: 'observation-forti-finanzas', segmentId, ip: '10.2.13.20',
+    hostname: 'PC-FINANZAS-01', hostnameKey: 'pc-finanzas-01',
+  });
+  const kscId = seedKasperskyObservation(db, { hostname: 'PC-FINANZAS-01', hostnameKey: 'pc-finanzas-01', ip: '10.2.13.21' });
+  matchSnapshots({ db, leftSnapshotId: 'snapshot-1', rightSnapshotId: 'snapshot-ksc-1' });
+
+  const alias = protectedAlias('candidate', kscId);
+  const detail = getObservationDetail(db, decisionsDb, null, alias);
+  assert.equal(detail.segment.name, 'VLAN_Finanzas · 10.2.13.0/26');
+  assert.equal(detail.segment.inherited, false, 'tiene su propia IP: la evidencia directa gana sobre la herencia');
 }));
 
 // Pedido del usuario 2026-09-16: "agregar un botón de ignorar para otros activos irrelevantes"

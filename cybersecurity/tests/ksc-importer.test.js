@@ -27,6 +27,7 @@ test('resume el contrato KSC reducido sin exponer dispositivos', () => {
     virtualMachines: 1,
     withLastSeen: 2,
     withHostname: 2,
+    withIp: 1,
     staleOver30Days: 1,
   });
 });
@@ -46,6 +47,25 @@ test('importa KSC como fuente corroborante y descarta SourcePath', () => withDat
   assert.doesNotMatch(serialized, /restricted.*source\.html/i);
   assert.match(serialized, /KSC_REDUCED_CONTRACT/);
   assert.equal(db.prepare('SELECT count(*) AS count FROM cyber_assets').get().count, 0);
+}));
+
+test('persiste ip_value cuando el payload la trae y marca MISSING_IP solo cuando falta', () => withDatabase((db) => {
+  const result = importKscHardwareInventory({
+    db,
+    text: fixture,
+    importedAt: '2026-08-29T14:05:00.000Z',
+    custodyReference: 'restricted://fixture/ksc',
+  });
+  assert.equal(result.status, 'SUCCESS');
+
+  const withIp = db.prepare('SELECT ip_value AS ipValue, quality_flags_json AS flags FROM cyber_asset_observations WHERE hostname_raw = ?').get('WS-LAB-01');
+  assert.equal(withIp.ipValue, '10.2.2.70');
+  assert.doesNotMatch(withIp.flags, /MISSING_IP/);
+  assert.match(withIp.flags, /MISSING_MAC/);
+
+  const withoutIp = db.prepare('SELECT ip_value AS ipValue, quality_flags_json AS flags FROM cyber_asset_observations WHERE hostname_raw = ?').get('VM-LAB-01');
+  assert.equal(withoutIp.ipValue, null);
+  assert.match(withoutIp.flags, /MISSING_IP/);
 }));
 
 test('la importacion KSC es idempotente por hash', () => withDatabase((db) => {
