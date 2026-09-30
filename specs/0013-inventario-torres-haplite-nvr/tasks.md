@@ -365,8 +365,9 @@ El usuario, mirando la tarjeta "Sin torre asignada", confirmó que `LUCERNA`/
 
 - [x] PR abierto y enlazado en `spec.md` — [#20](https://github.com/correocctvy2k-prog/Bot_comercial/pull/20)
 - [x] Merge a `main` (2026-09-30, `2eea167`)
-- [ ] Desplegado y verificado en `http://192.168.8.65:3003/` — **importante:** al
-      desplegar, correr `seed-towers.js` + `pull-dss-devices.js --apply` contra el
-      archivo real de `.65` (con respaldo previo) antes o junto con el rebuild del
-      contenedor `cybersecurity-api` (que corre de solo lectura, `--immutable`) —
-      mismo patrón ya usado para KSC/FortiGate en ese servidor.
+- [x] Desplegado y verificado en `http://192.168.8.65:3003/` (2026-09-30) — ver
+      `docs/lecciones-aprendidas/LL-0008-deploy-65-seed-antes-de-rebuild.md` para el
+      incidente real del deploy (rebuild corrido antes del seed, 500 en `/api/
+      cybersecurity/towers`) y su resolución. Estado final: 15 torres, 17 gateways,
+      104 puntos semilla, 111 dispositivos DSS, `GET /api/cybersecurity/towers`
+      responde 200 con datos reales, pestaña "Torres" verificada en el navegador.
