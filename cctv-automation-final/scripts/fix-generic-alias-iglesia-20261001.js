@@ -14,6 +14,7 @@ const {runtimePaths}=require('../config/runtime-paths');
 
 const apply=process.argv.includes('--apply');
 const db=new DatabaseSync(runtimePaths.dbPath);
+db.exec('PRAGMA busy_timeout=10000');
 const rows=db.prepare("SELECT id,location_id,alias_raw FROM location_aliases WHERE alias_raw='Iglesia'").all();
 
 if(rows.length===0){
