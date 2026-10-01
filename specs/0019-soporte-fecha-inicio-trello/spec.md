@@ -1,7 +1,8 @@
 # SPEC 0019 — Soporte: usar la fecha de inicio de Trello cuando no hay fecha "due"
 
-- **Estado:** Implementado y verificado en local (Docker + re-proceso real
-  contra la API de Trello en vivo), pendiente de PR/merge y de desplegar en `.65`
+- **Estado:** Cerrada — desplegada y verificada en producción (2026-10-01, PR
+  #27). Caso real confirmado en vivo: "Cementerio Palmira" pasa de 1 de
+  octubre (incorrecto) a 3 de septiembre (`TRELLO_START`, correcto).
 - **Autor:** Claude (a partir de un segundo reporte del usuario, tras spec 0018, 2026-10-01)
 - **Fecha:** 2026-10-01
 - **Módulos afectados:** `cctv-automation-final/platform/trello-support.js`,

@@ -43,7 +43,13 @@ Referencia: `spec.md` y `plan.md` en esta misma carpeta.
 
 ## Cierre
 
-- [ ] PR abierto y enlazado en `spec.md`
-- [ ] Merge a `main`
-- [ ] Desplegado y verificado en `.65` (incluye re-proceso real de datos allá
-      contra la API de Trello en vivo, con backup previo del `.db`)
+- [x] PR abierto y enlazado en `spec.md` — [#27](https://github.com/correocctvy2k-prog/Bot_comercial/pull/27)
+- [x] Merge a `main` (2026-10-01, `c4efdf0`)
+- [x] Desplegado y verificado en `.65` (2026-10-01): backup previo del `.db`,
+      `cctv-api`/`cctv-operational-worker`/`cctv-visitor-worker`/
+      `crm-frontend` reconstruidos, migración automática aplicada (121
+      tarjetas con `start_at` poblado). **Caso real confirmado en vivo**:
+      "Cementerio Palmira" pasa de `operationalAt` = 1 de octubre (última
+      actividad, incorrecto) a 3 de septiembre (`TRELLO_START`, correcto).
+      Sin regresión en `/api/cybersecurity/towers`, `/api/cctv/health`,
+      `/api/cctv/maintenance`.
