@@ -1,11 +1,11 @@
 # SPEC 0020 — Soporte: interfaz compacta y bitácora horizontal
 
-- **Estado:** Implementado y verificado en local (lint, build, Docker), pendiente de PR/merge y de desplegar en `.65`
+- **Estado:** Implementado, verificado en local y **mergeado a `main`** (PR #28, junto con spec 0021, 2026-10-01); pendiente de desplegar en `.65`
 - **Autor:** Claude (a partir de un pedido directo del usuario tras cerrar spec 0019, 2026-10-01)
 - **Fecha:** 2026-10-01
 - **Módulos afectados:** `CRM_Frontend/src/pages/CctvModule.jsx` (pestaña Soporte, función `RealSupport`).
 - **Rama:** `feat/0020-soporte-ui-compacta`
-- **PR:** —
+- **PR:** #28 (mergeado junto con spec 0021)
 
 ## 1. Problema / oportunidad
 

@@ -38,6 +38,6 @@ Referencia: `spec.md` y `plan.md` en esta misma carpeta.
 
 ## Cierre
 
-- [ ] PR abierto y enlazado en `spec.md`
-- [ ] Merge a `main`
+- [x] PR abierto y enlazado en `spec.md` (PR #28)
+- [x] Merge a `main` (2026-10-01, junto con spec 0021)
 - [ ] Desplegado y verificado en `.65`

@@ -1,7 +1,6 @@
 # SPEC 0021 — Soporte: alerta de instalación nueva + actualización de inventario
 
-- **Estado:** Implementado y verificado en local (tests + build + Docker +
-  datos reales), pendiente de PR/merge y de desplegar en `.65`
+- **Estado:** Implementado, verificado en local y **mergeado a `main`** (PR #28, 2026-10-01); pendiente de desplegar en `.65`
 - **Autor:** Claude (a partir de un pedido directo del usuario, 2026-10-01)
 - **Fecha:** 2026-10-01
 - **Módulos afectados:** `cctv-automation-final/platform/schema.sql`,
@@ -10,7 +9,7 @@
   `CRM_Frontend/src/pages/CctvModule.jsx` (pestaña Soporte/Inventario/Proyecto,
   `InstallationWizard`).
 - **Rama:** `feat/0021-soporte-alerta-instalacion-inventario`
-- **PR:** —
+- **PR:** #28
 
 ## 1. Problema / oportunidad
 
