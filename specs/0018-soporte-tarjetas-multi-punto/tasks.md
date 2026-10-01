@@ -55,7 +55,18 @@ Referencia: `spec.md` y `plan.md` en esta misma carpeta.
 
 ## Cierre
 
-- [ ] PR abierto y enlazado en `spec.md`
-- [ ] Merge a `main`
-- [ ] Desplegado y verificado en `.65` (incluye re-proceso real de datos allá
-      contra la API de Trello en vivo, con backup previo del `.db`)
+- [x] PR abierto y enlazado en `spec.md` — [#26](https://github.com/correocctvy2k-prog/Bot_comercial/pull/26)
+- [x] Merge a `main` (2026-10-01, `4706dcb`)
+- [x] Desplegado y verificado en `.65` (2026-10-01): backup previo del `.db`,
+      alias "Iglesia" eliminado, `cctv-api`/`cctv-operational-worker`/
+      `cctv-visitor-worker`/`crm-frontend` reconstruidos, re-proceso real
+      contra la API de Trello en vivo (desde dentro del contenedor —
+      `.65` host no tiene salida directa a internet, solo los contenedores).
+      **160 tarjetas vinculadas, 11 multi-punto confirmadas en producción
+      real**, sin regresión en `/api/cybersecurity/towers`, `/api/cctv/health`,
+      `/api/cctv/maintenance`.
+- [x] Fix de seguimiento (`busy_timeout` faltante en el script de limpieza del
+      alias, encontrado al correrlo contra la base real de `.65` con
+      contenedores escribiendo activamente) — PR
+      [`fix/0018-busy-timeout-script`](https://github.com/correocctvy2k-prog/Bot_comercial/pull/new/fix/0018-busy-timeout-script),
+      aplicado directo en `.65` mientras tanto, sin bloquear el cierre.

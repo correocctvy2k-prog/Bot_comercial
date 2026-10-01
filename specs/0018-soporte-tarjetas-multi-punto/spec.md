@@ -1,7 +1,8 @@
 # SPEC 0018 — Seguridad Electrónica / Soporte: tarjetas que cubren varios puntos ya no se pierden
 
-- **Estado:** Implementado y verificado en local (Docker + re-proceso real
-  contra la API de Trello en vivo), pendiente de PR/merge y de desplegar en `.65`
+- **Estado:** Cerrada — desplegada y verificada en producción (2026-10-01, PR
+  #26). 160 tarjetas vinculadas, 11 multi-punto confirmadas contra datos
+  reales de `.65`.
 - **Autor:** Claude (a partir del reporte del usuario, 2026-10-01)
 - **Fecha:** 2026-10-01
 - **Módulos afectados:** `cctv-automation-final/platform/trello-support.js`,
