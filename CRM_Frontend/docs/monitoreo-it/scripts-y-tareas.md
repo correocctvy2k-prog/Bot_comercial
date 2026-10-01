@@ -127,11 +127,18 @@ Scripts:
 
 `Monitor-KSC-HardwareInventory.ps1` procesa el informe HTML de hardware exportado desde Kaspersky.
 
+**Correr siempre con `pwsh` (PowerShell 7), nunca con `PowerShell.exe` clasico
+(5.1)** -- confirmado (LL-0009, 2026-10-01): con PowerShell 5.1 el script falla
+en silencio (0 dispositivos, sin ningun error) al procesar los reportes HTML
+reales de KSC; con `pwsh` funciona correctamente. La tarea programada
+`Skylab_Monitor_Inventory` en `SERV-KSC` ya usa `pwsh.exe`, no hace falta
+tocarla.
+
 Parametros utiles:
 
 ```powershell
-.\Monitor-KSC-HardwareInventory.ps1 -KasperskyReportsPath "F:\Informes KSC"
-.\Monitor-KSC-HardwareInventory.ps1 -ReportFile ".\Informe de hardware.html" -SkipUpload
+pwsh -NonInteractive -NoProfile -ExecutionPolicy Bypass -File .\Monitor-KSC-HardwareInventory.ps1 -KasperskyReportsPath "F:\Informes KSC"
+pwsh -NonInteractive -NoProfile -ExecutionPolicy Bypass -File .\Monitor-KSC-HardwareInventory.ps1 -ReportFile ".\Informe de hardware.html" -SkipUpload
 ```
 
 Datos generados para el dashboard:

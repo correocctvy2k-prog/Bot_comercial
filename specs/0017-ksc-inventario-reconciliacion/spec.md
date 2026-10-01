@@ -1,9 +1,9 @@
 # SPEC 0017 — Monitoreo IT: reconciliar el inventario KSC (155 vs 175) y desglose de portátiles
 
-- **Estado:** Implementado y verificado en local (Docker + ejecución real del
-  `.ps1` con fixtures sintéticos + simulación contra datos reales de `.65`),
-  pendiente de PR/merge y de que el usuario corra el `.ps1` actualizado en
-  `SERV-KSC`
+- **Estado:** Cerrada — desplegada y verificada en producción (2026-10-01, PR
+  #24). En el camino se encontró y resolvió un problema real no previsto
+  (LL-0009: `PowerShell.exe` 5.1 fallaba en silencio con estos reportes HTML,
+  `pwsh` funciona — sin cambio de código, solo de ejecutable).
 - **Autor:** Claude (a partir del hallazgo del usuario, 2026-10-01)
 - **Fecha:** 2026-10-01
 - **Módulos afectados:** `CRM_Frontend/Monitoreo/KSC/Monitor-KSC-HardwareInventory.ps1` (corre en `SERV-KSC`, fuera de este repo en ejecución), `CRM_Frontend/src/pages/Monitoring.jsx` (dashboard `/monitoring`).
@@ -106,8 +106,9 @@ consola KSC ya asigna.
       (confirmado con ejecución real de PowerShell contra fixtures sintéticos,
       incluyendo el caso de un equipo que aparece en "Informe de hardware" pero
       su grupo KSC dice "Portátiles" — se cuenta como portátil igual).
-- [ ] Verificado en `http://192.168.8.65:3003/monitoring` tras el deploy real
-      (pendiente: requiere que el `.ps1` corra en `SERV-KSC` primero).
+- [x] Verificado en `http://192.168.8.65:3003/monitoring` tras el deploy real
+      — 175 dispositivos, 32 portátiles, confirmado por el usuario con
+      captura real del dashboard en producción.
 
 ## 6. Restricciones de arquitectura y diseño
 

@@ -58,9 +58,20 @@ a una versión fechada.
   relacionados, confirmado comparando contra la versión sin estos cambios).
   Docker local reconstruido (`crm-frontend`), bundle confirmado con el texto
   nuevo, `/api/cybersecurity/towers` y `/api/cctv/health` sin regresión.
-- **Decisión del usuario:** probar bien en local antes de desplegar a
-  producción — pendiente de PR/merge, de que el usuario corra el `.ps1`
-  actualizado en `SERV-KSC`, y del deploy de `crm-frontend` en `.65`.
+- **Desplegado y verificado en producción (2026-10-01).** Al correr el `.ps1`
+  real en `SERV-KSC` con `PowerShell.exe` (5.1 clásico), el script reportó
+  0 dispositivos en silencio, sin ningún error — investigado a fondo contra
+  el archivo real (no un problema del código: la misma lógica, replicada a
+  mano en la consola, sí parseaba 155/175 dispositivos correctamente). Causa
+  raíz real: **PowerShell 5.1 falla al procesar estos reportes HTML grandes
+  de KSC; PowerShell 7 (`pwsh`) los procesa bien** — ver
+  `docs/lecciones-aprendidas/LL-0009-ps1-ksc-powershell5-vs-pwsh.md`. Corrido
+  con `pwsh` sin ningún cambio de código: **175 dispositivos, 32 portátiles**,
+  enviado correctamente a `.65`, confirmado en el dashboard real. La tarea
+  programada `Skylab_Monitor_Inventory` en `SERV-KSC` ya invoca `pwsh.exe`, no
+  requirió ningún cambio para las corridas diarias automáticas futuras.
+  `crm-frontend` reconstruido y reiniciado en `.65`, bundle confirmado, sin
+  regresión en `/api/cybersecurity/towers` ni `/api/cctv/health`.
 
 ### CCTV — Botón de Excel: solo copiar ruta, se quita la detección de bloqueo
 `specs/0016-mantenimiento-excel-sync/`
