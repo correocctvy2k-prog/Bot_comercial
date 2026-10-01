@@ -3521,13 +3521,137 @@ function RealSupport({ support }) {
   const bucketLabel=key=>{const localDate=key.length===4?`${key}-07-01T12:00:00-05:00`:key.length===7?`${key}-15T12:00:00-05:00`:`${key}T12:00:00-05:00`,date=new Date(localDate);return new Intl.DateTimeFormat('es-CO',period==='DAY'?{day:'2-digit',month:'short',timeZone:'America/Bogota'}:period==='YEAR'?{year:'numeric',timeZone:'America/Bogota'}:{month:'short',year:'2-digit',timeZone:'America/Bogota'}).format(date)};
   const dated=support.items.filter(x=>x.operationalAt&&x.status==='COMPLETED'),bucketMap=new Map();for(const item of dated){const key=bucketFor(item),row=bucketMap.get(key)||{key,name:bucketLabel(key),Ejecutadas:0,Instalaciones:0};row.Ejecutadas++;if(item.activityType==='INSTALLATION')row.Instalaciones++;bucketMap.set(key,row)}const timeline=[...bucketMap.values()].sort((a,b)=>a.key.localeCompare(b.key)).slice(period==='DAY'?-31:undefined),periods=[...bucketMap.keys()].sort().reverse();
   const items=support.items.filter(item=>(status==='ALL'||item.status===status)&&(type==='ALL'||item.activityType===type)&&(!evidenceOnly||item.image)&&(periodKey==='ALL'||(item.operationalAt&&bucketFor(item)===periodKey))).sort((a,b)=>Number(!!b.image)-Number(!!a.image));
-  return <div className="space-y-5 animate-in fade-in duration-500"><div className="overflow-hidden rounded-2xl border border-cyan-500/10 bg-[linear-gradient(125deg,#081321_0%,#0b1728_55%,#101329_100%)] p-5"><div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center"><div className="flex items-center gap-3"><span className="grid h-14 w-14 place-items-center rounded-xl border border-cyan-400/15 bg-cyan-400/[.08] text-cyan-300"><Activity size={29}/></span><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-300">Trello · Soporte 2026</p><h2 className="text-xl font-black">Centro de actividad técnica</h2><p className="text-[11px] text-slate-400">Ejecución, evidencias y tareas pendientes en una sola línea operacional</p></div></div><div className="flex flex-wrap items-center gap-2"><Badge variant="outline" className="border-emerald-500/20 text-emerald-300">Actualizado {stamp(support.syncedAt)}</Badge><Button asChild size="sm" variant="outline"><a href={support.source.url} target="_blank" rel="noreferrer">Abrir tablero <ArrowRight size={13} className="ml-1"/></a></Button></div></div></div>
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{[["Actividades",support.summary.total,<Database key="database" size={21}/>,'text-blue-300 bg-blue-500/10'],['Ejecutadas',support.summary.completed,<CheckCircle2 key="complete" size={21}/>,'text-emerald-300 bg-emerald-500/10'],['Pendientes',support.summary.pending,<Clock key="pending" size={21}/>,'text-amber-300 bg-amber-500/10'],['Con evidencia',support.summary.withImages||0,<ImageIcon key="image" size={21}/>,'text-cyan-300 bg-cyan-500/10'],['Puntos vinculados',support.summary.linked,<MapPin key="linked" size={21}/>,'text-violet-300 bg-violet-500/10']].map(([label,value,icon,tone])=><div key={label} className="flex items-center gap-3 rounded-2xl border border-white/[.07] bg-white/[.025] p-3"><span className={`grid h-10 w-10 place-items-center rounded-xl ${tone}`}>{icon}</span><div><b className="text-xl font-black">{value}</b><p className="text-[8px] font-bold uppercase tracking-wide text-slate-500">{label}</p></div></div>)}</div>
-    <div className="grid gap-4 xl:grid-cols-[1.4fr_.6fr]"><Card className="border-white/[.08] bg-card/40"><CardHeader><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><CardTitle className="flex items-center gap-2 text-base"><TrendingUp size={17} className="text-cyan-300"/> Ritmo de atención</CardTitle><CardDescription>Fecha programada del evento; última actividad solo cuando Trello no tiene fecha</CardDescription></div><div className="flex rounded-lg border border-white/[.08] bg-black/20 p-1">{[['DAY','Día'],['MONTH','Mes'],['YEAR','Año']].map(([key,label])=><button key={key} onClick={()=>{setPeriod(key);setPeriodKey('ALL')}} className={`rounded-md px-3 py-1.5 text-[10px] font-bold ${period===key?'bg-cyan-500/15 text-cyan-200':'text-slate-500'}`}>{label}</button>)}</div></div></CardHeader><CardContent><div className="h-64"><ResponsiveContainer width="100%" height="100%"><BarChart data={timeline} barCategoryGap="25%"><CartesianGrid strokeDasharray="3 5" stroke="rgba(148,163,184,.08)" vertical={false}/><XAxis dataKey="name" tick={{fontSize:9,fill:'#64748b'}} axisLine={false} tickLine={false}/><YAxis allowDecimals={false} tick={{fontSize:9,fill:'#64748b'}} axisLine={false} tickLine={false}/><Tooltip cursor={{fill:'rgba(34,211,238,.045)'}} contentStyle={{background:'#07101f',color:'#e2e8f0',border:'1px solid rgba(34,211,238,.18)',borderRadius:12,fontSize:11}} itemStyle={{color:'#e2e8f0'}} labelStyle={{color:'#94a3b8'}}/><Bar dataKey="Ejecutadas" fill="#22d3ee" radius={[5,5,0,0]}/><Bar dataKey="Instalaciones" fill="#8b5cf6" radius={[5,5,0,0]}/></BarChart></ResponsiveContainer></div></CardContent></Card>
-    <Card className="border-white/[.08] bg-card/40"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><CalendarDays size={17} className="text-violet-300"/> Periodos</CardTitle><CardDescription>Filtra tarjetas desde la analítica</CardDescription></CardHeader><CardContent><div className="max-h-64 space-y-2 overflow-y-auto"><button onClick={()=>setPeriodKey('ALL')} className={`flex w-full justify-between rounded-xl border p-3 text-left text-xs ${periodKey==='ALL'?'border-cyan-500/30 bg-cyan-500/[.06]':'border-white/[.06]'}`}><b>Todo el periodo</b><span>{dated.length}</span></button>{periods.map(key=>{const count=bucketMap.get(key)?.Ejecutadas||0;return <button key={key} onClick={()=>setPeriodKey(key)} className={`flex w-full justify-between rounded-xl border p-3 text-left text-xs ${periodKey===key?'border-violet-500/30 bg-violet-500/[.06]':'border-white/[.06] bg-white/[.015]'}`}><span className="capitalize">{bucketLabel(key)}</span><b>{count}</b></button>})}</div></CardContent></Card></div>
-    <div className="grid gap-4 xl:grid-cols-[.55fr_1.45fr]"><Card className="border-white/[.08] bg-card/40"><CardHeader><CardTitle className="text-base">Tipos de actividad</CardTitle><CardDescription>Selecciona una categoría operacional</CardDescription></CardHeader><CardContent><div className="space-y-2">{support.types.map(row=>{const Icon=typeIcons[row.name]||Wrench;return <button key={row.name} onClick={()=>setType(type===row.name?'ALL':row.name)} className={`flex w-full items-center justify-between rounded-xl border p-3 text-left ${type===row.name?'border-cyan-500/30 bg-cyan-500/[.07]':'border-white/[.06] bg-white/[.02]'}`}><span className="flex items-center gap-2"><span className={`grid h-8 w-8 place-items-center rounded-lg ${tones[row.name]}`}><Icon size={16}/></span><span className="text-[10px] font-bold text-slate-300">{labels[row.name]}</span></span><b className="text-lg">{row.value}</b></button>})}</div></CardContent></Card><Card className="border-white/[.08] bg-card/40"><CardHeader><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><CardTitle className="text-base">Bitácora visual de soporte</CardTitle><CardDescription>Selecciona una tarjeta para consultar el detalle sin salir de Skylab</CardDescription></div><div className="flex flex-wrap gap-2"><button onClick={()=>setEvidenceOnly(!evidenceOnly)} className={`h-9 rounded-md border px-3 text-[10px] font-bold ${evidenceOnly?'border-cyan-500/30 bg-cyan-500/10 text-cyan-200':'border-white/[.08] text-slate-400'}`}><ImageIcon size={13} className="mr-1.5 inline"/> Solo con evidencia</button><select value={status} onChange={e=>setStatus(e.target.value)} className="h-9 rounded-md border bg-background px-3 text-xs"><option value="ALL">Todos los estados</option><option value="PENDING">Pendientes</option><option value="COMPLETED">Ejecutadas</option></select><Badge variant="outline">{items.length}</Badge></div></div></CardHeader><CardContent><div className="grid max-h-[780px] gap-3 overflow-y-auto pr-1 md:grid-cols-2">{items.map(item=>{const Icon=typeIcons[item.activityType]||Wrench;return <button type="button" key={item.id} onClick={()=>setSelectedSupport(item)} className={`group overflow-hidden rounded-xl border text-left transition hover:-translate-y-0.5 hover:border-cyan-500/25 ${item.status==='PENDING'?'border-amber-500/20 bg-amber-500/[.035]':'border-white/[.07] bg-white/[.02]'}`}>{item.image?<div className="relative h-32 overflow-hidden bg-slate-950"><img src={item.image.url} alt={item.image.name||item.title} loading="lazy" className="h-full w-full object-cover opacity-85 transition duration-300 group-hover:scale-[1.03] group-hover:opacity-100"/><span className="absolute bottom-2 right-2 rounded-md bg-black/70 px-2 py-1 text-[8px] text-slate-200"><ImageIcon size={10} className="mr-1 inline"/> Evidencia</span></div>:<div className={`flex h-20 items-center justify-center border-b border-white/[.05] bg-gradient-to-r from-slate-950/70 to-slate-900/30 ${tones[item.activityType]?.split(' ')[0]||'text-slate-500'}`}><span className="grid h-11 w-11 place-items-center rounded-xl border border-white/[.06] bg-white/[.025]"><Icon size={23}/></span></div>}<div className="p-3"><div className="flex items-start justify-between gap-2"><span className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[8px] font-black uppercase ${tones[item.activityType]}`}><Icon size={11}/>{labels[item.activityType]}</span><Badge variant="outline" className={item.status==='PENDING'?'shrink-0 border-amber-500/20 text-amber-300':'shrink-0 border-emerald-500/20 text-emerald-300'}>{item.status==='PENDING'?'Pendiente':'Ejecutada'}</Badge></div><b className="mt-2 line-clamp-3 block text-xs leading-relaxed text-slate-200">{item.title}</b>{item.locations?.length>0&&<p className="mt-2 text-[9px] font-bold text-violet-300" title={item.locations.map(l=>l.name).join(', ')}>{item.locations.map(l=>l.name).join(' · ')}</p>}<div className="mt-3 flex items-center justify-between border-t border-white/[.05] pt-2 text-[9px] text-slate-500"><span>{stamp(item.operationalAt)}</span><span>{item.members.length?item.members.map(x=>x.name).join(', '):item.list}</span></div></div></button>})}</div></CardContent></Card></div>
-    <SupportCardModal item={selectedSupport} onClose={()=>setSelectedSupport(null)} labels={labels} tones={tones} typeIcons={typeIcons} stamp={stamp}/>
-  </div>;
+  // spec: el filtro de tipos de actividad refleja el periodo/estado/evidencia
+  // ya seleccionados (no el total global de todo el historico) -- misma base
+  // que `items` pero sin aplicar el filtro de tipo, para que los conteos de
+  // cada categoria sean consistentes con lo que de verdad se vera al elegirla.
+  const periodBaseItems=support.items.filter(item=>(status==='ALL'||item.status===status)&&(!evidenceOnly||item.image)&&(periodKey==='ALL'||(item.operationalAt&&bucketFor(item)===periodKey)));
+  const typeCountMap=new Map();for(const item of periodBaseItems)typeCountMap.set(item.activityType,(typeCountMap.get(item.activityType)||0)+1);
+  const typesForPeriod=[...typeCountMap.entries()].map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
+  const kpis=[['Actividades',support.summary.total,Database,'text-blue-300 bg-blue-500/10'],['Ejecutadas',support.summary.completed,CheckCircle2,'text-emerald-300 bg-emerald-500/10'],['Pendientes',support.summary.pending,Clock,'text-amber-300 bg-amber-500/10'],['Con evidencia',support.summary.withImages||0,ImageIcon,'text-cyan-300 bg-cyan-500/10'],['Puntos vinculados',support.summary.linked,MapPin,'text-violet-300 bg-violet-500/10']];
+  return (
+    <div className="space-y-5 animate-in fade-in duration-500">
+      <div className="overflow-hidden rounded-2xl border border-cyan-500/10 bg-[linear-gradient(125deg,#081321_0%,#0b1728_55%,#101329_100%)] p-5">
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+          <div className="flex items-center gap-3">
+            <span className="grid h-14 w-14 place-items-center rounded-xl border border-cyan-400/15 bg-cyan-400/[.08] text-cyan-300"><Activity size={29}/></span>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-300">Trello · Soporte 2026</p>
+              <h2 className="text-xl font-black">Centro de actividad técnica</h2>
+              <p className="text-[11px] text-slate-400">Ejecución, evidencias y tareas pendientes en una sola línea operacional</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="border-emerald-500/20 text-emerald-300">Actualizado {stamp(support.syncedAt)}</Badge>
+            <Button asChild size="sm" variant="outline"><a href={support.source.url} target="_blank" rel="noreferrer">Abrir tablero <ArrowRight size={13} className="ml-1"/></a></Button>
+          </div>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-white/[.06] pt-4">
+          {kpis.map(([label,value,Icon,tone])=>(
+            <div key={label} className="flex items-center gap-2 rounded-xl border border-white/[.07] bg-white/[.03] px-3 py-1.5">
+              <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg ${tone}`}><Icon size={14}/></span>
+              <div className="leading-tight">
+                <b className="block text-sm font-black">{value}</b>
+                <span className="block text-[7px] font-bold uppercase tracking-wide text-slate-500">{label}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.4fr_.6fr]">
+        <Card className="border-white/[.08] bg-card/40">
+          <CardHeader>
+            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base"><TrendingUp size={17} className="text-cyan-300"/> Ritmo de atención</CardTitle>
+                <CardDescription>Fecha programada del evento; última actividad solo cuando Trello no tiene fecha</CardDescription>
+              </div>
+              <div className="flex rounded-lg border border-white/[.08] bg-black/20 p-1">
+                {[['DAY','Día'],['MONTH','Mes'],['YEAR','Año']].map(([key,label])=><button key={key} onClick={()=>{setPeriod(key);setPeriodKey('ALL')}} className={`rounded-md px-3 py-1.5 text-[10px] font-bold ${period===key?'bg-cyan-500/15 text-cyan-200':'text-slate-500'}`}>{label}</button>)}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={timeline} barCategoryGap="25%">
+                  <CartesianGrid strokeDasharray="3 5" stroke="rgba(148,163,184,.08)" vertical={false}/>
+                  <XAxis dataKey="name" tick={{fontSize:9,fill:'#64748b'}} axisLine={false} tickLine={false}/>
+                  <YAxis allowDecimals={false} tick={{fontSize:9,fill:'#64748b'}} axisLine={false} tickLine={false}/>
+                  <Tooltip cursor={{fill:'rgba(34,211,238,.045)'}} contentStyle={{background:'#07101f',color:'#e2e8f0',border:'1px solid rgba(34,211,238,.18)',borderRadius:12,fontSize:11}} itemStyle={{color:'#e2e8f0'}} labelStyle={{color:'#94a3b8'}}/>
+                  <Bar dataKey="Ejecutadas" fill="#22d3ee" radius={[5,5,0,0]}/>
+                  <Bar dataKey="Instalaciones" fill="#8b5cf6" radius={[5,5,0,0]}/>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-white/[.08] bg-card/40">
+          <CardHeader><CardTitle className="flex items-center gap-2 text-base"><CalendarDays size={17} className="text-violet-300"/> Periodos</CardTitle><CardDescription>Filtra tarjetas desde la analítica</CardDescription></CardHeader>
+          <CardContent>
+            <div className="max-h-64 space-y-2 overflow-y-auto">
+              <button onClick={()=>setPeriodKey('ALL')} className={`flex w-full justify-between rounded-xl border p-3 text-left text-xs ${periodKey==='ALL'?'border-cyan-500/30 bg-cyan-500/[.06]':'border-white/[.06]'}`}><b>Todo el periodo</b><span>{dated.length}</span></button>
+              {periods.map(key=>{const count=bucketMap.get(key)?.Ejecutadas||0;return <button key={key} onClick={()=>setPeriodKey(key)} className={`flex w-full justify-between rounded-xl border p-3 text-left text-xs ${periodKey===key?'border-violet-500/30 bg-violet-500/[.06]':'border-white/[.06] bg-white/[.015]'}`}><span className="capitalize">{bucketLabel(key)}</span><b>{count}</b></button>})}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border-white/[.08] bg-card/40">
+        <CardHeader>
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div>
+              <CardTitle className="text-base">Bitácora visual de soporte</CardTitle>
+              <CardDescription>Selecciona una tarjeta para consultar el detalle sin salir de Skylab</CardDescription>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={()=>setEvidenceOnly(!evidenceOnly)} className={`h-9 rounded-md border px-3 text-[10px] font-bold ${evidenceOnly?'border-cyan-500/30 bg-cyan-500/10 text-cyan-200':'border-white/[.08] text-slate-400'}`}><ImageIcon size={13} className="mr-1.5 inline"/> Solo con evidencia</button>
+              <select value={status} onChange={e=>setStatus(e.target.value)} className="h-9 rounded-md border bg-background px-3 text-xs"><option value="ALL">Todos los estados</option><option value="PENDING">Pendientes</option><option value="COMPLETED">Ejecutadas</option></select>
+              <Badge variant="outline">{items.length}</Badge>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5 border-t border-border/60 pt-3">
+            <button onClick={()=>setType('ALL')} className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-bold transition ${type==='ALL'?'border-cyan-500/30 bg-cyan-500/[.08] text-cyan-200':'border-white/[.06] bg-white/[.02] text-slate-400 hover:text-slate-200'}`}>Todas <b>{periodBaseItems.length}</b></button>
+            {typesForPeriod.map(row=>{const Icon=typeIcons[row.name]||Wrench;return <button key={row.name} onClick={()=>setType(type===row.name?'ALL':row.name)} className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-bold transition ${type===row.name?'border-cyan-500/30 bg-cyan-500/[.08] text-cyan-200':'border-white/[.06] bg-white/[.02] text-slate-400 hover:text-slate-200'}`}><Icon size={12}/>{labels[row.name]} <b>{row.value}</b></button>})}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid max-h-[860px] gap-3 overflow-y-auto pr-1 lg:grid-cols-2">
+            {items.map(item=>{
+              const Icon=typeIcons[item.activityType]||Wrench;
+              return (
+                <button type="button" key={item.id} onClick={()=>setSelectedSupport(item)} className={`group flex items-stretch overflow-hidden rounded-xl border text-left transition hover:-translate-y-0.5 hover:border-cyan-500/25 ${item.status==='PENDING'?'border-amber-500/20 bg-amber-500/[.035]':'border-white/[.07] bg-white/[.02]'}`}>
+                  {item.image
+                    ? <div className="relative h-auto w-44 shrink-0 overflow-hidden bg-slate-950 sm:w-56">
+                        <img src={item.image.url} alt={item.image.name||item.title} loading="lazy" className="h-full w-full object-cover opacity-85 transition duration-300 group-hover:scale-[1.03] group-hover:opacity-100"/>
+                        <span className="absolute bottom-2 right-2 rounded-md bg-black/70 px-2 py-1 text-[9px] text-slate-200"><ImageIcon size={11} className="mr-1 inline"/> Evidencia</span>
+                      </div>
+                    : <div className={`flex w-44 shrink-0 items-center justify-center border-r border-white/[.05] bg-gradient-to-br from-slate-950/70 to-slate-900/30 sm:w-56 ${tones[item.activityType]?.split(' ')[0]||'text-slate-500'}`}>
+                        <span className="grid h-14 w-14 place-items-center rounded-xl border border-white/[.06] bg-white/[.025]"><Icon size={28}/></span>
+                      </div>}
+                  <div className="flex min-w-0 flex-1 flex-col p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[9px] font-black uppercase ${tones[item.activityType]}`}><Icon size={13}/>{labels[item.activityType]}</span>
+                      <Badge variant="outline" className={item.status==='PENDING'?'shrink-0 border-amber-500/20 text-amber-300':'shrink-0 border-emerald-500/20 text-emerald-300'}>{item.status==='PENDING'?'Pendiente':'Ejecutada'}</Badge>
+                    </div>
+                    <b className="mt-2 line-clamp-3 block text-sm leading-relaxed text-slate-200">{item.title}</b>
+                    {item.locations?.length>0&&<p className="mt-2 text-[10px] font-bold text-violet-300" title={item.locations.map(l=>l.name).join(', ')}>{item.locations.map(l=>l.name).join(' · ')}</p>}
+                    <div className="mt-auto flex items-center justify-between gap-2 border-t border-white/[.05] pt-2 text-[10px] text-slate-500">
+                      <span className="shrink-0">{stamp(item.operationalAt)}</span>
+                      <span className="truncate text-right">{item.members.length?item.members.map(x=>x.name).join(', '):item.list}</span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      <SupportCardModal item={selectedSupport} onClose={()=>setSelectedSupport(null)} labels={labels} tones={tones} typeIcons={typeIcons} stamp={stamp}/>
+    </div>
+  );
 }
 
 // spec 0016: estado de la sincronización Trello -> Excel de mantenimiento. Se omite por

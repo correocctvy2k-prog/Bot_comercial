@@ -10,6 +10,29 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CRM_Frontend — Soporte: interfaz compacta y bitácora horizontal
+`specs/0020-soporte-ui-compacta/`
+- **Pedido directo del usuario** tras cerrar spec 0019: la barra "Centro de
+  actividad técnica" y las 5 tarjetas KPI debajo ocupaban demasiado espacio
+  horizontal; la bitácora visual no aprovechaba el ancho completo y sus
+  tarjetas verticales dificultaban ver imagen y texto; el filtro de tipos
+  era una lista fija sin relación con el período seleccionado.
+- Los 5 KPI ahora son chips integrados en la misma franja del encabezado
+  "Centro de actividad técnica" (sin fila de tarjetas separada).
+- "Bitácora visual de soporte" pasa a ocupar el ancho completo de la
+  pestaña; el panel lateral "Tipos de actividad" se elimina.
+- Tarjetas de la bitácora en layout horizontal (imagen a la izquierda,
+  contenido a la derecha), ~20% más grandes en texto/imagen.
+- Filtro de tipos convertido en una fila de píldoras minimalista dentro del
+  encabezado de la bitácora, con conteos reactivos al período/estado ya
+  seleccionado por el usuario (no al total global).
+- Sin cambios de datos/endpoints. `npm run lint` pasa de 7 a 8 avisos, pero
+  el nuevo es el mismo falso positivo ya presente dos veces en el archivo
+  (`Icon` en destructuring de `.map`, no cubierto por el
+  `varsIgnorePattern` del `eslint.config.js` del proyecto). Verificado en
+  Docker local sin regresión en `/api/cctv/support`, `/api/cctv/health`,
+  `/api/cctv/maintenance`, `/api/cybersecurity/towers`.
+
 ### CCTV — Soporte: usa la fecha de inicio de Trello cuando no hay fecha "due"
 `specs/0019-soporte-fecha-inicio-trello/`
 - **Segundo reporte del usuario, tras desplegar spec 0018**: la bitácora
