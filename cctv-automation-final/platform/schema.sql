@@ -536,6 +536,23 @@ CREATE TABLE IF NOT EXISTS support_cards (
   FOREIGN KEY(location_id) REFERENCES locations(id)
 );
 
+-- spec 0018: una tarjeta de soporte puede cubrir varios puntos reales a la vez
+-- (p.ej. una ronda de mantenimiento mencionando 6 puntos de venta en el mismo
+-- titulo) -- support_cards.location_id sigue siendo el vinculo primario para
+-- los consumidores que no se tocan en esta spec (evidenceByLocation,
+-- notificaciones), pero support_card_locations es la fuente completa para la
+-- bitacora visual de la pestana Soporte.
+CREATE TABLE IF NOT EXISTS support_card_locations (
+  card_id TEXT NOT NULL,
+  location_id TEXT NOT NULL,
+  link_source TEXT NOT NULL CHECK(link_source IN ('MATCHED','MANUAL')),
+  created_at TEXT NOT NULL,
+  PRIMARY KEY(card_id,location_id),
+  FOREIGN KEY(card_id) REFERENCES support_cards(id),
+  FOREIGN KEY(location_id) REFERENCES locations(id)
+);
+CREATE INDEX IF NOT EXISTS idx_support_card_locations_location ON support_card_locations(location_id);
+
 CREATE TABLE IF NOT EXISTS support_identity_overrides (
   source_system TEXT NOT NULL,
   source_card_id TEXT NOT NULL,
