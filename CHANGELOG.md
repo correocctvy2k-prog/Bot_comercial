@@ -10,6 +10,50 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CCTV — Soporte: tarjetas que cubren varios puntos ya no se pierden
+`specs/0018-soporte-tarjetas-multi-punto/`
+- **Problema reportado por el usuario, grave para la confiabilidad del dato:**
+  en Seguridad Electrónica → Soporte, tarjetas de Trello que cubren varios
+  puntos (rondas de mantenimiento) se vinculaban en silencio a un solo punto
+  — el de nombre más largo mencionado en el título — y los demás puntos
+  nunca veían esa tarjeta en su bitácora.
+- **Confirmado con datos reales**: 11 de 315 tarjetas de los tableros
+  "Soporte 2025"/"Soporte 2026" mencionan más de un punto real. Ejemplo:
+  *"Cambio de direccionamiento en los puntos de venta: Cementerio; obrero 1,
+  licores 1, mariacano, papayal, metro, popular modelo, zamorano III"*
+  quedaba archivada solo en "Popular Modelo II".
+- **`locationMatcher`** (`platform/trello-support.js`) ahora vincula a
+  **todos** los puntos cuyo nombre/alias aparece en el título, con una regla
+  de contención de posición: un nombre corto que es prefijo/sufijo textual
+  de otro punto distinto (43 pares reales confirmados, p.ej. "Oficina
+  Principal" dentro de "Oficina Principal Amaime") no se cuenta como mención
+  aparte, pero menciones en posiciones distintas del título sí se conservan
+  todas — ver `docs/lecciones-aprendidas/LL-0010-matcher-multi-punto-contencion.md`.
+- **Hallazgo secundario de datos**: el alias genérico "Iglesia" (una sola
+  palabra) en "IGLESIA V.GORGONA" colisionaba con otros 3 puntos cuyo nombre
+  también contiene "Iglesia" — eliminado
+  (`scripts/fix-generic-alias-iglesia-20261001.js`).
+- **Esquema**: tabla nueva `support_card_locations` (tarjeta↔punto,
+  muchos-a-muchos, `link_source` `MATCHED`/`MANUAL`) — `support_cards.
+  location_id` se conserva como vínculo primario para los consumidores que no
+  se tocan en esta spec (`evidenceByLocation`, notificaciones operacionales).
+- **`GET /api/cctv/support`**: cada tarjeta expone `locations: [{id,name,
+  zone}]` con todos sus puntos. `POST /api/cctv/support/:id/link` pasa de
+  reemplazar a agregar un vínculo manual; nuevo
+  `DELETE /api/cctv/support/:id/link/:locationId` para quitar uno específico.
+- **`CctvModule.jsx`**: la bitácora visual y el modal de detalle muestran
+  todos los puntos vinculados de cada tarjeta.
+- **Verificado contra datos reales de producción** (no sintéticos): backup
+  previo de `cctv-staging.db`, re-proceso real contra la API de Trello en
+  vivo — 160 tarjetas vinculadas (11 multi-punto), confirmado consultando
+  `support_card_locations` directamente. `cctv-automation-final`: 110/110
+  tests (6 nuevos, incluyen el caso real de Iglesia y de colisión por
+  prefijo). `cd CRM_Frontend && npm run lint`/`build` — mismos 7 errores
+  preexistentes de `CctvModule.jsx`, confirmado sin cambio antes/después.
+  Docker local: `cctv-api`/`crm-frontend` reconstruidos, endpoints de
+  vínculo manual probados en vivo (agregar y quitar), sin regresión en
+  `/api/cybersecurity/towers`, `/api/cctv/health` ni `/api/cctv/maintenance`.
+
 ### Monitoreo IT — Reconcilia el conteo de Inventario KSC (155 vs 175)
 `specs/0017-ksc-inventario-reconciliacion/`
 - **Problema reportado por el usuario:** el panel "Inventario KSC" mostraba 155

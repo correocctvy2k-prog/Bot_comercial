@@ -25,3 +25,4 @@ Qué no: lo que ya está en la doc de un módulo o en un ADR.
 | [LL-0007](LL-0007-alter-table-rename-reescribe-fk.md) | `ALTER TABLE ... RENAME TO` en SQLite reescribe las FK de las tablas hijas | cybersecurity | 2026-09-18 |
 | [LL-0008](LL-0008-deploy-65-seed-antes-de-rebuild.md) | En deploys con seed fuera del contenedor, sembrar antes de reconstruir (no después) | cybersecurity | 2026-09-30 |
 | [LL-0009](LL-0009-ps1-ksc-powershell5-vs-pwsh.md) | `Monitor-KSC-HardwareInventory.ps1` falla en silencio con PowerShell 5.1, usar `pwsh` | Monitoreo IT | 2026-10-01 |
+| [LL-0010](LL-0010-matcher-multi-punto-contencion.md) | Un matcher "todos los que calcen" necesita contención de posición, no solo quitar el límite viejo | Seguridad Electrónica (Soporte) | 2026-10-01 |
