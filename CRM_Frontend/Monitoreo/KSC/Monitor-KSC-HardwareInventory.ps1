@@ -359,6 +359,71 @@ function Export-CyberHardwareInventory {
     return $output
 }
 
+function Update-InventoryAggregates {
+    <#
+    .SYNOPSIS
+        Recalcula TotalDevices/OperatingSystems/Virtualization/LastSeen de un
+        $Inventory a partir de su propio $Inventory.Devices -- se corre una vez
+        al armar el inventario desde "Informe de hardware" y otra vez despues de
+        Merge-ProtectionStatusIntoInventory, para que los dispositivos agregados
+        desde "Informe del estado de la proteccion" tambien cuenten.
+    .NOTES
+        IsVirtual es tri-state: $true/$false (dato real, desde "Informe de
+        hardware") o $null (sin dato -- dispositivo agregado desde el otro
+        reporte, que nunca trae Proveedor/Placa madre/CPU). Nunca se asume
+        $false por defecto para no inventar un "fisico" que no se verifico.
+    #>
+    param($Inventory)
+
+    $devices = $Inventory.Devices
+    $byOs = @{}
+    $byVisibility = @{
+        UltimoDia       = 0
+        UltimaSemana    = 0
+        MasDeUnaSemana  = 0
+        MasDeUnMes      = 0
+        SinDatos        = 0
+    }
+
+    foreach ($device in $devices) {
+        Increment-Count -Table $byOs -Key $device.OsBucket
+        if ($byVisibility.ContainsKey($device.VisibilityBucket)) {
+            $byVisibility[$device.VisibilityBucket]++
+        } else {
+            $byVisibility.SinDatos++
+        }
+    }
+
+    $virtualCount = @($devices | Where-Object { $_.IsVirtual -eq $true }).Count
+    $physicalCount = @($devices | Where-Object { $_.IsVirtual -eq $false }).Count
+    $unclassifiedCount = @($devices | Where-Object { $null -eq $_.IsVirtual }).Count
+    $portableCount = @($devices | Where-Object { $_.Group -match 'Port[áa]til' }).Count
+    $groupSinDatoCount = @($devices | Where-Object { [string]::IsNullOrWhiteSpace($_.Group) }).Count
+    $nonPortableCount = $devices.Count - $portableCount - $groupSinDatoCount
+
+    $Inventory.TotalDevices = $devices.Count
+    $Inventory.OperatingSystems = @{
+        WindowsServer = Get-CountValue -Table $byOs -Key "Windows Server"
+        Windows10     = Get-CountValue -Table $byOs -Key "Windows 10"
+        Windows11     = Get-CountValue -Table $byOs -Key "Windows 11"
+        Otros         = Get-CountValue -Table $byOs -Key "Otros"
+        SinDatos      = Get-CountValue -Table $byOs -Key "Sin datos"
+        Breakdown     = $byOs
+    }
+    $Inventory.DeviceTypes = @{
+        Portables    = $portableCount
+        NoPortables  = $nonPortableCount
+        SinDato      = $groupSinDatoCount
+    }
+    $Inventory.Virtualization = @{
+        VirtualMachines = $virtualCount
+        PhysicalDevices = $physicalCount
+        Unclassified    = $unclassifiedCount
+    }
+    $Inventory.LastSeen = $byVisibility
+    $Inventory.Devices = @($devices | Sort-Object Name)
+}
+
 function Parse-HardwareInventory {
     param([string]$FilePath)
 
@@ -402,50 +467,18 @@ function Parse-HardwareInventory {
             IPAddress         = $null
             NetbiosName       = $null
             ProtectionState   = $null
+            Group             = $null
         }
     }
 
-    $byOs = @{}
-    $byVisibility = @{
-        UltimoDia       = 0
-        UltimaSemana    = 0
-        MasDeUnaSemana  = 0
-        MasDeUnMes      = 0
-        SinDatos        = 0
-    }
-
-    foreach ($device in $devices) {
-        Increment-Count -Table $byOs -Key $device.OsBucket
-        if ($byVisibility.ContainsKey($device.VisibilityBucket)) {
-            $byVisibility[$device.VisibilityBucket]++
-        } else {
-            $byVisibility.SinDatos++
-        }
-    }
-
-    $virtualCount = @($devices | Where-Object { $_.IsVirtual }).Count
-    $physicalCount = $devices.Count - $virtualCount
-
-    return @{
+    $inventory = @{
         SourceFile = Split-Path -Path $FilePath -Leaf
         SourcePath = $FilePath
         ParsedAt   = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-        TotalDevices = $devices.Count
-        OperatingSystems = @{
-            WindowsServer = Get-CountValue -Table $byOs -Key "Windows Server"
-            Windows10     = Get-CountValue -Table $byOs -Key "Windows 10"
-            Windows11     = Get-CountValue -Table $byOs -Key "Windows 11"
-            Otros         = Get-CountValue -Table $byOs -Key "Otros"
-            SinDatos      = Get-CountValue -Table $byOs -Key "Sin datos"
-            Breakdown     = $byOs
-        }
-        Virtualization = @{
-            VirtualMachines = $virtualCount
-            PhysicalDevices = $physicalCount
-        }
-        LastSeen = $byVisibility
-        Devices = @($devices | Sort-Object Name)
+        Devices    = $devices
     }
+    Update-InventoryAggregates -Inventory $inventory
+    return $inventory
 }
 
 function Parse-VirusDatabaseUsage {
@@ -656,6 +689,7 @@ function Parse-ProtectionStatus {
             State           = Get-FirstRecordValue -Record $record -Keys @("Estado")
             StateReason     = Get-FirstRecordValue -Record $record -Keys @("Motivo:", "Motivo")
             OperatingSystem = Get-FirstRecordValue -Record $record -Keys @("Sistema operativo")
+            Group           = Get-FirstRecordValue -Record $record -Keys @("Grupo")
         }
     }
 
@@ -695,9 +729,25 @@ function Merge-ProtectionStatusIntoInventory {
     <#
     .SYNOPSIS
         Enriquece $Inventory.Devices (armado desde el Informe de hardware,
-        nunca trajo IP) con IPAddress/NetbiosName/ProtectionState del Informe
-        del estado de la proteccion, uniendo por el campo Dispositivo/Nombre
-        completo -- NO por NetBIOS (ver nota en Parse-ProtectionStatus).
+        nunca trajo IP) con IPAddress/NetbiosName/ProtectionState/Group del
+        Informe del estado de la proteccion, uniendo por el campo
+        Dispositivo/Nombre completo -- NO por NetBIOS (ver nota en
+        Parse-ProtectionStatus). Group es el grupo de administracion de KSC
+        (columna "Grupo") -- el usuario confirmo que los equipos portatiles
+        estan agrupados ahi como "Portatiles" (spec 0017), a diferencia de
+        otros grupos que son zonas/sitios. Update-InventoryAggregates usa ese
+        campo para contar portatiles sin inventar ningun criterio nuevo.
+
+        Los dispositivos de ProtectionStatus que no tienen match en el
+        inventario de hardware no se descartan -- "Informe de hardware" puede
+        subcontar equipos reales que si estan protegidos y visibles en KSC
+        (hallazgo real, spec 0017: 20 de 175 dispositivos reales faltaban por
+        completo de "Informe de hardware"). Se agregan como filas nuevas, con
+        el Sistema operativo que ProtectionStatus si trae; IsVirtual queda
+        $null (sin dato, nunca se asume fisico) y VisibilityBucket "SinDatos"
+        (ProtectionStatus no trae fecha de ultima conexion). Update-
+        InventoryAggregates recalcula TotalDevices/OperatingSystems/
+        Virtualization/LastSeen sobre el conjunto completo.
     #>
     param($Inventory, $ProtectionStatus)
 
@@ -716,13 +766,37 @@ function Merge-ProtectionStatusIntoInventory {
             $device.IPAddress       = $status.IPAddress
             $device.NetbiosName     = $status.NetbiosName
             $device.ProtectionState = $status.State
+            $device.Group           = $status.Group
             $matched++
             $lookup.Remove($key)
         }
     }
 
+    $addedDevices = @()
+    foreach ($status in $lookup.Values) {
+        $addedDevices += [pscustomobject]@{
+            Name              = $status.Name
+            Provider          = $null
+            OperatingSystem   = $status.OperatingSystem
+            OsBucket          = Get-OsBucket -OperatingSystem $status.OperatingSystem
+            IsVirtual         = $null
+            LastSeen          = $null
+            LastSeenDays      = $null
+            VisibilityBucket  = "SinDatos"
+            IPAddress         = $status.IPAddress
+            NetbiosName       = $status.NetbiosName
+            ProtectionState   = $status.State
+            Group             = $status.Group
+        }
+    }
+    if ($addedDevices.Count -gt 0) {
+        $Inventory.Devices = @($Inventory.Devices) + $addedDevices
+        Update-InventoryAggregates -Inventory $Inventory
+    }
+
     return @{
         MatchedDevices       = $matched
+        AddedFromProtection  = $addedDevices.Count
         UnmatchedInHardware  = @($lookup.Count)
         UnmatchedNames       = @($lookup.Values | Select-Object -ExpandProperty Name | Sort-Object)
     }
@@ -735,6 +809,7 @@ function New-HardwareInventoryHtml {
     $ls = $inv.LastSeen
     $os = $inv.OperatingSystems
     $vm = $inv.Virtualization
+    $dt = $inv.DeviceTypes
     $db = $Data.Kaspersky.VirusDatabaseUsage
     $ips = $Data.Kaspersky.ProtectionStatus
     $ipMerge = $Data.Kaspersky.IPMergeSummary
@@ -769,6 +844,8 @@ function New-HardwareInventoryHtml {
     <div class="card"><div class="label">Windows 11</div><div class="value">$($os.Windows11)</div></div>
     <div class="card"><div class="label">Maquinas virtuales</div><div class="value">$($vm.VirtualMachines)</div></div>
     <div class="card"><div class="label">Fisicos</div><div class="value">$($vm.PhysicalDevices)</div></div>
+    <div class="card"><div class="label">Sin clasificar</div><div class="value">$($vm.Unclassified)</div></div>
+    <div class="card"><div class="label">Portatiles</div><div class="value">$($dt.Portables)</div></div>
   </div>
   <h2>Visible por ultima vez</h2>
   <table>
@@ -784,8 +861,8 @@ function New-HardwareInventoryHtml {
   <h2>Cobertura de direccion IP (Informe del estado de la proteccion)</h2>
   <div class="muted">Fuente: $($ips.SourceFile) · Estado: $($ips.Status)</div>
   <table>
-    <tr><th>Total dispositivos en el reporte</th><th>Con IP</th><th>Sin IP</th><th>Emparejados en inventario de hardware</th></tr>
-    <tr><td>$($ips.TotalDevices)</td><td>$($ips.WithIp)</td><td>$($ips.WithoutIp)</td><td>$($ipMerge.MatchedDevices) de $($inv.TotalDevices)</td></tr>
+    <tr><th>Total dispositivos en el reporte</th><th>Con IP</th><th>Sin IP</th><th>Emparejados en inventario de hardware</th><th>Agregados (sin match en hardware)</th></tr>
+    <tr><td>$($ips.TotalDevices)</td><td>$($ips.WithIp)</td><td>$($ips.WithoutIp)</td><td>$($ipMerge.MatchedDevices)</td><td>$($ipMerge.AddedFromProtection)</td></tr>
   </table>
 </body>
 </html>
@@ -849,6 +926,13 @@ Write-Host "Windows Server     : $($inventory.OperatingSystems.WindowsServer)" -
 Write-Host "Windows 10         : $($inventory.OperatingSystems.Windows10)" -ForegroundColor Gray
 Write-Host "Windows 11         : $($inventory.OperatingSystems.Windows11)" -ForegroundColor Gray
 Write-Host "Maquinas virtuales : $($inventory.Virtualization.VirtualMachines)" -ForegroundColor Gray
+Write-Host "Fisicos            : $($inventory.Virtualization.PhysicalDevices)" -ForegroundColor Gray
+Write-Host "Sin clasificar     : $($inventory.Virtualization.Unclassified)" -ForegroundColor Gray
+Write-Host "Portatiles         : $($inventory.DeviceTypes.Portables)" -ForegroundColor Gray
+Write-Host "No portatiles      : $($inventory.DeviceTypes.NoPortables)" -ForegroundColor Gray
+if ($inventory.DeviceTypes.SinDato -gt 0) {
+    Write-Host "Sin grupo KSC      : $($inventory.DeviceTypes.SinDato) (no se pudo clasificar portatil/no portatil)" -ForegroundColor Yellow
+}
 Write-Host "Ultimo dia         : $($inventory.LastSeen.UltimoDia)" -ForegroundColor Gray
 Write-Host "Ultima semana      : $($inventory.LastSeen.UltimaSemana)" -ForegroundColor Gray
 Write-Host "Mas de una semana  : $($inventory.LastSeen.MasDeUnaSemana)" -ForegroundColor Gray
@@ -873,10 +957,11 @@ if ($protectionStatus.Status -eq "SIN INFORME") {
     if ($protectionStatus.DuplicateNames -gt 0) {
         Write-Host "Dispositivo duplicado en el export: $($protectionStatus.DuplicateNames) (se conservo solo el primero)" -ForegroundColor Yellow
     }
-    Write-Host "Emparejados en inventario de hardware : $($ipMergeSummary.MatchedDevices) de $($inventory.TotalDevices)" -ForegroundColor Gray
-    if ($ipMergeSummary.UnmatchedInHardware -gt 0) {
-        Write-Host "Sin match en inventario de hardware   : $($ipMergeSummary.UnmatchedInHardware) (quedan solo en Kaspersky.ProtectionStatus.Devices, no se inventan filas nuevas en Devices)" -ForegroundColor Yellow
+    Write-Host "Emparejados en inventario de hardware : $($ipMergeSummary.MatchedDevices)" -ForegroundColor Gray
+    if ($ipMergeSummary.AddedFromProtection -gt 0) {
+        Write-Host "Agregados desde proteccion (sin match en hardware) : $($ipMergeSummary.AddedFromProtection) -- $($ipMergeSummary.UnmatchedNames -join ', ')" -ForegroundColor Yellow
     }
+    Write-Host "Dispositivos totales tras fusion       : $($inventory.TotalDevices)" -ForegroundColor Gray
 }
 
 if ($SkipUpload) {

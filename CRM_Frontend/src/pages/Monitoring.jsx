@@ -14,6 +14,7 @@ import {
   Database, 
   HardDrive, 
   MonitorSmartphone,
+  Laptop,
   Move,
   RefreshCw,
   RotateCcw,
@@ -1128,7 +1129,7 @@ const KscChartTooltip = ({ active, payload, label }) => {
   );
 };
 
-const VisibilityBarChart = ({ data, total, vmCount, physicalCount, physicalPct }) => (
+const VisibilityBarChart = ({ data, total, vmCount, physicalCount, physicalPct, unclassifiedCount = 0, unclassifiedPct = 0 }) => (
   <div className="rounded-xl border border-border bg-card/40 p-4">
     <h4 className="mb-3 flex items-center gap-2 text-base font-bold">
       <Clock className="h-4 w-4 text-primary" />
@@ -1165,7 +1166,7 @@ const VisibilityBarChart = ({ data, total, vmCount, physicalCount, physicalPct }
         </div>
       ))}
     </div>
-    <div className="mt-3 grid grid-cols-2 gap-3 border-t border-border/50 pt-3 text-xs">
+    <div className={`mt-3 grid gap-3 border-t border-border/50 pt-3 text-xs ${unclassifiedCount > 0 ? 'grid-cols-3' : 'grid-cols-2'}`}>
       <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-2.5">
         <p className="text-muted-foreground">Virtuales</p>
         <p className="mt-1 text-lg font-black text-emerald-400">{vmCount}</p>
@@ -1174,6 +1175,12 @@ const VisibilityBarChart = ({ data, total, vmCount, physicalCount, physicalPct }
         <p className="text-muted-foreground">Físicos</p>
         <p className="mt-1 text-lg font-black text-sky-400">{physicalCount} <span className="text-xs text-muted-foreground">({physicalPct}%)</span></p>
       </div>
+      {unclassifiedCount > 0 && (
+        <div className="rounded-lg border border-slate-500/20 bg-slate-500/10 p-2.5">
+          <p className="text-muted-foreground">Sin clasificar</p>
+          <p className="mt-1 text-lg font-black text-slate-300">{unclassifiedCount} <span className="text-xs text-muted-foreground">({unclassifiedPct}%)</span></p>
+        </div>
+      )}
     </div>
   </div>
 );
@@ -1453,6 +1460,9 @@ const KscHardwareInventoryPanel = ({
   const os = inventory?.OperatingSystems || {};
   const visibility = inventory?.LastSeen || {};
   const virtualization = inventory?.Virtualization || {};
+  const deviceTypes = inventory?.DeviceTypes || {};
+  const ipMergeSummary = data?.Kaspersky?.IPMergeSummary || data?.data?.Kaspersky?.IPMergeSummary;
+  const addedFromProtection = ipMergeSummary?.AddedFromProtection || 0;
   const total = inventory?.TotalDevices || 0;
   const windowsServer = os.WindowsServer || 0;
   const windows10 = os.Windows10 || 0;
@@ -1460,8 +1470,12 @@ const KscHardwareInventoryPanel = ({
   const otherOs = Math.max(0, total - windowsServer - windows10 - windows11);
   const vmCount = virtualization.VirtualMachines || 0;
   const physicalCount = virtualization.PhysicalDevices || 0;
+  const unclassifiedCount = virtualization.Unclassified || 0;
+  const portableCount = deviceTypes.Portables || 0;
+  const portablePct = total > 0 ? Math.round((portableCount / total) * 100) : 0;
   const vmPct = total > 0 ? Math.round((vmCount / total) * 100) : 0;
-  const physicalPct = total > 0 ? Math.max(0, 100 - vmPct) : 0;
+  const physicalPct = total > 0 ? Math.round((physicalCount / total) * 100) : 0;
+  const unclassifiedPct = total > 0 ? Math.round((unclassifiedCount / total) * 100) : 0;
   const seenToday = visibility.UltimoDia || 0;
   const seenWeek = visibility.UltimaSemana || 0;
   const seenOld = visibility.MasDeUnaSemana || 0;
@@ -1491,6 +1505,7 @@ const KscHardwareInventoryPanel = ({
     { label: "Windows Server", short: "Server", value: windowsServer, color: "#a78bfa" },
     { label: "Virtuales", short: "VM", value: vmCount, color: "#f59e0b" },
     { label: "Físicos", short: "Físicos", value: physicalCount, color: "#06b6d4" },
+    { label: "Sin clasificar", short: "S/C", value: unclassifiedCount, color: "#64748b" },
     { label: "Otros sistemas", short: "Otros", value: otherOs, color: "#64748b" }
   ];
   const visibilityChartData = [
@@ -1527,12 +1542,17 @@ const KscHardwareInventoryPanel = ({
             <p className="text-xs text-muted-foreground">Sistemas operativos, virtualización y frescura de visibilidad.</p>
           </div>
         </div>
-        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          Fuente: {inventory.SourceFile || 'Informe de hardware'} • {inventory.ParsedAt || data?.ReportDate || 'N/D'}
+        <div className="text-right text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          <div>Fuente: {inventory.SourceFile || 'Informe de hardware'} • {inventory.ParsedAt || data?.ReportDate || 'N/D'}</div>
+          {addedFromProtection > 0 && (
+            <div className="normal-case text-muted-foreground/80">
+              +{addedFromProtection} desde Estado de la protección (sin fila en Informe de hardware)
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-6">
         <InventoryKpi
           title="Dispositivos"
           value={total}
@@ -1540,6 +1560,15 @@ const KscHardwareInventoryPanel = ({
           badgeColor="text-emerald-400"
           icon={<MonitorSmartphone className="h-14 w-14 text-sky-300 drop-shadow-[0_0_14px_rgba(56,189,248,0.45)]" />}
           accent="from-blue-500/20 to-blue-600/5"
+          noIconWrapper
+        />
+        <InventoryKpi
+          title="Portátiles"
+          value={portableCount}
+          badge={`${portablePct}% del parque • grupo KSC "Portátiles"`}
+          badgeColor="text-teal-300"
+          icon={<Laptop className="h-14 w-14 text-teal-300 drop-shadow-[0_0_14px_rgba(45,212,191,0.45)]" />}
+          accent="from-teal-500/20 to-teal-600/5"
           noIconWrapper
         />
         <InventoryKpi
@@ -1572,7 +1601,11 @@ const KscHardwareInventoryPanel = ({
         <InventoryKpi
           title="Máquinas virtuales"
           value={vmCount}
-          badge={`${physicalCount} físicos · ${vmPct}% VM`}
+          badge={
+            unclassifiedCount > 0
+              ? `${physicalCount} físicos · ${vmPct}% VM · ${unclassifiedCount} sin clasificar`
+              : `${physicalCount} físicos · ${vmPct}% VM`
+          }
           badgeColor="text-amber-300"
           icon={<Server className="h-8 w-8 text-amber-300" />}
           accent="from-amber-500/20 to-amber-600/5"
@@ -1609,6 +1642,8 @@ const KscHardwareInventoryPanel = ({
           vmCount={vmCount}
           physicalCount={physicalCount}
           physicalPct={physicalPct}
+          unclassifiedCount={unclassifiedCount}
+          unclassifiedPct={unclassifiedPct}
         />
       </div>
     </section>

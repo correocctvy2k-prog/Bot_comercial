@@ -92,6 +92,18 @@ Vista secundaria para tareas operativas. Incluye:
 - Se agrego panel visual debajo de las tarjetas principales.
 - KPIs por total de dispositivos, Windows Server, Windows 10, Windows 11 y maquinas virtuales.
 - Graficos animados para distribucion, frescura de visibilidad y ultima visibilidad.
+- **Conteo reconciliado (spec 0017, 2026-10-01):** el total de dispositivos ya no
+  viene solo de "Informe de hardware" (podia subcontar equipos reales ausentes de
+  ese reporte especifico) -- `Monitor-KSC-HardwareInventory.ps1` fusiona los
+  dispositivos de "Informe del estado de la proteccion" que no tienen fila en
+  "Informe de hardware", usando el Sistema operativo que ese reporte si trae. Los
+  dispositivos agregados asi no tienen dato de virtualizacion (categoria honesta
+  "Sin clasificar", nunca se asumen fisicos) ni fecha de ultima conexion.
+- **Desglose de portatiles (spec 0017, mismo dia):** "Informe del estado de la
+  proteccion" tambien trae la columna "Grupo" de administracion de KSC -- los
+  equipos portatiles estan agrupados ahi literalmente como "Portatiles". Nueva
+  tarjeta KPI cuenta `Group -match 'Portatil'` sobre el inventario ya unido, sin
+  inventar ningun criterio nuevo.
 - Grafico central alterna manualmente entre:
   - Curva de frescura.
   - Tipos de dispositivos.
