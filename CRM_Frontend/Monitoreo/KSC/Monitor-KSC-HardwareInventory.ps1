@@ -21,10 +21,16 @@
 
     No recolecta metricas de hardware detalladas; el foco es inventario
     y frescura de visibilidad de los dispositivos.
+
+    IMPORTANTE (LL-0009, 2026-10-01): correr siempre con pwsh (PowerShell 7),
+    nunca con PowerShell.exe clasico (5.1) -- con 5.1 el script falla en
+    silencio (0 dispositivos, sin ningun error visible) al procesar estos
+    reportes HTML reales de KSC. La tarea programada Skylab_Monitor_Inventory
+    en SERV-KSC ya usa pwsh.exe.
 .USAGE
-    PowerShell.exe -NonInteractive -NoProfile -ExecutionPolicy Bypass -File .\Monitor-KSC-HardwareInventory.ps1
-    .\Monitor-KSC-HardwareInventory.ps1 -KasperskyReportsPath "F:\Informes KSC"
-    .\Monitor-KSC-HardwareInventory.ps1 -ReportFile ".\Informe de hardware (9-6-2026 16-52-24).html" -SkipUpload
+    pwsh -NonInteractive -NoProfile -ExecutionPolicy Bypass -File .\Monitor-KSC-HardwareInventory.ps1
+    pwsh -File .\Monitor-KSC-HardwareInventory.ps1 -KasperskyReportsPath "F:\Informes KSC"
+    pwsh -File .\Monitor-KSC-HardwareInventory.ps1 -ReportFile ".\Informe de hardware (9-6-2026 16-52-24).html" -SkipUpload
 #>
 
 param(

@@ -85,7 +85,13 @@ literalmente como "Portátiles" — no hacía falta ningún reporte nuevo.
 Decisión explícita del usuario (2026-10-01): probar bien en local primero,
 desplegar a producción (`SERV-KSC` + `.65`) solo cuando esté confirmado.
 
-- [ ] PR abierto y enlazado en `spec.md`
-- [ ] Merge a `main`
-- [ ] `.ps1` actualizado copiado y corrido en `SERV-KSC` (el usuario)
-- [ ] Desplegado y verificado en `http://192.168.8.65:3003/`
+- [x] PR abierto y enlazado en `spec.md` — [#24](https://github.com/correocctvy2k-prog/Bot_comercial/pull/24)
+- [x] Merge a `main` (2026-10-01, `b65c866`)
+- [x] `.ps1` actualizado copiado y corrido en `SERV-KSC` — encontró un problema
+      real en el camino (LL-0009: `PowerShell.exe` 5.1 falla en silencio con
+      estos reportes, `pwsh` funciona), resuelto sin cambiar código. Confirmado
+      con la tarea programada `Skylab_Monitor_Inventory` que ya usa `pwsh.exe`.
+- [x] Desplegado y verificado en `http://192.168.8.65:3003/monitoring` —
+      panel "Inventario KSC" con 175 dispositivos consistentes en todas las
+      vistas, tarjeta "Portátiles" (32) visible, confirmado por el usuario con
+      captura real del dashboard en producción.
