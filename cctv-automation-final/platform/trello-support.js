@@ -78,6 +78,7 @@ function normalizeCards(lists,cards,board,matchLocation,overrides=new Map()){
       status:pending?'PENDING':'COMPLETED',
       dueAt:card.due||null,
       dueComplete:!!card.dueComplete,
+      startAt:card.start||null,
       sourceUpdatedAt:card.dateLastActivity||null,
       locationId:locations[0]?.id||null,
       identityStatus,
@@ -87,5 +88,5 @@ function normalizeCards(lists,cards,board,matchLocation,overrides=new Map()){
     };
   });
 }
-const fingerprint=items=>crypto.createHash('sha256').update(JSON.stringify(items.map(x=>[x.sourceCardId,x.sourceListId,x.title,x.dueAt,x.dueComplete,x.sourceUpdatedAt]))).digest('hex');
+const fingerprint=items=>crypto.createHash('sha256').update(JSON.stringify(items.map(x=>[x.sourceCardId,x.sourceListId,x.title,x.dueAt,x.dueComplete,x.startAt,x.sourceUpdatedAt]))).digest('hex');
 module.exports={normalize,classify,locationMatcher,normalizeCards,fingerprint};

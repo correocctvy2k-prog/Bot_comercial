@@ -524,6 +524,7 @@ CREATE TABLE IF NOT EXISTS support_cards (
   status TEXT NOT NULL,
   due_at TEXT,
   due_complete INTEGER NOT NULL DEFAULT 0,
+  start_at TEXT,
   source_updated_at TEXT,
   location_id TEXT,
   identity_status TEXT NOT NULL,

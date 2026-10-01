@@ -10,6 +10,39 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CCTV — Soporte: usa la fecha de inicio de Trello cuando no hay fecha "due"
+`specs/0019-soporte-fecha-inicio-trello/`
+- **Segundo reporte del usuario, tras desplegar spec 0018**: la bitácora
+  seguía sin coincidir con Trello para el día 3 de septiembre. Investigado
+  contra la API de Trello en vivo (no solo la base local): el vínculo a
+  puntos de spec 0018 sí funcionaba correctamente — era una causa **distinta**,
+  sobre qué fecha usa el sistema para ubicar cada tarjeta en el calendario.
+- **Hallazgo real**: la tarjeta *"Se realizó cambio de tegnología... en el
+  punto Cementerio Palmira"* tiene fecha de **inicio** ("start") = 3 de
+  septiembre en Trello — un campo que el importador nunca pedía a la API. Sin
+  `due`, el sistema caía directo a "última actividad", que para esa tarjeta
+  era **1 de octubre (casi un mes después)**. Confirmado contra la API real:
+  14 de 281 tarjetas (ambos tableros) tienen `start` sin `due`, ignorado por
+  completo hasta ahora.
+- **`import-trello-support.js`**: el fetch de tarjetas ahora pide también
+  `start`; migración automática (`ALTER TABLE ADD COLUMN start_at`) para
+  bases ya existentes, sin intervención manual.
+- **`api/server.js`**: `operationalAt` usa `due_at || start_at ||
+  source_updated_at` (antes saltaba directo de `due_at` a última actividad);
+  `dateSource` gana el valor `TRELLO_START`.
+- **`CctvModule.jsx`**: la etiqueta "Fuente de fecha" del detalle distingue
+  los 3 casos ("Fecha del evento"/"Fecha de inicio"/"Última actividad").
+- **Verificado contra datos reales de producción**: re-proceso real contra la
+  API de Trello en vivo (backup previo), 122 tarjetas actualizadas, 16 con
+  `start_at` poblado. Confirmado el caso que motivó la spec: "Cementerio
+  Palmira" pasa de ubicarse en 1 de octubre (incorrecto) a 3 de septiembre
+  (`TRELLO_START`, correcto). `cctv-automation-final`: 111/111 tests (1
+  nuevo). `cd CRM_Frontend && npm run lint`/`build` — 7 errores
+  preexistentes, sin cambio. Docker local reconstruido, sin regresión en
+  `/api/cybersecurity/towers`, `/api/cctv/health`, `/api/cctv/maintenance`.
+- **Fuera de alcance (decisión del usuario)**: no se revisó si el tablero de
+  Mantenimiento tiene el mismo patrón de fechas `start`-only ignoradas.
+
 ### CCTV — Soporte: tarjetas que cubren varios puntos ya no se pierden
 `specs/0018-soporte-tarjetas-multi-punto/`
 - **Problema reportado por el usuario, grave para la confiabilidad del dato:**

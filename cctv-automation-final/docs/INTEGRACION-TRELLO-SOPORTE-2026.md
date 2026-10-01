@@ -46,6 +46,20 @@ tramo de texto queda contenido dentro de la coincidencia de otro punto con
 nombre más largo en esa misma posición — menciones realmente independientes
 (otra posición del título) sí se conservan todas.
 
+## Fecha operacional (spec 0019, 2026-10-01)
+
+Trello expone dos fechas independientes por tarjeta: `due` (fecha del
+evento/vencimiento) y `start` (fecha de inicio) — una tarjeta puede tener
+solo una, ambas, o ninguna. `operationalAt` (lo que decide en qué día aparece
+la tarjeta en la bitácora) usa, en orden: **`due` → `start` → última
+actividad en Trello** (solo como último respaldo, cuando Trello no tiene
+ninguna fecha real). Antes solo se leía `due`, saltando directo a "última
+actividad" cuando faltaba — hallazgo real: una tarjeta con `start` = 3 de
+septiembre pero sin `due` se ubicaba el 1 de octubre (fecha de su última
+edición, casi un mes después del trabajo real) porque `start` nunca se pedía
+a la API. `dateSource` en la respuesta de `GET /api/cctv/support` indica cuál
+de las tres se usó (`TRELLO_DUE`/`TRELLO_START`/`LAST_ACTIVITY`).
+
 ## Operación
 
 `npm run import:trello-support` actualiza la instantánea. El ciclo operativo la
