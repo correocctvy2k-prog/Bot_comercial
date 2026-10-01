@@ -4334,7 +4334,7 @@ function RealProject({ project, support, onChanged, onRegister }) {
   );
 }
 
-function InstallationWizard({ onClose, initialLocation = null }) {
+function InstallationWizard({ onClose, initialLocation = null, initialForm = null }) {
   const [candidates, setCandidates] = useState([]),
     [query, setQuery] = useState(""),
     [selected, setSelected] = useState(initialLocation),
@@ -4352,6 +4352,7 @@ function InstallationWizard({ onClose, initialLocation = null }) {
     dssIdentifier: "",
     channelCount: 1,
     notes: "",
+    ...initialForm,
   });
   const [assets, setAssets] = useState([]);
   useEffect(() => {
@@ -4812,6 +4813,38 @@ function InstallationWizard({ onClose, initialLocation = null }) {
   );
 }
 
+function InstallationAlertTray({ alerts = [], onOpen, onDismiss }) {
+  const stamp = (value) => (value ? new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short", timeZone: "America/Bogota" }).format(new Date(value)) : "Sin fecha");
+  if (!alerts.length) return null;
+  return (
+    <div className="fixed bottom-6 right-4 z-40 flex max-h-[70vh] w-[min(360px,calc(100vw-2rem))] flex-col gap-2.5 overflow-y-auto">
+      {alerts.map((alert) => (
+        <div key={`${alert.cardId}:${alert.locationId}`} className="rounded-2xl border border-amber-500/25 bg-slate-950/95 p-3.5 shadow-2xl shadow-black/40 backdrop-blur-sm">
+          <div className="flex items-start gap-2.5">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-300">
+              <AlertTriangle size={17} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[9px] font-bold uppercase tracking-wide text-amber-300">Instalación nueva detectada en Soporte</p>
+              <b className="mt-0.5 block truncate text-xs text-slate-100">{alert.locationName || "Punto sin nombre"}</b>
+              <p className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-slate-500"><MapPin size={10} />{alert.zone || "Sin zona"} · {stamp(alert.operationalAt)}</p>
+              <p className="mt-1.5 truncate text-[10px] text-slate-400" title={alert.cardTitle}>"{alert.cardTitle}"</p>
+            </div>
+          </div>
+          <div className="mt-3 flex gap-2">
+            <Button size="sm" className="h-7 flex-1 bg-amber-500/90 text-[10px] font-bold text-slate-950 hover:bg-amber-400" onClick={() => onOpen?.(alert)}>
+              Actualizar inventario <ArrowRight size={12} className="ml-1" />
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] text-slate-500 hover:text-rose-300" onClick={() => onDismiss?.(alert)}>
+              <XCircle size={13} />
+            </Button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function SourceHealth({ syncStatus }) {
   if(!syncStatus)return null;
   const config={EMAIL:{icon:Radio,tone:'text-blue-300',surface:'bg-blue-500/10'},SIIS:{icon:Activity,tone:'text-cyan-300',surface:'bg-cyan-500/10'},TRELLO:{icon:Wrench,tone:'text-violet-300',surface:'bg-violet-500/10'}};
@@ -5036,6 +5069,7 @@ function Overview() {
     [state, setState] = useState("Todos"),
     [showWizard, setShowWizard] = useState(false),
     [installationTarget, setInstallationTarget] = useState(null),
+    [installationPrefill, setInstallationPrefill] = useState(null),
     [overview, setOverview] = useState(initialCache?.overview || null),
     [technology, setTechnology] = useState(initialCache?.technology || null),
     [quality, setQuality] = useState(initialCache?.quality || null),
@@ -5095,6 +5129,15 @@ function Overview() {
   const changeNotificationMode=mode=>{setNotificationMode(mode);fetch(`${CCTV_API_BASE}/api/cctv/notifications/preferences`,{method:'POST',headers:notificationHeaders,body:JSON.stringify({mode})}).catch(()=>{})};
   const markNotification=(id,change)=>{updateNotification(id,change);fetch(`${CCTV_API_BASE}/api/cctv/notifications/${encodeURIComponent(id)}/state`,{method:'POST',headers:notificationHeaders,body:JSON.stringify(change)}).catch(()=>{})};
   const markAllNotificationsRead=()=>{setNotifications(current=>current.map(item=>({...item,read:true})));fetch(`${CCTV_API_BASE}/api/cctv/notifications/read-all`,{method:'POST',headers:notificationHeaders,body:'{}'}).catch(()=>{})};
+  const openInstallationAlert=(alert)=>{
+    setInstallationTarget({id:alert.locationId,name:alert.locationName,zone:alert.zone,siisCode:alert.locationCode||'—',locationType:'Punto detectado desde Soporte',projectItemId:null,provenance:'NEW'});
+    setInstallationPrefill({installedAt:(alert.operationalAt||new Date().toISOString()).slice(0,10),technician:alert.members?.[0]?.name||'',notes:`Detectado desde Soporte: "${alert.cardTitle}"`});
+    setShowWizard(true);
+  };
+  const dismissInstallationAlert=(alert)=>{
+    setSupport(current=>current?{...current,installationAlerts:(current.installationAlerts||[]).filter(a=>!(a.cardId===alert.cardId&&a.locationId===alert.locationId))}:current);
+    fetch(`${CCTV_API_BASE}/api/cctv/support/installation-alerts/dismiss`,{method:'POST',headers:notificationHeaders,body:JSON.stringify({cardId:alert.cardId,locationId:alert.locationId})}).catch(()=>{});
+  };
   const load = () => {
     setRefreshing(true);
     return Promise.all([
@@ -5395,13 +5438,16 @@ function Overview() {
       {showWizard && (
         <InstallationWizard
           initialLocation={installationTarget}
+          initialForm={installationPrefill}
           onClose={() => {
             setShowWizard(false);
             setInstallationTarget(null);
+            setInstallationPrefill(null);
             load();
           }}
         />
       )}
+      <InstallationAlertTray alerts={support?.installationAlerts || []} onOpen={openInstallationAlert} onDismiss={dismissInstallationAlert} />
     </div>
   );
 }

@@ -591,6 +591,22 @@ CREATE TABLE IF NOT EXISTS cctv_notification_resolutions (
 );
 CREATE INDEX IF NOT EXISTS idx_notif_resolutions_active ON cctv_notification_resolutions(active, resolution, location_id);
 
+-- spec 0021: descarte (reversible) de la alerta "instalación nueva detectada
+-- en Soporte sobre un punto sin CCTV" -- ver platform/support-installation-alerts.js.
+-- active=0 reabre la alerta si se descartó por error, mismo patrón que
+-- cctv_notification_resolutions (spec 0011).
+CREATE TABLE IF NOT EXISTS support_installation_alert_dismissals (
+  card_id TEXT NOT NULL,
+  location_id TEXT NOT NULL,
+  reason TEXT,
+  decided_by TEXT NOT NULL,
+  decided_at TEXT NOT NULL,
+  active INTEGER NOT NULL DEFAULT 1,
+  PRIMARY KEY(card_id, location_id),
+  FOREIGN KEY(card_id) REFERENCES support_cards(id),
+  FOREIGN KEY(location_id) REFERENCES locations(id)
+);
+
 -- spec 0012: horario real por punto, cacheado desde Supabase puntos_venta
 -- (custom_open_time/custom_close_time) para que interpretPointDay ajuste "abrió tarde"
 -- contra el horario real en vez de solo la ventana global. scripts/sync-crm-points.js lo puebla.

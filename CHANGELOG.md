@@ -10,6 +10,34 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CCTV — Soporte: alerta de instalación nueva + actualización de inventario
+`specs/0021-soporte-alerta-instalacion-inventario/`
+- **Pedido directo del usuario**: conectar Soporte (tarjetas Trello) con
+  Inventario (cobertura real por punto) y Proyecto (`InstallationWizard`),
+  que hasta ahora vivían desconectados entre sí.
+- Nueva detección: tarjeta de Soporte tipo `INSTALLATION` vinculada (spec
+  0018) a un punto cuyo inventario real todavía marca sin CCTV
+  (`cctv_coverage_status='NONE'`) → se expone como `installationAlerts[]`
+  en `GET /api/cctv/support`.
+- Nueva tabla `support_installation_alert_dismissals` (reversible, mismo
+  patrón que `cctv_notification_resolutions` de spec 0011) + rutas
+  `POST /api/cctv/support/installation-alerts/dismiss` y `/reopen`.
+- Nueva bandeja flotante `InstallationAlertTray` (visible en cualquier
+  pestaña del módulo): cada alerta real muestra el punto, zona, tarjeta de
+  origen y fecha, con botón "Actualizar inventario" que abre el
+  `InstallationWizard` ya existente (reutilizado tal cual, sin reescribir
+  su lógica de guardado) pre-cargado con ese punto y, cuando hay dato real,
+  fecha/técnico/nota de la tarjeta de origen.
+- Al completar el wizard para ese punto, la alerta desaparece sola (el
+  wizard ya deja `cctv_coverage_status='ACTIVE'`) — no hace falta un paso
+  de resolución aparte para el caso exitoso.
+- **Verificado contra datos reales de producción** (Docker local): 4 casos
+  reales detectados (ej. "Instalación Cámara con botón de pánico y sirena
+  en el punto Cañaveral"), con técnicos reales de Trello en 2 de ellos;
+  dismiss/reopen probados end-to-end contra la base real (4→3→4).
+- Tests nuevos en `cctv-automation-final` (`support-installation-alerts.test.js`,
+  6 casos). 117/117 en verde.
+
 ### CRM_Frontend — Soporte: interfaz compacta y bitácora horizontal
 `specs/0020-soporte-ui-compacta/`
 - **Pedido directo del usuario** tras cerrar spec 0019: la barra "Centro de

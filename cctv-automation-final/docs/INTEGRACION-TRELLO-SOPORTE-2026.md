@@ -74,3 +74,21 @@ compatibilidad).
 los automáticos). `DELETE /api/cctv/support/:id/link/:locationId` quita un
 vínculo específico (automático o manual) — útil para corregir un falso
 positivo puntual sin esperar al próximo re-proceso.
+
+## Alerta de instalación nueva → Inventario (spec 0021, 2026-10-01)
+
+`GET /api/cctv/support` expone también `installationAlerts[]`
+(`platform/support-installation-alerts.js`): tarjetas con `activityType=
+'INSTALLATION'` vinculadas a un punto cuyo inventario real todavía marca
+`cctv_coverage_status='NONE'`. El frontend (`InstallationAlertTray`) muestra
+estos casos como una bandeja flotante en cualquier pestaña del módulo
+Seguridad Electrónica, con un botón que abre el `InstallationWizard` ya
+existente (el mismo que usa la pestaña Proyecto) pre-cargado con ese punto.
+Al guardar la instalación, el wizard deja el punto en `cctv_coverage_status=
+'ACTIVE'`, con lo que la alerta deja de aparecer sola en la siguiente
+consulta — sin necesidad de un paso de resolución aparte. Si una alerta es
+un falso positivo (tarjeta mal clasificada, o el punto en realidad ya tiene
+CCTV y el inventario está desactualizado), se puede descartar con
+`POST /api/cctv/support/installation-alerts/dismiss` (`support_installation_
+alert_dismissals`, reversible con `/reopen`, mismo patrón que
+`cctv_notification_resolutions` de spec 0011).

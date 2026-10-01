@@ -14,6 +14,7 @@ const { isOperationalOpeningSignal, asOperationalOpeningEvidence, isOperationalO
 const { loadWindowConfig } = require('../platform/window-config');
 const { normalizeResolveInput, loadActiveResolutions, insertResolution, reopenResolutions } = require('../platform/notification-resolutions');
 const { buildZoneBoards } = require('../platform/zone-boards');
+const { pendingAlerts: pendingInstallationAlerts, dismissAlert: dismissInstallationAlert, reopenAlert: reopenInstallationAlert } = require('../platform/support-installation-alerts');
 const { syncSiissPoints } = require('../platform/siis-points-sync');
 const { runtimePaths, ensureRuntimeDirectories } = require('../config/runtime-paths');
 
@@ -521,7 +522,7 @@ function supportData(){
   }
   const items=db.prepare(`SELECT s.*,l.canonical_name AS location_name,l.zone FROM support_cards s LEFT JOIN locations l ON l.id=s.location_id WHERE s.source_system='TRELLO_SUPPORT' AND s.active=1 ORDER BY CASE s.status WHEN 'PENDING' THEN 0 ELSE 1 END,s.due_at DESC,s.source_updated_at DESC`).all().map(row=>{let members=[],payload={};try{members=JSON.parse(row.members_json||'[]')}catch{}try{payload=JSON.parse(row.payload_json||'{}')}catch{}const operationalAt=row.due_at||row.start_at||row.source_updated_at,image=payload.cachedImage;return{id:row.source_card_id,title:row.title_raw,description:row.description_raw,listId:row.source_list_id,list:row.source_list_name,board:row.source_board_name,boardUrl:row.source_board_url,url:row.source_card_url,activityType:row.activity_type,status:row.status,dueAt:row.due_at,dueComplete:!!row.due_complete,startAt:row.start_at,updatedAt:row.source_updated_at,operationalAt,dateSource:row.due_at?'TRELLO_DUE':row.start_at?'TRELLO_START':'LAST_ACTIVITY',locationId:row.location_id,location:row.location_name,zone:normalizeZone(row.zone),identityStatus:row.identity_status,locations:linksByCard.get(row.id)||[],members,image:image?{url:`/api/cctv/support/${encodeURIComponent(row.source_card_id)}/image`,name:image.name}:null,attachmentCount:(payload.attachments||[]).length};});
   const aggregate=key=>[...items.reduce((map,item)=>map.set(item[key]||'SIN_CLASIFICAR',(map.get(item[key]||'SIN_CLASIFICAR')||0)+1),new Map())].map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value),pending=items.filter(x=>x.status==='PENDING').length,linked=items.filter(x=>x.locationId).length;
-  return{available:true,mode:'CANONICAL_SNAPSHOT',generatedAt:new Date().toISOString(),syncedAt:run.completed_at,source:{...(runSummary.board||{}),runId:run.id},summary:{total:items.length,pending,completed:items.length-pending,linked,unlinked:items.length-linked,withImages:items.filter(x=>x.image).length,identityPercent:items.length?Math.round(linked/items.length*100):0},types:aggregate('activityType'),lists:aggregate('list'),items};
+  return{available:true,mode:'CANONICAL_SNAPSHOT',generatedAt:new Date().toISOString(),syncedAt:run.completed_at,source:{...(runSummary.board||{}),runId:run.id},summary:{total:items.length,pending,completed:items.length-pending,linked,unlinked:items.length-linked,withImages:items.filter(x=>x.image).length,identityPercent:items.length?Math.round(linked/items.length*100):0},types:aggregate('activityType'),lists:aggregate('list'),items,installationAlerts:pendingInstallationAlerts(db)};
 }
 
 function syncStatusData(){
@@ -608,6 +609,18 @@ const server = http.createServer(async (req,res) => {
     const supportImageMatch=url.pathname.match(/^\/api\/cctv\/support\/([^/]+)\/image$/);
     if(req.method==='GET'&&supportImageMatch){const sourceCardId=decodeURIComponent(supportImageMatch[1]);if(!/^[a-f0-9]{20,40}$/i.test(sourceCardId))return send(res,400,{error:'Identificador inválido'},origin);const row=db.prepare("SELECT payload_json FROM support_cards WHERE source_system='TRELLO_SUPPORT' AND source_card_id=? AND active=1").get(sourceCardId);if(!row)return send(res,404,{error:'Tarjeta no encontrada'},origin);let payload={};try{payload=JSON.parse(row.payload_json||'{}')}catch{}const image=payload.cachedImage,fileName=path.basename(String(image?.fileName||''));if(!fileName||fileName!==image.fileName)return send(res,404,{error:'La tarjeta no tiene imagen cacheada'},origin);const filePath=path.join(supportImageDir,fileName);if(!fs.existsSync(filePath))return send(res,404,{error:'Imagen no disponible'},origin);return sendImage(res,filePath,image.mimeType||'image/jpeg',origin);}
     if(req.method==='GET'&&url.pathname==='/api/cctv/support') return send(res,200,supportData(),origin);
+    if(req.method==='POST'&&url.pathname==='/api/cctv/support/installation-alerts/dismiss'){
+      const body=await readBody(req),actor=String(req.headers['x-actor']||'local-operator').slice(0,100);
+      if(!body.cardId||!body.locationId) return send(res,400,{error:'cardId y locationId son obligatorios'},origin);
+      dismissInstallationAlert(db,{cardId:String(body.cardId),locationId:String(body.locationId),reason:body.reason?String(body.reason).slice(0,500):null,actor});
+      return send(res,200,{ok:true},origin);
+    }
+    if(req.method==='POST'&&url.pathname==='/api/cctv/support/installation-alerts/reopen'){
+      const body=await readBody(req),actor=String(req.headers['x-actor']||'local-operator').slice(0,100);
+      if(!body.cardId||!body.locationId) return send(res,400,{error:'cardId y locationId son obligatorios'},origin);
+      const result=reopenInstallationAlert(db,{cardId:String(body.cardId),locationId:String(body.locationId),actor});
+      return send(res,200,{ok:true,...result},origin);
+    }
     if(req.method==='GET'&&url.pathname==='/api/cctv/sync-status') return send(res,200,syncStatusData(),origin);
     const maintenanceLinkMatch=url.pathname.match(/^\/api\/cctv\/maintenance\/([^/]+)\/link$/);
     if(req.method==='POST'&&maintenanceLinkMatch){
