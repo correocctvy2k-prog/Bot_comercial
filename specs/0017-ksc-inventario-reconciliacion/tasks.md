@@ -23,6 +23,36 @@ Referencia: `spec.md` y `plan.md` en esta misma carpeta.
 - [x] `VisibilityBarChart`: tercera tarjeta "Sin clasificar" cuando
       `unclassifiedCount > 0`.
 
+## Incremento — portátiles (2026-10-01, mismo día)
+
+El usuario confirmó (revisando la consola KSC) que "Informe del estado de la
+protección" trae columna "Grupo", y los portátiles están agrupados
+literalmente como "Portátiles" — no hacía falta ningún reporte nuevo.
+
+- [x] `Parse-ProtectionStatus`: captura `Grupo` (`Get-FirstRecordValue -Keys
+      @("Grupo")`).
+- [x] `Merge-ProtectionStatusIntoInventory`: propaga `Group` a los
+      dispositivos emparejados y a los agregados.
+- [x] `Update-InventoryAggregates`: nuevo `Inventory.DeviceTypes`
+      (`Portables`/`NoPortables`/`SinDato`), `$_.Group -match 'Port[áa]til'`
+      (case-insensitive, sin asumir nada si `Group` está vacío).
+- [x] `New-HardwareInventoryHtml` + resumen `Write-Host`: muestran el conteo
+      de portátiles.
+- [x] `Monitoring.jsx`: nueva tarjeta KPI "Portátiles" (ícono `Laptop`,
+      `deviceTypes.Portables`), grid del KPI de 5 a 6 columnas.
+- [x] **Verificación real con PowerShell** (no solo simulación en Node):
+      fixtures sintéticos (`Informe de hardware (test).html` + `Informe del
+      estado de la proteccion (test).html`, nombres inventados) corridos con
+      `-SkipUpload` contra el script real — 5 dispositivos, 3 portátiles
+      (incluye un caso límite: un equipo con fila en "Informe de hardware"
+      pero grupo KSC "Portátiles", correctamente contado como portátil), 2
+      agregados desde protección, todos los conteos (SO/virtualización/IP)
+      coinciden exactamente con lo calculado a mano.
+- [x] `cd CRM_Frontend && npm run lint`/`build` — mismos 8 errores
+      preexistentes, sin nuevos.
+- [x] Docker local: `crm-frontend` reconstruido, bundle confirmado con
+      "Portátiles"/"grupo KSC", sin regresión en otros endpoints.
+
 ## Verificación
 
 - [x] Simulación en Node contra `data/monitoring/ksc-hardware/latest.json` real
@@ -50,13 +80,10 @@ Referencia: `spec.md` y `plan.md` en esta misma carpeta.
       spec y el changelog; no es un bug de proceso repetible, es un dato real
       que faltaba)
 
-## Pendiente separado (no bloquea esta spec)
-
-- [ ] Portátiles: el usuario revisa la consola KSC para confirmar si existe un
-      reporte/columna exportable con tipo de equipo (chasis/portátil vs
-      escritorio). Sin esa respuesta, no se implementa (spec §3/§4).
-
 ## Cierre
+
+Decisión explícita del usuario (2026-10-01): probar bien en local primero,
+desplegar a producción (`SERV-KSC` + `.65`) solo cuando esté confirmado.
 
 - [ ] PR abierto y enlazado en `spec.md`
 - [ ] Merge a `main`

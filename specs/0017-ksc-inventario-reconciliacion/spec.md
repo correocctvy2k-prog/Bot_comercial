@@ -1,8 +1,9 @@
-# SPEC 0017 — Monitoreo IT: reconciliar el inventario KSC (155 vs 175) y preparar el desglose de portátiles
+# SPEC 0017 — Monitoreo IT: reconciliar el inventario KSC (155 vs 175) y desglose de portátiles
 
-- **Estado:** Implementado y verificado en local (Docker + simulación contra
-  datos reales de `.65`), pendiente de PR/merge y de que el usuario corra el
-  `.ps1` actualizado en `SERV-KSC`
+- **Estado:** Implementado y verificado en local (Docker + ejecución real del
+  `.ps1` con fixtures sintéticos + simulación contra datos reales de `.65`),
+  pendiente de PR/merge y de que el usuario corra el `.ps1` actualizado en
+  `SERV-KSC`
 - **Autor:** Claude (a partir del hallazgo del usuario, 2026-10-01)
 - **Fecha:** 2026-10-01
 - **Módulos afectados:** `CRM_Frontend/Monitoreo/KSC/Monitor-KSC-HardwareInventory.ps1` (corre en `SERV-KSC`, fuera de este repo en ejecución), `CRM_Frontend/src/pages/Monitoring.jsx` (dashboard `/monitoring`).
@@ -38,17 +39,21 @@ equipos reales que sí están protegidos y visibles en KSC. No es ruido de datos
 un problema de parseo — son dispositivos ausentes de ese reporte específico.
 
 Además, el usuario pidió discriminar el número de **computadores portátiles**
-reportados por la consola KSC. Investigado: **ningún reporte que ya consumimos
-(Informe de hardware / Informe de uso de BD antivirus / Informe del estado de la
-protección) trae un campo de tipo de equipo (portátil/escritorio/chasis)** —
-confirmado revisando `Monitor-KSC-HardwareInventory.ps1` y los fixtures de
-`cybersecurity/`. No se puede derivar sin inventar un criterio.
+reportados por la consola KSC. Primer intento: ningún reporte que ya
+consumíamos tenía un campo de tipo de equipo capturado por el script. **El
+usuario revisó la consola KSC y confirmó (captura, 2026-10-01) que "Informe del
+estado de la protección" — el mismo reporte que ya se usa para la IP — trae una
+columna "Grupo", y los equipos portátiles están agrupados ahí literalmente como
+"Portátiles"** (a diferencia de otros grupos, que son zonas/sitios, p.ej.
+"Pradera"). No hace falta ningún reporte nuevo, solo capturar esa columna que ya
+se parsea.
 
 ## 2. Objetivo
 
 Que "Inventario KSC" muestre un solo número de dispositivos consistente en todo
-el panel (155 → 175, usando datos ya disponibles, sin inventar ninguno), y dejar
-preparado (no necesariamente resuelto en esta spec) el desglose de portátiles.
+el panel (155 → 175, usando datos ya disponibles, sin inventar ninguno), y que
+discrimine cuántos de esos son portátiles, usando el grupo "Portátiles" que la
+consola KSC ya asigna.
 
 ## 3. Alcance
 
@@ -67,15 +72,15 @@ preparado (no necesariamente resuelto en esta spec) el desglose de portátiles.
   clasificar" en el desglose de virtualización en vez de absorberla
   silenciosamente en "Físicos" (el cálculo actual de `physicalPct = 100 - vmPct`
   asumiría eso si no se corrige).
-- Investigación (no implementación todavía) de dónde sacar "portátiles": el
-  usuario revisa la consola KSC para confirmar si existe un reporte/columna
-  exportable con tipo de equipo, igual que se hizo con la IP.
+- `Parse-ProtectionStatus` captura la columna `Grupo`; `Merge-
+  ProtectionStatusIntoInventory` la propaga a todos los dispositivos (tanto los
+  155 ya emparejados como los 20 agregados). Nuevo `Inventory.DeviceTypes`
+  (`Portables`/`NoPortables`/`SinDato`) contando `Group -match 'Portátil'`, sin
+  asumir nada para dispositivos sin grupo. Nueva tarjeta KPI "Portátiles" en
+  `Monitoring.jsx`.
 
 ## 4. No-objetivos
 
-- No se implementa el desglose de portátiles en esta spec — queda documentado
-  como pendiente, bloqueado en la respuesta del usuario sobre qué reporte de KSC
-  lo trae (§3).
 - No se cambia la fuente de verdad de IP (`fix/ciberseguridad-ksc-ip-
   persistencia`, ya en producción) — esta spec es ortogonal, solo toca el conteo
   total y el desglose de SO/virtualización.
@@ -97,6 +102,10 @@ preparado (no necesariamente resuelto en esta spec) el desglose de portátiles.
       en `.65`), no solo con datos sintéticos.
 - [x] `cd CRM_Frontend && npm run lint` + `npm run build` verdes, sin errores
       nuevos.
+- [x] El KPI "Portátiles" cuenta los dispositivos del grupo KSC "Portátiles"
+      (confirmado con ejecución real de PowerShell contra fixtures sintéticos,
+      incluyendo el caso de un equipo que aparece en "Informe de hardware" pero
+      su grupo KSC dice "Portátiles" — se cuenta como portátil igual).
 - [ ] Verificado en `http://192.168.8.65:3003/monitoring` tras el deploy real
       (pendiente: requiere que el `.ps1` corra en `SERV-KSC` primero).
 

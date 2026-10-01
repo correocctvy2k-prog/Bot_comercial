@@ -34,22 +34,33 @@ a una versión fechada.
   honesta "Sin clasificar" en vez de inflar "Físicos".
 - **`Monitoring.jsx`**: `physicalPct`/`vmPct` se calculan sobre el total real
   (antes `physicalPct = 100 - vmPct` asumía solo 2 categorías); nueva tarjeta
-  "Sin clasificar" quand aplica; nota de transparencia "+N desde Estado de la
+  "Sin clasificar" cuando aplica; nota de transparencia "+N desde Estado de la
   protección" junto a la fuente del reporte.
+- **Desglose de portátiles** (mismo día, tras revisar la consola KSC): el
+  usuario confirmó que "Informe del estado de la protección" trae columna
+  "Grupo", y los portátiles están agrupados ahí literalmente como
+  "Portátiles" — no hizo falta ningún reporte nuevo. `Parse-ProtectionStatus`
+  captura `Grupo`; `Merge-ProtectionStatusIntoInventory` lo propaga a todos
+  los dispositivos (emparejados y agregados); nuevo `Inventory.DeviceTypes`
+  (`Portables`/`NoPortables`/`SinDato`, `Group -match 'Portátil'`, sin asumir
+  nada si falta el grupo). Nueva tarjeta KPI "Portátiles" en `Monitoring.jsx`.
 - **Verificado contra datos reales, no sintéticos:** simulación en Node de la
-  lógica nueva contra el payload real capturado en `.65` — 175 total, suma de
-  cada agregado (SO, virtualización, frescura) exactamente 175, sin
-  discrepancias. `cd CRM_Frontend && npm run lint`/`build` en verde (8 errores
-  preexistentes de `Monitoring.jsx`, no relacionados, confirmado comparando
-  contra la versión sin estos cambios). Docker local reconstruido
-  (`crm-frontend`), bundle confirmado con el texto nuevo ("Sin clasificar",
-  "desde Estado de la protección"), `/api/cybersecurity/towers` y
-  `/api/cctv/health` sin regresión.
-- **Pendiente, fuera de esta spec:** discriminar computadores portátiles — no
-  existe ese campo en ningún reporte KSC que ya se consume; el usuario está
-  revisando la consola KSC para confirmar si hay un reporte/columna exportable
-  con tipo de equipo, mismo patrón que la investigación de IP
-  (`fix/ciberseguridad-ksc-ip-persistencia`).
+  lógica de reconciliación 155→175 contra el payload real capturado en `.65`
+  — 175 total, suma de cada agregado (SO, virtualización, frescura)
+  exactamente 175. **El desglose de portátiles se verificó con una ejecución
+  real de PowerShell** (no solo Node) contra fixtures sintéticos (nombres
+  inventados) que replican la estructura exacta de ambos reportes HTML: 5
+  dispositivos, 3 portátiles (incluye el caso límite de un equipo con fila en
+  "Informe de hardware" pero grupo KSC "Portátiles" — contado como portátil
+  igual), 2 agregados desde protección — todos los conteos coinciden
+  exactamente con lo calculado a mano. `cd CRM_Frontend && npm run lint`/
+  `build` en verde (8 errores preexistentes de `Monitoring.jsx`, no
+  relacionados, confirmado comparando contra la versión sin estos cambios).
+  Docker local reconstruido (`crm-frontend`), bundle confirmado con el texto
+  nuevo, `/api/cybersecurity/towers` y `/api/cctv/health` sin regresión.
+- **Decisión del usuario:** probar bien en local antes de desplegar a
+  producción — pendiente de PR/merge, de que el usuario corra el `.ps1`
+  actualizado en `SERV-KSC`, y del deploy de `crm-frontend` en `.65`.
 
 ### CCTV — Botón de Excel: solo copiar ruta, se quita la detección de bloqueo
 `specs/0016-mantenimiento-excel-sync/`

@@ -14,6 +14,7 @@ import {
   Database, 
   HardDrive, 
   MonitorSmartphone,
+  Laptop,
   Move,
   RefreshCw,
   RotateCcw,
@@ -1459,6 +1460,7 @@ const KscHardwareInventoryPanel = ({
   const os = inventory?.OperatingSystems || {};
   const visibility = inventory?.LastSeen || {};
   const virtualization = inventory?.Virtualization || {};
+  const deviceTypes = inventory?.DeviceTypes || {};
   const ipMergeSummary = data?.Kaspersky?.IPMergeSummary || data?.data?.Kaspersky?.IPMergeSummary;
   const addedFromProtection = ipMergeSummary?.AddedFromProtection || 0;
   const total = inventory?.TotalDevices || 0;
@@ -1469,6 +1471,8 @@ const KscHardwareInventoryPanel = ({
   const vmCount = virtualization.VirtualMachines || 0;
   const physicalCount = virtualization.PhysicalDevices || 0;
   const unclassifiedCount = virtualization.Unclassified || 0;
+  const portableCount = deviceTypes.Portables || 0;
+  const portablePct = total > 0 ? Math.round((portableCount / total) * 100) : 0;
   const vmPct = total > 0 ? Math.round((vmCount / total) * 100) : 0;
   const physicalPct = total > 0 ? Math.round((physicalCount / total) * 100) : 0;
   const unclassifiedPct = total > 0 ? Math.round((unclassifiedCount / total) * 100) : 0;
@@ -1548,7 +1552,7 @@ const KscHardwareInventoryPanel = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-6">
         <InventoryKpi
           title="Dispositivos"
           value={total}
@@ -1556,6 +1560,15 @@ const KscHardwareInventoryPanel = ({
           badgeColor="text-emerald-400"
           icon={<MonitorSmartphone className="h-14 w-14 text-sky-300 drop-shadow-[0_0_14px_rgba(56,189,248,0.45)]" />}
           accent="from-blue-500/20 to-blue-600/5"
+          noIconWrapper
+        />
+        <InventoryKpi
+          title="Portátiles"
+          value={portableCount}
+          badge={`${portablePct}% del parque • grupo KSC "Portátiles"`}
+          badgeColor="text-teal-300"
+          icon={<Laptop className="h-14 w-14 text-teal-300 drop-shadow-[0_0_14px_rgba(45,212,191,0.45)]" />}
+          accent="from-teal-500/20 to-teal-600/5"
           noIconWrapper
         />
         <InventoryKpi

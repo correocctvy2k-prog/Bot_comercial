@@ -99,6 +99,11 @@ Vista secundaria para tareas operativas. Incluye:
   "Informe de hardware", usando el Sistema operativo que ese reporte si trae. Los
   dispositivos agregados asi no tienen dato de virtualizacion (categoria honesta
   "Sin clasificar", nunca se asumen fisicos) ni fecha de ultima conexion.
+- **Desglose de portatiles (spec 0017, mismo dia):** "Informe del estado de la
+  proteccion" tambien trae la columna "Grupo" de administracion de KSC -- los
+  equipos portatiles estan agrupados ahi literalmente como "Portatiles". Nueva
+  tarjeta KPI cuenta `Group -match 'Portatil'` sobre el inventario ya unido, sin
+  inventar ningun criterio nuevo.
 - Grafico central alterna manualmente entre:
   - Curva de frescura.
   - Tipos de dispositivos.

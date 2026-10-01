@@ -397,6 +397,9 @@ function Update-InventoryAggregates {
     $virtualCount = @($devices | Where-Object { $_.IsVirtual -eq $true }).Count
     $physicalCount = @($devices | Where-Object { $_.IsVirtual -eq $false }).Count
     $unclassifiedCount = @($devices | Where-Object { $null -eq $_.IsVirtual }).Count
+    $portableCount = @($devices | Where-Object { $_.Group -match 'Port[áa]til' }).Count
+    $groupSinDatoCount = @($devices | Where-Object { [string]::IsNullOrWhiteSpace($_.Group) }).Count
+    $nonPortableCount = $devices.Count - $portableCount - $groupSinDatoCount
 
     $Inventory.TotalDevices = $devices.Count
     $Inventory.OperatingSystems = @{
@@ -406,6 +409,11 @@ function Update-InventoryAggregates {
         Otros         = Get-CountValue -Table $byOs -Key "Otros"
         SinDatos      = Get-CountValue -Table $byOs -Key "Sin datos"
         Breakdown     = $byOs
+    }
+    $Inventory.DeviceTypes = @{
+        Portables    = $portableCount
+        NoPortables  = $nonPortableCount
+        SinDato      = $groupSinDatoCount
     }
     $Inventory.Virtualization = @{
         VirtualMachines = $virtualCount
@@ -459,6 +467,7 @@ function Parse-HardwareInventory {
             IPAddress         = $null
             NetbiosName       = $null
             ProtectionState   = $null
+            Group             = $null
         }
     }
 
@@ -680,6 +689,7 @@ function Parse-ProtectionStatus {
             State           = Get-FirstRecordValue -Record $record -Keys @("Estado")
             StateReason     = Get-FirstRecordValue -Record $record -Keys @("Motivo:", "Motivo")
             OperatingSystem = Get-FirstRecordValue -Record $record -Keys @("Sistema operativo")
+            Group           = Get-FirstRecordValue -Record $record -Keys @("Grupo")
         }
     }
 
@@ -719,9 +729,14 @@ function Merge-ProtectionStatusIntoInventory {
     <#
     .SYNOPSIS
         Enriquece $Inventory.Devices (armado desde el Informe de hardware,
-        nunca trajo IP) con IPAddress/NetbiosName/ProtectionState del Informe
-        del estado de la proteccion, uniendo por el campo Dispositivo/Nombre
-        completo -- NO por NetBIOS (ver nota en Parse-ProtectionStatus).
+        nunca trajo IP) con IPAddress/NetbiosName/ProtectionState/Group del
+        Informe del estado de la proteccion, uniendo por el campo
+        Dispositivo/Nombre completo -- NO por NetBIOS (ver nota en
+        Parse-ProtectionStatus). Group es el grupo de administracion de KSC
+        (columna "Grupo") -- el usuario confirmo que los equipos portatiles
+        estan agrupados ahi como "Portatiles" (spec 0017), a diferencia de
+        otros grupos que son zonas/sitios. Update-InventoryAggregates usa ese
+        campo para contar portatiles sin inventar ningun criterio nuevo.
 
         Los dispositivos de ProtectionStatus que no tienen match en el
         inventario de hardware no se descartan -- "Informe de hardware" puede
@@ -751,6 +766,7 @@ function Merge-ProtectionStatusIntoInventory {
             $device.IPAddress       = $status.IPAddress
             $device.NetbiosName     = $status.NetbiosName
             $device.ProtectionState = $status.State
+            $device.Group           = $status.Group
             $matched++
             $lookup.Remove($key)
         }
@@ -770,6 +786,7 @@ function Merge-ProtectionStatusIntoInventory {
             IPAddress         = $status.IPAddress
             NetbiosName       = $status.NetbiosName
             ProtectionState   = $status.State
+            Group             = $status.Group
         }
     }
     if ($addedDevices.Count -gt 0) {
@@ -792,6 +809,7 @@ function New-HardwareInventoryHtml {
     $ls = $inv.LastSeen
     $os = $inv.OperatingSystems
     $vm = $inv.Virtualization
+    $dt = $inv.DeviceTypes
     $db = $Data.Kaspersky.VirusDatabaseUsage
     $ips = $Data.Kaspersky.ProtectionStatus
     $ipMerge = $Data.Kaspersky.IPMergeSummary
@@ -827,6 +845,7 @@ function New-HardwareInventoryHtml {
     <div class="card"><div class="label">Maquinas virtuales</div><div class="value">$($vm.VirtualMachines)</div></div>
     <div class="card"><div class="label">Fisicos</div><div class="value">$($vm.PhysicalDevices)</div></div>
     <div class="card"><div class="label">Sin clasificar</div><div class="value">$($vm.Unclassified)</div></div>
+    <div class="card"><div class="label">Portatiles</div><div class="value">$($dt.Portables)</div></div>
   </div>
   <h2>Visible por ultima vez</h2>
   <table>
@@ -909,6 +928,11 @@ Write-Host "Windows 11         : $($inventory.OperatingSystems.Windows11)" -Fore
 Write-Host "Maquinas virtuales : $($inventory.Virtualization.VirtualMachines)" -ForegroundColor Gray
 Write-Host "Fisicos            : $($inventory.Virtualization.PhysicalDevices)" -ForegroundColor Gray
 Write-Host "Sin clasificar     : $($inventory.Virtualization.Unclassified)" -ForegroundColor Gray
+Write-Host "Portatiles         : $($inventory.DeviceTypes.Portables)" -ForegroundColor Gray
+Write-Host "No portatiles      : $($inventory.DeviceTypes.NoPortables)" -ForegroundColor Gray
+if ($inventory.DeviceTypes.SinDato -gt 0) {
+    Write-Host "Sin grupo KSC      : $($inventory.DeviceTypes.SinDato) (no se pudo clasificar portatil/no portatil)" -ForegroundColor Yellow
+}
 Write-Host "Ultimo dia         : $($inventory.LastSeen.UltimoDia)" -ForegroundColor Gray
 Write-Host "Ultima semana      : $($inventory.LastSeen.UltimaSemana)" -ForegroundColor Gray
 Write-Host "Mas de una semana  : $($inventory.LastSeen.MasDeUnaSemana)" -ForegroundColor Gray
