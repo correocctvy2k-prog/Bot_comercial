@@ -10,6 +10,47 @@ a una versión fechada.
 
 ## [No publicado]
 
+### Monitoreo IT — Reconcilia el conteo de Inventario KSC (155 vs 175)
+`specs/0017-ksc-inventario-reconciliacion/`
+- **Problema reportado por el usuario:** el panel "Inventario KSC" mostraba 155
+  dispositivos en el KPI/donut de distribución, pero 175 en el donut "Versiones
+  Kaspersky" — dos conteos distintos en la misma pantalla.
+- **Investigado con datos reales** (payload `KSC-HARDWARE` vivo en `.65`):
+  `HardwareInventory.TotalDevices` (155, "Informe de hardware") vs
+  `VirusDatabaseUsage.TotalDevices`/`ProtectionStatus.TotalDevices` (175 ambos,
+  "Informe de uso de BD antivirus"/"Informe del estado de la protección",
+  independientes entre sí y coincidentes). `IPMergeSummary.UnmatchedInHardware`
+  ya listaba, por nombre, los 20 dispositivos reales ausentes de "Informe de
+  hardware" — 175 − 155 = 20, exacto. No era ruido de parseo: "Informe de
+  hardware" subcontaba 20 equipos reales protegidos y visibles en KSC.
+- **`Monitor-KSC-HardwareInventory.ps1`** (corre en `SERV-KSC`):
+  `Merge-ProtectionStatusIntoInventory` ya no descarta los dispositivos de
+  "Informe del estado de la protección" sin match — los agrega como filas
+  nuevas (con el Sistema operativo que ese reporte sí trae). Nueva
+  `Update-InventoryAggregates` recalcula `TotalDevices`/`OperatingSystems`/
+  `Virtualization`/`LastSeen` sobre el inventario ya unido. Los dispositivos
+  agregados no tienen dato de virtualización (`IsVirtual` tri-state, `$null` =
+  sin dato, nunca se asume físico) ni de última visibilidad — nueva categoría
+  honesta "Sin clasificar" en vez de inflar "Físicos".
+- **`Monitoring.jsx`**: `physicalPct`/`vmPct` se calculan sobre el total real
+  (antes `physicalPct = 100 - vmPct` asumía solo 2 categorías); nueva tarjeta
+  "Sin clasificar" quand aplica; nota de transparencia "+N desde Estado de la
+  protección" junto a la fuente del reporte.
+- **Verificado contra datos reales, no sintéticos:** simulación en Node de la
+  lógica nueva contra el payload real capturado en `.65` — 175 total, suma de
+  cada agregado (SO, virtualización, frescura) exactamente 175, sin
+  discrepancias. `cd CRM_Frontend && npm run lint`/`build` en verde (8 errores
+  preexistentes de `Monitoring.jsx`, no relacionados, confirmado comparando
+  contra la versión sin estos cambios). Docker local reconstruido
+  (`crm-frontend`), bundle confirmado con el texto nuevo ("Sin clasificar",
+  "desde Estado de la protección"), `/api/cybersecurity/towers` y
+  `/api/cctv/health` sin regresión.
+- **Pendiente, fuera de esta spec:** discriminar computadores portátiles — no
+  existe ese campo en ningún reporte KSC que ya se consume; el usuario está
+  revisando la consola KSC para confirmar si hay un reporte/columna exportable
+  con tipo de equipo, mismo patrón que la investigación de IP
+  (`fix/ciberseguridad-ksc-ip-persistencia`).
+
 ### CCTV — Botón de Excel: solo copiar ruta, se quita la detección de bloqueo
 `specs/0016-mantenimiento-excel-sync/`
 - **Abandonado el intento de abrir el Excel con un clic** (`ms-excel:ofe|u|<url>` y luego un
