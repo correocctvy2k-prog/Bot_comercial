@@ -60,4 +60,29 @@ Referencia: `spec.md` y `plan.md` en esta misma carpeta.
       ("avenida la victoria", 2023, lista "tareas pendientes") pasó de
       `installationAlerts` a `scheduledInstallations` correctamente; además
       reveló que "Cañaveral" tenía el mismo problema.
-- [ ] Desplegar este fix en `.65`
+- [x] Desplegado en `.65` (PR #29, 2026-10-02).
+
+## Fix post-deploy #2 (2026-10-02) — alias Villagorgona + bandeja colapsable
+
+- [x] `scripts/fix-villagorgona-alias-20261002.js` (nuevo, `--apply`):
+      agrega alias "VILLAGORGONA" (palabra completa) a los 14 puntos reales
+      que el catálogo abrevia de forma inconsistente ("V.GORG"/"V.GORGONA"/
+      "GORG"). Bug propio encontrado y corregido antes de aplicar (dejaba
+      "V." colgando en 4 de los 14 casos).
+- [x] Re-procesado `import-trello-support.js` en local: la tarjeta real
+      pasó de "LA VICTORIA"/FLORIDA a "AVENIDA LA VICTORIA V.GORG"/
+      CANDELARIA (el punto correcto); capturó de regalo "BRISAS
+      V.GORGONA", antes sin vincular.
+- [x] `InstallationAlertTray`: de lista de tarjetas siempre visible a
+      botón compacto colapsado por defecto (campana + contador), expande
+      al clic.
+- [x] Confirmado sin cambio de código: la propagación global a Inventario/
+      Proyecto al guardar el wizard ya funcionaba (`load()` + `useMemo` de
+      `points`) — el usuario lo pidió, se verificó que ya estaba resuelto.
+- [x] `cctv-automation-final`: 120/120 en verde (sin tests nuevos, el
+      script es una corrección de datos, no lógica de producto).
+- [x] `CRM_Frontend`: build verde, lint sin errores nuevos.
+- [x] Docker local: `crm-frontend` reconstruido, endpoints sin regresión.
+- [ ] Correr `scripts/fix-villagorgona-alias-20261002.js --apply` +
+      re-procesar el importador en `.65` (acción de datos, aparte del
+      deploy de código) + desplegar este fix de UI/backend en `.65`.
