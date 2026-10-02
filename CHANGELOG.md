@@ -10,6 +10,19 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CCTV — Soporte: botón de descarte más claro ("No aplica")
+`specs/0021-soporte-alerta-instalacion-inventario/` (fix post-deploy #3, 2026-10-02)
+- **El usuario reportó que ya no veía ninguna alerta accionable.** Revisado
+  contra la base real de `.65`: no era un bug — eran 3 descartes reales
+  registrados en el mismo segundo. El usuario confirmó: clicó el botón "X"
+  para dejar de obstruir la vista de otros elementos, sin saber que
+  descartaba la alerta de forma permanente (no solo la cerraba).
+- Reabiertas las 3 vía la propia API (`.../reopen`), verificado que cada
+  una volvió a su categoría correcta.
+- **Causa raíz corregida**: el botón de descarte pasa de un ícono `X` sin
+  texto a decir explícitamente **"No aplica"**, con un aviso de que oculta
+  la alerta de forma permanente hasta reabrirla a mano.
+
 ### CCTV — Soporte: alias "Villagorgona" + bandeja de alertas colapsable
 `specs/0021-soporte-alerta-instalacion-inventario/` (fix post-deploy #2, 2026-10-02)
 - **El usuario corrigió el título de una tarjeta** ("...avenida la victoria

@@ -4873,8 +4873,8 @@ function InstallationAlertTray({ alerts = [], onOpen, onDismiss }) {
                 <Button size="sm" className="h-7 flex-1 bg-amber-500/90 text-[10px] font-bold text-slate-950 hover:bg-amber-400" onClick={() => onOpen?.(alert)}>
                   Actualizar inventario <ArrowRight size={12} className="ml-1" />
                 </Button>
-                <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] text-slate-500 hover:text-rose-300" onClick={() => onDismiss?.(alert)}>
-                  <XCircle size={13} />
+                <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] text-slate-500 hover:text-rose-300" title="No es una instalación real sobre este punto: la oculta hasta que se reabra manualmente (no es solo cerrar la vista)" onClick={() => onDismiss?.(alert)}>
+                  <XCircle size={12} className="mr-1" /> No aplica
                 </Button>
               </div>
             </div>
