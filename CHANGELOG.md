@@ -10,6 +10,25 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CCTV — Wizard de instalación: autocompletado de modelo + feedback de guardado
+`specs/0022-wizard-autocompletado-modelo-y-feedback-guardado/`
+- **Feedback directo del usuario** tras usar `InstallationWizard` por
+  primera vez en producción: escribir el modelo de cada equipo a mano era
+  tedioso, y el guardado tardaba varios segundos sin ninguna señal visual
+  (casi lo aborta pensando que la página se había congelado).
+- Nuevo `GET /api/cctv/known-models`: agrupa por tipo de activo los
+  modelos ya registrados de verdad (tabla `assets`), con cuántas veces se
+  usó cada uno. El campo "Modelo" ahora sugiere esos modelos reales
+  (`<datalist>`, sigue siendo editable libremente para uno nuevo).
+- El botón "Confirmar instalación" ahora muestra un ícono girando +
+  "Guardando…" con aviso de que puede tardar; "Atrás" y "×" se
+  deshabilitan mientras dura, para que no se pueda interrumpir pensando
+  que está colgada.
+- Investigada la causa probable de la demora (contención de escritura
+  SQLite entre `cctv-api` y los workers en segundo plano, con
+  `busy_timeout=15000` ya configurado) — documentada en la spec, no se
+  intentó eliminar la espera, solo darle feedback honesto.
+
 ### CRM_Frontend — Seguridad Electrónica: el wizard de instalación ya no rompe el módulo en HTTP plano
 `specs/0021-soporte-alerta-instalacion-inventario/` (fix post-deploy #4, 2026-10-02)
 - **Al usar por primera vez "Actualizar inventario" en `.65`**, todo el

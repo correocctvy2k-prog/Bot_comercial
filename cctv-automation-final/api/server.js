@@ -84,6 +84,25 @@ function candidateRows(search='', zone='') {
       AND (?='' OR l.zone=?) AND (?='' OR l.canonical_name LIKE ? OR l.siis_code LIKE ?)
     GROUP BY l.id ORDER BY l.zone,l.canonical_name LIMIT 300`).all(zone,zone,search,pattern,pattern);
 }
+// Modelos ya registrados de verdad (tabla assets, alimentada por cada
+// instalación guardada vía InstallationWizard) agrupados por tipo de activo
+// -- alimenta el autocompletado de "Modelo" en el wizard, para que el
+// operario elija entre lo que ya se usó en vez de escribir todo a mano.
+function knownModelsData() {
+  const rows = db.prepare(`
+    SELECT asset_type AS assetType, model, channel_capacity AS channelCapacity, COUNT(*) AS count
+    FROM assets
+    WHERE model IS NOT NULL AND TRIM(model) != ''
+    GROUP BY asset_type, model
+    ORDER BY asset_type, count DESC
+  `).all();
+  const byType = {};
+  for (const row of rows) {
+    if (!byType[row.assetType]) byType[row.assetType] = [];
+    byType[row.assetType].push({ model: row.model, channelCapacity: row.channelCapacity, count: row.count });
+  }
+  return byType;
+}
 function normalizeZone(zone){ return zone==='AMAIME'?'AMAIME Y EL PLACER':zone; }
 function normalizeText(value=''){return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();}
 function syncOperationalNotifications(){
@@ -688,6 +707,7 @@ const server = http.createServer(async (req,res) => {
     const locationDetailMatch=url.pathname.match(/^\/api\/cctv\/locations\/([^/]+)\/detail$/);
     if(req.method==='GET'&&locationDetailMatch){const detail=locationDetail(decodeURIComponent(locationDetailMatch[1]));return detail?send(res,200,detail,origin):send(res,404,{error:'Ubicación no encontrada'},origin);}
     if(req.method==='GET'&&url.pathname==='/api/cctv/candidates') return send(res,200,{generatedAt:new Date().toISOString(),items:candidateRows(url.searchParams.get('search')||'',url.searchParams.get('zone')||'')},origin);
+    if(req.method==='GET'&&url.pathname==='/api/cctv/known-models') return send(res,200,{generatedAt:new Date().toISOString(),byType:knownModelsData()},origin);
     const reconcileMatch=url.pathname.match(/^\/api\/cctv\/locations\/([^/]+)\/reconcile$/);
     if(req.method==='POST'&&reconcileMatch){
       const locationId=decodeURIComponent(reconcileMatch[1]),body=await readBody(req),actor=req.headers['x-actor']||'local-operator';

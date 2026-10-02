@@ -4402,6 +4402,7 @@ function InstallationWizard({ onClose, initialLocation = null, initialForm = nul
     ...initialForm,
   });
   const [assets, setAssets] = useState([]);
+  const [knownModels, setKnownModels] = useState({});
   useEffect(() => {
     const timer = setTimeout(
       () =>
@@ -4419,6 +4420,12 @@ function InstallationWizard({ onClose, initialLocation = null, initialForm = nul
     );
     return () => clearTimeout(timer);
   }, [query]);
+  useEffect(() => {
+    fetch(`${CCTV_API_BASE}/api/cctv/known-models`)
+      .then((r) => r.json())
+      .then((j) => setKnownModels(j.byType || {}))
+      .catch(() => {});
+  }, []);
   const update = (key, value) =>
     setForm((current) => ({ ...current, [key]: value }));
   const toggleAsset = (type, label, afRequired, ipRequired) =>
@@ -4504,7 +4511,7 @@ function InstallationWizard({ onClose, initialLocation = null, initialForm = nul
                 Paso {step} de 4 · alta transaccional y auditable
               </CardDescription>
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose}>
+            <Button variant="ghost" size="icon" disabled={saving} onClick={onClose}>
               ×
             </Button>
           </div>
@@ -4741,6 +4748,8 @@ function InstallationWizard({ onClose, initialLocation = null, initialForm = nul
                             <label className="text-[10px]">
                               Modelo
                               <Input
+                                list={`known-models-${asset.assetType}`}
+                                placeholder="Elegir o escribir uno nuevo"
                                 value={asset.model}
                                 onChange={(e) =>
                                   updateAsset(
@@ -4750,6 +4759,13 @@ function InstallationWizard({ onClose, initialLocation = null, initialForm = nul
                                   )
                                 }
                               />
+                              <datalist id={`known-models-${asset.assetType}`}>
+                                {(knownModels[asset.assetType] || []).map((m) => (
+                                  <option key={m.model} value={m.model}>
+                                    {m.count > 1 ? `usado ${m.count} veces` : "usado antes"}
+                                  </option>
+                                ))}
+                              </datalist>
                             </label>
                           </>
                         )}
@@ -4826,7 +4842,7 @@ function InstallationWizard({ onClose, initialLocation = null, initialForm = nul
               </Card>
               {error && <p className="text-sm text-rose-400">{error}</p>}
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setStep(2)}>
+                <Button variant="outline" disabled={saving} onClick={() => setStep(2)}>
                   Atrás
                 </Button>
                 <Button
@@ -4834,9 +4850,15 @@ function InstallationWizard({ onClose, initialLocation = null, initialForm = nul
                   disabled={saving || !assets.length || invalidAssets}
                   onClick={save}
                 >
+                  {saving && <RefreshCw size={14} className="mr-2 animate-spin" />}
                   {saving ? "Guardando…" : "Confirmar instalación"}
                 </Button>
               </div>
+              {saving && (
+                <p className="text-center text-[11px] text-muted-foreground">
+                  Puede tardar unos segundos si hay una sincronización en curso. No cierres ni recargues la página.
+                </p>
+              )}
             </div>
           )}
           {step === 4 && (
