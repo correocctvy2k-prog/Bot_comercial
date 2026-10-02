@@ -83,6 +83,29 @@ Referencia: `spec.md` y `plan.md` en esta misma carpeta.
       script es una corrección de datos, no lógica de producto).
 - [x] `CRM_Frontend`: build verde, lint sin errores nuevos.
 - [x] Docker local: `crm-frontend` reconstruido, endpoints sin regresión.
-- [ ] Correr `scripts/fix-villagorgona-alias-20261002.js --apply` +
-      re-procesar el importador en `.65` (acción de datos, aparte del
-      deploy de código) + desplegar este fix de UI/backend en `.65`.
+- [x] Desplegado en `.65` (PR #30, 2026-10-02) — `.65` tenía cambios locales
+      sin confirmar (contenido idéntico al fix post-deploy #1, verificado
+      línea por línea antes de `git stash` + `git pull` + `git stash drop`,
+      ver spec.md sección 10). Corrido `fix-villagorgona-alias-20261002.js
+      --apply` (14 alias insertados) + reproceso del importador vía
+      `docker exec cctv-operational-worker` (host sin salida a internet
+      directa). Verificado contra `.65` en vivo: el caso real quedó
+      vinculado al punto correcto.
+
+## Fix post-deploy #3 (2026-10-02) — descarte accidental + botón "No aplica"
+
+- [x] Investigado por qué `installationAlerts` apareció vacío tras el
+      deploy del fix #2: 3 descartes reales (`support_installation_alert_
+      dismissals`, actor `skylab-local-user`, mismo segundo) — el usuario
+      confirmó que clicó "X" para dejar de obstruir la vista, sin saber que
+      era un descarte permanente.
+- [x] Reabiertas las 3 vía `POST .../reopen` directo contra `.65` en vivo
+      (API propia de la app, acción reversible). Verificado: 2 volvieron a
+      `installationAlerts`, 1 (Cañaveral) correctamente a
+      `scheduledInstallations`.
+- [x] Fix de causa raíz: el botón de descarte pasa de ícono `X` sin texto
+      a "No aplica" + `title` explicando que oculta la alerta de forma
+      permanente, no solo visualmente.
+- [x] `CRM_Frontend`: build verde, lint sin errores nuevos.
+- [x] Docker local: `crm-frontend` reconstruido, endpoints sin regresión.
+- [ ] Desplegar este fix de UI en `.65`.

@@ -194,12 +194,14 @@ es una laguna de datos (abreviatura sin alias).
   CANDELARIA correctamente, y de regalo capturó un caso nuevo real
   ("BRISAS V.GORGONA") que antes quedaba sin vincular.
 
-**b) "Ya no aparecen las tarjetas de alerta" — no era un bug.** Las 2
-alertas accionables reales (La Discordia, La Victoria-completada) ya habían
-sido resueltas (el punto pasó a `cctv_coverage_status='ACTIVE'`), así que
-`installationAlerts` quedó vacío y el tray, diseñado para ocultarse cuando
-no hay nada pendiente (`if(!alerts.length) return null`), dejó de
-renderizar — comportamiento esperado, no una regresión.
+**b) "Ya no aparecen las tarjetas de alerta" — no era un bug de código.**
+Hipótesis inicial (resueltas vía `cctv_coverage_status='ACTIVE'`) descartada
+al revisar la base real: eran **3 descartes reales** registrados en
+`support_installation_alert_dismissals` (actor `skylab-local-user`, los
+tres en el mismo segundo — clics reales desde el botón "X" de la bandeja),
+no instalaciones completadas. Ver sección 11 para el detalle completo y el
+fix de causa raíz (la UX del botón no comunicaba que era un descarte
+permanente).
 
 **c) Bandeja menos intrusiva.** Pedido explícito: "un desplegable para que
 no sean tan intrusivas". `InstallationAlertTray` pasa de lista de tarjetas
@@ -215,3 +217,31 @@ prop de `RealInventory`) es un `useMemo` derivado de ese mismo estado, así
 que se recalcula solo. Ya funcionaba por diseño, no requirió cambios.
 Mantenimiento queda fuera de este ciclo de inventario (el usuario lo marcó
 "por definir").
+
+## 11. Fix post-deploy #3 (2026-10-02) — descarte accidental + botón más claro
+
+Tras desplegar el fix #2 en `.65`, el usuario reportó que ya no veía
+ninguna alerta accionable de "actualizar inventario". Investigado contra
+la base real de `.65` (consulta de solo lectura vía SSH a
+`support_installation_alert_dismissals`): **3 descartes reales**, los tres
+con `decided_by='skylab-local-user'` (el actor fijo del frontend) en el
+mismo segundo (13:26:05–07) — Cañaveral, La Discordia y La Victoria
+(completada). El usuario confirmó la causa: clicó el botón "X" de cada
+tarjeta **para dejar de obstruir la vista de otros elementos**, sin saber
+que esa acción las descartaba de forma permanente (hasta reabrirlas a
+mano) — no un simple "cerrar la vista".
+
+**Acción inmediata**: las 3 se reabrieron llamando
+`POST /api/cctv/support/installation-alerts/reopen` directo contra `.65`
+en vivo (acción reversible de la propia API de la app, no una acción de
+infraestructura) — confirmado: 2 volvieron a `installationAlerts`
+(Discordia, Victoria) y Cañaveral correctamente a `scheduledInstallations`
+(su tarjeta real sigue pendiente en Trello).
+
+**Fix de causa raíz**: el botón de descarte era solo un ícono `X` sin
+texto ni aviso. Ahora dice **"No aplica"** junto al ícono, con un `title`
+que aclara explícitamente que oculta la alerta de forma permanente (no
+solo visualmente) y que requiere reabrirla a mano. La bandeja ya era
+colapsable por defecto (fix #2), así que la motivación original del clic
+— "dejaba de obstruir la vista" — ya no debería repetirse, pero la
+etiqueta ahora también deja claro qué hace el botón si se usa.
