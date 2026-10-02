@@ -10,6 +10,21 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CCTV — Soporte: la alerta de instalación ya no cuenta tareas pendientes como realizadas
+`specs/0021-soporte-alerta-instalacion-inventario/` (fix post-deploy, 2026-10-02)
+- **Reportado por el usuario con captura real** tras el primer deploy de
+  spec 0021: la bandeja flotante mostraba "Instalación CCTV punto avenida
+  la victoria" (fecha de respaldo del **2023**) como si ya estuviera
+  realizada — la tarjeta en realidad seguía en la lista Trello "Lista de
+  tareas pendientes" (`status='PENDING'`), sin ejecutar.
+- `pendingAlerts()` ahora exige `status='COMPLETED'`. Las tarjetas aún
+  pendientes pasan a `scheduledAlerts()`, un **recuadro informativo aparte**
+  en la pestaña Soporte (`ScheduledInstallationsPanel`, tono azul, sin
+  botón "Actualizar inventario" — solo "Ver en Trello").
+- Al revisar con datos reales se confirmó que "Cañaveral" tenía el mismo
+  problema — ambos casos quedaron correctamente reclasificados.
+- Tests nuevos (3), `cctv-automation-final`: 120/120 en verde.
+
 ### CCTV — Soporte: alerta de instalación nueva + actualización de inventario
 `specs/0021-soporte-alerta-instalacion-inventario/`
 - **Pedido directo del usuario**: conectar Soporte (tarjetas Trello) con

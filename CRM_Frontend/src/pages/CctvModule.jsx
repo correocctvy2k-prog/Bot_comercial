@@ -3509,6 +3509,38 @@ function RealVisitors({search='',initialDate}){
   </div>;
 }
 
+function ScheduledInstallationsPanel({ items = [] }) {
+  const stamp = (value) => (value ? new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short", year: "numeric", timeZone: "America/Bogota" }).format(new Date(value)) : "Sin fecha");
+  if (!items.length) return null;
+  return (
+    <Card className="border-blue-500/15 bg-blue-500/[.03]">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base"><Clock size={16} className="text-blue-300" /> Instalaciones programadas (pendientes en Trello)</CardTitle>
+        <CardDescription>Tarjetas de instalación que siguen en "Lista de tareas pendientes" — aún no se han realizado, no requieren actualizar el inventario todavía.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+        {items.map((item) => (
+          <div key={`${item.cardId}:${item.locationId}`} className="rounded-xl border border-blue-500/15 bg-card/40 p-3.5">
+            <div className="flex items-start gap-2.5">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-blue-500/20 bg-blue-500/10 text-blue-300"><Clock size={14} /></span>
+              <div className="min-w-0 flex-1">
+                <b className="block truncate text-xs text-slate-100">{item.locationName || "Punto sin nombre"}</b>
+                <p className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-slate-500"><MapPin size={10} />{item.zone || "Sin zona"} · {stamp(item.operationalAt)}</p>
+                <p className="mt-1.5 truncate text-[10px] text-slate-400" title={item.cardTitle}>"{item.cardTitle}"</p>
+              </div>
+            </div>
+            {item.cardUrl && (
+              <Button asChild size="sm" variant="outline" className="mt-3 h-7 w-full border-blue-500/20 text-[10px] text-blue-300 hover:bg-blue-500/10">
+                <a href={item.cardUrl} target="_blank" rel="noreferrer">Ver en Trello <ArrowRight size={11} className="ml-1" /></a>
+              </Button>
+            )}
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 function RealSupport({ support }) {
   const [status,setStatus]=useState('ALL'),[type,setType]=useState('ALL'),[period,setPeriod]=useState('MONTH'),[periodKey,setPeriodKey]=useState('ALL'),[evidenceOnly,setEvidenceOnly]=useState(false),[selectedSupport,setSelectedSupport]=useState(null);
   if(!support)return <div className="py-20 text-center text-muted-foreground">Importando actividades de soporte…</div>;
@@ -3558,6 +3590,8 @@ function RealSupport({ support }) {
           ))}
         </div>
       </div>
+
+      <ScheduledInstallationsPanel items={support.scheduledInstallations || []} />
 
       <div className="grid gap-4 xl:grid-cols-[1.4fr_.6fr]">
         <Card className="border-white/[.08] bg-card/40">
