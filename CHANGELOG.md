@@ -10,6 +10,20 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CRM_Frontend — Seguridad Electrónica: el wizard de instalación ya no rompe el módulo en HTTP plano
+`specs/0021-soporte-alerta-instalacion-inventario/` (fix post-deploy #4, 2026-10-02)
+- **Al usar por primera vez "Actualizar inventario" en `.65`**, todo el
+  módulo se rompía: `TypeError: crypto.randomUUID is not a function`. Bug
+  preexistente de `InstallationWizard` (reutilizado tal cual por spec
+  0021), recién visible porque era la primera vez que alguien lo usaba de
+  verdad contra producción.
+- **Causa**: `crypto.randomUUID()` solo existe en contextos seguros (HTTPS
+  o `localhost`); `.65` se sirve por HTTP plano
+  (`http://192.168.8.65:3003`), donde el navegador no lo expone.
+- `safeRandomUUID()` nueva: usa `crypto.randomUUID()` si existe, o arma un
+  UUID v4 válido con `crypto.getRandomValues` (respaldo final
+  `Math.random`). Reemplaza los 2 únicos usos del archivo.
+
 ### CCTV — Soporte: botón de descarte más claro ("No aplica")
 `specs/0021-soporte-alerta-instalacion-inventario/` (fix post-deploy #3, 2026-10-02)
 - **El usuario reportó que ya no veía ninguna alerta accionable.** Revisado

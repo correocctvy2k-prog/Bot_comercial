@@ -108,4 +108,21 @@ Referencia: `spec.md` y `plan.md` en esta misma carpeta.
       permanente, no solo visualmente.
 - [x] `CRM_Frontend`: build verde, lint sin errores nuevos.
 - [x] Docker local: `crm-frontend` reconstruido, endpoints sin regresión.
-- [ ] Desplegar este fix de UI en `.65`.
+- [x] Desplegado en `.65` (PR #31, 2026-10-02).
+
+## Fix post-deploy #4 (2026-10-02) — `crypto.randomUUID` en HTTP plano
+
+- [x] Diagnosticado: `InstallationWizard` (preexistente, reutilizado por
+      esta spec) rompía todo el módulo con `TypeError: crypto.randomUUID
+      is not a function` al usarlo contra `.65` (HTTP plano, no contexto
+      seguro) — primera vez que alguien lo usaba de verdad en producción.
+- [x] `safeRandomUUID()` nueva (usa `crypto.randomUUID` si existe, si no
+      arma un UUID v4 con `crypto.getRandomValues`, respaldo final
+      `Math.random`). Reemplaza los 2 usos de `crypto.randomUUID()`
+      (`clientId` de activo, `idempotencyKey` del guardado).
+- [x] Verificado en Node: UUIDs v4 con formato válido simulando la
+      ausencia de `randomUUID`; confirmado que la lógica de respaldo
+      quedó en el bundle servido localmente.
+- [x] `CRM_Frontend`: build verde, lint sin errores nuevos.
+- [x] Docker local: `crm-frontend` reconstruido, endpoints sin regresión.
+- [ ] Desplegar este fix en `.65`.

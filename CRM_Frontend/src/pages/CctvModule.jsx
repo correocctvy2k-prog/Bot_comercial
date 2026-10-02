@@ -4369,6 +4369,18 @@ function RealProject({ project, support, onChanged, onRegister }) {
   );
 }
 
+// crypto.randomUUID() solo existe en contextos seguros (HTTPS o localhost);
+// en .65 se accede por HTTP plano (http://192.168.8.65:3003), donde el
+// navegador no lo expone aunque crypto.getRandomValues sí sigue disponible.
+function safeRandomUUID() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  const bytes = typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function" ? crypto.getRandomValues(new Uint8Array(16)) : Array.from({ length: 16 }, () => Math.floor(Math.random() * 256));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 function InstallationWizard({ onClose, initialLocation = null, initialForm = null }) {
   const [candidates, setCandidates] = useState([]),
     [query, setQuery] = useState(""),
@@ -4418,7 +4430,7 @@ function InstallationWizard({ onClose, initialLocation = null, initialForm = nul
       return [
         ...current,
         {
-          clientId: crypto.randomUUID(),
+          clientId: safeRandomUUID(),
           assetType: type,
           label: repeatable ? `${label} ${existing.length + 1}` : label,
           afRequired,
@@ -4466,7 +4478,7 @@ function InstallationWizard({ onClose, initialLocation = null, initialForm = nul
             installedAt: form.installedAt,
             technician: form.technician,
             notes: form.notes,
-            idempotencyKey: crypto.randomUUID(),
+            idempotencyKey: safeRandomUUID(),
             assets,
           }),
         },

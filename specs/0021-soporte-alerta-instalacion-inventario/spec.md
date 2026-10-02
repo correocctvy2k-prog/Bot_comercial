@@ -245,3 +245,27 @@ solo visualmente) y que requiere reabrirla a mano. La bandeja ya era
 colapsable por defecto (fix #2), así que la motivación original del clic
 — "dejaba de obstruir la vista" — ya no debería repetirse, pero la
 etiqueta ahora también deja claro qué hace el botón si se usa.
+
+## 12. Fix post-deploy #4 (2026-10-02) — `crypto.randomUUID` en HTTP plano
+
+Al usar por primera vez el botón "Actualizar inventario" (`InstallationWizard`
+ya existente, reutilizado por esta spec) contra `.65` en producción, todo
+el módulo Seguridad Electrónica se rompía con `TypeError: crypto.randomUUID
+is not a function`, capturado por el `ErrorBoundary` general del módulo.
+
+**Causa raíz** (bug preexistente en `InstallationWizard`, de antes de esta
+spec — recién visible porque spec 0021 es lo que llevó a alguien a usar el
+wizard por primera vez contra producción real): `crypto.randomUUID()` es
+una API del navegador restringida a **contextos seguros** (HTTPS o
+`localhost`) — `.65` se sirve por **HTTP plano**
+(`http://192.168.8.65:3003`), así que el navegador nunca expone ese método
+ahí, aunque sí expone el más antiguo `crypto.getRandomValues`.
+
+**Fix**: `safeRandomUUID()` (nueva función de módulo) usa
+`crypto.randomUUID()` cuando existe y, si no, arma un UUID v4 válido con
+`crypto.getRandomValues` (con respaldo final en `Math.random` si ninguno
+de los dos existiera). Reemplaza los 2 únicos usos de `crypto.randomUUID()`
+en el archivo (`clientId` de cada activo, `idempotencyKey` del guardado).
+Verificado: genera UUIDs v4 con formato válido simulando la ausencia de
+`randomUUID` (igual que en HTTP plano), y el bundle servido localmente
+incluye la lógica de respaldo.
