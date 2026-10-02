@@ -101,3 +101,18 @@ por si el trabajo ya se hizo) van a un campo aparte,
 (`ScheduledInstallationsPanel`, sin acción de inventario) — caso real que
 delató el bug: una tarjeta con fecha de respaldo del 2023, aún pendiente,
 aparecía como instalación ya realizada.
+
+**Abreviatura "Villagorgona" sin alias (2026-10-02):** el catálogo de
+puntos abrevia "Villagorgona" de forma inconsistente en 14 puntos reales
+("V.GORG", "V.GORGONA", o solo "GORG") — la palabra completa, que la gente
+sí escribe en Trello, nunca aparece literal en esos nombres canónicos, así
+que el matcher por substring (spec 0018) no los considera candidatos y un
+punto corto sin relación real puede ganar por default (caso real: "avenida
+la victoria Villagorgona" se vinculaba a "LA VICTORIA"/FLORIDA en vez de
+"AVENIDA LA VICTORIA V.GORG"/CANDELARIA, el punto correcto). No es un bug
+del algoritmo de contención — es una laguna de datos. Fix:
+`scripts/fix-villagorgona-alias-20261002.js --apply` agrega un alias con
+la palabra completa "VILLAGORGONA" a cada uno de los 14 puntos
+(`location_aliases`, mismo mecanismo que usa el matcher) — correr una vez
+y reprocesar el importador (`npm run import:trello-support`) para que los
+vínculos existentes se recalculen.

@@ -9,6 +9,7 @@ import {
   ArrowRight,
   BellRing,
   Boxes,
+  ChevronDown,
   BrainCircuit,
   Building2,
   Camera,
@@ -4848,33 +4849,50 @@ function InstallationWizard({ onClose, initialLocation = null, initialForm = nul
 }
 
 function InstallationAlertTray({ alerts = [], onOpen, onDismiss }) {
+  const [open, setOpen] = useState(false);
   const stamp = (value) => (value ? new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short", timeZone: "America/Bogota" }).format(new Date(value)) : "Sin fecha");
   if (!alerts.length) return null;
   return (
-    <div className="fixed bottom-6 right-4 z-40 flex max-h-[70vh] w-[min(360px,calc(100vw-2rem))] flex-col gap-2.5 overflow-y-auto">
-      {alerts.map((alert) => (
-        <div key={`${alert.cardId}:${alert.locationId}`} className="rounded-2xl border border-amber-500/25 bg-slate-950/95 p-3.5 shadow-2xl shadow-black/40 backdrop-blur-sm">
-          <div className="flex items-start gap-2.5">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-300">
-              <AlertTriangle size={17} />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[9px] font-bold uppercase tracking-wide text-amber-300">Instalación nueva detectada en Soporte</p>
-              <b className="mt-0.5 block truncate text-xs text-slate-100">{alert.locationName || "Punto sin nombre"}</b>
-              <p className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-slate-500"><MapPin size={10} />{alert.zone || "Sin zona"} · {stamp(alert.operationalAt)}</p>
-              <p className="mt-1.5 truncate text-[10px] text-slate-400" title={alert.cardTitle}>"{alert.cardTitle}"</p>
+    <div className="fixed bottom-6 right-4 z-40 flex max-h-[70vh] w-[min(360px,calc(100vw-2rem))] flex-col items-end gap-2.5">
+      {open && (
+        <div className="flex w-full flex-col gap-2.5 overflow-y-auto">
+          {alerts.map((alert) => (
+            <div key={`${alert.cardId}:${alert.locationId}`} className="rounded-2xl border border-amber-500/25 bg-slate-950/95 p-3.5 shadow-2xl shadow-black/40 backdrop-blur-sm">
+              <div className="flex items-start gap-2.5">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-300">
+                  <AlertTriangle size={17} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] font-bold uppercase tracking-wide text-amber-300">Instalación nueva detectada en Soporte</p>
+                  <b className="mt-0.5 block truncate text-xs text-slate-100">{alert.locationName || "Punto sin nombre"}</b>
+                  <p className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-slate-500"><MapPin size={10} />{alert.zone || "Sin zona"} · {stamp(alert.operationalAt)}</p>
+                  <p className="mt-1.5 truncate text-[10px] text-slate-400" title={alert.cardTitle}>"{alert.cardTitle}"</p>
+                </div>
+              </div>
+              <div className="mt-3 flex gap-2">
+                <Button size="sm" className="h-7 flex-1 bg-amber-500/90 text-[10px] font-bold text-slate-950 hover:bg-amber-400" onClick={() => onOpen?.(alert)}>
+                  Actualizar inventario <ArrowRight size={12} className="ml-1" />
+                </Button>
+                <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] text-slate-500 hover:text-rose-300" onClick={() => onDismiss?.(alert)}>
+                  <XCircle size={13} />
+                </Button>
+              </div>
             </div>
-          </div>
-          <div className="mt-3 flex gap-2">
-            <Button size="sm" className="h-7 flex-1 bg-amber-500/90 text-[10px] font-bold text-slate-950 hover:bg-amber-400" onClick={() => onOpen?.(alert)}>
-              Actualizar inventario <ArrowRight size={12} className="ml-1" />
-            </Button>
-            <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] text-slate-500 hover:text-rose-300" onClick={() => onDismiss?.(alert)}>
-              <XCircle size={13} />
-            </Button>
-          </div>
+          ))}
         </div>
-      ))}
+      )}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 rounded-full border border-amber-500/30 bg-slate-950/95 py-2.5 pl-3 pr-4 text-[11px] font-bold text-amber-200 shadow-2xl shadow-black/40 backdrop-blur-sm hover:bg-slate-900"
+      >
+        <span className="relative grid h-6 w-6 shrink-0 place-items-center rounded-full bg-amber-500/15 text-amber-300">
+          <BellRing size={13} />
+          <span className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-amber-500 text-[9px] font-black text-slate-950">{alerts.length}</span>
+        </span>
+        {open ? "Instalaciones nuevas" : `${alerts.length} instalación${alerts.length === 1 ? "" : "es"} nueva${alerts.length === 1 ? "" : "s"}`}
+        <ChevronDown size={14} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
     </div>
   );
 }

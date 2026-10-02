@@ -10,6 +10,29 @@ a una versión fechada.
 
 ## [No publicado]
 
+### CCTV — Soporte: alias "Villagorgona" + bandeja de alertas colapsable
+`specs/0021-soporte-alerta-instalacion-inventario/` (fix post-deploy #2, 2026-10-02)
+- **El usuario corrigió el título de una tarjeta** ("...avenida la victoria
+  Villagorgona") para desambiguar, pero el punto vinculado seguía siendo el
+  equivocado ("LA VICTORIA"/FLORIDA en vez de "AVENIDA LA VICTORIA
+  V.GORG"/CANDELARIA). Causa real: el catálogo abrevia "Villagorgona" de
+  forma inconsistente en **14 puntos** ("V.GORG"/"V.GORGONA"/"GORG") — la
+  palabra completa nunca aparece literal en esos nombres, así que el
+  matcher nunca los considera candidatos.
+- `scripts/fix-villagorgona-alias-20261002.js --apply`: agrega el alias
+  "VILLAGORGONA" (palabra completa) a los 14 puntos vía `location_aliases`
+  (mismo mecanismo ya usado por el matcher). Verificado: la tarjeta real
+  quedó correctamente vinculada tras reprocesar, y de paso capturó un caso
+  nuevo ("BRISAS V.GORGONA") antes sin vincular.
+- **"Ya no aparecen las alertas" no era un bug** — ambas alertas reales ya
+  se habían resuelto, y el tray (diseñado para ocultarse sin pendientes)
+  simplemente dejó de renderizar.
+- `InstallationAlertTray`: pedido explícito del usuario — de lista siempre
+  visible a botón compacto colapsado por defecto (campana + contador).
+- Confirmado sin cambio de código: la actualización del inventario ya se
+  reflejaba globalmente en Inventario y Proyecto (`load()` + `useMemo`
+  compartido) — el usuario lo pidió, ya estaba resuelto por diseño.
+
 ### CCTV — Soporte: la alerta de instalación ya no cuenta tareas pendientes como realizadas
 `specs/0021-soporte-alerta-instalacion-inventario/` (fix post-deploy, 2026-10-02)
 - **Reportado por el usuario con captura real** tras el primer deploy de

@@ -163,3 +163,55 @@ accionables reales (La Discordia, La Victoria — instalación ya realizada) +
 en la lista de pendientes, confirmando el bug). Tests nuevos:
 `pendingAlerts` ignora `PENDING`; `scheduledAlerts` las detecta; `dismissAlert`
 también aplica a programadas. 120/120 en verde.
+
+## 10. Fix post-deploy #2 (2026-10-02) — alias "Villagorgona" + bandeja colapsable
+
+Tres hallazgos del usuario sobre el fix anterior, ya desplegado en `.65`:
+
+**a) El punto seguía mal ubicado tras editar la tarjeta.** El usuario
+corrigió el título de la tarjeta a "...avenida la victoria **Villagorgona**"
+para desambiguar, pero el recuadro de pendientes seguía mostrando el punto
+equivocado: "LA VICTORIA" (zona FLORIDA) en vez de "AVENIDA LA VICTORIA
+V.GORG" (código 3806, zona CANDELARIA) — el punto real que la tarjeta
+describe. **Causa raíz** (confirmada consultando `/api/cctv/candidates?
+search=victoria` contra `.65` en vivo): el catálogo abrevia "Villagorgona"
+de forma inconsistente en **14 puntos reales** ("V.GORG", "V.GORGONA",
+"GORG" sin "V." — ej. "T.A.T BELEN GORG"). La palabra completa
+"Villagorgona", que la gente sí escribe en Trello, nunca aparece literal en
+esos nombres canónicos, así que el matcher por substring (spec 0018) nunca
+los considera candidatos; solo "LA VICTORIA" (sin relación real) calza como
+substring y gana por default — no es un bug del algoritmo de contención,
+es una laguna de datos (abreviatura sin alias).
+- **Fix**: `scripts/fix-villagorgona-alias-20261002.js` (`--apply`) agrega
+  un alias con la palabra completa "VILLAGORGONA" para cada uno de los 14
+  puntos (`location_aliases`, mismo mecanismo ya usado por el matcher,
+  transformación mecánica reversible, sin tocar código de matching). Se
+  encontró y corrigió un bug propio del script en la primera corrida (dejaba
+  "V." colgando: "AVENIDA LA VICTORIA **V.**VILLAGORGONA") antes de
+  aplicarlo — corregido probando el patrón más largo primero.
+  Re-procesado el importador (`import-trello-support.js`) localmente para
+  recalcular vínculos: la tarjeta pasó a "AVENIDA LA VICTORIA V.GORG" /
+  CANDELARIA correctamente, y de regalo capturó un caso nuevo real
+  ("BRISAS V.GORGONA") que antes quedaba sin vincular.
+
+**b) "Ya no aparecen las tarjetas de alerta" — no era un bug.** Las 2
+alertas accionables reales (La Discordia, La Victoria-completada) ya habían
+sido resueltas (el punto pasó a `cctv_coverage_status='ACTIVE'`), así que
+`installationAlerts` quedó vacío y el tray, diseñado para ocultarse cuando
+no hay nada pendiente (`if(!alerts.length) return null`), dejó de
+renderizar — comportamiento esperado, no una regresión.
+
+**c) Bandeja menos intrusiva.** Pedido explícito: "un desplegable para que
+no sean tan intrusivas". `InstallationAlertTray` pasa de lista de tarjetas
+siempre visible a un botón compacto colapsado por defecto (ícono de
+campana + contador), que expande la lista completa al hacer clic.
+
+**d) Propagación global ya existente — confirmado, sin cambio de código.**
+El usuario pidió que al actualizar el inventario se refleje en Inventario y
+Proyecto. Verificado en el código: `InstallationWizard.onClose` ya llama
+`load()`, que recarga `overview`/`inventory`/`project`/`maintenance`/
+`support` juntos en un solo estado compartido de `Overview`; `points` (el
+prop de `RealInventory`) es un `useMemo` derivado de ese mismo estado, así
+que se recalcula solo. Ya funcionaba por diseño, no requirió cambios.
+Mantenimiento queda fuera de este ciclo de inventario (el usuario lo marcó
+"por definir").
