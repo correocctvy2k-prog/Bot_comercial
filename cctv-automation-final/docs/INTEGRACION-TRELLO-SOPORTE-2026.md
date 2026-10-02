@@ -92,3 +92,12 @@ CCTV y el inventario está desactualizado), se puede descartar con
 `POST /api/cctv/support/installation-alerts/dismiss` (`support_installation_
 alert_dismissals`, reversible con `/reopen`, mismo patrón que
 `cctv_notification_resolutions` de spec 0011).
+
+**Fix (2026-10-02):** `installationAlerts[]` solo incluye tarjetas con
+`status='COMPLETED'` — las que siguen en la lista Trello "Lista de tareas
+pendientes" (`status='PENDING'`, calculado por el nombre de la lista, no
+por si el trabajo ya se hizo) van a un campo aparte,
+`scheduledInstallations[]`, mostrado en un recuadro informativo distinto
+(`ScheduledInstallationsPanel`, sin acción de inventario) — caso real que
+delató el bug: una tarjeta con fecha de respaldo del 2023, aún pendiente,
+aparecía como instalación ya realizada.

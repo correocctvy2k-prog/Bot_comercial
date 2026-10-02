@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { DatabaseSync } = require('node:sqlite');
-const { pendingAlerts, dismissAlert, reopenAlert } = require('../platform/support-installation-alerts');
+const { pendingAlerts, scheduledAlerts, dismissAlert, reopenAlert } = require('../platform/support-installation-alerts');
 
 function memoryDb() {
   const db = new DatabaseSync(':memory:');
@@ -11,7 +11,7 @@ function memoryDb() {
     CREATE TABLE locations(id TEXT PRIMARY KEY, siis_code TEXT, canonical_name TEXT, zone TEXT, cctv_coverage_status TEXT, active INTEGER);
     CREATE TABLE audit_log(id TEXT PRIMARY KEY, entity_type TEXT, entity_id TEXT, action TEXT, actor TEXT, occurred_at TEXT, source_system TEXT, before_json TEXT, after_json TEXT, correlation_id TEXT);
     CREATE TABLE support_cards(
-      id TEXT PRIMARY KEY, source_system TEXT, active INTEGER, activity_type TEXT,
+      id TEXT PRIMARY KEY, source_system TEXT, active INTEGER, activity_type TEXT, status TEXT,
       title_raw TEXT, source_card_url TEXT, members_json TEXT,
       due_at TEXT, start_at TEXT, source_updated_at TEXT
     );
@@ -27,9 +27,9 @@ function memoryDb() {
   return db;
 }
 
-function insertCard(db, { id, activityType = 'INSTALLATION', dueAt = null, startAt = null, updatedAt = '2026-09-01T00:00:00Z', members = [] }) {
-  db.prepare(`INSERT INTO support_cards(id,source_system,active,activity_type,title_raw,source_card_url,members_json,due_at,start_at,source_updated_at)
-    VALUES(?,?,1,?,?,?,?,?,?,?)`).run(id, 'TRELLO_SUPPORT', activityType, `Tarjeta ${id}`, `https://trello.com/c/${id}`, JSON.stringify(members), dueAt, startAt, updatedAt);
+function insertCard(db, { id, activityType = 'INSTALLATION', status = 'COMPLETED', dueAt = null, startAt = null, updatedAt = '2026-09-01T00:00:00Z', members = [] }) {
+  db.prepare(`INSERT INTO support_cards(id,source_system,active,activity_type,status,title_raw,source_card_url,members_json,due_at,start_at,source_updated_at)
+    VALUES(?,?,1,?,?,?,?,?,?,?,?)`).run(id, 'TRELLO_SUPPORT', activityType, status, `Tarjeta ${id}`, `https://trello.com/c/${id}`, JSON.stringify(members), dueAt, startAt, updatedAt);
 }
 function linkCard(db, cardId, locationId) {
   db.prepare("INSERT INTO support_card_locations VALUES(?,?,'MATCHED',?)").run(cardId, locationId, new Date().toISOString());
@@ -91,6 +91,38 @@ test('dismissAlert es idempotente (llamarlo dos veces no duplica fila ni falla)'
   const row = db.prepare('SELECT * FROM support_installation_alert_dismissals WHERE card_id=? AND location_id=?').get('card-1', 'loc-sin-cctv');
   assert.equal(row.reason, 'Segundo');
   assert.equal(row.decided_by, 'b');
+});
+
+test('pendingAlerts: ignora tarjetas aun en "Lista de tareas pendientes" (status PENDING) -- caso real "avenida la victoria"', () => {
+  const db = memoryDb();
+  insertCard(db, { id: 'card-pendiente', status: 'PENDING', updatedAt: '2023-12-21T20:46:56Z' });
+  linkCard(db, 'card-pendiente', 'loc-sin-cctv');
+
+  assert.deepEqual(pendingAlerts(db), []);
+});
+
+test('scheduledAlerts: detecta tarjetas de instalacion aun pendientes (no ejecutadas) sobre puntos sin CCTV', () => {
+  const db = memoryDb();
+  insertCard(db, { id: 'card-pendiente', status: 'PENDING', updatedAt: '2023-12-21T20:46:56Z' });
+  linkCard(db, 'card-pendiente', 'loc-sin-cctv');
+  insertCard(db, { id: 'card-realizada', status: 'COMPLETED' });
+  linkCard(db, 'card-realizada', 'loc-sin-cctv');
+
+  const scheduled = scheduledAlerts(db);
+  assert.equal(scheduled.length, 1);
+  assert.equal(scheduled[0].cardId, 'card-pendiente');
+  assert.equal(pendingAlerts(db).length, 1);
+  assert.equal(pendingAlerts(db)[0].cardId, 'card-realizada');
+});
+
+test('dismissAlert tambien oculta una alerta programada (scheduledAlerts) descartada', () => {
+  const db = memoryDb();
+  insertCard(db, { id: 'card-pendiente', status: 'PENDING' });
+  linkCard(db, 'card-pendiente', 'loc-sin-cctv');
+  assert.equal(scheduledAlerts(db).length, 1);
+
+  dismissAlert(db, { cardId: 'card-pendiente', locationId: 'loc-sin-cctv', reason: 'Duplicada', actor: 'tester' });
+  assert.deepEqual(scheduledAlerts(db), []);
 });
 
 test('una tarjeta ligada a varios puntos sin CCTV genera una alerta por punto', () => {

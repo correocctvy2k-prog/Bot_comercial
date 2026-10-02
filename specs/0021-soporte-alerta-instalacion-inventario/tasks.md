@@ -37,6 +37,27 @@ Referencia: `spec.md` y `plan.md` en esta misma carpeta.
 
 ## Cierre
 
-- [ ] PR abierto y enlazado en `spec.md`
-- [ ] Merge a `main`
-- [ ] Desplegado y verificado en `.65`
+- [x] PR abierto y enlazado en `spec.md` (PR #28)
+- [x] Merge a `main` (2026-10-01)
+- [x] Desplegado y verificado en `.65` (2026-10-02) — con un bug real
+      encontrado por el usuario y corregido de inmediato, ver "Fix post-deploy"
+      abajo.
+
+## Fix post-deploy (2026-10-02)
+
+- [x] `support-installation-alerts.js`: `pendingAlerts()` exige
+      `sc.status='COMPLETED'`; nueva `scheduledAlerts()` para
+      `status='PENDING'`.
+- [x] `api/server.js`: `scheduledInstallations` agregado a `supportData()`.
+- [x] `CctvModule.jsx`: `ScheduledInstallationsPanel` nuevo en la pestaña
+      Soporte (tono azul, sin botón "Actualizar inventario", solo "Ver en
+      Trello").
+- [x] Tests nuevos (3): excluye `PENDING` de `pendingAlerts`,
+      `scheduledAlerts` las detecta, `dismissAlert` aplica a ambas.
+      `cctv-automation-final`: 120/120 en verde.
+- [x] `CRM_Frontend`: build verde, lint sin errores nuevos.
+- [x] Docker local: verificado contra datos reales — el caso real
+      ("avenida la victoria", 2023, lista "tareas pendientes") pasó de
+      `installationAlerts` a `scheduledInstallations` correctamente; además
+      reveló que "Cañaveral" tenía el mismo problema.
+- [ ] Desplegar este fix en `.65`

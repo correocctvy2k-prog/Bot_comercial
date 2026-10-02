@@ -138,3 +138,28 @@ Aditivo: tabla nueva + campo nuevo en una respuesta existente + dos rutas
 nuevas + un prop opcional en un componente ya existente. No cambia ningún
 dato ni comportamiento previo si no hay alertas pendientes. Rollback:
 revertir el commit; la tabla de descartes queda sin uso, sin romper nada.
+
+## 9. Fix post-deploy (2026-10-02) — excluir tarjetas aún en "tareas pendientes"
+
+Desplegada la spec en `.65`, el usuario reportó con captura real que la
+bandeja flotante mostraba tarjetas que **todavía no se habían ejecutado**:
+"Instalación CCTV punto avenida la victoria" — con fecha de respaldo del
+**2023** — seguía en la lista Trello "Lista de tareas pendientes"
+(`support_cards.status='PENDING'`, calculado solo por el NOMBRE de esa
+lista, spec previa), pero `pendingAlerts()` no filtraba por `status` y la
+mostraba como si la instalación ya hubiera ocurrido.
+
+**Fix**: `pendingAlerts()` ahora exige `status='COMPLETED'`. Las tarjetas
+`status='PENDING'` pasan a una función nueva, `scheduledAlerts()`, expuesta
+como `scheduledInstallations` en `GET /api/cctv/support` — un **recuadro
+informativo aparte** en la pestaña Soporte (`ScheduledInstallationsPanel`,
+tono azul en vez de ámbar), sin botón "Actualizar inventario" (nada que
+registrar todavía), solo un enlace "Ver en Trello". El descarte
+(`support_installation_alert_dismissals`) aplica a ambas por igual.
+
+Verificado contra datos reales en Docker local tras el fix: 2 alertas
+accionables reales (La Discordia, La Victoria — instalación ya realizada) +
+2 programadas (Cañaveral, "avenida la victoria" — ambas en efecto estaban
+en la lista de pendientes, confirmando el bug). Tests nuevos:
+`pendingAlerts` ignora `PENDING`; `scheduledAlerts` las detecta; `dismissAlert`
+también aplica a programadas. 120/120 en verde.
